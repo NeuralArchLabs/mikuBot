@@ -23,10 +23,13 @@ interface ModelInfo {
 
 interface Message {
   id: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'tool' | 'system';
   text: string;
   timestamp: Date;
   isStreaming?: boolean;
+  toolCalls?: ToolCall[];
+  toolCallId?: string; // For tool result messages
+  toolName?: string;   // For UI display
 }
 
 interface AppConfig {
@@ -46,6 +49,47 @@ interface AppState {
   selectedFile: string;
   isLibraryExpanded: boolean; // New UI state
   unsavedChanges: Record<string, string>; // Filename -> New Content
+}
+
+// --- Tool Calling Types ---
+
+interface ToolParameter {
+  type: string;
+  description: string;
+  enum?: string[];
+}
+
+interface ToolDefinition {
+  type: 'function';
+  function: {
+    name: string;
+    description: string;
+    parameters: {
+      type: 'object';
+      properties: Record<string, ToolParameter>;
+      required: string[];
+    };
+  };
+}
+
+interface ToolCall {
+  id?: string;
+  function: {
+    name: string;
+    arguments: Record<string, any>;
+  };
+}
+
+interface ToolResult {
+  success: boolean;
+  data?: any;
+  error?: string;
+}
+
+interface PendingFileAction {
+  filename: string;
+  suggestedSource: string;
+  resolve: (decision: { approved: boolean; targetSource: 'core' | 'extra' } | null) => void;
 }
 
 // --- File System & DB types ---
@@ -144,6 +188,155 @@ const DEFAULT_CONFIG: AppConfig = {
   apiKeys: { groq: '', gemini: '', ollama: '' },
   ollamaUrl: 'http://localhost:11434',
   temperature: 0.7
+};
+
+// --- Tool Definitions (Agent Capabilities) ---
+
+const AGENT_TOOLS: ToolDefinition[] = [
+  {
+    type: 'function',
+    function: {
+      name: 'read_file',
+      description: 'Read the contents of a file from the core memory folder or library folder. Use this to check current file state before making changes.',
+      parameters: {
+        type: 'object',
+        properties: {
+          filename: { type: 'string', description: 'The filename to read (e.g. SOUL.md, USER.md, ACTIVE_CONTEXT.md)' },
+          source: { type: 'string', description: 'Which folder to read from', enum: ['core', 'library'] }
+        },
+        required: ['filename', 'source']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'update_file',
+      description: 'Write or update a file in the core memory folder or library folder. Use this to persist new information, update your context, or modify your memory files. Always read the file first to avoid overwriting important content.',
+      parameters: {
+        type: 'object',
+        properties: {
+          filename: { type: 'string', description: 'The file path to write (e.g. project/index.html). Directories will be created if they do not exist.' },
+          content: { type: 'string', description: 'The full new content for the file' },
+          source: { type: 'string', description: 'Which folder to write to', enum: ['core', 'library'] }
+        },
+        required: ['filename', 'content', 'source']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'list_files',
+      description: 'List all files available in the core memory folder or library folder. Use this to discover what files exist.',
+      parameters: {
+        type: 'object',
+        properties: {
+          source: { type: 'string', description: 'Which folder to list', enum: ['core', 'library'] }
+        },
+        required: ['source']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'search_files',
+      description: 'Search for a text pattern across all files in a folder. Returns matching filenames and the lines containing the pattern.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'The text pattern to search for' },
+          source: { type: 'string', description: 'Which folder to search', enum: ['core', 'library'] }
+        },
+        required: ['query', 'source']
+      }
+    }
+  }
+];
+
+const PROTECTED_CORE_FILES = ['SOUL.md', 'USER.md', 'TOOLS.md', 'PROTOCOL.md'];
+
+// --- File Location Modal ---
+
+const FileLocationModal = ({
+  pending,
+  corePathName,
+  extraPathName,
+}: {
+  pending: PendingFileAction;
+  corePathName: string;
+  extraPathName: string;
+}) => {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="bg-slate-800 border border-slate-600 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+            <Icon name="folder-plus" className="text-white text-lg" />
+          </div>
+          <div>
+            <h3 className="text-white font-semibold text-lg">File Creation Request</h3>
+            <p className="text-slate-400 text-xs">The agent wants to create a file</p>
+          </div>
+        </div>
+
+        <div className="bg-slate-900/60 rounded-lg p-3 mb-5 border border-slate-700/50">
+          <p className="text-amber-400 font-mono text-sm break-all">
+            <Icon name="file" className="mr-2" />{pending.filename}
+          </p>
+        </div>
+
+        <p className="text-slate-300 text-sm mb-4">Choose where to save this file:</p>
+
+        <div className="space-y-2 mb-5">
+          {corePathName && (
+            <button
+              onClick={() => pending.resolve({ approved: true, targetSource: 'core' })}
+              className="w-full flex items-center gap-3 p-3 bg-slate-700/50 hover:bg-blue-600/30 border border-slate-600 hover:border-blue-500/50 rounded-xl transition-all group"
+            >
+              <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center group-hover:bg-blue-500/40 transition-colors">
+                <Icon name="brain" className="text-blue-400" />
+              </div>
+              <div className="text-left">
+                <p className="text-white text-sm font-medium">Core Memory</p>
+                <p className="text-slate-400 text-xs">{corePathName}</p>
+              </div>
+            </button>
+          )}
+
+          {extraPathName && (
+            <button
+              onClick={() => pending.resolve({ approved: true, targetSource: 'extra' })}
+              className="w-full flex items-center gap-3 p-3 bg-slate-700/50 hover:bg-emerald-600/30 border border-slate-600 hover:border-emerald-500/50 rounded-xl transition-all group"
+            >
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center group-hover:bg-emerald-500/40 transition-colors">
+                <Icon name="folder-open" className="text-emerald-400" />
+              </div>
+              <div className="text-left">
+                <p className="text-white text-sm font-medium">Library / Workspace</p>
+                <p className="text-slate-400 text-xs">{extraPathName}</p>
+              </div>
+            </button>
+          )}
+
+          {!corePathName && !extraPathName && (
+            <p className="text-red-400 text-sm text-center py-3">
+              <Icon name="exclamation-triangle" className="mr-2" />
+              No folders selected. Go to Settings to select a Core or Library folder first.
+            </p>
+          )}
+        </div>
+
+        <button
+          onClick={() => pending.resolve(null)}
+          className="w-full py-2 text-slate-400 hover:text-red-400 text-sm transition-colors"
+        >
+          <Icon name="times" className="mr-1" /> Cancel
+        </button>
+      </div>
+    </div>
+  );
 };
 
 // --- Components ---
@@ -860,24 +1053,44 @@ const ChatArea = ({
         )}
 
         {messages.map((msg) => (
-          <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[85%] rounded-lg p-4 shadow-lg ${msg.role === 'user'
-              ? 'bg-blue-900/40 border border-blue-700/50 text-blue-100'
-              : 'bg-slate-800 border border-slate-700 text-slate-200'
-              }`}>
-              <div className="text-[10px] font-mono opacity-50 mb-2 flex items-center gap-2 uppercase tracking-wider">
-                <Icon name={msg.role === 'user' ? 'user' : 'robot'} />
-                {msg.role === 'user' ? 'Armando' : 'mikuBot'}
+          <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end'
+            : msg.role === 'system' ? 'justify-center'
+              : 'justify-start'
+            }`}>
+            {msg.role === 'system' ? (
+              /* Tool Activity Bubble */
+              <div className="max-w-[70%] rounded-md px-3 py-2 bg-amber-900/20 border border-amber-800/30 text-amber-300/80 text-[11px] font-mono">
+                <MarkdownRenderer content={msg.text} />
               </div>
-              <MarkdownRenderer content={msg.text} />
-            </div>
+            ) : (
+              <div className={`max-w-[85%] rounded-lg p-4 shadow-lg ${msg.role === 'user'
+                ? 'bg-blue-900/40 border border-blue-700/50 text-blue-100'
+                : 'bg-slate-800 border border-slate-700 text-slate-200'
+                }`}>
+                <div className="text-[10px] font-mono opacity-50 mb-2 flex items-center gap-2 uppercase tracking-wider">
+                  <Icon name={msg.role === 'user' ? 'user' : 'robot'} />
+                  {msg.role === 'user' ? 'Armando' : 'mikuBot'}
+                  {msg.toolCalls && msg.toolCalls.length > 0 && (
+                    <span className="text-amber-400 ml-1">
+                      <Icon name="cog" className="animate-spin" /> using tools
+                    </span>
+                  )}
+                </div>
+                <MarkdownRenderer content={msg.text} />
+              </div>
+            )}
           </div>
         ))}
 
         {isLoading && (
           <div className="flex justify-start">
             <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-3 flex items-center gap-3">
-              <div className="animate-pulse text-blue-400 text-xs font-mono">PROCESSING_TENSORS...</div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" style={{ animationDelay: '150ms' }} />
+                <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" style={{ animationDelay: '300ms' }} />
+              </div>
+              <div className="text-blue-400 text-xs font-mono">AGENT_PROCESSING...</div>
             </div>
           </div>
         )}
@@ -949,133 +1162,344 @@ async function fetchModels(provider: Provider, config: AppConfig): Promise<Model
   }
 }
 
-async function sendMessage(
-  provider: Provider,
+// --- Tool Executor ---
+
+async function executeToolCall(
+  toolCall: ToolCall,
+  files: Record<string, string>,
+  additionalFiles: Record<string, string>,
+  saveFileFn: (name: string, content: string, type: 'core' | 'extra') => Promise<boolean>,
+  requestLocationFn?: (filename: string, suggestedSource: string) => Promise<{ approved: boolean; targetSource: 'core' | 'extra' } | null>
+): Promise<ToolResult> {
+  const { name, arguments: args } = toolCall.function;
+
+  try {
+    switch (name) {
+      case 'read_file': {
+        const source = args.source === 'library' ? additionalFiles : files;
+        const content = source[args.filename];
+        if (content !== undefined) {
+          return { success: true, data: { filename: args.filename, content } };
+        }
+        return { success: false, error: `File "${args.filename}" not found in ${args.source} folder.` };
+      }
+
+      case 'update_file': {
+        if (!args.filename) {
+          return { success: false, error: 'Missing required parameter: filename.' };
+        }
+
+        // Block protected identity files
+        if (PROTECTED_CORE_FILES.includes(args.filename)) {
+          return { success: false, error: `"${args.filename}" is a PROTECTED identity file and cannot be modified by tools. Only ACTIVE_CONTEXT.md and TASKS.md are writable in core.` };
+        }
+
+        // Determine if it's a new file
+        const isExisting = (args.filename in files) || (args.filename in additionalFiles);
+        let targetType: 'core' | 'extra' = args.source === 'library' ? 'extra' : 'core';
+
+        // For new files, ask user for location
+        if (!isExisting && requestLocationFn) {
+          const decision = await requestLocationFn(args.filename, args.source || 'library');
+          if (!decision || !decision.approved) {
+            return { success: false, error: 'File creation was cancelled by the user.' };
+          }
+          targetType = decision.targetSource;
+        }
+
+        const saved = await saveFileFn(args.filename, args.content, targetType);
+        if (saved) {
+          return { success: true, data: { filename: args.filename, message: `File "${args.filename}" saved successfully.` } };
+        }
+        return { success: false, error: `Failed to save "${args.filename}". Ensure a folder is selected in Settings.` };
+      }
+
+      case 'list_files': {
+        const source = args.source === 'library' ? additionalFiles : files;
+        const fileList = Object.keys(source).map(f => ({
+          name: f,
+          size: source[f].length
+        }));
+        return { success: true, data: { files: fileList, count: fileList.length } };
+      }
+
+      case 'search_files': {
+        const source = args.source === 'library' ? additionalFiles : files;
+        const query = args.query.toLowerCase();
+        const matches: { filename: string; lines: string[] }[] = [];
+        for (const [filename, content] of Object.entries(source)) {
+          const matchingLines = content.split('\n')
+            .filter(line => line.toLowerCase().includes(query))
+            .slice(0, 5); // Limit to 5 matches per file
+          if (matchingLines.length > 0) {
+            matches.push({ filename, lines: matchingLines });
+          }
+        }
+        return { success: true, data: { query: args.query, matches, totalFiles: matches.length } };
+      }
+
+      default:
+        return { success: false, error: `Unknown tool: ${name}` };
+    }
+  } catch (e) {
+    return { success: false, error: `Tool execution error: ${e instanceof Error ? e.message : String(e)}` };
+  }
+}
+
+// --- Streaming Message (Groq / Gemini) ---
+
+async function sendStreamingMessage(
+  provider: 'groq' | 'gemini',
   config: AppConfig,
   systemPrompt: string,
   messages: { role: string; content: string }[],
   onChunk: (text: string) => void
 ): Promise<void> {
-  switch (provider) {
-    case 'groq': {
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  if (provider === 'groq') {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${config.apiKeys.groq}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: config.model,
+        messages: [{ role: 'system', content: systemPrompt }, ...messages],
+        stream: true,
+        temperature: config.temperature,
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error?.message || `HTTP ${response.status}`);
+    }
+
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n').filter(line => line.startsWith('data: '));
+        for (const line of lines) {
+          const data = line.slice(6);
+          if (data === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(data);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) onChunk(content);
+          } catch { }
+        }
+      }
+    }
+  } else {
+    // Gemini
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:streamGenerateContent?alt=sse&key=${config.apiKeys.gemini}`,
+      {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${config.apiKeys.groq}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: config.model,
-          messages: [{ role: 'system', content: systemPrompt }, ...messages],
-          stream: true,
-          temperature: config.temperature,
+          contents: messages.map(m => ({
+            role: m.role === 'assistant' ? 'model' : m.role,
+            parts: [{ text: m.content }]
+          })),
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          generationConfig: { temperature: config.temperature }
         }),
-      });
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error?.message || `HTTP ${response.status}`);
       }
+    );
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n').filter(line => line.startsWith('data: '));
-          for (const line of lines) {
-            const data = line.slice(6);
-            if (data === '[DONE]') continue;
-            try {
-              const parsed = JSON.parse(data);
-              const content = parsed.choices?.[0]?.delta?.content;
-              if (content) onChunk(content);
-            } catch { }
-          }
-        }
-      }
-      break;
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error?.message || `HTTP ${response.status}`);
     }
 
-    case 'gemini': {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:streamGenerateContent?alt=sse&key=${config.apiKeys.gemini}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: messages.map(m => ({
-              role: m.role === 'assistant' ? 'model' : m.role,
-              parts: [{ text: m.content }]
-            })),
-            systemInstruction: { parts: [{ text: systemPrompt }] },
-            generationConfig: { temperature: config.temperature }
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error?.message || `HTTP ${response.status}`);
-      }
-
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n').filter(line => line.startsWith('data: '));
-          for (const line of lines) {
-            try {
-              const parsed = JSON.parse(line.slice(6));
-              const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
-              if (text) onChunk(text);
-            } catch { }
-          }
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n').filter(line => line.startsWith('data: '));
+        for (const line of lines) {
+          try {
+            const parsed = JSON.parse(line.slice(6));
+            const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (text) onChunk(text);
+          } catch { }
         }
       }
-      break;
+    }
+  }
+}
+
+// --- Agent Loop (Ollama with Tool Calling) ---
+
+const MAX_TOOL_ITERATIONS = 8; // Safety limit
+
+async function sendAgentMessage(
+  config: AppConfig,
+  systemPrompt: string,
+  chatMessages: { role: string; content: string }[],
+  tools: ToolDefinition[],
+  files: Record<string, string>,
+  additionalFiles: Record<string, string>,
+  saveFileFn: (name: string, content: string, type: 'core' | 'extra') => Promise<boolean>,
+  onChunk: (text: string) => void,
+  onToolEvent: (event: { type: 'call' | 'result'; toolName: string; args?: any; result?: ToolResult }) => void,
+  requestLocationFn?: (filename: string, suggestedSource: string) => Promise<{ approved: boolean; targetSource: 'core' | 'extra' } | null>
+): Promise<void> {
+  // Build message array for Ollama
+  const ollamaMessages: any[] = [
+    { role: 'system', content: systemPrompt },
+    ...chatMessages
+  ];
+
+  // --- First request: try with tools ---
+  const firstResponse = await fetch(`${config.ollamaUrl}/api/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: config.model,
+      messages: ollamaMessages,
+      tools: tools,
+      stream: false,
+      options: { temperature: config.temperature }
+    }),
+  });
+
+  // If 400 = model likely doesn't support tools → fall back to streaming without tools
+  if (firstResponse.status === 400) {
+    console.warn('[Agent] Model does not support tool calling, falling back to streaming mode.');
+    const fallbackResponse = await fetch(`${config.ollamaUrl}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: config.model,
+        messages: ollamaMessages,
+        stream: true,
+        options: { temperature: config.temperature }
+      }),
+    });
+
+    if (!fallbackResponse.ok) throw new Error(`Ollama error: HTTP ${fallbackResponse.status}`);
+
+    const reader = fallbackResponse.body?.getReader();
+    const decoder = new TextDecoder();
+    let fullContent = '';
+
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n').filter(Boolean);
+        for (const line of lines) {
+          try {
+            const parsed = JSON.parse(line);
+            if (parsed.message?.content) {
+              fullContent += parsed.message.content;
+            }
+          } catch { }
+        }
+      }
     }
 
-    case 'ollama': {
-      const response = await fetch(`${config.ollamaUrl}/api/chat`, {
+    // Strip <think> blocks (DeepSeek-R1 support)
+    fullContent = fullContent.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+    if (fullContent) onChunk(fullContent);
+    return;
+  }
+
+  if (!firstResponse.ok) {
+    const errBody = await firstResponse.text().catch(() => '');
+    throw new Error(`Ollama error: HTTP ${firstResponse.status} ${errBody}`);
+  }
+
+  // --- Tool-calling agent loop ---
+  let data = await firstResponse.json();
+  let iterations = 0;
+
+  while (iterations < MAX_TOOL_ITERATIONS) {
+    iterations++;
+    const assistantMsg = data.message;
+
+    // Add assistant response to history
+    ollamaMessages.push(assistantMsg);
+
+    // Check for tool calls
+    if (assistantMsg.tool_calls && assistantMsg.tool_calls.length > 0) {
+      // Process each tool call
+      for (const tc of assistantMsg.tool_calls) {
+        const toolCall: ToolCall = {
+          function: {
+            name: tc.function.name,
+            arguments: typeof tc.function.arguments === 'string'
+              ? JSON.parse(tc.function.arguments)
+              : tc.function.arguments
+          }
+        };
+
+        // Notify UI
+        onToolEvent({ type: 'call', toolName: toolCall.function.name, args: toolCall.function.arguments });
+
+        // Execute
+        const result = await executeToolCall(toolCall, files, additionalFiles, saveFileFn, requestLocationFn);
+
+        // Notify UI
+        onToolEvent({ type: 'result', toolName: toolCall.function.name, result });
+
+        // If the tool was update_file and succeeded, update our local copy for subsequent calls
+        if (toolCall.function.name === 'update_file' && result.success) {
+          const args = toolCall.function.arguments;
+          if (args.source === 'library') {
+            additionalFiles = { ...additionalFiles, [args.filename]: args.content };
+          } else {
+            files = { ...files, [args.filename]: args.content };
+          }
+        }
+
+        // Add tool result to history
+        ollamaMessages.push({
+          role: 'tool',
+          content: JSON.stringify(result)
+        });
+      }
+
+      // Send next request with tool results
+      const nextResponse = await fetch(`${config.ollamaUrl}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: config.model,
-          messages: [{ role: 'system', content: systemPrompt }, ...messages],
-          stream: true,
+          messages: ollamaMessages,
+          tools: tools,
+          stream: false,
           options: { temperature: config.temperature }
         }),
       });
 
-      if (!response.ok) throw new Error(`Ollama error: HTTP ${response.status}`);
-
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n').filter(Boolean);
-          for (const line of lines) {
-            try {
-              const parsed = JSON.parse(line);
-              if (parsed.message?.content) onChunk(parsed.message.content);
-            } catch { }
-          }
-        }
+      if (!nextResponse.ok) throw new Error(`Ollama error: HTTP ${nextResponse.status}`);
+      data = await nextResponse.json();
+      // Continue the loop - model will see tool results
+    } else {
+      // No tool calls = final response
+      if (assistantMsg.content) {
+        // Strip <think> blocks if present (DeepSeek-R1 support)
+        let content = assistantMsg.content;
+        content = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+        onChunk(content);
       }
-      break;
+      break; // Exit the loop
     }
+  }
+
+  if (iterations >= MAX_TOOL_ITERATIONS) {
+    onChunk('\n\n⚠️ Agent reached maximum tool iterations. Stopping to prevent infinite loops.');
   }
 }
 
@@ -1113,12 +1537,38 @@ const App = () => {
 
   // File operations
   const saveFile = async (name: string, content: string, type: 'core' | 'extra') => {
-    try {
-      const handle = type === 'core' ? coreHandle : extraHandle;
-      if (!handle) throw new Error("No handle");
+    if (!name) {
+      console.error("Save failed: No filename provided");
+      return false;
+    }
 
-      // Simple flat file support for now
-      const fileHandle = await handle.getFileHandle(name, { create: true });
+    try {
+      let handle = type === 'core' ? coreHandle : extraHandle;
+      if (!handle) throw new Error("No handle selected for " + type);
+
+      // Verify/Request write permission
+      // @ts-ignore
+      if (handle.queryPermission) {
+        // @ts-ignore
+        const status = await handle.queryPermission({ mode: 'readwrite' });
+        if (status !== 'granted') {
+          // @ts-ignore
+          const request = await handle.requestPermission({ mode: 'readwrite' });
+          if (request !== 'granted') throw new Error("Write permission denied by user");
+        }
+      }
+
+      // Handle subdirectories (e.g., "project/index.html")
+      const parts = name.split('/').filter(p => p && p !== '.');
+      const fileName = parts.pop();
+      if (!fileName) throw new Error("Invalid filename");
+
+      // Traverse/Create folders
+      for (const folder of parts) {
+        handle = await handle.getDirectoryHandle(folder, { create: true });
+      }
+
+      const fileHandle = await handle.getFileHandle(fileName, { create: true });
       const writable = await fileHandle.createWritable();
       await writable.write(content);
       await writable.close();
@@ -1138,7 +1588,6 @@ const App = () => {
       return true;
     } catch (e) {
       console.error("Save failed", e);
-      alert("Failed to save file. Check permissions.");
       return false;
     }
   };
@@ -1159,6 +1608,8 @@ const App = () => {
   const [coreHandle, setCoreHandle] = useState<FileSystemDirectoryHandle | null>(null);
   const [extraHandle, setExtraHandle] = useState<FileSystemDirectoryHandle | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [pendingFileAction, setPendingFileAction] = useState<PendingFileAction | null>(null);
+  const sessionLocationRef = useRef<{ source: 'core' | 'extra' } | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -1211,7 +1662,7 @@ const App = () => {
       // Recursive reader
       const readDir = async (dirHandle: FileSystemDirectoryHandle, path = '') => {
         for await (const entry of dirHandle.values()) {
-          if (entry.kind === 'file' && entry.name.endsWith('.md')) {
+          if (entry.kind === 'file' && /\.(md|txt|json|js|jsx|ts|tsx|html|css)$/i.test(entry.name)) {
             const fileHandle = entry as FileSystemFileHandle;
             const file = await fileHandle.getFile();
             const text = await file.text();
@@ -1252,7 +1703,8 @@ const App = () => {
 
   const handleSelectFolder = async (type: 'core' | 'extra') => {
     try {
-      const handle = await window.showDirectoryPicker();
+      // @ts-ignore
+      const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
       if (type === 'core') {
         setCoreHandle(handle);
         await db.set('coreHandle', handle);
@@ -1310,40 +1762,47 @@ const App = () => {
     const files = state.files || {};
     const additionalFiles = state.additionalFiles || {};
     const selectedFiles = state.selectedLibraryFiles || [];
-
-    // Check if core files are loaded
     const hasCore = Object.keys(files).length > 0;
+    const isAgent = state.config.provider === 'ollama';
 
     const coreContext = hasCore ? `
 [SYSTEM KERNEL: mikuBot]
-You are a persistent agent. Your memory resides in the following files.
+You are a persistent, autonomous agent. Your memory resides in files on the user's local file system.
 
-=== SOUL.md (Identity & Directives) ===
-${files['SOUL.md'] || '[Not loaded - select Core folder in Settings]'}
-
-=== USER.md (User Profile) ===
-${files['USER.md'] || '[Not loaded]'}
-
-=== ACTIVE_CONTEXT.md (Current Session) ===
-${files['ACTIVE_CONTEXT.md'] || '[Not loaded]'}
-
-=== TASKS.md (Todo) ===
-${files['TASKS.md'] || '[Not loaded]'}
+${Object.entries(files).map(([name, content]) =>
+      `=== ${name} ===\n${content}`
+    ).join('\n\n')}
     `.trim() : '[SYSTEM: No core files loaded. Please select Core folder in Settings.]';
 
-    // Only include files that are selected
+    const toolSection = isAgent ? `
+
+=== AGENT CAPABILITIES ===
+You have access to tools for self-management:
+- read_file: Read any file from core or library folders.
+- update_file: Write or overwrite a file to persist information. Supports paths with folders (e.g. project/index.html).
+- list_files: Discover what files exist.
+- search_files: Search for text across files.
+
+RULES:
+1. Use update_file to remember new facts the user shares.
+2. Read files before updating them to avoid losing content.
+3. Only call tools when there is a clear reason.
+4. After using tools, confirm what you did to the user.
+5. NEVER modify these protected identity files: SOUL.md, USER.md, TOOLS.md, PROTOCOL.md. They are READ-ONLY.
+6. You may only write to ACTIVE_CONTEXT.md and TASKS.md in core. For everything else, use the library folder.
+7. When creating project files, use update_file with source "library" and use folder paths (e.g. "proyecto/index.html").
+` : '';
+
     const selectedEntries = Object.entries(additionalFiles).filter(([name]) =>
       selectedFiles.includes(name)
     );
-
     const libraryContext = selectedEntries.length > 0
-      ? `\n\n=== LIBRARY / ADDITIONAL CONTEXT ===\nThe following files have been injected for this session:\n${selectedEntries.map(([name, content]) =>
+      ? `\n\n=== LIBRARY / ADDITIONAL CONTEXT ===\n${selectedEntries.map(([name, content]) =>
         `\n--- FILE: ${name} ---\n${content}\n--- END FILE ---\n`
-      ).join('')
-      }`
+      ).join('')}`
       : '';
 
-    return coreContext + libraryContext;
+    return coreContext + toolSection + libraryContext;
   };
 
   const processMessage = async (text: string) => {
@@ -1367,7 +1826,7 @@ ${files['TASKS.md'] || '[Not loaded]'}
     const modelMsgId = (Date.now() + 1).toString();
     setMessages(prev => [...prev, {
       id: modelMsgId,
-      role: 'assistant',
+      role: 'assistant' as const,
       text: '',
       timestamp: new Date(),
       isStreaming: true
@@ -1375,24 +1834,103 @@ ${files['TASKS.md'] || '[Not loaded]'}
 
     try {
       let fullText = '';
-      const chatHistory = messages.map(m => ({
+      const chatHistory = messages.filter(m => m.role === 'user' || m.role === 'assistant').map(m => ({
         role: m.role,
         content: m.text
       }));
       chatHistory.push({ role: 'user', content: userMsg.text });
 
-      await sendMessage(
-        state.config.provider,
-        state.config,
-        constructSystemInstruction(),
-        chatHistory,
-        (chunk) => {
-          fullText += chunk;
-          setMessages(prev => prev.map(m =>
-            m.id === modelMsgId ? { ...m, text: fullText } : m
-          ));
-        }
-      );
+      const systemInstruction = constructSystemInstruction();
+
+      if (state.config.provider === 'ollama') {
+        // Reset session location for this agent run
+        sessionLocationRef.current = null;
+
+        // Location request callback - shows modal for new file creation
+        const requestLocation = (filename: string, suggestedSource: string): Promise<{ approved: boolean; targetSource: 'core' | 'extra' } | null> => {
+          // If user already chose a location in this session, reuse it
+          if (sessionLocationRef.current) {
+            return Promise.resolve({ approved: true, targetSource: sessionLocationRef.current.source });
+          }
+
+          return new Promise((resolve) => {
+            setPendingFileAction({
+              filename,
+              suggestedSource,
+              resolve: (decision) => {
+                setPendingFileAction(null);
+                if (decision) {
+                  // Remember for subsequent files in this agent run
+                  sessionLocationRef.current = { source: decision.targetSource };
+                }
+                resolve(decision);
+              }
+            });
+          });
+        };
+
+        // Agent mode with tool calling
+        await sendAgentMessage(
+          state.config,
+          systemInstruction,
+          chatHistory,
+          AGENT_TOOLS,
+          { ...state.files },
+          { ...state.additionalFiles },
+          saveFile,
+          (chunk) => {
+            fullText += chunk;
+            setMessages(prev => prev.map(m =>
+              m.id === modelMsgId ? { ...m, text: fullText } : m
+            ));
+          },
+          (event) => {
+            // Show tool events in chat as system bubbles
+            const toolMsgId = `tool_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+            if (event.type === 'call') {
+              setMessages(prev => [...prev.filter(m => m.id !== modelMsgId), {
+                id: toolMsgId,
+                role: 'system' as const,
+                text: `🔧 **Tool Call:** \`${event.toolName}\`\n\`\`\`json\n${JSON.stringify(event.args, null, 2)}\n\`\`\``,
+                timestamp: new Date(),
+                toolName: event.toolName
+              }, { ...prev.find(m => m.id === modelMsgId)! }]);
+            } else if (event.type === 'result') {
+              const statusIcon = event.result?.success ? '✅' : '❌';
+              const resultPreview = event.result?.success
+                ? (event.result?.data?.message || `${event.result?.data?.count ?? ''} items`)
+                : event.result?.error;
+              setMessages(prev => [...prev.filter(m => m.id !== modelMsgId), {
+                id: toolMsgId,
+                role: 'system' as const,
+                text: `${statusIcon} **Result** (\`${event.toolName}\`): ${resultPreview}`,
+                timestamp: new Date(),
+                toolName: event.toolName
+              }, { ...prev.find(m => m.id === modelMsgId)! }]);
+
+              // If a file was updated, re-sync state
+              if (event.toolName === 'update_file' && event.result?.success && coreHandle) {
+                syncFiles('core', coreHandle);
+              }
+            }
+          },
+          requestLocation
+        );
+      } else {
+        // Streaming mode for Groq/Gemini
+        await sendStreamingMessage(
+          state.config.provider as 'groq' | 'gemini',
+          state.config,
+          systemInstruction,
+          chatHistory,
+          (chunk) => {
+            fullText += chunk;
+            setMessages(prev => prev.map(m =>
+              m.id === modelMsgId ? { ...m, text: fullText } : m
+            ));
+          }
+        );
+      }
     } catch (error) {
       console.error('API Error:', error);
       setMessages(prev => prev.map(m =>
@@ -1439,7 +1977,6 @@ ${files['TASKS.md'] || '[Not loaded]'}
           onSave={(name, content) => saveFile(name, content, 'core')}
           unsavedChanges={state.unsavedChanges}
           setUnsavedChanges={(newUnsaved) => {
-            // Handle functional update if passed, or direct object
             setState(prev => ({
               ...prev,
               unsavedChanges: typeof newUnsaved === 'function'
@@ -1482,6 +2019,14 @@ ${files['TASKS.md'] || '[Not loaded]'}
           corePathName={coreHandle?.name || ''}
           extraPathName={extraHandle?.name || ''}
           syncing={syncing}
+        />
+      )}
+
+      {pendingFileAction && (
+        <FileLocationModal
+          pending={pendingFileAction}
+          corePathName={coreHandle?.name || ''}
+          extraPathName={extraHandle?.name || ''}
         />
       )}
     </div>
