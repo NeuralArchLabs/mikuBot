@@ -1,0 +1,448 @@
+@import "tailwindcss";
+
+/* Custom Scrollbar overrides if not handled by Tailwind */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(51, 65, 85, 0.5);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(71, 85, 105, 0.8);
+}
+
+/* Markdown Styles overrides (Tailwind typography plugin usage recommended instead but keeping existing custom styles) */
+.markdown-body {
+  overflow-wrap: break-word;
+  word-break: break-word;
+  min-width: 0;
+}
+
+.markdown-body p {
+  margin-bottom: 0.75em;
+}
+
+.markdown-body ul {
+  list-style-type: disc;
+  margin-left: 1.5em;
+  margin-bottom: 0.75em;
+}
+
+.markdown-body ol {
+  list-style-type: decimal;
+  margin-left: 1.5em;
+  margin-bottom: 0.75em;
+}
+
+.markdown-body h1 {
+  font-size: 1.5em;
+  font-weight: bold;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+  color: #60a5fa;
+}
+
+.markdown-body h2 {
+  font-size: 1.25em;
+  font-weight: bold;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+  color: #93c5fd;
+}
+
+.markdown-body h3 {
+  font-size: 1.1em;
+  font-weight: bold;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+}
+
+.markdown-body code {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.9em;
+  word-break: break-all;
+}
+
+.markdown-body pre {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 1em;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin-bottom: 1em;
+  max-width: 100%;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.markdown-body pre code {
+  background: none;
+  padding: 0;
+  word-break: break-word;
+}
+
+.markdown-body blockquote {
+  border-left: 3px solid #475569;
+  padding-left: 1em;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.markdown-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1em;
+}
+
+.markdown-body th,
+.markdown-body td {
+  border: 1px solid #334155;
+  padding: 0.5em;
+  text-align: left;
+}
+
+.markdown-body th {
+  background: rgba(30, 41, 59, 0.5);
+}
+
+/* Think Block */
+.think-block {
+  margin: 0.5em 0;
+  padding: 0.5em 0.75em;
+  border-left: 3px solid rgba(139, 92, 246, 0.4);
+  background: rgba(139, 92, 246, 0.05);
+  border-radius: 0 6px 6px 0;
+  font-size: 0.85em;
+}
+
+.think-block summary {
+  cursor: pointer;
+  color: #a78bfa;
+  font-weight: 500;
+  user-select: none;
+  padding: 0.15em 0;
+}
+
+.think-block summary:hover {
+  color: #c4b5fd;
+}
+
+.think-block[open] summary {
+  margin-bottom: 0.4em;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.15);
+  padding-bottom: 0.3em;
+}
+
+.think-block> :not(summary) {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+@keyframes breathing-neon {
+
+  0%,
+  100% {
+    color: rgba(255, 255, 255, 0.4);
+    text-shadow: none;
+  }
+
+  50% {
+    color: #32ff7e;
+    text-shadow: 0 0 8px rgba(50, 255, 126, 0.6);
+  }
+}
+
+@keyframes arrow-sequence {
+
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+
+  33% {
+    opacity: 1;
+    text-shadow: 0 0 5px currentColor;
+  }
+}
+
+.engine-label {
+  animation: breathing-neon 3s ease-in-out infinite;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  font-size: 8px;
+}
+
+.engine-arrow {
+  display: inline-block;
+  opacity: 0.15;
+  animation: arrow-sequence 1.8s infinite;
+  margin: 0 1px;
+}
+
+.engine-arrow-1 {
+  animation-delay: 0s;
+}
+
+.engine-arrow-2 {
+  animation-delay: 0.4s;
+}
+
+.engine-arrow-3 {
+  animation-delay: 0.8s;
+}
+
+.optimization-badge {
+  position: relative;
+  background: linear-gradient(90deg, #ff4d4d, #f9cb28, #32ff7e, #18dcff, #7d5fff, #ff4d4d);
+  background-size: 200% auto;
+  border-radius: 8px;
+  padding: 1.5px;
+  margin: 16px 0;
+  animation: shine 3s linear infinite;
+  display: block;
+}
+
+.optimization-inner {
+  position: relative;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgb(15 23 42);
+  border-radius: 7px;
+  width: 100%;
+}
+
+.optimization-text {
+  background: linear-gradient(90deg, #ff4d4d, #f9cb28, #32ff7e, #18dcff, #7d5fff, #ff4d4d);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shine 3s linear infinite;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.optimization-scan-line {
+  display: none;
+}
+
+@keyframes shine {
+  to {
+    background-position: 200% center;
+  }
+}
+
+@keyframes pulse-soft {
+
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.processing-placeholder {
+  background-color: rgb(30 41 59 / 0.4);
+  border: 1px solid rgb(51 65 85 / 0.5);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-style: italic;
+  color: rgb(148 163 184);
+  font-size: 0.875rem;
+  animation: pulse-soft 2s infinite ease-in-out;
+}
+
+.tool-block {
+  margin-top: 0.5rem;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(51 65 85);
+  background-color: rgb(15 23 42 / 0.5);
+  transition: all 0.2s ease;
+}
+
+.tool-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  background-color: rgb(30 41 59 / 0.8);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.tool-block-header:hover {
+  background-color: rgb(51 65 85 / 0.5);
+}
+
+.tool-block-content {
+  padding: 0.75rem;
+  border-top: 1px solid rgb(51 65 85);
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+  color: rgb(203 213 225);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.tool-summary-container {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.result-text-dynamic {
+  transition: font-size 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s ease;
+  line-height: 1.4;
+}
+
+.result-text-large {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.result-text-small {
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.typing-cursor::after {
+  content: '|';
+  animation: blink 0.8s infinite;
+  margin-left: 2px;
+  color: currentColor;
+}
+
+@keyframes blink {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Glassmorphic Tool Approval Panel */
+.approval-panel-glass {
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border-radius: 0.75rem;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  overflow: hidden;
+  animation: slide-up-fade 0.3s ease-out forwards;
+}
+
+@keyframes slide-up-fade {
+  from {
+    opacity: 0.1;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.approval-btn {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.approval-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+}
+
+.approval-btn:active {
+  transform: translateY(0);
+}
+
+.tool-icon-success {
+  color: rgb(52 211 153);
+}
+
+.tool-icon-error {
+  color: rgb(248 113 113);
+}
+
+.tool-icon-pending {
+  color: rgb(251 191 36);
+}
+
+/* Agent Status Panel Transition */
+.agent-status-container {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+}
+
+.agent-status-container.active {
+  max-height: 400px;
+  opacity: 1;
+}
+
+.agent-status-container.exiting {
+  max-height: 0;
+  opacity: 0;
+}
+
+.animate-in {
+  animation-duration: 0.5s;
+  animation-timing-function: ease-out;
+  animation-fill-mode: forwards;
+}
+
+.fade-in {
+  animation-name: fade-in-kf;
+}
+
+@keyframes fade-in-kf {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-from-top-kf {
+  from {
+    transform: translateY(-4px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.slide-in-from-top-1 {
+  animation-name: slide-in-from-top-kf;
+}

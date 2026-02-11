@@ -13,8 +13,13 @@ dist-ssr
 *.local
 
 core/*.md
+core/core/
+!core/base/
+sandBox/
 
-# Editor directories and files
+# User configuration and sessions
+config.json
+sessions/
 .vscode/*
 !.vscode/extensions.json
 .idea
