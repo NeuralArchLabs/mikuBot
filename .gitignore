@@ -12,9 +12,7 @@ dist
 dist-ssr
 *.local
 
-core/*.md
-core/core/
-!core/base/
+core/identity/
 sandBox/
 
 # User configuration and sessions
