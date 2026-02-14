@@ -402,15 +402,25 @@ export async function sendAgentMessage(
                 const historyText = actionHistory.map((a, i) => `🔹 ${a}`).join('\n');
                 const lastMsg = messagesForModel[messagesForModel.length - 1];
 
+                // Extract tool summaries dynamically for the nudge
+                const toolsList = tools.map(t => `- ${t.function.name}: ${t.function.description.split('.')[0]}`).join('\n');
+
                 const statusUpdate = `[SYSTEM STATUS UPDATE]
 NEURAL CORTEX HISTORY:
 ${historyText}
 
-INSTRUCTIONS FOR NEXT STEP:
-1. Review the history. Do NOT repeat actions already completed.
-2. If tasks remain, output the NEXT JSON tool call (new action).
-3. If the objective is met, provide a text summary and STOP.
-4. IMPORTANT: Do NOT read/write the same file twice in a row.`;
+[NEURAL PROTOCOL REFRESH]
+AVAILABLE TOOLS:
+${toolsList}
+
+CORE INSTRUCTIONS:
+${systemPrompt}
+
+PROTOCOL RULE:
+1. Review history. Do NOT repeat actions.
+2. If the task is finished or you need more info from the user, provide a clear text summary.
+3. If the task is ongoing, output the NEXT JSON tool call.
+4. Output ONLY raw JSON when calling tools. No conversational fluff.`;
 
                 // If the last message was also a USER message (nudge), merge them to avoid consecutive user blocks
                 if (lastMsg?.role === 'user') {
@@ -479,17 +489,32 @@ INSTRUCTIONS FOR NEXT STEP:
                 // Last resort: simpler regex (may catch things recovery missed)
                 const extracted = extractToolCallsFromText(content);
                 if (extracted.length > 0) {
-                    log('info', `Extracted ${extracted.length} tool call(s) via legacy regex fallback`);
-                    toolCallsToProcess = extracted;
+                    log('info', `Legacy regex found ${extracted.length} tool signatures. Normalizing...`);
+                    for (const rawExt of extracted) {
+                        const norm = normalizeRawToolCall({
+                            name: rawExt.function.name,
+                            arguments: rawExt.function.arguments
+                        }, tools);
+
+                        if (norm.toolCall) {
+                            norm.toolCall.id = rawExt.id; // Keep the original 'ext-' ID
+                            toolCallsToProcess.push(norm.toolCall);
+                            for (const w of norm.warnings) log('warn', `  ↳ ${w}`);
+                        }
+                    }
                 }
             }
         }
 
         // Push assistant message into history
+        // IMPORTANT: If we recovered calls from text, we MUST synthesize them into tool_calls 
+        // so that subsequent 'tool' role messages are valid in strict APIs (like Gemini).
         ollamaMessages.push({
             role: 'assistant',
-            content: content || '',
-            ...(nativeToolCalls && nativeToolCalls.length > 0 ? { tool_calls: nativeToolCalls } : {}),
+            content: content || '[Calling Tools...]',
+            tool_calls: (nativeToolCalls && nativeToolCalls.length > 0)
+                ? nativeToolCalls
+                : (toolCallsToProcess.length > 0 ? toolCallsToProcess : undefined),
         });
 
         // --- NOW build blocks from the COMPLETE response ---
@@ -500,16 +525,11 @@ INSTRUCTIONS FOR NEXT STEP:
             cleanText = cleanText.replace(/```json\s*\{[\s\S]*?\}\s*```/g, '');
             cleanText = cleanText.replace(/```\s*\{[\s\S]*?\}\s*```/g, '');
 
-            // Remove any JSON-like objects that were identified as tool calls
-            const toolNames = tools.map(t => t.function.name);
-            toolNames.forEach(tn => {
-                // Remove style: fn_name({...})
-                const fnRegex = new RegExp(`${tn}\\s*\\(\\s*\\{[\\s\\S]*?\\}\\s*\\)`, 'g');
-                cleanText = cleanText.replace(fnRegex, '');
-            });
+            // Improved regex to remove any JSON object that contains a known tool name as a "name" or "tool" value
+            const toolNamesLine = tools.map(t => t.function.name).join('|');
+            const universalJsonRegex = new RegExp(`\\{\\s*[\\s\\S]*?"(?:name|tool|function|tool_call|call)"\\s*:\\s*(?:"(?:${toolNamesLine})"|\\{\\s*"name"\\s*:\\s*"(?:${toolNamesLine})")[\\s\\S]*?\\}`, 'g');
+            cleanText = cleanText.replace(universalJsonRegex, '');
 
-            // Remove style: { "name": "...", "arguments": {...} }
-            cleanText = cleanText.replace(/\{[\s\S]*?"name"\s*:\s*"(read_file|update_file|list_files|search_files|web_search|read_url|run_console)"[\s\S]*?\}/g, '');
             cleanText = cleanText.trim();
         }
 

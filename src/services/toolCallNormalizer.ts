@@ -73,6 +73,9 @@ const TOOL_NAME_ALIASES: Record<string, string> = {
     'append_file': 'update_file',
     'write': 'update_file',
     'save': 'update_file',
+    'file_generator': 'update_file',
+    'generate_file': 'update_file',
+    'content_generator': 'update_file',
 
     // ── list_files variants ─────────────────────────────────────────
     'listfiles': 'list_files',
@@ -179,14 +182,22 @@ const TOOL_NAME_ALIASES: Record<string, string> = {
  */
 const KEY_ALIASES: Record<string, string> = {
     // Name field variants
+    'function_call': 'name',
     'function': 'name',
     'func': 'name',
     'tool': 'name',
     'tool_name': 'name',
     'tool_code': 'name',
+    'tool_call': 'name',
+    'call': 'name',
+    'call_tool': 'name',
     'action': 'name',
     'command': 'name',
     'method': 'name',
+    'call_function': 'name',
+    'function_name': 'name',
+    'function_name_call': 'name',
+
 
     // Arguments field variants
     'args': 'arguments',
@@ -199,6 +210,15 @@ const KEY_ALIASES: Record<string, string> = {
     'payload': 'arguments',
     'body': 'arguments',
     'options': 'arguments',
+    'tool_input': 'arguments',
+    'tool_args': 'arguments',
+    'tool_params': 'arguments',
+    'tool_parameters': 'arguments',
+    'tool_kwargs': 'arguments',
+    'tool_data': 'arguments',
+    'tool_payload': 'arguments',
+    'tool_body': 'arguments',
+    'tool_options': 'arguments',
 };
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -402,12 +422,6 @@ export function stripXmlTags(text: string): string {
    §7  LAYER 3 — Conversational Wrapper Remover
    ═══════════════════════════════════════════════════════════════════════ */
 
-/**
- * Strips the conversational text that often wraps tool calls:
- *   "Sure, I can help you! Here's the tool call: {...} Hope this helps!"
- *
- * Also strips <think>...</think> blocks from reasoning models.
- */
 export function stripConversationalWrapper(text: string): string {
     let s = text;
 
@@ -419,6 +433,9 @@ export function stripConversationalWrapper(text: string): string {
     if (fenceMatch) {
         s = fenceMatch[1].trim();
     }
+
+    // Aggressively remove conversational preambles often seen in apologies
+    s = s.replace(/^(?:I apologize|My apologies|You are right|You are correct|My core programming|I will now proceed)[\s\S]*?(?={|\[)/i, '');
 
     return s.trim();
 }
@@ -477,6 +494,19 @@ export function normalizeToolName(
  *   { "name": "read_file", "arguments": {...} }  (already correct)
  */
 export function normalizeJsonKeys(obj: Record<string, any>): { name: string; arguments: Record<string, any> } | null {
+    // ── Unwrap OpenAI-style & Singular Nested Formats ────────────────
+    // Plural (OpenAI)
+    if (obj.tool_calls && Array.isArray(obj.tool_calls) && obj.tool_calls.length > 0) {
+        return normalizeJsonKeys(obj.tool_calls[0]);
+    }
+    // Singular wrappers often used by smaller models or specific prompt styles
+    const singularWrappers = ['tool_call', 'function_call', 'call', 'action', 'command'];
+    for (const wrapper of singularWrappers) {
+        if (obj[wrapper] && typeof obj[wrapper] === 'object' && !Array.isArray(obj[wrapper])) {
+            return normalizeJsonKeys(obj[wrapper]);
+        }
+    }
+
     let name: string | undefined;
     let args: Record<string, any> | undefined;
 
@@ -747,9 +777,11 @@ export function recoverToolCallsFromText(
 
 /**
  * Extracts ALL balanced { ... } objects from a string.
+ * If includeUnclosed is true, it will also return the last unclosed object found (best effort).
  */
-function extractAllBalancedObjects(text: string): string[] {
+function extractAllBalancedObjects(text: string, includeUnclosed: boolean = true): string[] {
     const results: string[] = [];
+    let lastUnclosed: string | null = null;
     let i = 0;
 
     while (i < text.length) {
@@ -759,9 +791,16 @@ function extractAllBalancedObjects(text: string): string[] {
                 results.push(obj);
                 i += obj.length;
                 continue;
+            } else if (includeUnclosed) {
+                // If it's the last '{' in the text and it's not balanced, capture it
+                lastUnclosed = text.substring(i);
             }
         }
         i++;
+    }
+
+    if (lastUnclosed && !results.includes(lastUnclosed)) {
+        results.push(lastUnclosed);
     }
 
     return results;

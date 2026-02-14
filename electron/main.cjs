@@ -33,22 +33,36 @@ ipcMain.handle('fetch-proxy', async (event, { url, options }) => {
         if (!headers['User-Agent']) {
             headers['User-Agent'] = 'MikuCentral/1.0 (Electron)';
         }
-        const fetchOptions = { ...options, headers };
-        const response = await fetch(url, fetchOptions);
-        let data;
-        const contentType = response.headers.get('content-type') || '';
-        if (contentType.includes('application/json')) {
-            data = await response.json();
-        } else {
-            data = { text: await response.text() };
+
+        // ── Anti-Hang Timeout ─────────────────────────────────────────
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+        try {
+            const fetchOptions = { ...options, headers, signal: controller.signal };
+            const response = await fetch(url, fetchOptions);
+            let data;
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                data = await response.json();
+            } else {
+                data = { text: await response.text() };
+            }
+            if (!response.ok) {
+                return { ok: false, status: response.status, data, error: `HTTP ${response.status}` };
+            }
+            return { ok: true, status: response.status, data };
+        } finally {
+            clearTimeout(timeout);
         }
-        if (!response.ok) {
-            return { ok: false, status: response.status, data, error: `HTTP ${response.status}` };
-        }
-        return { ok: true, status: response.status, data };
     } catch (error) {
-        console.error(`[Main Process] Proxy Error for ${url}:`, error);
-        return { ok: false, status: 500, error: error.message };
+        const isTimeout = error.name === 'AbortError';
+        console.error(`[Main Process] Proxy Error for ${url}:`, isTimeout ? 'Request Timed Out' : error);
+        return {
+            ok: false,
+            status: isTimeout ? 408 : 500,
+            error: isTimeout ? 'Connection Timed Out (30s)' : error.message
+        };
     }
 });
 
