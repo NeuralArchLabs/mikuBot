@@ -12,12 +12,16 @@ interface SettingsPanelProps {
     onTestConnection: () => void;
     onCoreSelect: () => void;
     onExtraSelect: () => void;
-    onSandboxSelect: () => void;
+    onWorkSpaceSelect: () => void;
+    onToolsSelect: () => void;
     onSaveGlobal: () => void;
     onResetGlobal: () => void;
+    onLoadConfig: () => void;
+    onExportConfig: () => void;
     corePathName: string;
     extraPathName: string;
-    sandboxPathName: string;
+    workSpacePathName: string;
+    toolsPathName: string;
     syncing: boolean;
 }
 
@@ -30,12 +34,16 @@ export const SettingsPanel = ({
     onTestConnection,
     onCoreSelect,
     onExtraSelect,
-    onSandboxSelect,
+    onWorkSpaceSelect,
+    onToolsSelect,
     onSaveGlobal,
     onResetGlobal,
+    onLoadConfig,
+    onExportConfig,
     corePathName,
     extraPathName,
-    sandboxPathName,
+    workSpacePathName,
+    toolsPathName,
     syncing
 }: SettingsPanelProps) => {
     const [localApiKey, setLocalApiKey] = useState('');
@@ -59,7 +67,21 @@ export const SettingsPanel = ({
                         <h2 className="text-2xl font-bold text-white mb-1 tracking-tight">⚙️ Control Room</h2>
                         <p className="text-slate-400 text-sm">Configure Neural Engine and Neural Cortex settings.</p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                            onClick={onLoadConfig}
+                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold uppercase shadow-lg shadow-emerald-900/20 transition-all flex items-center gap-2"
+                            title="Auto-detect saved config, or browse for a config.json file"
+                        >
+                            <Icon name="download" /> Load Config
+                        </button>
+                        <button
+                            onClick={onExportConfig}
+                            className="px-4 py-2 border border-slate-600 text-slate-300 hover:bg-slate-700 rounded-lg text-xs font-bold uppercase transition-all flex items-center gap-2"
+                            title="Download current config as JSON file"
+                        >
+                            <Icon name="file-export" /> Export
+                        </button>
                         <button
                             onClick={onResetGlobal}
                             className="px-4 py-2 border border-red-900/40 text-red-500 hover:bg-red-900/20 rounded-lg text-xs font-bold uppercase transition-all flex items-center gap-2"
@@ -78,27 +100,27 @@ export const SettingsPanel = ({
                 <div className="space-y-4">
                     <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">Knowledge Base</label>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {/* Sandbox (Default Agent Workspace) */}
+                        {/* WorkSpace (Default Agent Workspace) */}
                         <div className="bg-slate-800/50 p-4 rounded-xl border border-emerald-700/50">
                             <div className="flex items-center gap-3 mb-3">
                                 <div className="w-10 h-10 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
                                     <Icon name="box" className="text-lg" />
                                 </div>
                                 <div>
-                                    <div className="text-sm font-bold text-slate-200">Sandbox</div>
+                                    <div className="text-sm font-bold text-slate-200">WorkSpace</div>
                                     <div className="text-[10px] text-emerald-500/70">Default agent workspace</div>
                                 </div>
                             </div>
                             <div className="text-xs font-mono text-slate-400 mb-3 truncate bg-slate-900/50 p-2 rounded border border-emerald-700/30">
-                                {sandboxPathName || "Not configured — select folder"}
+                                {workSpacePathName || "Not configured — select folder"}
                             </div>
                             <button
-                                onClick={onSandboxSelect}
+                                onClick={onWorkSpaceSelect}
                                 disabled={syncing}
                                 className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-medium transition-colors flex items-center justify-center gap-2"
                             >
                                 {syncing ? <Icon name="sync fa-spin" /> : <Icon name="folder-open" />}
-                                Select Sandbox Folder
+                                Select WorkSpace Folder
                             </button>
                         </div>
 
@@ -147,6 +169,30 @@ export const SettingsPanel = ({
                             >
                                 {syncing ? <Icon name="sync fa-spin" /> : <Icon name="folder-plus" />}
                                 Select Library Folder
+                            </button>
+                        </div>
+
+                        {/* Command Engine */}
+                        <div className="bg-slate-800/50 p-4 rounded-xl border border-amber-900/40">
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className="w-10 h-10 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                                    <Icon name="bolt" className="text-lg" />
+                                </div>
+                                <div>
+                                    <div className="text-sm font-bold text-slate-200">Command Engine</div>
+                                    <div className="text-[10px] text-amber-500/70">Agent instructions & tools</div>
+                                </div>
+                            </div>
+                            <div className="text-xs font-mono text-slate-400 mb-3 truncate bg-slate-900/50 p-2 rounded border border-amber-900/20">
+                                {toolsPathName || "Not configured — select folder"}
+                            </div>
+                            <button
+                                onClick={onToolsSelect}
+                                disabled={syncing}
+                                className="w-full py-2 bg-amber-700 hover:bg-amber-600 text-white rounded text-xs font-medium transition-colors flex items-center justify-center gap-2"
+                            >
+                                {syncing ? <Icon name="sync fa-spin" /> : <Icon name="folder-open" />}
+                                Select Commands Folder
                             </button>
                         </div>
                     </div>
@@ -220,6 +266,7 @@ export const SettingsPanel = ({
                                     type="button"
                                     onClick={() => setShowApiKey(!showApiKey)}
                                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                                    title={showApiKey ? 'Hide API Key' : 'Show API Key'}
                                 >
                                     <Icon name={showApiKey ? "eye-slash" : "eye"} />
                                 </button>
@@ -257,32 +304,98 @@ export const SettingsPanel = ({
                         </div>
                         <label className="text-sm font-bold text-slate-200">Web Search Engine</label>
                     </div>
-                    <p className="text-xs text-slate-400">Enable real-time information retrieval using Tavily API.</p>
+                    <p className="text-xs text-slate-400">Enable real-time information retrieval using Search APIs.</p>
 
                     <div className="space-y-3">
                         <div className="flex gap-2">
-                            <div className="w-20 text-[10px] font-bold text-slate-500 flex items-center">TAVILY</div>
-                            <input
-                                type="password"
-                                value={config.tavilyApiKey}
-                                onChange={(e) => updateConfig('tavilyApiKey', e.target.value)}
-                                placeholder="Enter Tavily API Key..."
-                                className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-blue-500 transition-colors"
-                            />
+                            <div className="w-20 text-[10px] font-bold text-slate-500 flex items-center shrink-0">TAVILY API</div>
+                            <div className="relative flex-1">
+                                <input
+                                    type={showApiKey ? "text" : "password"}
+                                    value={config.tavilyApiKey}
+                                    onChange={(e) => updateConfig('tavilyApiKey', e.target.value)}
+                                    placeholder="Enter Tavily API Key..."
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-blue-500 transition-colors pr-10"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowApiKey(!showApiKey)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                                    title={showApiKey ? "Hide API Key" : "Show API Key"}
+                                >
+                                    <Icon name={showApiKey ? "eye-slash" : "eye"} />
+                                </button>
+                            </div>
                         </div>
                         <div className="flex gap-2">
-                            <div className="w-20 text-[10px] font-bold text-slate-500 flex items-center">BRAVE</div>
+                            <div className="w-20 text-[10px] font-bold text-slate-500 flex items-center shrink-0">BRAVE API</div>
+                            <div className="relative flex-1">
+                                <input
+                                    type={showApiKey ? "text" : "password"}
+                                    value={config.braveApiKey}
+                                    onChange={(e) => updateConfig('braveApiKey', e.target.value)}
+                                    placeholder="Enter Brave Search API Key..."
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-blue-500 transition-colors pr-10"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowApiKey(!showApiKey)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                                    title={showApiKey ? "Hide API Key" : "Show API Key"}
+                                >
+                                    <Icon name={showApiKey ? "eye-slash" : "eye"} />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <p className="text-[10px] text-slate-500">
+                        Get keys at: <a href="https://tavily.com/" target="_blank" rel="noopener" className="text-blue-400 hover:underline">Tavily.com</a> o <a href="https://api.search.brave.com/app/dashboard" target="_blank" rel="noopener" className="text-blue-400 hover:underline">Brave Search</a>
+                    </p>
+                </div>
+
+                <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700 space-y-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center">
+                            <Icon name="paper-plane" />
+                        </div>
+                        <label className="text-sm font-bold text-slate-200">Remote Communication (Telegram)</label>
+                    </div>
+                    <p className="text-xs text-slate-400">Receive notifications and interact remotely via Telegram Bot API.</p>
+
+                    <div className="space-y-3">
+                        <div className="flex gap-2">
+                            <div className="w-20 text-[10px] font-bold text-slate-500 flex items-center shrink-0">BOT TOKEN</div>
+                            <div className="relative flex-1">
+                                <input
+                                    type={showApiKey ? "text" : "password"}
+                                    value={config.telegramBotToken}
+                                    onChange={(e) => updateConfig('telegramBotToken', e.target.value)}
+                                    placeholder="Enter Telegram Bot Token..."
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-blue-500 transition-colors pr-10"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowApiKey(!showApiKey)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                                    title={showApiKey ? "Hide Token" : "Show Token"}
+                                >
+                                    <Icon name={showApiKey ? "eye-slash" : "eye"} />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="flex gap-2">
+                            <div className="w-20 text-[10px] font-bold text-slate-500 flex items-center shrink-0">CHAT ID</div>
                             <input
-                                type="password"
-                                value={config.braveApiKey}
-                                onChange={(e) => updateConfig('braveApiKey', e.target.value)}
-                                placeholder="Enter Brave Search API Key..."
+                                type="text"
+                                value={config.telegramChatId}
+                                onChange={(e) => updateConfig('telegramChatId', e.target.value)}
+                                placeholder="Enter your Telegram Chat ID..."
                                 className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-blue-500 transition-colors"
                             />
                         </div>
                     </div>
                     <p className="text-[10px] text-slate-500">
-                        Get keys at: <a href="https://tavily.com/" target="_blank" rel="noopener" className="text-blue-400 hover:underline">Tavily.com</a> o <a href="https://api.search.brave.com/app/dashboard" target="_blank" rel="noopener" className="text-blue-400 hover:underline">Brave Search</a>
+                        Create a bot with <a href="https://t.me/botfather" target="_blank" rel="noopener" className="text-blue-400 hover:underline">@BotFather</a> and get your Chat ID using <a href="https://t.me/userinfobot" target="_blank" rel="noopener" className="text-blue-400 hover:underline">@userinfobot</a>.
                     </p>
                 </div>
 
@@ -300,6 +413,7 @@ export const SettingsPanel = ({
                             onChange={(e) => updateConfig('model', e.target.value)}
                             disabled={loadingModels || models.filter(m => m.provider === config.provider).length === 0}
                             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white appearance-none focus:outline-none focus:border-blue-500 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Select a model"
                         >
                             <option value="">Select a model...</option>
                             {models
@@ -323,6 +437,7 @@ export const SettingsPanel = ({
                                     value={config.temperature}
                                     onChange={(e) => updateConfig('temperature', parseFloat(e.target.value))}
                                     className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                                    title={`Temperature: ${config.temperature}`}
                                 />
                             </div>
                         </div>

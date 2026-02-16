@@ -8,13 +8,19 @@ interface CollapsibleTextBlockProps {
 
 export const CollapsibleTextBlock: React.FC<CollapsibleTextBlockProps> = ({ content, forceCollapsed }) => {
     const [isCollapsed, setIsCollapsed] = useState(forceCollapsed || false);
+    const hasInteractedRef = React.useRef(false);
 
-    // Auto-collapse logic when the prompt moves far back in history
+    // Auto-collapse logic: Only force if user hasn't manually toggled it
     React.useEffect(() => {
-        if (forceCollapsed) {
-            setIsCollapsed(true);
+        if (forceCollapsed !== undefined && !hasInteractedRef.current) {
+            setIsCollapsed(forceCollapsed);
         }
     }, [forceCollapsed]);
+
+    const handleToggle = () => {
+        hasInteractedRef.current = true;
+        setIsCollapsed(!isCollapsed);
+    };
 
     // Get a tiny summary for the collapsed state
     const summary = content.length > 60
@@ -22,35 +28,37 @@ export const CollapsibleTextBlock: React.FC<CollapsibleTextBlockProps> = ({ cont
         : content.replace(/[\n\r]/g, ' ');
 
     return (
-        <div className="relative group/text-block mb-2">
-            {/* Minimalist Toggle - Shown on hover or when collapsed */}
-            <div className={`flex items-center justify-between mb-1 transition-all duration-300 ${isCollapsed ? 'opacity-100' : 'opacity-0 group-hover/text-block:opacity-100'}`}>
+        <div className="relative group/text-block mb-1 pl-4 border-l border-blue-500/10 hover:border-blue-500/30 transition-colors">
+            {/* Neural connector focal point */}
+            <div className={`absolute left-[-3.5px] top-2 w-1.5 h-1.5 rounded-full transition-all duration-500 ${isCollapsed ? 'bg-slate-600' : 'bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)] animate-pulse'}`}></div>
+
+            {/* Header/Toggle */}
+            <div className={`flex items-center justify-between mb-1.5 transition-all duration-300 ${isCollapsed ? 'opacity-100' : 'opacity-0 group-hover/text-block:opacity-100'}`}>
                 <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500/40"></div>
                     <span className="text-[9px] uppercase tracking-[0.2em] text-slate-500 font-bold">
-                        {isCollapsed ? 'Packet Compressed' : 'Transmission Data'}
+                        {isCollapsed ? 'Memoria de Proceso' : 'Proceso de Razonamiento'}
                     </span>
                 </div>
                 <button
-                    onClick={() => setIsCollapsed(!isCollapsed)}
+                    onClick={handleToggle}
                     className="p-1 px-2 rounded hover:bg-slate-700/50 text-slate-500 hover:text-blue-400 transition-colors flex items-center gap-1.5"
-                    title={isCollapsed ? "Expand Message" : "Collapse Message"}
+                    title={isCollapsed ? "Ampliar proceso" : "Colapsar proceso"}
                 >
-                    <span className="text-[9px] font-bold uppercase tracking-wider">{isCollapsed ? 'Expand' : 'Hide'}</span>
+                    <span className="text-[9px] font-bold uppercase tracking-wider">{isCollapsed ? 'Detalles' : 'Ocultar'}</span>
                     <Icon name={isCollapsed ? 'chevron-down' : 'chevron-up'} />
                 </button>
             </div>
 
             {isCollapsed ? (
                 <div
-                    onClick={() => setIsCollapsed(false)}
-                    className="cursor-pointer bg-slate-800/30 border border-slate-700/30 rounded-lg p-3 py-2 text-[11px] text-slate-400 italic hover:bg-slate-800/50 hover:border-blue-500/20 transition-all flex items-center gap-3"
+                    onClick={handleToggle}
+                    className="cursor-pointer bg-slate-800/20 border border-slate-700/20 rounded-lg p-3 py-2 text-[10px] text-slate-400 italic hover:bg-slate-800/40 hover:border-blue-500/20 transition-all flex items-center gap-3 backdrop-blur-sm"
                 >
-                    <Icon name="comment-alt" className="text-slate-600" />
-                    <span className="truncate opacity-70 font-mono tracking-tight">{summary}</span>
+                    <Icon name="brain" className="text-slate-600 text-[10px]" />
+                    <span className="truncate opacity-60 font-mono tracking-tight">{summary}</span>
                 </div>
             ) : (
-                <div className="animate-in fade-in slide-in-from-top-1 duration-300">
+                <div className="animate-in fade-in slide-in-from-top-1 duration-300 text-[13px] leading-relaxed text-slate-300">
                     <MarkdownRenderer content={content} />
                 </div>
             )}

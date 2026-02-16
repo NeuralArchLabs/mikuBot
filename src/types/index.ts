@@ -1,6 +1,6 @@
 export type Provider = 'groq' | 'gemini' | 'ollama';
 export type AgentMode = 'chat' | 'agent';
-export type FileTarget = 'core' | 'extra' | 'sandbox';
+export type FileTarget = 'core' | 'extra' | 'workSpace' | 'tools';
 
 export interface ProviderConfig {
     name: string;
@@ -18,7 +18,7 @@ export interface ModelInfo {
 }
 
 export interface MessageBlock {
-    type: 'text' | 'tool_call';
+    type: 'text' | 'tool_call' | 'answer' | 'thought';
     content: string;
     toolCall?: ToolCall;
     isCollapsed?: boolean;
@@ -35,6 +35,9 @@ export interface Message {
     toolCalls?: ToolCall[];
     toolCallId?: string;
     toolName?: string;
+    rawHistory?: any[];
+    source?: 'telegram' | 'ui';
+    excludeFromContext?: boolean;
 }
 
 export interface SessionMetadata {
@@ -59,26 +62,51 @@ export interface AppConfig {
     temperature: number;
     tavilyApiKey: string;
     braveApiKey: string;
+    telegramBotToken: string;
+    telegramChatId: string;
+    folderNames?: {
+        core: string;
+        extra: string;
+        workSpace: string;
+        tools: string;
+    };
+    folderPaths?: {
+        core: string;
+        extra: string;
+        workSpace: string;
+        tools: string;
+    };
 }
+
+export type ApprovalMode = 'auto' | 'manual';
+export type PermissionStatus = 'granted' | 'prompt' | 'denied';
 
 export interface AppState {
     config: AppConfig;
     files: Record<string, string>;
     additionalFiles: Record<string, string>;
-    sandboxFiles: Record<string, string>;
+    workSpaceFiles: Record<string, string>;
+    toolsFiles: Record<string, string>;
     selectedLibraryFiles: string[];
-    activeTab: 'chat' | 'cortex' | 'settings';
+    activeTab: 'chat' | 'cortex' | 'commands' | 'settings';
     selectedFile: string;
     isLibraryExpanded: boolean;
     unsavedChanges: Record<string, string>;
     agentMode: AgentMode;
     sessionId: string | null;
+    /** When true, tools execute one at a time with render between each. NO parallelism. */
+    safeMode: boolean;
+    /** 'auto' = smart auto-approval (reads auto, dangerous needs OK). 'manual' = EVERY tool needs user OK. */
+    approvalMode: ApprovalMode;
+    debugMode: boolean;
+    folderPermissions: Record<FileTarget, PermissionStatus>;
 }
 
 export interface ToolParameter {
     type: string;
     description: string;
     enum?: string[];
+    items?: ToolParameter; // For recursive array definitions
 }
 
 export interface ToolDefinition {
@@ -127,6 +155,7 @@ export interface AgentStatus {
     log: AgentLogEntry[];
     streamedText: string;
     errorCount: number;
+    rawMessages?: any[];
 }
 
 export interface PendingToolApproval {

@@ -63,13 +63,13 @@ export const ToolApprovalPanel = React.memo(({
     const toolName = pending.toolCall.function.name;
     const toolArgs = pending.toolCall.function.arguments || {};
     const isConsoleCommand = toolName === 'run_console';
-    const isNonSandbox = (toolArgs.source === 'core' || toolArgs.source === 'library') &&
+    const isNonWorkSpace = (toolArgs.source === 'core' || toolArgs.source === 'library') &&
         (toolName === 'update_file' || toolName === 'read_file');
 
     // Accent color based on risk level
-    const accentColor = isConsoleCommand ? 'red' : isNonSandbox ? 'amber' : 'amber';
+    const accentColor = isConsoleCommand ? 'red' : isNonWorkSpace ? 'amber' : 'amber';
     const borderClass = isConsoleCommand ? 'border-red-500/50' : 'border-slate-700/30';
-    const barClass = isConsoleCommand ? 'bg-red-500/70' : isNonSandbox ? 'bg-amber-500/50' : 'bg-amber-500/50';
+    const barClass = isConsoleCommand ? 'bg-red-500/70' : isNonWorkSpace ? 'bg-amber-500/50' : 'bg-amber-500/50';
 
     return (
         <div className="approval-panel-glass font-mono relative overflow-hidden group">
@@ -85,12 +85,12 @@ export const ToolApprovalPanel = React.memo(({
                 </div>
             )}
 
-            {/* Security Warning Banner — Non-Sandbox */}
-            {isNonSandbox && !isConsoleCommand && (
+            {/* Security Warning Banner — Non-WorkSpace */}
+            {isNonWorkSpace && !isConsoleCommand && (
                 <div className="px-5 py-2 bg-amber-900/20 border-b border-amber-500/20 flex items-center gap-2">
                     <Icon name="exclamation-circle" className="text-amber-400 text-sm" />
                     <span className="text-[10px] text-amber-300 font-bold uppercase tracking-widest">
-                        Modifying {toolArgs.source?.toUpperCase()} files — not sandbox
+                        Modifying {toolArgs.source?.toUpperCase()} files — not workSpace
                     </span>
                 </div>
             )}
@@ -99,8 +99,8 @@ export const ToolApprovalPanel = React.memo(({
             <div className={`px-5 py-3 bg-slate-900/40 border-b ${borderClass} flex items-center justify-between`}>
                 <div className="flex items-center gap-3">
                     <div className={`w-8 h-8 rounded flex items-center justify-center border ${isConsoleCommand
-                            ? 'bg-red-500/10 text-red-400 border-red-500/20'
-                            : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                        ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                        : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
                         }`}>
                         <Icon name={isConsoleCommand ? 'terminal' : 'shield-alt'} />
                     </div>
@@ -148,8 +148,8 @@ export const ToolApprovalPanel = React.memo(({
                 <button
                     onClick={handleApprove}
                     className={`approval-btn px-6 py-2 rounded-lg text-white shadow-lg text-xs font-bold uppercase tracking-wider flex items-center gap-2 border ${isConsoleCommand
-                            ? 'bg-red-600 hover:bg-red-500 shadow-red-900/20 border-red-500/50'
-                            : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/20 border-emerald-500/50'
+                        ? 'bg-red-600 hover:bg-red-500 shadow-red-900/20 border-red-500/50'
+                        : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/20 border-emerald-500/50'
                         }`}
                 >
                     <Icon name="check" /> {isConsoleCommand ? 'Authorize Console' : 'Authorize Execution'}

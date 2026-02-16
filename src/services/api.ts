@@ -23,7 +23,9 @@ export async function fetchModels(provider: Provider, config: AppConfig): Promis
                     }));
             }
             case 'ollama': {
-                const data = await safeFetch(`${config.ollamaUrl}/api/tags`);
+                const url = config.ollamaUrl || 'http://localhost:11434';
+                const data = await safeFetch(`${url}/api/tags`);
+                if (!data || !data.models) return [];
                 return data.models.map((m: any) => ({ id: m.name, name: m.name, provider: 'ollama' }));
             }
             default:
@@ -36,13 +38,52 @@ export async function fetchModels(provider: Provider, config: AppConfig): Promis
 }
 
 export async function sendStreamingMessage(
-    provider: 'groq' | 'gemini',
+    provider: Provider | undefined,
     config: AppConfig,
     systemPrompt: string,
     messages: { role: string; content: string }[],
     onChunk: (text: string) => void
 ): Promise<void> {
-    if (provider === 'groq') {
+    const providerToUse = provider || config.provider;
+
+    if (providerToUse === 'ollama') {
+        const url = config.ollamaUrl || 'http://localhost:11434';
+        const response = await fetch(`${url}/api/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: config.model,
+                messages: [{ role: 'system', content: systemPrompt }, ...messages],
+                stream: true,
+                options: { temperature: config.temperature }
+            }),
+        });
+
+        if (!response.ok) {
+            const err = await response.text();
+            throw new Error(`Ollama Error: ${err}`);
+        }
+
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        if (reader) {
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\n').filter(Boolean);
+                for (const line of lines) {
+                    try {
+                        const parsed = JSON.parse(line);
+                        if (parsed.message?.content) onChunk(parsed.message.content);
+                    } catch { }
+                }
+            }
+        }
+        return;
+    }
+
+    if (providerToUse === 'groq') {
         const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: {

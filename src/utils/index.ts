@@ -170,18 +170,23 @@ export const toHtml = (md: string): string => {
         .replace(/‹summary›/g, '<summary>')
         .replace(/‹\/summary›/g, '</summary>');
 
-    html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
-    html = html.replace(/`([^`\n]+)`/g, '<code class="inline-code">$1</code>');
-    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-    html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
-    html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
-    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" class="text-blue-400 underline">$1</a>');
-    html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
-    html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
-    html = html.replace(/^(\d+)\. (.+)$/gm, '<li>$2</li>');
+    html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre class="bg-black/30 p-3 rounded-lg my-2 overflow-x-auto border border-white/10"><code class="text-sm shadow-none">$2</code></pre>');
+    html = html.replace(/`([^`\n]+)`/g, '<code class="bg-black/30 px-1.5 py-0.5 rounded text-amber-300 font-mono text-xs border border-white/10">$1</code>');
+
+    html = html.replace(/^### (.+)$/gm, '<h3 class="text-md font-bold text-slate-300 mt-4 mb-2">$1</h3>');
+    html = html.replace(/^## (.+)$/gm, '<h2 class="text-lg font-bold text-slate-200 mt-6 mb-3 border-b border-white/5 pb-1">$1</h2>');
+    html = html.replace(/^# (.+)$/gm, '<h1 class="text-xl font-extrabold text-white mt-8 mb-4 border-b border-white/10 pb-2">$1</h1>');
+
+    html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong class="text-amber-200"><em>$1</em></strong>');
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="text-blue-200">$1</strong>');
+    html = html.replace(/\*(.+?)\*/g, '<em class="text-slate-400">$1</em>');
+
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" class="text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors">$1</a>');
+    html = html.replace(/^&gt; (.+)$/gm, '<blockquote class="border-l-4 border-blue-500/30 pl-4 italic text-slate-400 my-2 bg-blue-500/5 py-2 pr-2 rounded-r">$1</blockquote>');
+
+    // Lists with proper indentation
+    html = html.replace(/^- (.+)$/gm, '<li class="ml-5 list-disc list-outside marker:text-slate-500 pl-1">$1</li>');
+    html = html.replace(/^(\d+)\. (.+)$/gm, '<li class="ml-5 list-decimal list-outside marker:text-slate-500 pl-1">$2</li>');
 
     return html;
 };

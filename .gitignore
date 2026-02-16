@@ -27,3 +27,9 @@ sessions/
 *.njsproj
 *.sln
 *.sw?
+
+# Workspace content
+workSpace/
+
+# Build artifacts
+release/

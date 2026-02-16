@@ -10,7 +10,7 @@
     "appId": "com.miku.central",
     "productName": "MikuCentral",
     "directories": {
-      "output": "dist"
+      "output": "release"
     },
     "files": [
       "dist/**/*",

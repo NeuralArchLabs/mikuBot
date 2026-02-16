@@ -1,10 +1,11 @@
 import React from 'react';
-import { Message, AgentStatus, PendingToolApproval, AgentMode } from '../types';
+import { Message, AgentStatus, PendingToolApproval, AgentMode, ApprovalMode } from '../types';
 import { Icon, MarkdownRenderer } from './Common';
 import { ToolApprovalPanel } from './ToolApprovalPanel';
 import { AgentStatusPanel } from './AgentStatusPanel';
 import { ToolBlock } from './ToolBlock';
 import { CollapsibleTextBlock } from './CollapsibleTextBlock';
+import { CollapsibleMessage } from './CollapsibleMessage';
 
 interface ChatAreaProps {
     messages: Message[];
@@ -23,6 +24,14 @@ interface ChatAreaProps {
     onRejectToolCall: () => void;
     agentMode: AgentMode;
     onAgentModeChange: (mode: AgentMode) => void;
+    safeMode: boolean;
+    onSafeModeChange: (safe: boolean) => void;
+    approvalMode: ApprovalMode;
+    onApprovalModeChange: (mode: ApprovalMode) => void;
+    debugMode: boolean;
+    onDebugModeChange: (debug: boolean) => void;
+    folderPermissions: Record<string, string>;
+    onRequestPermission: (target: any) => void;
 }
 
 export const ChatArea = ({
@@ -42,7 +51,24 @@ export const ChatArea = ({
     agentMode,
     onAgentModeChange,
     onRewind,
+    safeMode,
+    onSafeModeChange,
+    approvalMode,
+    onApprovalModeChange,
+    debugMode,
+    onDebugModeChange,
+    folderPermissions,
+    onRequestPermission,
 }: ChatAreaProps) => {
+    const inputRef = React.useRef<HTMLTextAreaElement>(null);
+
+    // Auto-focus input when agent finishes
+    React.useEffect(() => {
+        if (!isLoading) {
+            inputRef.current?.focus();
+        }
+    }, [isLoading]);
+
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -52,9 +78,98 @@ export const ChatArea = ({
 
     const isAgentActive = !['idle'].includes(agentStatus.phase) && isLoading;
 
+    // Supplemental scroll for layout changes (status panel expansion)
+    React.useEffect(() => {
+        const timer = setTimeout(() => {
+            if (scrollRef.current) {
+                scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+            }
+        }, 100); // Wait bit for CSS transition to start/settle
+        return () => clearTimeout(timer);
+    }, [agentStatus.phase, pendingApproval]);
+
     return (
         <div className="flex-1 flex flex-col h-full relative bg-slate-900">
-            <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar" ref={scrollRef}>
+            {/* Connection Banner (Persistent Neural Link) */}
+            {Object.entries(folderPermissions).some(([_, status]) => status !== 'granted') && (
+                <div className="bg-amber-900/40 border-b border-amber-500/20 p-2 flex items-center justify-center gap-4 animate-in slide-in-from-top duration-500 z-[110]">
+                    <span className="text-[11px] font-mono text-amber-200 uppercase tracking-widest flex items-center gap-2">
+                        <Icon name="exclamation-triangle" className="animate-pulse" />
+                        Neural Link Intermittent: Some local directories are sleeping.
+                    </span>
+                    <button
+                        title="Otorgar permisos a todos los directorios"
+                        onClick={() => {
+                            Object.keys(folderPermissions).forEach(target => {
+                                if (folderPermissions[target] !== 'granted') onRequestPermission(target);
+                            });
+                        }}
+                        className="bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-tighter transition-all"
+                    >
+                        Wake Up All Linkages
+                    </button>
+                </div>
+            )}
+
+
+
+            {/* Neural Raw Viewer (Debug Overlay) */}
+            {debugMode && (
+                <div className="absolute inset-0 z-[90] bg-slate-950/95 backdrop-blur-xl flex flex-col p-6 animate-in fade-in zoom-in-95 duration-300">
+                    <div className="flex items-center justify-between mb-4 border-b border-purple-500/20 pb-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-purple-600/20 flex items-center justify-center text-purple-400 border border-purple-500/30">
+                                <Icon name="vial" />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-bold text-slate-100 uppercase tracking-widest">Neural Debugging Interface</h3>
+                                <p className="text-[10px] text-purple-400/60 font-mono">Raw Context & Internal Log Streaming</p>
+                            </div>
+                        </div>
+                        <button onClick={() => onDebugModeChange(false)} className="text-slate-500 hover:text-white transition-colors" title="Close Debug Interface">
+                            <Icon name="times" />
+                        </button>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto space-y-4 custom-scrollbar pr-2">
+                        {/* Brain State Snapshot (Latest Comprehensive Log) */}
+                        {(() => {
+                            // Find the last assistant message that has history, or use current status if animating
+                            const lastHistoryMsg = [...messages].reverse().find(m => m.rawHistory);
+                            const displayHistory = (isLoading || !lastHistoryMsg) ? agentStatus.rawMessages : lastHistoryMsg.rawHistory;
+
+                            return displayHistory?.map((m: any, i: number) => (
+                                <div key={i} className="bg-black/40 border border-white/5 rounded-xl p-4 font-mono text-[11px] space-y-2">
+                                    <div className={`flex items-center gap-2 font-bold uppercase tracking-wider ${m.role === 'system' ? 'text-amber-500' :
+                                        m.role === 'assistant' ? 'text-blue-400' :
+                                            m.role === 'tool' ? 'text-emerald-400' : 'text-purple-400'
+                                        }`}>
+                                        <Icon name={m.role === 'system' ? 'shield-alt' : m.role === 'assistant' ? 'brain' : m.role === 'tool' ? 'cog' : 'user'} />
+                                        [{m.role}]
+                                    </div>
+                                    <div className="text-slate-400 leading-relaxed whitespace-pre-wrap break-all border-l-2 border-white/10 pl-4">
+                                        {m.content || '[Empty Body]'}
+                                        {m.tool_calls && (
+                                            <div className="mt-2 p-2 bg-blue-500/10 rounded border border-blue-500/20 text-blue-300">
+                                                <strong>Tool Calls:</strong> {JSON.stringify(m.tool_calls, null, 2)}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ));
+                        })()}
+
+                        {(!agentStatus.rawMessages?.length && !messages.some(m => m.rawHistory)) && (
+                            <div className="h-full flex flex-col items-center justify-center opacity-30 text-slate-500 italic">
+                                <Icon name="ghost" className="text-4xl mb-4" />
+                                <p>No raw neural data recorded yet for this session.</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar chat-area-scroll" ref={scrollRef}>
                 {messages.length === 0 && (
                     <div className="h-full flex flex-col items-center justify-center text-slate-500 opacity-40">
                         <div className="w-20 h-20 rounded-full border-2 border-slate-700 flex items-center justify-center mb-4 text-3xl">
@@ -70,10 +185,13 @@ export const ChatArea = ({
                     const hasToolCall = msg.blocks?.some(b => b.type === 'tool_call');
                     const isAgentResponse = msg.role === 'assistant' && (agentMode === 'agent' || msg.text === '');
 
-                    // Show placeholder only for the last loading assistant message in agent mode if no tool has been seen yet
+                    // [FIX] Detect success flag in blocks to avoid coloring failures as green
+                    const hasFailedTool = msg.blocks?.some(b => b.type === 'tool_call' && b.result && b.result.success === false);
+
+                    // Show placeholder only for the last loading assistant message
                     const showPlaceholder = isLast && isLoading && isAgentResponse && !hasToolCall;
 
-                    return (
+                    const MessageContent = (
                         <div key={msg.id} className={`flex group relative ${msg.role === 'user' ? 'justify-end'
                             : msg.role === 'system' ? 'justify-center'
                                 : 'justify-start'
@@ -115,9 +233,16 @@ export const ChatArea = ({
                                         )}
                                     </div>
 
-                                    <div className="text-[10px] font-bold opacity-30 mb-3 flex items-center gap-2 uppercase tracking-[0.2em]">
-                                        <Icon name={msg.role === 'user' ? 'user-circle' : 'brain'} />
-                                        {msg.role === 'user' ? 'Transmisor' : 'Neural Core'}
+                                    <div className="text-[10px] font-bold opacity-30 mb-3 flex items-center justify-between uppercase tracking-[0.2em]">
+                                        <div className="flex items-center gap-2">
+                                            <Icon name={msg.role === 'user' ? 'user-circle' : 'brain'} />
+                                            {msg.role === 'user' ? 'Transmisor' : 'Neural Core'}
+                                        </div>
+                                        {msg.source === 'telegram' && (
+                                            <div className="flex items-center gap-1 text-[#0088cc] font-black lowercase tracking-tighter">
+                                                <Icon name="paper-plane" /> telegram
+                                            </div>
+                                        )}
                                     </div>
 
                                     {showPlaceholder ? (
@@ -126,27 +251,32 @@ export const ChatArea = ({
                                             <span className="font-mono text-xs tracking-wider animate-pulse uppercase">Analizando Parámetros...</span>
                                         </div>
                                     ) : (
-                                        <div className="text-[13px] leading-relaxed">
+                                        <div className="text-[13px] leading-relaxed space-y-4">
                                             {msg.blocks && msg.blocks.length > 0 ? (
                                                 <div className="space-y-4">
                                                     {msg.blocks.map((block, idx) => {
-                                                        if (block.type === 'text') {
+                                                        if (block.type === 'answer') {
+                                                            return <MarkdownRenderer key={idx} content={block.content} />;
+                                                        } else if (block.type === 'thought' || block.type === 'text') {
+                                                            const hasTools = msg.blocks.some(b => b.type === 'tool_call');
+                                                            if (hasTools && !debugMode) return null;
                                                             return <CollapsibleTextBlock key={idx} content={block.content} forceCollapsed={isOld} />;
-                                                        } else {
+                                                        } else if (block.type === 'tool_call') {
                                                             return <ToolBlock key={idx} block={block} isOld={isOld} />;
                                                         }
+                                                        return null;
                                                     })}
                                                 </div>
                                             ) : (
-                                                <CollapsibleTextBlock content={msg.text} forceCollapsed={isOld} />
+                                                msg.text && <MarkdownRenderer content={msg.text} />
                                             )}
                                         </div>
                                     )}
 
                                     {msg.isStreaming && !msg.text && !showPlaceholder && (
                                         <div className="flex items-center gap-2 mt-4">
-                                            {[0, 2, 4].map(delay => (
-                                                <div key={delay} className="w-1.5 h-1.5 rounded-full bg-blue-500/50 animate-bounce" style={{ animationDelay: `${delay / 10}s` }} />
+                                            {[0, 200, 400].map(ms => (
+                                                <div key={ms} className={`w-1.5 h-1.5 rounded-full bg-blue-500/50 animate-bounce delay-[${ms}ms]`} />
                                             ))}
                                         </div>
                                     )}
@@ -154,7 +284,23 @@ export const ChatArea = ({
                             )}
                         </div>
                     );
+
+                    // Wrap all user/assistant messages in a collapsible container to allow manual hiding + auto-collapse
+                    if (msg.role !== 'system') {
+                        return (
+                            <CollapsibleMessage
+                                key={msg.id}
+                                message={msg}
+                                initiallyCollapsed={isOld}
+                            >
+                                {MessageContent}
+                            </CollapsibleMessage>
+                        );
+                    }
+
+                    return MessageContent;
                 })}
+                <div className="h-4" /> {/* Bottom breathing room */}
             </div>
 
             {pendingApproval && (
@@ -174,29 +320,87 @@ export const ChatArea = ({
             </div>
 
             <div className="p-4 bg-slate-900 border-t border-slate-800">
-                <div className="max-w-5xl mx-auto flex items-center gap-2 mb-2">
+                <div className="max-w-5xl mx-auto flex items-center gap-2 mb-2 flex-wrap">
                     <label className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Mode:</label>
                     <select
                         value={agentMode}
                         onChange={(e) => onAgentModeChange(e.target.value as AgentMode)}
                         className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-slate-300 font-mono focus:ring-1 focus:ring-blue-500 outline-none"
+                        title="Agent mode selector"
                     >
                         <option value="chat">💬 Chat</option>
                         <option value="agent">🤖 Agent</option>
                     </select>
-                    <span className="text-[10px] text-slate-600 font-mono">
-                        {agentMode === 'chat' ? 'Conversación libre, sin herramientas' : 'Agente autónomo, ejecuta herramientas'}
+
+                    {/* Agent-only toggles: Approval Mode + Safe Mode */}
+                    {agentMode === 'agent' && (
+                        <>
+                            <div className="w-px h-4 bg-slate-700" />
+
+                            {/* Approval Mode Toggle */}
+                            <button
+                                onClick={() => onApprovalModeChange(approvalMode === 'auto' ? 'manual' : 'auto')}
+                                className={`flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-200 ${approvalMode === 'manual'
+                                    ? 'bg-red-500/15 border-red-500/30 text-red-400 shadow-sm shadow-red-500/10'
+                                    : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-400 hover:border-slate-600'
+                                    }`}
+                                title={approvalMode === 'manual'
+                                    ? 'Aprobación Manual: CADA herramienta necesita tu OK'
+                                    : 'Auto-Aprobación: solo operaciones peligrosas piden permiso'
+                                }
+                            >
+                                <Icon name={approvalMode === 'manual' ? 'lock' : 'unlock'} />
+                                {approvalMode === 'manual' ? 'MANUAL' : 'AUTO'}
+                            </button>
+
+                            {/* Safe Mode Toggle */}
+                            <button
+                                onClick={() => onSafeModeChange(!safeMode)}
+                                className={`flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-200 ${safeMode
+                                    ? 'bg-amber-500/15 border-amber-500/30 text-amber-400 shadow-sm shadow-amber-500/10'
+                                    : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-400 hover:border-slate-600'
+                                    }`}
+                                title={safeMode
+                                    ? 'Modo Seguro ON: herramientas se ejecutan una a la vez, con output entre cada una'
+                                    : 'Modo Seguro OFF: herramientas se ejecutan en batch (más rápido)'
+                                }
+                            >
+                                <Icon name="shield-alt" />
+                                {safeMode ? 'SAFE' : 'BATCH'}
+                            </button>
+                        </>
+                    )}
+
+                    <span className="text-[10px] text-slate-600 font-mono hidden sm:inline-block ml-2">
+                        {agentMode === 'chat'
+                            ? 'Conversación libre'
+                            : `${approvalMode === 'manual' ? '🔒 Manual' : '⚡ Auto'} · ${safeMode ? '🛡️ Safe' : '📦 Batch'}`
+                        }
                     </span>
+
+                    <div className="ml-auto">
+                        <button
+                            onClick={() => onDebugModeChange(!debugMode)}
+                            className={`flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-200 ${debugMode
+                                ? 'bg-purple-500/15 border-purple-500/30 text-purple-400 shadow-sm shadow-purple-500/10'
+                                : 'bg-slate-800/50 border-slate-700/50 text-slate-500 hover:text-slate-400 hover:border-slate-600'
+                                }`}
+                            title={debugMode ? "Desactivar Modo Depuración" : "Activar Modo Depuración"}
+                        >
+                            <Icon name="terminal" />
+                            {debugMode ? 'DEBUG' : 'DEBUG'}
+                        </button>
+                    </div>
                 </div>
                 <div className="relative max-w-5xl mx-auto flex gap-2">
                     <textarea
+                        ref={inputRef}
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder={agentMode === 'agent' ? 'Instrucción para el agente...' : 'Escribe un mensaje...'}
-                        className="flex-1 bg-slate-800/50 border border-slate-700 rounded-lg py-3 px-4 text-slate-200 font-mono text-sm placeholder-slate-600 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+                        className="flex-1 bg-slate-800/50 border border-slate-700 rounded-lg py-3 px-4 text-slate-200 font-mono text-sm placeholder-slate-600 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none min-h-[50px]"
                         rows={1}
-                        style={{ minHeight: '50px' }}
                     />
                     {isLoading ? (
                         <button

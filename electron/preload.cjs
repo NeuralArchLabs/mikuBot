@@ -11,5 +11,12 @@ contextBridge.exposeInMainWorld('electron', {
     getSessions: () => ipcRenderer.invoke('get-sessions'),
     loadSession: (id) => ipcRenderer.invoke('load-session', id),
     saveSession: (session) => ipcRenderer.invoke('save-session', session),
-    deleteSession: (id) => ipcRenderer.invoke('delete-session', id)
+    deleteSession: (id) => ipcRenderer.invoke('delete-session', id),
+
+    // Native FS
+    selectFolder: () => ipcRenderer.invoke('fs-select-folder'),
+    readFolder: (path) => ipcRenderer.invoke('fs-read-folder', path),
+    writeFile: (data) => ipcRenderer.invoke('fs-write-file', data),
+    runConsole: (data) => ipcRenderer.invoke('run-console', data),
+    runSearch: (data) => ipcRenderer.invoke('run-search', data)
 });

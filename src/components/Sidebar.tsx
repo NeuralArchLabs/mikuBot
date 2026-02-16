@@ -1,20 +1,23 @@
 import React from 'react';
-import { AppState, Provider } from '../types';
+import { AppState, Provider, SessionMetadata } from '../types';
 import { PROVIDERS } from '../constants';
 import { Icon } from './Common';
 import { SessionList } from './SessionList';
 
 interface SidebarProps {
     state: AppState & {
-        onSelectSession: (id: string) => void;
         onDeleteSession: (id: string) => void;
         onNewSession: () => void;
+        onExportSession: (id: string) => void;
+        onImportSession: () => void;
     };
+    sessions: SessionMetadata[];
+    loadingSessions: boolean;
     setState: React.Dispatch<React.SetStateAction<AppState>>;
     onClear: () => void;
 }
 
-export const Sidebar = React.memo(({ state, setState, onClear }: SidebarProps) => {
+export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState, onClear }: SidebarProps) => {
     return (
         <div className="w-64 bg-slate-900 border-r border-slate-700 flex flex-col h-full shadow-xl z-20">
             <div className="p-6">
@@ -32,6 +35,7 @@ export const Sidebar = React.memo(({ state, setState, onClear }: SidebarProps) =
                     {[
                         { id: 'chat', label: 'Neural Chat', icon: 'comments', color: 'text-blue-400' },
                         { id: 'cortex', label: 'Cortex Editor', icon: 'project-diagram', color: 'text-indigo-400' },
+                        { id: 'commands', label: 'Command Editor', icon: 'bolt', color: 'text-amber-400' },
                         { id: 'settings', label: 'Control Room', icon: 'cog', color: 'text-slate-400' }
                     ].map(tab => (
                         <button
@@ -55,10 +59,14 @@ export const Sidebar = React.memo(({ state, setState, onClear }: SidebarProps) =
             <div className="flex-1 overflow-hidden flex flex-col min-h-0">
                 <div className="px-5 py-4 flex-1 flex flex-col min-h-0">
                     <SessionList
+                        sessions={sessions}
+                        loading={loadingSessions}
                         currentSessionId={state.sessionId}
                         onSelect={(id) => (state as any).onSelectSession(id)}
                         onDelete={(id) => (state as any).onDeleteSession(id)}
                         onNew={() => (state as any).onNewSession()}
+                        onExport={(id) => (state as any).onExportSession(id)}
+                        onImport={() => (state as any).onImportSession()}
                     />
                 </div>
 

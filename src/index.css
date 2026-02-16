@@ -398,12 +398,20 @@
   max-height: 0;
   opacity: 0;
   overflow: hidden;
+  pointer-events: none;
   transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+  z-index: 50;
+}
+
+.chat-area-scroll {
+  scroll-behavior: smooth;
+  padding-bottom: 2rem;
 }
 
 .agent-status-container.active {
   max-height: 400px;
   opacity: 1;
+  pointer-events: auto;
 }
 
 .agent-status-container.exiting {
@@ -445,4 +453,40 @@
 
 .slide-in-from-top-1 {
   animation-name: slide-in-from-top-kf;
+}
+
+/* Blueprint Template Cards */
+.blueprint-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.blueprint-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.05), rgba(236, 72, 153, 0.05));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.blueprint-card:hover::before {
+  opacity: 1;
+}
+
+/* Parallel execution indicator */
+@keyframes parallel-pulse {
+
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+.parallel-indicator {
+  animation: parallel-pulse 1.5s ease-in-out infinite;
 }

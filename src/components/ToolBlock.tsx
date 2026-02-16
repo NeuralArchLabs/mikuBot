@@ -24,8 +24,8 @@ export const ToolBlock: React.FC<ToolBlockProps> = ({ block, isOld }) => {
 
     if (!toolCall) return null;
 
-    const isSuccess = result?.success;
-    const hasError = result?.error;
+    const isSuccess = result?.success && result?.data?.success !== false;
+    const hasError = result?.error || (result?.data?.success === false && result?.data?.error);
     const isPending = !result;
 
     const fullResultText = result

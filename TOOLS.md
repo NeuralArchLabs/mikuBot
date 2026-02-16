@@ -1,45 +1,102 @@
-# Agent Tools & Capabilities
+# TOOLS.md - Workspace Cartography & Toolkit
 
-You are an autonomous agent with access to EXACTLY 4 tools listed below.
-You CANNOT use any other tool name. Do NOT invent tools.
+## 🗺️ Topografía del Sistema
 
-## VALID TOOLS (only these 4 exist):
+Este archivo define las reglas para la interacción con el sistema de archivos y las herramientas disponibles. mikuBot debe utilizar las rutas base configuradas en el entorno para asegurar precisión.
 
-### 1. read_file
-Read file content from core or library.
+### 📍 Puntos de Montaje (Mount Points)
+
+El sistema utiliza los siguientes alias internos para referirse a las carpetas configuradas:
+- **@CORE:** Carpeta de identidad y memoria (SOUL.md, ACTIVE_CONTEXT.md).
+- **@DEV:** Carpeta de proyectos de desarrollo.
+- **@MAP:** Biblioteca de referencia y documentación.
+- **@WORKSPACE:** Directorio de trabajo por defecto para pruebas y outputs temporales.
+
+Las rutas reales son inyectadas dinámicamente según la configuración de Armando. No asumas rutas absolutas fijas a menos que sean necesarias para un comando específico del sistema.
+
+## ⚙️ Reglas de Generación de Comandos (CLI Protocol)
+
+Cuando mikuBot sugiera comandos de terminal, debe adherirse a lo siguiente:
+
+1.  **Navegación:** Usa rutas relativas al punto de montaje actual o solicita confirmación si necesitas moverte entre unidades.
+2.  **Sintaxis Windows:**
+    * Usar comillas dobles `""` para rutas con espacios.
+    * Los comandos se ejecutan sobre PowerShell / CMD según disponibilidad.
+3.  **Contexto:** El agente inicia por defecto en el directorio @WORKSPACE.
+
+## 🛠️ Stack & Environment
+- **Sistema Operativo:** Windows 11.
+- **Herramientas de desarrollo** Antigravity, Jules, Google AI studio.
+- **Gestor de Paquetes:** npm / pip / maven (según proyecto).
+- **Git:** Instalado y configurado globalmente.
+
+## 🖥️ Console Access (`run_console`)
+
+The `run_console` tool provides workspace console access. **Security restrictions apply:**
+
+### Allowed Commands
+`git`, `node`, `npm`, `npx`, `ls`, `dir`, `cat`, `type`, `echo`, `mkdir`, `cd`, `pwd`, `grep`, `find`, `head`, `tail`, `wc`, `tree`, `tsc`, `python`, `pip`
+
+### Blocked Patterns
+The following are **NEVER** allowed in arguments:
+- `&&`, `||`, `;` (command chaining)
+- `|` (piping)
+- `` ` `` or `$(` (subshell execution)
+- `../` or `..\` (path traversal)
+- `rm -rf` or `rm -R` (recursive delete)
+
+### Usage Format
 ```json
-{"name": "read_file", "arguments": {"filename": "path/to/file", "source": "core"}}
+{
+  "name": "run_console",
+  "arguments": {
+    "command": "npm",
+    "args": "install lodash",
+    "cwd": ""
+  }
+}
 ```
 
-### 2. update_file
-Create OR update a file. This is the ONLY way to write files. There is NO "create_file" tool.
-To create a file inside a folder, use a path: "folder/file.txt"
-```json
-{"name": "update_file", "arguments": {"filename": "saludos/saludo.txt", "content": "Hello!", "source": "library"}}
-```
+> ⚠️ Console commands require **elevated approval** from the user.
 
-### 3. list_files
-List all files in core or library.
-```json
-{"name": "list_files", "arguments": {"source": "library"}}
-```
+## 📂 File Management (`read_file`, `update_file`, `patch_file`)
 
-### 4. search_files
-Search for text across files.
-```json
-{"name": "search_files", "arguments": {"query": "hello", "source": "library"}}
-```
+### `read_file`
+Read content from any mount point.
+- **Param:** `filename` (path/to/file.ext)
+- **Param:** `source` (workSpace, core, library)
 
-## INVALID TOOL NAMES (DO NOT USE):
-- ❌ create_file (use update_file instead)
-- ❌ create_folder (use update_file with path like "folder/file.txt")
-- ❌ create_folder_and_file (use update_file with path like "folder/file.txt")
-- ❌ write_file (use update_file instead)
-- ❌ delete_file (does not exist)
+### `update_file`
+Create or overwrite files. Directories are created automatically.
+- **Param:** `filename`, `content`, `source`
 
-## Rules
-1. "source" must be "core" or "library".
-2. Read files before updating them to avoid losing content.
-3. NEVER modify protected identity files: SOUL.md, USER.md, TOOLS.md, PROTOCOL.md.
-4. You may write to ACTIVE_CONTEXT.md and TASKS.md in core. For everything else, use "library".
-5. Output ONLY the JSON when calling a tool. No extra text around it.
+### `patch_file`
+Efficiently edit large files by replacing a specific block.
+- **Param:** `filename`, `find` (exact block), `replace` (new text)
+- **Note:** `find` must match character-for-character, including whitespace.
+
+## 🔍 Discovery & Search (`list_files`, `search_files`)
+
+### `list_files`
+List all files in a mount point. Use ONLY when lost.
+- **Param:** `source`
+
+### `search_files`
+Search for a text pattern in all files.
+- **Param:** `query` (The text to find)
+- **Warning:** Do NOT use "filename" as a parameter; use `query`.
+
+## 🌐 Research & Synthesis (`web_search`, `read_url`, `final_answer`)
+
+### `web_search`
+Search the internet via Tavily/Brave.
+- **Param:** `query`, `search_depth` (basic/advanced)
+
+### `final_answer`
+Conclude the task with a synthesis.
+- **Param:** `text` (The answer)
+- **Param:** `sources` (Array of files or URLs actually used)
+- **Rule:** Do NOT hallucinate sources. Only cite what you actually touched.
+
+---
+*Nota: Este archivo sirve como referencia espacial y técnica. El sistema inyectará estas reglas automáticamente si detecta fallos.*

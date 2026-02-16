@@ -1,28 +1,60 @@
-import { ToolCall, ToolResult, ToolDefinition, AppConfig, AgentStatus, AgentLogEntry, FileTarget } from '../types';
+import { ToolCall, ToolResult, ToolDefinition, AppConfig, AgentStatus, AgentLogEntry, FileTarget, ApprovalMode } from '../types';
 import { PROTECTED_CORE_FILES, CONSOLE_ALLOWED_COMMANDS, CONSOLE_BLOCKED_PATTERNS } from '../constants';
-import { validateToolArgs, extractToolCallsFromText, safeFetch } from '../utils';
-import { recoverToolCallsFromText, normalizeRawToolCall } from './toolCallNormalizer';
+import { validateToolArgs, safeFetch } from '../utils';
+import { recoverToolCallsFromText, normalizeRawToolCall, RecoveredCall } from './toolCallNormalizer';
 
 /**
- * Resolves the source argument from a tool call into a FileTarget.
- * Defaults to 'sandbox' when source is omitted or unrecognized.
+ * Resolves the source and filename from a tool call.
+ * Detects prefixes like @CORE/, @EXTRA/, @WORKSPACE/, @TOOLS/ in the filename.
  */
+function resolvePathAndSource(filename: string, sourceArg?: string): { target: FileTarget, cleanFilename: string } {
+    let f = filename.trim();
+    let target: FileTarget = 'workSpace';
+
+    if (f.toUpperCase().startsWith('@CORE/')) {
+        target = 'core';
+        f = f.slice(6);
+    } else if (f.toUpperCase().startsWith('@EXTRA/') || f.toUpperCase().startsWith('@LIBRARY/')) {
+        target = 'extra';
+        f = f.slice(7);
+    } else if (f.toUpperCase().startsWith('@WORKSPACE/')) {
+        target = 'workSpace';
+        f = f.slice(11);
+    } else if (f.toUpperCase().startsWith('@SANDBOX/')) { // Backwards compat for old prompts
+        target = 'workSpace';
+        f = f.slice(9);
+    } else if (f.toUpperCase().startsWith('@TOOLS/')) {
+        target = 'tools';
+        f = f.slice(7);
+    } else if (sourceArg) {
+        if (sourceArg === 'core') target = 'core';
+        else if (sourceArg === 'library' || sourceArg === 'extra') target = 'extra';
+        else if (sourceArg === 'tools') target = 'tools';
+        else target = 'workSpace';
+    }
+
+    return { target, cleanFilename: f };
+}
+
 function resolveSource(source?: string): FileTarget {
     if (source === 'core') return 'core';
     if (source === 'library' || source === 'extra') return 'extra';
-    return 'sandbox';
+    if (source === 'tools') return 'tools';
+    return 'workSpace';
 }
 
 function getFileStore(
     target: FileTarget,
     files: Record<string, string>,
     additionalFiles: Record<string, string>,
-    sandboxFiles: Record<string, string>,
+    workSpaceFiles: Record<string, string>,
+    toolsFiles?: Record<string, string>
 ): Record<string, string> {
     switch (target) {
         case 'core': return files;
         case 'extra': return additionalFiles;
-        case 'sandbox': return sandboxFiles;
+        case 'workSpace': return workSpaceFiles;
+        case 'tools': return toolsFiles || {};
     }
 }
 
@@ -30,7 +62,8 @@ export async function executeToolCall(
     toolCall: ToolCall,
     files: Record<string, string>,
     additionalFiles: Record<string, string>,
-    sandboxFiles: Record<string, string>,
+    workSpaceFiles: Record<string, string>,
+    toolsFiles: Record<string, string>,
     saveFileFn: (name: string, content: string, target: FileTarget) => Promise<boolean>,
     config: AppConfig
 ): Promise<ToolResult> {
@@ -39,13 +72,13 @@ export async function executeToolCall(
     try {
         switch (name) {
             case 'read_file': {
-                const target = resolveSource(args.source);
-                const store = getFileStore(target, files, additionalFiles, sandboxFiles);
-                const content = store[args.filename];
+                const { target, cleanFilename } = resolvePathAndSource(args.filename, args.source);
+                const store = getFileStore(target, files, additionalFiles, workSpaceFiles, toolsFiles);
+                const content = store[cleanFilename];
                 if (content !== undefined) {
-                    return { success: true, data: { filename: args.filename, content, source: target } };
+                    return { success: true, data: { filename: cleanFilename, content, source: target } };
                 }
-                return { success: false, error: `File "${args.filename}" not found in ${target} folder.` };
+                return { success: false, error: `File "${cleanFilename}" not found in ${target} folder. (Looked in: ${target})` };
             }
 
             case 'update_file': {
@@ -53,36 +86,89 @@ export async function executeToolCall(
                     return { success: false, error: 'Missing required parameter: filename.' };
                 }
 
-                const target = resolveSource(args.source);
+                const { target, cleanFilename } = resolvePathAndSource(args.filename, args.source);
 
                 const isProtected = PROTECTED_CORE_FILES.some(p =>
-                    args.filename === p || args.filename.endsWith('/' + p)
+                    cleanFilename === p || cleanFilename.endsWith('/' + p)
                 );
 
                 if (target === 'core' && isProtected) {
-                    return { success: false, error: `"${args.filename}" is a PROTECTED identity file and cannot be modified by tools. Only ACTIVE_CONTEXT.md and TASKS.md are writable in core.` };
+                    return { success: false, error: `"${cleanFilename}" is a PROTECTED identity file and cannot be modified by tools. Only ACTIVE_CONTEXT.md and TASKS.md are writable in core.` };
                 }
 
-                const saved = await saveFileFn(args.filename, args.content, target);
+                const saved = await saveFileFn(cleanFilename, args.content, target);
                 if (saved) {
-                    return { success: true, data: { filename: args.filename, message: `File "${args.filename}" saved to ${target}.`, source: target } };
+                    return { success: true, data: { filename: cleanFilename, message: `File "${cleanFilename}" saved to ${target}.`, source: target } };
                 }
-                return { success: false, error: `Failed to save "${args.filename}". Ensure the ${target} folder is configured in Settings.` };
+                return { success: false, error: `Failed to save "${cleanFilename}". Ensure the ${target} folder is configured in Settings.` };
+            }
+
+            case 'patch_file': {
+                if (!args.filename || !args.find || args.replace === undefined) {
+                    return { success: false, error: 'Missing required parameters: filename, find, replace.' };
+                }
+
+                const { target: patchTarget, cleanFilename } = resolvePathAndSource(args.filename, args.source);
+                const patchStore = getFileStore(patchTarget, files, additionalFiles, workSpaceFiles, toolsFiles);
+                const existingContent = patchStore[cleanFilename];
+
+                if (existingContent === undefined) {
+                    return { success: false, error: `File "${cleanFilename}" not found in ${patchTarget} folder. Cannot patch a non-existent file.` };
+                }
+
+                const patchIsProtected = PROTECTED_CORE_FILES.some(p =>
+                    cleanFilename === p || cleanFilename.endsWith('/' + p)
+                );
+                if (patchTarget === 'core' && patchIsProtected) {
+                    return { success: false, error: `"${cleanFilename}" is a PROTECTED identity file and cannot be modified.` };
+                }
+
+                // Find the exact text block
+                const findIdx = existingContent.indexOf(args.find);
+                if (findIdx === -1) {
+                    // Try a more lenient match (trim whitespace differences)
+                    const normalizedContent = existingContent.replace(/\r\n/g, '\n');
+                    const normalizedFind = args.find.replace(/\r\n/g, '\n');
+                    const lenientIdx = normalizedContent.indexOf(normalizedFind);
+
+                    if (lenientIdx === -1) {
+                        return {
+                            success: false,
+                            error: `Could not find the exact text block in "${args.filename}". The "find" parameter must match the file content character-for-character. Try using read_file first to get the exact content.`
+                        };
+                    }
+
+                    // Apply lenient patch
+                    const patchedContent = normalizedContent.substring(0, lenientIdx) + args.replace + normalizedContent.substring(lenientIdx + normalizedFind.length);
+                    const saved = await saveFileFn(cleanFilename, patchedContent, patchTarget);
+                    if (saved) {
+                        return { success: true, data: { filename: cleanFilename, message: `File "${cleanFilename}" patched successfully in ${patchTarget} (lenient match).`, source: patchTarget, bytesChanged: args.replace.length - args.find.length } };
+                    }
+                    return { success: false, error: `Failed to save patched file "${cleanFilename}".` };
+                }
+
+                // Apply exact patch
+                const patchedContent = existingContent.substring(0, findIdx) + args.replace + existingContent.substring(findIdx + args.find.length);
+                const patchSaved = await saveFileFn(cleanFilename, patchedContent, patchTarget);
+                if (patchSaved) {
+                    return { success: true, data: { filename: cleanFilename, message: `File "${cleanFilename}" patched successfully in ${patchTarget}.`, source: patchTarget, bytesChanged: args.replace.length - args.find.length } };
+                }
+                return { success: false, error: `Failed to save patched file "${cleanFilename}".` };
             }
 
             case 'list_files': {
                 const target = resolveSource(args.source);
-                const store = getFileStore(target, files, additionalFiles, sandboxFiles);
+                const store = getFileStore(target, files, additionalFiles, workSpaceFiles, toolsFiles);
                 const fileList = Object.keys(store).map(f => ({
                     name: f,
-                    size: store[f].length
+                    size: (store[f] || '').length
                 }));
                 return { success: true, data: { files: fileList, count: fileList.length, source: target } };
             }
 
             case 'search_files': {
                 const target = resolveSource(args.source);
-                const store = getFileStore(target, files, additionalFiles, sandboxFiles);
+                const store = getFileStore(target, files, additionalFiles, workSpaceFiles, toolsFiles);
                 const query = args.query.toLowerCase();
                 const matches: { filename: string; lines: string[] }[] = [];
                 for (const [filename, content] of Object.entries(store)) {
@@ -97,6 +183,19 @@ export async function executeToolCall(
             }
 
             case 'web_search': {
+                // Prioritize Native Internal Search (Python bridge) if in Electron
+                if (typeof window !== 'undefined' && (window as any).electron?.runSearch) {
+                    try {
+                        const response = await (window as any).electron.runSearch({ query: args.query });
+                        if (response.ok) {
+                            return { success: true, data: response.data };
+                        }
+                        console.warn("Native Search failed, falling back to APIs...", response.error);
+                    } catch (e) {
+                        console.error("Native Search error, falling back...", e);
+                    }
+                }
+
                 // Try Tavily first
                 if (config.tavilyApiKey) {
                     try {
@@ -131,12 +230,25 @@ export async function executeToolCall(
                     }
                 }
 
-                return { success: false, error: 'No Search API Key configured (Tavily or Brave). Please add one in Settings.' };
+                return { success: false, error: 'No Search method available. Ensure the internal Python engine is ready or add an API Key (Tavily/Brave) in Settings.' };
             }
 
             case 'read_url': {
+                // Prioritize Native Internal Extraction (Python trafilatura bridge)
+                if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
+                    try {
+                        const response = await (window as any).electron.invoke('run-extract', { url: args.url });
+                        if (response.ok) {
+                            return { success: true, data: response.data };
+                        }
+                        console.warn("Native Extraction failed, falling back to APIs...", response.error);
+                    } catch (e) {
+                        console.error("Native Extraction error, falling back...", e);
+                    }
+                }
+
                 if (!config.tavilyApiKey) {
-                    return { success: false, error: 'Tavily API Key not found. Please add it in Settings.' };
+                    return { success: false, error: 'Tavily API Key not found. Please add it in Settings, or ensure the internal Python engine is ready.' };
                 }
                 try {
                     const data = await safeFetch('https://api.tavily.com/extract', {
@@ -147,9 +259,47 @@ export async function executeToolCall(
                             urls: [args.url]
                         })
                     });
-                    return { success: true, data: data.results?.[0] || data };
+                    const finalData = data.results?.[0] || data;
+                    if (finalData.success === false) {
+                        return { success: false, error: finalData.error || 'Failed to extract content from URL.' };
+                    }
+                    return { success: true, data: finalData };
                 } catch (e) {
                     return { success: false, error: `Read URL Error: ${e instanceof Error ? e.message : String(e)}` };
+                }
+            }
+
+            case 'send_telegram_message': {
+                const token = config.telegramBotToken;
+                const chatId = args.chat_id || config.telegramChatId;
+
+                if (!token) {
+                    return { success: false, error: 'Telegram Bot Token not configured in Settings.' };
+                }
+                if (!chatId) {
+                    return { success: false, error: 'Telegram Chat ID not configured (and no chat_id provided in arguments).' };
+                }
+
+                try {
+                    const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            chat_id: chatId,
+                            text: args.text,
+                            parse_mode: 'HTML' // Allow some basic formatting
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (!data.ok) {
+                        return { success: false, error: `Telegram API Error: ${data.description || 'Unknown error'}` };
+                    }
+
+                    return { success: true, data: { message: 'Message sent successfully to Telegram.', message_id: data.result.message_id } };
+                } catch (e) {
+                    return { success: false, error: `Failed to connect to Telegram API: ${e instanceof Error ? e.message : String(e)}` };
                 }
             }
 
@@ -204,8 +354,22 @@ export async function executeToolCall(
                 }
             }
 
+            case 'final_answer': {
+                return {
+                    success: true,
+                    data: {
+                        text: args.text,
+                        sources: args.sources || [],
+                        status: 'completed'
+                    }
+                };
+            }
+
             default:
-                return { success: false, error: `Unknown tool: ${name}` };
+                return {
+                    success: false,
+                    error: `❌ Unknown tool: "${name}". Valid tools are: read_file, update_file, list_files, search_files, web_search, read_url, run_console, final_answer. If you have the data, use "final_answer".`
+                };
         }
     } catch (e) {
         return { success: false, error: `Tool execution error: ${e instanceof Error ? e.message : String(e)}` };
@@ -219,31 +383,31 @@ export async function sendAgentMessage(
     tools: ToolDefinition[],
     files: Record<string, string>,
     additionalFiles: Record<string, string>,
-    sandboxFiles: Record<string, string>,
+    workSpaceFiles: Record<string, string>,
+    toolsFiles: Record<string, string>,
     saveFileFn: (name: string, content: string, target: FileTarget) => Promise<boolean>,
     onChunk: (text: string, replace?: boolean, blocks?: any[]) => void,
     onStatus: (status: Partial<AgentStatus>) => void,
     onToolApproval: (toolCall: ToolCall) => Promise<boolean>,
     abortSignal: AbortSignal,
+    onFinalRawHistory?: (history: any[]) => void,
     useTextExtraction: boolean = true,
-    isAgentMode: boolean = false
+    isAgentMode: boolean = false,
+    safeMode: boolean = false,
+    approvalMode: ApprovalMode = 'auto'
 ): Promise<void> {
 
     const log = (type: AgentLogEntry['type'], message: string, details?: any) => {
         onStatus({ log: [{ timestamp: Date.now(), type, message, details }] });
     };
 
-    // Track whether this model supports native tools for the duration of this specific task
     let modelSupportsNativeTools = true;
-
-    // Accumulated blocks across all iterations for the current message
     let allBlocks: any[] = [];
 
     async function streamOllamaRequest(
         messages: any[],
         useTools: boolean,
     ): Promise<{ content: string; toolCalls: any[] }> {
-        // Filter out empty messages to prevent 400 Bad Request
         const filteredMessages = messages.filter(m => m.content || (m.tool_calls && m.tool_calls.length > 0));
 
         const body: any = {
@@ -263,14 +427,12 @@ export async function sendAgentMessage(
 
         if (response.status === 400 && useTools && modelSupportsNativeTools) {
             log('warn', 'Este modelo está siendo optimizado para el llamado y uso de herramientas');
-            // Remember that this model doesn't support native tool calling
             modelSupportsNativeTools = false;
             return streamOllamaRequest(messages, false);
         }
 
         if (!response.ok) {
             const errBody = await response.text().catch(() => '');
-            console.error(`Ollama Error [${response.status}]:`, errBody);
             throw new Error(`Ollama HTTP ${response.status}: ${errBody}`);
         }
 
@@ -291,7 +453,6 @@ export async function sendAgentMessage(
                         const parsed = JSON.parse(line);
                         if (parsed.message?.content) {
                             fullContent += parsed.message.content;
-                            // During streaming, just update the status — DON'T build blocks yet
                             onStatus({ streamedText: fullContent, phase: 'streaming' });
                         }
                         if (parsed.message?.tool_calls) {
@@ -301,46 +462,37 @@ export async function sendAgentMessage(
                 }
             }
         }
-
         return { content: fullContent, toolCalls };
+    }
+
+    let historicalContext = chatMessages;
+    if (isAgentMode) {
+        const lastUserMsg = [...chatMessages].reverse().find(m => m.role === 'user');
+        historicalContext = lastUserMsg ? [lastUserMsg] : [];
     }
 
     const ollamaMessages: any[] = [
         { role: 'system', content: systemPrompt },
-        ...chatMessages,
+        ...historicalContext,
     ];
 
-    // ── Counters ──────────────────────────────────────────────────────
-    // iterations: purely informational, never caps the loop
-    // retries:    counts consecutive failures/nudges; resets to 0 on ANY successful tool execution
     const MAX_RETRIES = 10;
     let iterations = 0;
     let retries = 0;
     let actionHistory: string[] = [];
-
-    // ── Repetition Detection ─────────────────────────────────────────
-    // Tracks how many times the exact same action (tool+args fingerprint) has been called.
-    // If any action reaches 3 occurrences, we inject a special nudge to break the loop.
     const actionFingerprints: Map<string, number> = new Map();
     const REPETITION_THRESHOLD = 3;
-
-    // ── Per-Tool Failure Tracking ────────────────────────────────────
-    // Tracks consecutive failures PER TOOL NAME (regardless of arguments).
-    // If a tool fails 5+ times in a row, we nudge the agent to stop using it.
     const toolConsecutiveFailures: Map<string, number> = new Map();
-    const TOOL_FAILURE_THRESHOLD = 5;
-    // Set of tools the agent has been told to stop using
     const exhaustedTools: Set<string> = new Set();
-
-    // ── Timer ────────────────────────────────────────────────────────
     const startTime = Date.now();
 
-    /**
-     * Generates a deterministic fingerprint for a tool call
-     * so we can detect when the agent is calling the same action repeatedly.
-     */
+    // Mutable stores to track changes across iterations in a single agent session
+    const currentFiles = { ...files };
+    const currentAdditional = { ...additionalFiles };
+    const currentWorkSpace = { ...workSpaceFiles };
+    const currentTools = { ...toolsFiles };
+
     function getActionFingerprint(toolName: string, args: Record<string, any>): string {
-        // Sort keys for deterministic comparison
         const sortedArgs = Object.keys(args).sort().reduce((acc, key) => {
             acc[key] = args[key];
             return acc;
@@ -348,411 +500,340 @@ export async function sendAgentMessage(
         return `${toolName}|${JSON.stringify(sortedArgs)}`;
     }
 
+    function extractToolInstructions(tn: string, toolsContent: string): string {
+        if (!toolsContent) return '';
+        // Look for headers like "## ... (run_console)" or "### run_console"
+        const re = new RegExp(`## .*?\\(${tn}\\).*?\\n([\\s\\S]*?)(?=\\n##|$)`, 'i');
+        const match = toolsContent.match(re);
+        if (match) return `[TOOL MANUAL: ${tn}]\n${match[1].trim()}`;
+
+        // Fallback: try search for the name as a subheader or header keyword
+        const reSub = new RegExp(`(?:##|###) .*?${tn}.*?\\n([\\s\\S]*?)(?=\\n##|###|$)`, 'i');
+        const matchSub = toolsContent.match(reSub);
+        if (matchSub) return `[TOOL MANUAL: ${tn}]\n${matchSub[1].trim()}`;
+
+        return '';
+    }
+
     // ── Main Agent Loop ──────────────────────────────────────────────
-    // Runs indefinitely until: user aborts, agent concludes, or retries exhaust.
     while (!abortSignal.aborted) {
         if (retries >= MAX_RETRIES) {
-            // ── Graceful Shutdown ────────────────────────────────────
-            // Instead of just stopping, give the agent ONE final turn to explain
-            // what went wrong so the user gets a meaningful message.
-            log('warn', `Max retries reached (${MAX_RETRIES}). Requesting final explanation from model...`);
-            onStatus({ phase: 'error', retries, maxRetries: MAX_RETRIES, errorCount: retries, elapsedMs: Date.now() - startTime });
-
-            try {
-                const failedToolsList = Array.from(toolConsecutiveFailures.entries())
-                    .filter(([, count]) => count > 0)
-                    .map(([name, count]) => `- ${name}: failed ${count} time(s)`)
-                    .join('\n');
-
-                const historyText = actionHistory.length > 0
-                    ? actionHistory.map((a, i) => `${i + 1}. ${a}`).join('\n')
-                    : '(no successful actions were completed)';
-
-                ollamaMessages.push({
-                    role: 'user',
-                    content: `⛔ TASK HALTED: You have reached the maximum error limit (${MAX_RETRIES} consecutive failures).\n\nTool failure summary:\n${failedToolsList}\n\nActions completed before failure:\n${historyText}\n\nINSTRUCTION: Do NOT attempt any more tool calls. Instead, respond with a clear text explanation for the user:\n1. What you were trying to accomplish\n2. What went wrong and why you couldn't complete it\n3. What the user can do to resolve the issue (e.g., check API keys, network, etc.)`
-                });
-
-                const finalResult = await streamOllamaRequest([...ollamaMessages], false);
-                if (finalResult.content) {
-                    allBlocks.push({ type: 'text', content: finalResult.content });
-                    onChunk(finalResult.content, true, allBlocks);
-                }
-            } catch (e) {
-                log('error', `Failed to get final explanation: ${e instanceof Error ? e.message : String(e)}`);
-            }
-
-            onStatus({ phase: 'error', retries, maxRetries: MAX_RETRIES, errorCount: retries, elapsedMs: Date.now() - startTime });
+            log('warn', `Max retries reached (${MAX_RETRIES}). Requesting final explanation...`);
+            onStatus({ phase: 'error', retries, maxRetries: MAX_RETRIES, errorCount: retries, elapsedMs: Date.now() - startTime, rawMessages: [...ollamaMessages] });
             break;
         }
 
         iterations++;
-        const elapsed = Date.now() - startTime;
-        onStatus({ phase: 'thinking', iteration: iterations, retries, maxRetries: MAX_RETRIES, elapsedMs: elapsed });
-        log('info', `Step ${iterations} (${(elapsed / 1000).toFixed(1)}s): Neural Engine processing...`);
+        onStatus({ phase: 'thinking', iteration: iterations, retries, maxRetries: MAX_RETRIES, elapsedMs: Date.now() - startTime, rawMessages: [...ollamaMessages] });
 
         let content: string;
         let nativeToolCalls: any[];
 
         try {
-            // ── CONTEXT & STATUS INJECTION ───────────────────────────────────
             const messagesForModel = [...ollamaMessages];
-
-            if (isAgentMode && actionHistory.length > 0) {
-                const historyText = actionHistory.map((a, i) => `🔹 ${a}`).join('\n');
-                const lastMsg = messagesForModel[messagesForModel.length - 1];
-
-                // Extract tool summaries dynamically for the nudge
-                const toolsList = tools.map(t => `- ${t.function.name}: ${t.function.description.split('.')[0]}`).join('\n');
-
-                const statusUpdate = `[SYSTEM STATUS UPDATE]
-NEURAL CORTEX HISTORY:
-${historyText}
-
-[NEURAL PROTOCOL REFRESH]
-AVAILABLE TOOLS:
-${toolsList}
-
-CORE INSTRUCTIONS:
-${systemPrompt}
-
-PROTOCOL RULE:
-1. Review history. Do NOT repeat actions.
-2. If the task is finished or you need more info from the user, provide a clear text summary.
-3. If the task is ongoing, output the NEXT JSON tool call.
-4. Output ONLY raw JSON when calling tools. No conversational fluff.`;
-
-                // If the last message was also a USER message (nudge), merge them to avoid consecutive user blocks
-                if (lastMsg?.role === 'user') {
-                    lastMsg.content = `${lastMsg.content}\n\n${statusUpdate}`;
-                } else {
-                    messagesForModel.push({ role: 'user', content: statusUpdate });
-                }
-            }
-
             const result = await streamOllamaRequest(messagesForModel, useTextExtraction);
             content = result.content;
             nativeToolCalls = result.toolCalls;
         } catch (err) {
-            if (err instanceof DOMException && err.name === 'AbortError') {
-                onStatus({ phase: 'aborted' });
-                log('warn', 'Neural Core: Aborted by user signal');
-                return;
-            }
+            if (err instanceof DOMException && err.name === 'AbortError') return;
             throw err;
         }
 
-        // --- Build tool calls to process ---
-        let toolCallsToProcess: ToolCall[] = [];
+        const signatureRegex = /\{\{?[\s\S]*?≈̼\^\.┬\.̼\^≈‿⟆[\s\S]*?\}\}?/;
 
-        // 1) Native tool calls from Ollama (apply normalization dictionary even to native calls)
+        let finalToolCalls: ToolCall[] = [];
+        let positionalCalls: RecoveredCall[] = [];
+
+        // 1. Extract tool calls (with positions if possible)
+        if (content && useTextExtraction) {
+            const { calls } = recoverToolCallsFromText(content, tools);
+            positionalCalls = calls;
+            finalToolCalls = calls.map(c => c.toolCall);
+        }
+
+        // 2. Fallback to native calls if recovery missed anything OR use them to augment
         if (nativeToolCalls && nativeToolCalls.length > 0) {
-            log('info', `Model returned ${nativeToolCalls.length} native tool call(s). Normalizing...`);
             for (const tc of nativeToolCalls) {
                 try {
-                    const rawArgs = typeof tc.function.arguments === 'string'
-                        ? JSON.parse(tc.function.arguments)
-                        : tc.function.arguments;
-
-                    const normResult = normalizeRawToolCall({
-                        name: tc.function.name,
-                        arguments: rawArgs
-                    }, tools);
-
+                    const rawArgs = typeof tc.function.arguments === 'string' ? JSON.parse(tc.function.arguments) : tc.function.arguments;
+                    const normResult = normalizeRawToolCall({ name: tc.function.name, arguments: rawArgs }, tools);
                     if (normResult.toolCall) {
-                        // Keep the original ID if possible
                         normResult.toolCall.id = tc.id || normResult.toolCall.id;
-                        toolCallsToProcess.push(normResult.toolCall);
-                        for (const w of normResult.warnings) log('warn', `  ↳ ${w}`);
-                    } else if (normResult.blocked) {
-                        log('error', `🚫 SEC-BLOCK: ${normResult.warnings[0]}`);
-                    } else {
-                        log('warn', `Native tool call "${tc.function.name}" could not be normalized.`);
-                    }
-                } catch {
-                    log('error', `Failed to parse tool call arguments for "${tc.function.name}"`);
-                    retries++;
-                }
-            }
-        }
-
-        // 2) Text extraction fallback — use full "Hallucination Dictionary" recovery pipeline
-        if (toolCallsToProcess.length === 0 && content && useTextExtraction) {
-            log('info', 'Searching for deformed or hidden tool calls in text response...');
-            const { calls: recovered, warnings } = recoverToolCallsFromText(content, tools);
-
-            if (recovered.length > 0) {
-                log('info', `✨ Neural Recovery: Capturados ${recovered.length} llamados ruidosos/deformes`);
-                for (const w of warnings) log('warn', `  ↳ ${w}`);
-                toolCallsToProcess = recovered;
-            } else {
-                // Last resort: simpler regex (may catch things recovery missed)
-                const extracted = extractToolCallsFromText(content);
-                if (extracted.length > 0) {
-                    log('info', `Legacy regex found ${extracted.length} tool signatures. Normalizing...`);
-                    for (const rawExt of extracted) {
-                        const norm = normalizeRawToolCall({
-                            name: rawExt.function.name,
-                            arguments: rawExt.function.arguments
-                        }, tools);
-
-                        if (norm.toolCall) {
-                            norm.toolCall.id = rawExt.id; // Keep the original 'ext-' ID
-                            toolCallsToProcess.push(norm.toolCall);
-                            for (const w of norm.warnings) log('warn', `  ↳ ${w}`);
+                        // Avoid adding duplicates if already recovered
+                        const fp = getActionFingerprint(normResult.toolCall.function.name, normResult.toolCall.function.arguments);
+                        if (!finalToolCalls.some(x => getActionFingerprint(x.function.name, x.function.arguments) === fp)) {
+                            finalToolCalls.push(normResult.toolCall);
+                            // For native calls without indices, we place them at the end of the text
+                            positionalCalls.push({ toolCall: normResult.toolCall, start: content?.length || 0, end: content?.length || 0 });
                         }
                     }
-                }
+                } catch { retries++; }
             }
         }
 
-        // Push assistant message into history
-        // IMPORTANT: If we recovered calls from text, we MUST synthesize them into tool_calls 
-        // so that subsequent 'tool' role messages are valid in strict APIs (like Gemini).
+        // Deduplicate
+        const uniqueToolCalls: ToolCall[] = [];
+        const seenFpSet = new Set<string>();
+        for (const tc of finalToolCalls) {
+            const fp = getActionFingerprint(tc.function.name, tc.function.arguments);
+            if (!seenFpSet.has(fp)) { seenFpSet.add(fp); uniqueToolCalls.push(tc); }
+        }
+
+        // INTERLEAVED SEGMENTATION: Chronologically interleave text and tool blocks
+        const iterationBlocks: any[] = [];
+        let curIdx = 0;
+
+        // Ensure positionalCalls is sorted (includes duplicates to swallow repetitions)
+        const sortedPosCalls = [...positionalCalls].sort((a, b) => a.start - b.start);
+        const seenFpForInterleaving = new Set<string>();
+
+        for (const rc of sortedPosCalls) {
+            const rawSegment = (content || '').substring(curIdx, rc.start);
+            if (rawSegment.trim()) {
+                let cleanSeg = rawSegment.trim();
+
+                // Aggressive Noise Stripper - Purge conversational shards and technical-garbage
+                if (!signatureRegex.test(cleanSeg.slice(0, 100))) {
+                    cleanSeg = cleanSeg.replace(/^(?:I apologize|My apologies|...|You are right|You are correct|My core programming|I will now proceed|¡Disculpa!|Disculpa|Tienes razón|He cometido un error|Aquí está|Perdón|Thinking Process|Neural Flow|Neural Core|Proceso de Razonamiento)[\s\S]*?(?={|\[)/i, '');
+                    // Strip common technical repetitions that models often output around JSON
+                    cleanSeg = cleanSeg.replace(/^(?:functionality of the|I have successfully|Now I will|Checking files|I will now)[\s\S]*?$/im, '');
+                }
+
+                // Aggressive Tool Call & JSON Snippet Stripper
+                cleanSeg = cleanSeg.replace(/```(?:json|JSON)?\s*\{[\s\S]*?\}\s*```/g, '');
+
+                // Regex for finding JSON blocks that look like tool calls to strip them from narrative
+                cleanSeg = cleanSeg.replace(/\{[\s\S]*?\}/g, (match) => {
+                    const lowerMatch = match.toLowerCase();
+                    const looksLikeTool = lowerMatch.includes('"name":') || lowerMatch.includes('"action":') || lowerMatch.includes('"function":');
+                    if (looksLikeTool) {
+                        try {
+                            JSON.parse(match); // verify it's validish JSON
+                            return '';
+                        } catch { return match; }
+                    }
+                    return match;
+                });
+
+                if (cleanSeg.trim() && cleanSeg.trim().length > 2) {
+                    iterationBlocks.push({ type: 'thought', content: cleanSeg.trim() });
+                }
+            }
+
+            // B. Extract thoughts embedded in tool arguments for separate display above the tool
+            const args = rc.toolCall.function.arguments;
+            const thoughtKey = Object.keys(args).find(k => ['thought', 'reasoning', 'think', 'reason', 'pensamiento', 'razonamiento'].includes(k.toLowerCase()));
+            const internalThought = thoughtKey ? args[thoughtKey] : null;
+
+            if (internalThought && typeof internalThought === 'string' && internalThought.trim()) {
+                iterationBlocks.push({ type: 'thought', content: internalThought.trim() });
+            }
+
+            // C. The tool block (excluding duplicates and final_answer)
+            const fp = getActionFingerprint(rc.toolCall.function.name, rc.toolCall.function.arguments);
+            if (!seenFpForInterleaving.has(fp) && rc.toolCall.function.name !== 'final_answer') {
+                seenFpForInterleaving.add(fp);
+                iterationBlocks.push({
+                    type: 'tool_call',
+                    content: `Modo: ${rc.toolCall.function.name}`,
+                    toolCall: {
+                        ...rc.toolCall,
+                        // Mask the thought in the display version to avoid DUPLICATES
+                        function: {
+                            ...rc.toolCall.function,
+                            arguments: thoughtKey ? Object.fromEntries(Object.entries(args).filter(([k]) => k !== thoughtKey)) : args
+                        }
+                    }
+                });
+            }
+            curIdx = rc.end;
+        }
+
+        const finalRawSegment = (content || '').substring(curIdx);
+        if (finalRawSegment.trim()) {
+            let cleanFinal = finalRawSegment.trim();
+            cleanFinal = cleanFinal.replace(/```(?:json|JSON)?\s*\{[\s\S]*?\}\s*```/g, '').trim();
+            if (cleanFinal && cleanFinal.length > 2) {
+                const isOnlyText = uniqueToolCalls.length === 0;
+                iterationBlocks.push({ type: isOnlyText ? 'answer' : 'thought', content: cleanFinal });
+            }
+        }
+
         ollamaMessages.push({
             role: 'assistant',
             content: content || '[Calling Tools...]',
-            tool_calls: (nativeToolCalls && nativeToolCalls.length > 0)
-                ? nativeToolCalls
-                : (toolCallsToProcess.length > 0 ? toolCallsToProcess : undefined),
+            tool_calls: uniqueToolCalls.length > 0 ? uniqueToolCalls : undefined,
         });
 
-        // --- NOW build blocks from the COMPLETE response ---
-        // Separate any conversational text from tool call JSON artifacts
-        let cleanText = content || '';
-        if (toolCallsToProcess.length > 0 && !modelSupportsNativeTools) {
-            // Remove code blocks first
-            cleanText = cleanText.replace(/```json\s*\{[\s\S]*?\}\s*```/g, '');
-            cleanText = cleanText.replace(/```\s*\{[\s\S]*?\}\s*```/g, '');
+        allBlocks = [...allBlocks, ...iterationBlocks];
 
-            // Improved regex to remove any JSON object that contains a known tool name as a "name" or "tool" value
-            const toolNamesLine = tools.map(t => t.function.name).join('|');
-            const universalJsonRegex = new RegExp(`\\{\\s*[\\s\\S]*?"(?:name|tool|function|tool_call|call)"\\s*:\\s*(?:"(?:${toolNamesLine})"|\\{\\s*"name"\\s*:\\s*"(?:${toolNamesLine})")[\\s\\S]*?\\}`, 'g');
-            cleanText = cleanText.replace(universalJsonRegex, '');
+        const activeToolCalls = uniqueToolCalls;
 
-            cleanText = cleanText.trim();
-        }
-
-        // Build blocks for this iteration
-        const iterationBlocks: any[] = [];
-        if (cleanText.trim()) {
-            iterationBlocks.push({ type: 'text', content: cleanText });
-        }
-        for (const tc of toolCallsToProcess) {
-            iterationBlocks.push({
-                type: 'tool_call',
-                content: `Llamando a: ${tc.function.name}`,
-                toolCall: tc
-            });
-        }
-
-        // If no tool calls found, this is a pure text response
-        if (toolCallsToProcess.length === 0) {
+        if (activeToolCalls.length === 0) {
+            const isJustSignature = signatureRegex.test(content || '') && (content?.length || 0) < 100;
             if (isAgentMode) {
-                if (actionHistory.length > 0) {
-                    // Agent completed actions and is now summarizing → accept as completion
-                    log('info', 'Agent provided text summary after actions. Task complete.');
-                    allBlocks = [...allBlocks, ...iterationBlocks];
-                    onChunk(content, true, allBlocks);
-                    onStatus({ phase: 'idle', elapsedMs: Date.now() - startTime });
-                    break;
-                } else {
-                    // No actions yet, but provided text? Nudge for tool call.
-                    if (retries < MAX_RETRIES) {
-                        log('warn', `Step ${iterations}: No tool call detected. Nudging model... (retry ${retries + 1}/${MAX_RETRIES})`);
-                        retries++;
+                const hasSubstantialText = (content?.length || 0) > 20;
 
-                        allBlocks = [...allBlocks, ...iterationBlocks];
-                        onChunk(content, true, allBlocks);
+                if (isJustSignature || hasSubstantialText) {
+                    onChunk(content || '', true, allBlocks);
+                    if (onFinalRawHistory) onFinalRawHistory([...ollamaMessages]);
+                    onStatus({ phase: 'idle', elapsedMs: Date.now() - startTime, rawMessages: [...ollamaMessages] });
+                    return;
+                } else if (retries < MAX_RETRIES) {
+                    retries++;
+                    const nudge = '⚠️ PROTOCOLO INCOMPLETO: No has realizado ninguna acción ni has dado una respuesta final. RECUERDA: Debes usar "final_answer" para terminar. RESPONDE ÚNICAMENTE EN JSON.';
+                    ollamaMessages.push({
+                        role: 'user', content: `⚠️ PROTOCOLO INCOMPLETO: No has realizado ninguna acción ni has dado una respuesta final. RECUERDA: Debes usar "final_answer" para terminar. RESPONDE ÚNICAMENTE EN JSON.
 
-                        ollamaMessages.push({
-                            role: 'user',
-                            content: '⚠️ ATTENTION: Your response did not contain a valid JSON tool call. In Agent/Instruction mode, you MUST start by calling a tool. Output specific JSON: {"name": "tool_name", "arguments": {...}}'
-                        });
-                        onStatus({ retries, maxRetries: MAX_RETRIES, elapsedMs: Date.now() - startTime });
-                        continue;
-                    }
+**EXAMPLE (FORMAT ONLY):**
+{"name": "tool_name", "arguments": {"param": "value"}}
+...
+{"name": "final_answer", "arguments": {
+  "text": "Final response summary.",
+  "reasoning": "Internal logic.",
+  "sources": ["SOURCE_1", "SOURCE_2"]
+}}
+
+**IMPORTANT:** Every final_answer must cite the actual files or URLs used.` });
+                    onStatus({ phase: 'thinking', retries, rawMessages: [...ollamaMessages] });
+                    continue;
                 }
             } else {
-                // Chat mode -> text is fine.
-                allBlocks = [...allBlocks, ...iterationBlocks];
-                onChunk(content, true, allBlocks);
+                onChunk(content || '', true, allBlocks);
+                if (onFinalRawHistory) onFinalRawHistory([...ollamaMessages]);
                 onStatus({ phase: 'idle', elapsedMs: Date.now() - startTime });
                 break;
             }
         }
 
-        // ── REPETITION DETECTION ─────────────────────────────────────
-        // Before executing, check if ANY tool call is a repeat of a previous action.
-        let repetitionDetected = false;
-        for (const toolCall of toolCallsToProcess) {
-            const fingerprint = getActionFingerprint(toolCall.function.name, toolCall.function.arguments);
-            const count = (actionFingerprints.get(fingerprint) || 0) + 1;
-            actionFingerprints.set(fingerprint, count);
-
-            if (count >= REPETITION_THRESHOLD) {
-                repetitionDetected = true;
-                log('warn', `🔄 Repetition detected: "${toolCall.function.name}" with identical arguments has been called ${count} times.`);
-            }
-        }
-
-        if (repetitionDetected) {
-            // Instead of executing the repeated action, inject a correction nudge
-            log('warn', 'Breaking repetition loop — nudging model to advance or conclude.');
-
-            const historyText = actionHistory.map((a, i) => `${i + 1}. ${a}`).join('\n');
-            ollamaMessages.push({
-                role: 'user',
-                content: `⚠️ LOOP DETECTED: You are repeating the exact same action with the same arguments. This is NOT productive.\n\nYou have already completed:\n${historyText}\n\nYou MUST do one of the following:\n1. Call a DIFFERENT tool or use DIFFERENT arguments to make progress.\n2. If the task is complete, output a final text summary of what you accomplished.\n\nDo NOT repeat the same action again.`
-            });
-
-            retries++;
-            allBlocks = [...allBlocks, ...iterationBlocks];
-            onChunk(content, true, allBlocks);
-            onStatus({ retries, maxRetries: MAX_RETRIES, elapsedMs: Date.now() - startTime });
-            continue;
-        }
-
-        // --- Execute tool calls sequentially ---
+        // --- Execute tool calls ---
         onStatus({ phase: 'tool_calling' });
+        const READ_ONLY_TOOLS = new Set(['read_file', 'list_files', 'search_files', 'web_search', 'read_url']);
 
-        for (const toolCall of toolCallsToProcess) {
-            if (abortSignal.aborted) {
-                onStatus({ phase: 'aborted' });
-                return;
-            }
+        function isAutoApproved(tc: ToolCall): boolean {
+            const tn = tc.function.name;
+            if (READ_ONLY_TOOLS.has(tn)) return true;
+            if (tn === 'run_console') return false;
+            const target = resolveSource(tc.function.arguments.source);
+            if (target !== 'workSpace') return false;
+            if (tn === 'update_file') return currentWorkSpace[tc.function.arguments.filename] === undefined;
+            return false;
+        }
 
-            const toolName = toolCall.function.name;
-            onStatus({ currentTool: toolName, phase: 'waiting_approval' });
-            log('tool_call', `Tool: ${toolName}`, toolCall.function.arguments);
+        function needsApproval(tc: ToolCall): boolean {
+            return approvalMode === 'manual' || !isAutoApproved(tc);
+        }
 
-            const validation = validateToolArgs(toolCall);
-            if (!validation.valid) {
-                log('error', `Validation failed: ${validation.error}`);
-                retries++;
-
-                // Update this tool's block with error
-                const block = iterationBlocks.find(b => b.type === 'tool_call' && b.toolCall?.function.name === toolName && !b.result);
-                if (block) block.result = { success: false, error: validation.error };
-
-                ollamaMessages.push({
-                    role: 'tool',
-                    content: JSON.stringify({ success: false, error: validation.error }),
-                    tool_call_id: toolCall.id
-                });
-                continue;
-            }
-
-            let approved: boolean;
-            try {
-                approved = await onToolApproval(toolCall);
-            } catch {
-                approved = false;
-            }
-
+        async function requestApproval(toolCall: ToolCall, label: string): Promise<boolean> {
+            onStatus({ currentTool: label, phase: 'waiting_approval' });
+            const approved = await onToolApproval(toolCall);
             if (!approved) {
-                log('warn', `Tool "${toolName}" rejected by user`);
-
-                const block = iterationBlocks.find(b => b.type === 'tool_call' && b.toolCall?.function.name === toolName && !b.result);
-                if (block) block.result = { success: false, error: 'Ejecución rechazada por el usuario.' };
-
-                ollamaMessages.push({
-                    role: 'tool',
-                    content: JSON.stringify({ success: false, error: 'Tool execution rejected by user.' }),
-                    tool_call_id: toolCall.id
-                });
-                continue;
+                const b = allBlocks.find(x => x.toolCall?.id === toolCall.id);
+                if (b) b.result = { success: false, error: 'Rechazado.' };
+                ollamaMessages.push({ role: 'tool', content: 'Rejected', tool_call_id: toolCall.id });
             }
+            return approved;
+        }
 
-            onStatus({ phase: 'tool_executing', currentTool: toolName });
-            log('info', `Executing: ${toolName}...`);
+        async function executeAndProcess(toolCall: ToolCall, label: string): Promise<void> {
+            onStatus({ phase: 'tool_executing', currentTool: label });
+            const result = await executeToolCall(toolCall, currentFiles, currentAdditional, currentWorkSpace, currentTools, saveFileFn, config);
+            const b = allBlocks.find(x => x.toolCall?.id === toolCall.id);
+            if (b) b.result = result;
 
-            const result = await executeToolCall(toolCall, files, additionalFiles, sandboxFiles, saveFileFn, config);
-            log(result.success ? 'tool_result' : 'error',
-                result.success
-                    ? `✅ ${toolName}: ${result.data?.message || 'OK'}`
-                    : `❌ ${toolName}: ${result.error}`,
-                result
-            );
+            const isSuccess = result?.success && result?.data?.success !== false;
+            const hasError = result?.error || (result?.data?.success === false && result?.data?.error);
 
-            // Update this tool's block with the real result
-            const block = iterationBlocks.find(b => b.type === 'tool_call' && b.toolCall?.function.name === toolName && !b.result);
-            if (block) block.result = result;
-
-            // ── Counter Logic ────────────────────────────────────────
-            // Success → reset retries AND tool failure count
-            // Failure → increment retries AND per-tool failure count
-            if (!result.success) {
+            if (!isSuccess) {
                 retries++;
-                const prevFails = toolConsecutiveFailures.get(toolName) || 0;
-                toolConsecutiveFailures.set(toolName, prevFails + 1);
-            } else {
-                retries = 0; // ← KEY: successful action resets the retry counter
-                toolConsecutiveFailures.set(toolName, 0); // Reset this tool's failure count
-                exhaustedTools.delete(toolName); // Allow retry if it works again later
-            }
+                const errorContent = hasError ? `Error: ${hasError}` : 'Tool execution failed.';
+                ollamaMessages.push({ role: 'tool', content: errorContent, tool_call_id: toolCall.id });
 
-            if (toolCall.function.name === 'update_file' && result.success) {
-                const args = toolCall.function.arguments;
-                const target = resolveSource(args.source);
-                if (target === 'extra') {
-                    additionalFiles = { ...additionalFiles, [args.filename]: args.content };
-                } else if (target === 'core') {
-                    files = { ...files, [args.filename]: args.content };
-                } else {
-                    sandboxFiles = { ...sandboxFiles, [args.filename]: args.content };
+                const toolsMd = currentFiles['base/TOOLS.md'] || currentFiles['TOOLS.md'] || '';
+                const toolSpecificManual = extractToolInstructions(toolCall.function.name, toolsMd);
+                if (toolSpecificManual) {
+                    ollamaMessages.push({
+                        role: 'system',
+                        content: `⚠️ INSTRUCCIÓN TÉCNICA DE RECUPERACIÓN:\nSe detectó un fallo o uso incorrecto en "${toolCall.function.name}". Siga estrictamente estas reglas extraídas de TOOLS.MD:\n\n${toolSpecificManual}`
+                    });
+                }
+            } else {
+                retries = 0;
+                const desc = `${toolCall.function.name}(${JSON.stringify(toolCall.function.arguments)})`;
+                actionHistory.push(desc);
+                ollamaMessages.push({ role: 'tool', content: JSON.stringify(result), tool_call_id: toolCall.id });
+
+                // CRITICAL: Update local mutable stores so subsequent steps in this session see the changes
+                if (['update_file', 'patch_file'].includes(toolCall.function.name) && result.data?.filename) {
+                    const { target, cleanFilename } = resolvePathAndSource(toolCall.function.arguments.filename, toolCall.function.arguments.source);
+                    let newContent = toolCall.function.arguments.content;
+                    if (toolCall.function.name === 'patch_file') {
+                        // For patch_file, we need to get the resulting content. 
+                        // executeToolCall already saved it, but we need to update our LOCAL store.
+                        const store = getFileStore(target, currentFiles, currentAdditional, currentWorkSpace, currentTools);
+                        const existing = store[cleanFilename] || '';
+                        const find = toolCall.function.arguments.find;
+                        const replace = toolCall.function.arguments.replace;
+                        newContent = existing.replace(find, replace);
+                    }
+                    if (target === 'core') currentFiles[cleanFilename] = newContent;
+                    else if (target === 'extra') currentAdditional[cleanFilename] = newContent;
+                    else if (target === 'workSpace') currentWorkSpace[cleanFilename] = newContent;
+                    else if (target === 'tools') currentTools[cleanFilename] = newContent;
+                }
+
+                if (isAgentMode) {
+                    const guide = `✅ [MOTOR] Accion "${toolCall.function.name}" completada. Analiza los datos: ${JSON.stringify(result.data).slice(0, 300)}. 
+SI la tarea esta terminada, usa "final_answer". SI NO, ejecuta el siguiente paso lógico.`;
+                    ollamaMessages.push({ role: 'user', content: guide });
                 }
             }
-
-            // Build action description for both successes AND failures
-            let actionDesc = '';
-            const args = toolCall.function.arguments;
-            switch (toolName) {
-                case 'update_file': actionDesc = `Created/Updated file: "${args.filename}"`; break;
-                case 'read_file': actionDesc = `Read file: "${args.filename}"`; break;
-                case 'list_files': actionDesc = `Listed files in: "${args.source || 'sandbox'}"`; break;
-                case 'run_console': actionDesc = `Executed command: "${args.command} ${args.args || ''}"`; break;
-                case 'search_files': actionDesc = `Searched for "${args.query}" in ${args.source || 'sandbox'}`; break;
-                case 'web_search': actionDesc = `Searched web for "${args.query}"`; break;
-                case 'read_url': actionDesc = `Read URL: "${args.url}"`; break;
-                default: actionDesc = `Executed tool: ${toolName}`;
-            }
-            // Mark failed actions clearly in history so the model sees its own failures
-            if (result.success) {
-                actionHistory.push(actionDesc);
-            } else {
-                actionHistory.push(`❌ FAILED: ${actionDesc} — ${result.error || 'unknown error'}`);
-            }
-
-            ollamaMessages.push({
-                role: 'tool',
-                content: JSON.stringify(result),
-                tool_call_id: toolCall.id
-            });
-
-            // ── Per-Tool Failure Nudge ───────────────────────────────
-            // If the same tool has failed TOOL_FAILURE_THRESHOLD times in a row
-            // (regardless of arguments), tell the agent to stop using it.
-            const currentToolFails = toolConsecutiveFailures.get(toolName) || 0;
-            if (currentToolFails >= TOOL_FAILURE_THRESHOLD && !exhaustedTools.has(toolName)) {
-                exhaustedTools.add(toolName);
-                log('warn', `🚫 Tool "${toolName}" has failed ${currentToolFails} consecutive times. Nudging agent to use alternatives.`);
-
-                ollamaMessages.push({
-                    role: 'user',
-                    content: `⚠️ TOOL UNAVAILABLE: "${toolName}" has failed ${currentToolFails} times consecutively and appears to be non-functional at this time.\n\nDo NOT call "${toolName}" again. Instead:\n1. Try a DIFFERENT tool or approach to accomplish your goal.\n2. If no alternative exists, explain to the user what you were trying to do and why "${toolName}" is failing, so they can troubleshoot.\n\nAvailable tools (excluding ${toolName}): ${tools.map(t => t.function.name).filter(n => n !== toolName).join(', ')}`
-                });
-            }
         }
 
-        // After all tools in this iteration are done, push blocks and render
-        allBlocks = [...allBlocks, ...iterationBlocks];
+        function validateAndReport(tc: ToolCall): boolean {
+            const v = validateToolArgs(tc);
+            if (!v.valid) {
+                const b = allBlocks.find(x => x.toolCall?.id === tc.id);
+                if (b) b.result = { success: false, error: v.error };
+                ollamaMessages.push({ role: 'tool', content: v.error, tool_call_id: tc.id });
+                return false;
+            }
+            return true;
+        }
+
+        // Sequential execution
+        let hasFinalAnswer = false;
+        for (const tc of activeToolCalls) {
+            if (abortSignal.aborted) return;
+            if (tc.function.name === 'final_answer') {
+                hasFinalAnswer = true;
+                const text = tc.function.arguments.text || tc.function.arguments.mensaje || 'Tarea completada exitosamente.';
+                const sources = tc.function.arguments.sources || [];
+
+                let finalContent = text;
+                if (sources.length > 0) {
+                    finalContent += '\n\n**Fuentes Consultadas:**\n' + sources.map((s: string) => `- ${s}`).join('\n');
+                }
+
+                allBlocks.push({ type: 'answer', content: finalContent });
+                onChunk(finalContent, true, allBlocks);
+                break;
+            }
+
+            if (!validateAndReport(tc)) continue;
+            if (needsApproval(tc)) {
+                if (!await requestApproval(tc, tc.function.name)) continue;
+            }
+            await executeAndProcess(tc, tc.function.name);
+        }
+
+        if (hasFinalAnswer) {
+            if (onFinalRawHistory) onFinalRawHistory([...ollamaMessages]);
+            onStatus({ phase: 'idle', elapsedMs: Date.now() - startTime });
+            return;
+        }
+
         onChunk(content, true, allBlocks);
-
-        onStatus({ currentTool: null, retries, maxRetries: MAX_RETRIES, errorCount: retries, elapsedMs: Date.now() - startTime });
-
-        if (retries >= 3) {
-            log('warn', `${retries} consecutive retries — model may be struggling`);
-        }
+        onStatus({ rawMessages: [...ollamaMessages] });
     }
 }
