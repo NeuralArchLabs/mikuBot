@@ -787,7 +787,7 @@ export async function sendAgentMessage(
                 }
 
                 if (isAgentMode) {
-                    const originalObjective = chatMessages.find(m => m.role === 'user')?.content || 'No objective found';
+                    const originalObjective = [...chatMessages].reverse().find(m => m.role === 'user')?.content || 'No objective found';
                     const guide = `
 🧠 [MOTOR DE ESTADO — Iteración ${iterations}]
 🎯 OBJETIVO ORIGINAL: "${originalObjective.slice(0, 300)}${originalObjective.length > 300 ? '...' : ''}"
