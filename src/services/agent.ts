@@ -2,6 +2,7 @@ import { ToolCall, ToolResult, ToolDefinition, AppConfig, AgentStatus, AgentLogE
 import { PROTECTED_CORE_FILES, CONSOLE_ALLOWED_COMMANDS, CONSOLE_BLOCKED_PATTERNS } from '../constants';
 import { validateToolArgs, safeFetch } from '../utils';
 import { recoverToolCallsFromText, normalizeRawToolCall, RecoveredCall } from './toolCallNormalizer';
+import { formatFinalResponse } from './answerFormatter';
 
 /**
  * Resolves the source and filename from a tool call.
@@ -467,8 +468,10 @@ export async function sendAgentMessage(
 
     let historicalContext = chatMessages;
     if (isAgentMode) {
-        const lastUserMsg = [...chatMessages].reverse().find(m => m.role === 'user');
-        historicalContext = lastUserMsg ? [lastUserMsg] : [];
+        // En modo agente/instrucción, incluimos los últimos 3 turnos (6 mensajes) 
+        // para dar contexto sin saturar el sistema.
+        const filteredHistory = chatMessages.filter(m => !m.content.startsWith('⚡ Command Executed:'));
+        historicalContext = filteredHistory.slice(-6);
     }
 
     const ollamaMessages: any[] = [
@@ -807,7 +810,8 @@ SI la tarea esta terminada, usa "final_answer". SI NO, ejecuta el siguiente paso
             if (abortSignal.aborted) return;
             if (tc.function.name === 'final_answer') {
                 hasFinalAnswer = true;
-                const text = tc.function.arguments.text || tc.function.arguments.mensaje || 'Tarea completada exitosamente.';
+                const textRaw = tc.function.arguments.text || tc.function.arguments.mensaje || 'Tarea completada exitosamente.';
+                const text = formatFinalResponse(textRaw);
                 const sources = tc.function.arguments.sources || [];
 
                 let finalContent = text;
