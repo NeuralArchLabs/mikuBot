@@ -1,6 +1,6 @@
-# Project Status: MikuCentral v1.0 🚀
+# Project Status: MikuCentral v1.2.0 🚀
 
-> **Última actualización**: 15 de febrero de 2026
+> **Última actualización**: 18 de febrero de 2026
 > **Autor del análisis**: Antigravity AI Engine
 
 Este documento detalla el análisis exhaustivo del proyecto **MikuCentral**, una interfaz de IA neural y asistente personal integral diseñada para la soberanía tecnológica local, la ejecución de agentes autónomos y la persistencia automodificable en todas las facetas de la vida del usuario (personal, profesional y financiera).
@@ -301,11 +301,21 @@ electron/
 | `src/services/toolCallNormalizer.ts` | Actualizado diccionario de alucinaciones para mapear `sandbox` → `workSpace`. |
 | `TOOLS.md` | Actualizada topografía del sistema con `@WORKSPACE`. |
 
+### v1.5 — 18 Feb 2026 (Feature: Persistence, Context & Remote Formatting)
+| Archivo | Cambio |
+|---------|--------|
+| `src/services/agent.ts` | + Contexto histórico de 3 turnos (6 mensajes). + Filtro de logs de comandos en contexto. + Integración de `formatFinalResponse`. |
+| `src/services/answerFormatter.ts` | **Nuevo servicio**: Normalización de saltos de línea (Win/Unix), unescapado de artefactos JSON y preservación de párrafos. |
+| `src/services/telegramFormatter.ts` | **Nuevo servicio**: Convertidor de Markdown a HTML para Telegram, soporte de encabezados y escapado de seguridad. |
+| `src/App.tsx` | + Integración de `formatTelegramResponse` en respuestas remotas. |
+| `.gitignore` | + Reglas para excluir cache de Python (`__pycache__`). Limpieza del índice del repo. |
+| `Sidebar.tsx` | + Actualización de versión visual a `v1.2.0-alpha`. |
+
 ---
  
-**Estado Final del Análisis**: El proyecto ha alcanzado un nivel de madurez excepcional en su **Motor de Agencia**. Se han resuelto los problemas críticos de "olvido" de archivos mediante los Proxy Stores y se ha establecido una identidad clara (mikuBot) que respeta el idioma español de forma mandatoria. La visualización de razonamiento intercalado permite una experiencia premium y transparente. Además, el refactor **Sandbox → WorkSpace** prepara el terreno para la selección dinámica de carpetas de trabajo.
- 
+**Estado Final del Análisis**: El sistema ha dado un salto cualitativo hacia la **Omnipresencia**. Con la mejora en la memoria de contexto (3 turnos), el agente ya no "olvida" instrucciones inmediatas. La implementación de los formateadores de respuesta (`answerFormatter` y `telegramFormatter`) garantiza que la comunicación sea impecable tanto en el dashboard como en Telegram (móvil), respetando la jerarquía visual y la legibilidad. La arquitectura ahora es más robusta frente a las alucinaciones de formato de los modelos locales.
+
 **Prioridades inmediatas**:
-1.  **Vulnerabilidades de CSS/Accesibilidad**: Corregir compatibilidad con Safari y añadir títulos/labels faltantes.
+1.  **Visor 3D (Fase 2 mikuCNC)**: Integración de Three.js para previsualización de G-Code.
 2.  **Seguridad IPC**: Cerrar el canal `invoke` genérico en el preload de Electron.
 3.  **Expansión de Proveedores**: Traer el agent loop completo a Gemini y Groq.

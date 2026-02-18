@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.2.0] - 2026-02-18
+
+### ✨ Mejoras en el Contexto del Agente
+- **Memoria de Corto Plazo Activa**: El agente ahora mantiene los últimos 3 turnos (6 mensajes) del chat en modo Instrucción/Agente. Esto permite una mayor continuidad en tareas complejas sin degradar el rendimiento por saturación de contexto.
+- **Filtro de Comandos**: Se eliminan del historial de contexto los logs técnicos de ejecución de comandos para mantener la ventana de contexto limpia y enfocada en la conversación.
+
+### 📱 Optimización para Telegram y Remoto
+- **Telegram HTML Formatter**: Implementación de un nuevo motor de formateo específico para Telegram (`telegramFormatter.ts`).
+    - Conversión automática de Markdown a HTML compatible con Telegram.
+    - Soporte para encabezados, negritas, cursivas y bloques de código.
+    - Escapado de caracteres especiales para evitar fallos en la entrega de mensajes.
+- **Preservación de Estructura**: Mejoras en el manejo de saltos de línea dobles para asegurar que Telegram respete la separación de párrafos y listas.
+
+### 🛠️ Estabilidad y Refactorización
+- **Answer Formatting Utility**: Creación de `answerFormatter.ts` para capturar y limpiar artefactos de los modelos locales (secuencias `\n` mal escapadas, comillas redundantes, etc.) en el dashboard principal.
+- **Limpieza de Proyecto (Git Hygiene)**: Configuración avanzada de `.gitignore` para excluir automáticamente archivos de caché de Python y limpieza del índice del repositorio para eliminar archivos compilados preexistentes.
+- **Normalización de Saltos de Línea**: Soporte nativo para saltos de línea Windows/Unix en todas las respuestas del agente.
+
+
 ## [1.1.0] - 2026-02-15
 
 ### ✨ Características Principales

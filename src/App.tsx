@@ -604,6 +604,10 @@ export const App = () => {
             const identity = getFileDeep('IDENTITY.md') || getFileDeep('IDENTITY.MD') || '';
             const languageRule = `\n[MANDATORY LANGUAGE: SPANISH]\nRespond ALWAYS in Spanish unless the user speaks in another language or asks for a translation.\n`;
 
+            // Active Plan Injection (Working Memory)
+            const tasksContent = getFileDeep('TASKS.md') || getFileDeep('TASKS.MD');
+            const workingMemory = tasksContent ? `\n[MEMORIA DE TRABAJO - PLAN ACTUAL]\n${tasksContent}\n` : '';
+
             // Priority 1: AGENTS_MODES.MD (Primary source for modes)
             const modesContent = getFileDeep('AGENTS_MODES.md') || getFileDeep('AGENTS_MODES.MD') ||
                 getFileDeep('AGENT_MODES.md') || getFileDeep('AGENT_MODES.MD');
@@ -611,14 +615,14 @@ export const App = () => {
             if (modesContent) {
                 const match = modesContent.match(/## \[INSTRUCTION MODE.*?\]\r?\n([\s\S]*?)(?=\n##|$)/);
                 const content = (match ? match[1].trim() : modesContent.trim());
-                return `${identity}\n${languageRule}\n${content}`.replace(/{{CURRENT_TIME}}/g, timeStr);
+                return `${identity}\n${languageRule}\n${workingMemory}\n${content}`.replace(/{{CURRENT_TIME}}/g, timeStr);
             }
 
             // Fallback: AGENT_PROTOCOL.md or COMMANDS.md
             const fallback = getFileDeep('AGENT_PROTOCOL.md') || getFileDeep('AGENT_PROTOCOL.MD') ||
                 getFileDeep('COMMANDS.md') || getFileDeep('COMMANDS.MD') ||
                 'Agent Protocol missing. Please configure your Command Engine folder.';
-            return `${identity}\n${languageRule}\n${fallback}`.replace(/{{CURRENT_TIME}}/g, timeStr);
+            return `${identity}\n${languageRule}\n${workingMemory}\n${fallback}`.replace(/{{CURRENT_TIME}}/g, timeStr);
         }
 
         const segments: string[] = [];

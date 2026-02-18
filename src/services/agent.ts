@@ -787,8 +787,18 @@ export async function sendAgentMessage(
                 }
 
                 if (isAgentMode) {
-                    const guide = `✅ [MOTOR] Accion "${toolCall.function.name}" completada. Analiza los datos: ${JSON.stringify(result.data).slice(0, 300)}. 
-SI la tarea esta terminada, usa "final_answer". SI NO, ejecuta el siguiente paso lógico.`;
+                    const originalObjective = chatMessages.find(m => m.role === 'user')?.content || 'No objective found';
+                    const guide = `
+🧠 [MOTOR DE ESTADO — Iteración ${iterations}]
+🎯 OBJETIVO ORIGINAL: "${originalObjective.slice(0, 300)}${originalObjective.length > 300 ? '...' : ''}"
+🛠️ ÚLTIMA ACCIÓN: "${toolCall.function.name}" -> ${isSuccess ? '✅ ÉXITO' : '❌ FALLO'}
+📊 DATOS OBTENIDOS: ${JSON.stringify(result.data).slice(0, 500)}
+
+[AUDITORÍA DE PASO]
+1. ¿Esta acción completó el 100% de lo solicitado? 
+   - SI: Justifica en un <think> y usa "final_answer".
+   - NO: Re-evalúa tu plan en "@CORE/TASKS.md" y ejecuta el SIGUIENTE PASO lógico.
+2. Si fallaste: Busca una ruta alternativa. NO repitas el mismo error.`;
                     ollamaMessages.push({ role: 'user', content: guide });
                 }
             }

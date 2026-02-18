@@ -27,7 +27,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                     </div>
                     <div>
                         <h1 className="font-bold text-lg text-white tracking-tight">mikuCentral</h1>
-                        <div className="text-[10px] text-slate-500 font-mono uppercase tracking-[0.2em]">v.1.0-alpha</div>
+                        <div className="text-[10px] text-slate-500 font-mono uppercase tracking-[0.2em]">v.1.2.0-alpha</div>
                     </div>
                 </div>
 
