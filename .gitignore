@@ -33,3 +33,8 @@ workSpace/
 
 # Build artifacts
 release/
+
+# Python cache
+**/__pycache__/
+*.pyc
+*.pyo
