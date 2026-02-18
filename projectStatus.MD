@@ -243,23 +243,6 @@ electron/
 
 ---
 
-## 6. Métricas del Codebase 📊
-
-| Métrica | Valor |
-|---------|-------|
-| **Total de líneas (src/)** | ~4,200 |
-| **Total de líneas (electron/)** | ~212 |
-| **Componentes React** | 11 |
-| **Servicios** | 5 |
-| **Herramientas del Agente** | 8 |
-| **Aliases de alucinación** | 190+ |
-| **Blueprints** | 4 |
-| **Proveedores de IA** | 3 |
-| **Dependencias producción** | 5 |
-| **Dependencias desarrollo** | 9 |
-
----
-
 ## 7. Log de Cambios 📋
 
 ### v1.1 — 15 Feb 2026 (Sprint 0: Reparaciones Iniciales)
@@ -316,6 +299,62 @@ electron/
 **Estado Final del Análisis**: El sistema ha dado un salto cualitativo hacia la **Omnipresencia**. Con la mejora en la memoria de contexto (3 turnos), el agente ya no "olvida" instrucciones inmediatas. La implementación de los formateadores de respuesta (`answerFormatter` y `telegramFormatter`) garantiza que la comunicación sea impecable tanto en el dashboard como en Telegram (móvil), respetando la jerarquía visual y la legibilidad. La arquitectura ahora es más robusta frente a las alucinaciones de formato de los modelos locales.
 
 **Prioridades inmediatas**:
-1.  **Visor 3D (Fase 2 mikuCNC)**: Integración de Three.js para previsualización de G-Code.
+1.  **Neural Engines Phase 1**: Implementación de Memoria Semántica (RAG) en Python.
 2.  **Seguridad IPC**: Cerrar el canal `invoke` genérico en el preload de Electron.
-3.  **Expansión de Proveedores**: Traer el agent loop completo a Gemini y Groq.
+3.  **Visor 3D (Fase 2 mikuCNC)**: Integración de Three.js para previsualización de G-Code.
+
+---
+
+## 8. El Camino de la Miku Suprema (Project Phoenix) 🚀🔥
+
+Para superar a OpenClaw y cualquier otro asistente, Miku debe evolucionar de un "Chatbot con Herramientas" a un "Agente de Agencia Total". Esta es la ruta lógica de integración de motores.
+
+### 8.1 Los Nuevos Neural Engines (Python-Based)
+
+| Fase | Motor | Capacidad | Prioridad |
+| :--- | :--- | :--- | :--- |
+| **1. Cerebro** | `knowledge_engine.py` | **RAG Semántico**: Memoria a largo plazo usando bases vectoriales locales (LanceDB). | 🔴 Crítica |
+| **2. Sentidos** | `perception_engine.py` | **Miku Vision/Voice**: OCR de documentos, lectura de PDFs complejos y procesamiento de audio local (Whisper). | 🟡 Alta |
+| **3. Acción** | `automation_engine.py` | **Navegador Autónomo**: Control de Playwright para "surfear" la web en tiempo real sin depender de Google/DuckDuckGo (Búsqueda Agéntica). | 🟡 Alta |
+| **4. Manos** | `system_engine.py` | **Control de OS**: Automatización de ratón/teclado y gestión de ventanas vía `PyAutoGUI`. | 🔵 Media |
+| **5. Vida** | `heartbeat_engine.py` | **Proactividad**: Bucle persistente que vigila eventos y envía alertas por Telegram sin intervención humana. | 🔵 Media |
+
+### 8.2 Expansión Multi-Motor (Más allá de Python)
+
+Para una soberanía total y rendimiento extremo, integraremos:
+
+1.  **Docker Engine (Sandbox)**: Para ejecutar código generado por la IA en un entorno totalmente aislado. Si Miku escribe un script erróneo, el daño queda en el contenedor, no en tu PC.
+2.  **Rust/Go Modules**: Para tareas de alto rendimiento como la búsqueda indexada instantánea en todo tu disco duro (reemplazando a `rg` o `fd` con lógica propia).
+3.  **FFmpeg Engine**: Integración nativa para que Miku sea capaz de editar videos, extraer audios de clips de YouTube y optimizar medios profesionalmente.
+4.  **Database Core (SQLite/Neo4j)**: Para la construcción de un **Knowledge Graph**. Miku no solo recordará textos, entenderá las conexiones lógicas entre tus ideas.
+
+---
+
+## 10. Arquitectura de Seguridad vs. Otros Agentes (OpenClaw) 🛡️
+
+A diferencia de otros agentes que usan Gateways centralizados, MikuCentral se basa en un modelo de **Soberanía Individual**.
+
+*   **Sin Intermediarios**: La comunicación Remote-to-Local (Telegram) es directa usando el Bot Token del usuario y filtrado por `chat_id`. No hay un servidor central que pueda ser hackeado para acceder a múltiples usuarios.
+*   **Aislamiento del Entorno**: El motor de Python vive en una carpeta externa (`engine/`), facilitando la creación futura de contenedores (Docker) para aislar ejecuciones críticas.
+*   **Human-in-the-Loop Nativo**: El panel de aprobación en Electron garantiza que ningún comando destructivo se ejecute sin supervisión visual del usuario, algo que se pierde en agentes de solo-mensajería.
+
+---
+
+## 11. Métricas del Codebase 📊
+
+| Métrica | Valor |
+|---------|-------|
+| **Total de líneas (src/)** | ~4,200 |
+| **Total de líneas (electron/)** | ~212 |
+| **Componentes React** | 11 |
+| **Servicios** | 5 |
+| **Herramientas del Agente** | 10+ (Expandiendo) |
+| **Neural Engines (Py)** | 2 (Search, Extract) |
+| **Fases de Phoenix** | 5 Planificadas |
+| **Proveedores de IA** | 3 |
+| **Dependencias producción** | 5 |
+| **Dependencias desarrollo** | 9 |
+
+---
+
+> **Nota final**: MikuCentral está entrando en su fase más ambiciosa. La arquitectura está lista para la transición de un asistente reactivo a un agente autónomo proactivo. La soberanía local es la base, la inteligencia distribuida es el futuro. 🌸🌐
