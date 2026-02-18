@@ -3,6 +3,7 @@ import { PROTECTED_CORE_FILES, CONSOLE_ALLOWED_COMMANDS, CONSOLE_BLOCKED_PATTERN
 import { validateToolArgs, safeFetch } from '../utils';
 import { recoverToolCallsFromText, normalizeRawToolCall, RecoveredCall } from './toolCallNormalizer';
 import { formatFinalResponse } from './answerFormatter';
+import { formatTelegramResponse } from './telegramFormatter';
 
 /**
  * Resolves the source and filename from a tool call.
@@ -287,7 +288,7 @@ export async function executeToolCall(
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             chat_id: chatId,
-                            text: args.text,
+                            text: formatTelegramResponse(args.text),
                             parse_mode: 'HTML' // Allow some basic formatting
                         })
                     });

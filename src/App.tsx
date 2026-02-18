@@ -13,6 +13,7 @@ import { db } from './services/fileSystem';
 import { persistence } from './services/persistence';
 import { telegramService } from './services/telegramService';
 import { executeCommand } from './services/commands/executor';
+import { formatTelegramResponse } from './services/telegramFormatter';
 
 export const App = () => {
     const [state, setState] = useState<AppState>({
@@ -667,7 +668,7 @@ export const App = () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 chat_id: state.config.telegramChatId,
-                text: text,
+                text: formatTelegramResponse(text),
                 parse_mode: 'HTML'
             })
         }).catch(err => console.error("Remote response error:", err));

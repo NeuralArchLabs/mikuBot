@@ -19,23 +19,26 @@ export function formatFinalResponse(rawText: string): string {
 
     let formatted = rawText;
 
-    // 1. Unescape literal \n strings if they escaped double-parsing
-    // Sometimes local models output "\\n" or "\n" as literal text inside the JSON string
+    // 1. Normalize line endings (Handle Windows \r\n and ensure they are just \n)
+    formatted = formatted.replace(/\r\n/g, '\n');
+
+    // 2. Unescape literal \n strings if they escaped double-parsing
+    // Handle both \\n and literal \n artifacts from some local models
     formatted = formatted.replace(/\\n/g, '\n');
 
-    // 2. Fix literal \t or other common escapes that might leak
+    // 3. Fix double escaping of quotes and tabs
     formatted = formatted.replace(/\\t/g, '    ');
     formatted = formatted.replace(/\\"/g, '"');
 
-    // 3. Ensure double newlines for markdown paragraphs if they are smashed
-    // (Only if they aren't already followed by a newline)
-    // formatted = formatted.replace(/([^\n])\n([^\n])/g, '$1\n\n$2'); 
-    // ^ This might be too aggressive, let's stick to cleaning artifacts for now.
+    // 4. Ensure clear separation before lists or headers if missing
+    // If we see a line ending in text immediately followed by a list or header, add a newline
+    formatted = formatted.replace(/([^\n])\n(?=[-*+]\s|#|\d+\.)/g, '$1\n\n');
 
-    // 4. Remove extra surrounding quotes that might have been captured by sloppy regex
+    // 5. Remove extra surrounding quotes and trim
     formatted = formatted.trim();
     if (formatted.startsWith('"') && formatted.endsWith('"')) {
         formatted = formatted.slice(1, -1);
+        formatted = formatted.trim();
     }
 
     return formatted;
