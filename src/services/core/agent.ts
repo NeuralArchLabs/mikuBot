@@ -553,17 +553,31 @@ export async function sendAgentMessage(
         } else if (provider === 'gemini') {
             const isGemma = config.model.toLowerCase().includes('gemma');
             const systemPromptContent = messages.find(m => m.role === 'system')?.content || '';
-            const history = messages.filter(m => m.role !== 'system').map(m => ({
-                role: m.role === 'assistant' ? 'model' : (m.role === 'tool' ? 'user' : m.role),
-                parts: [{ text: m.role === 'tool' ? `[TOOL_RESULT: ${m.tool_call_id}]\n${m.content}` : m.content }]
-            }));
 
-            if (isGemma && history.length > 0 && history[0].role === 'user') {
-                history[0].parts[0].text = `[SYSTEM]\n${systemPromptContent}\n[/SYSTEM]\n\n${history[0].parts[0].text}`;
+            // Reconstruct history ensuring roles alternate (Gemini Requirement)
+            const consolidatedHistory: any[] = [];
+            for (const m of messages.filter(msg => msg.role !== 'system')) {
+                const role = m.role === 'assistant' ? 'model' : (m.role === 'tool' ? 'user' : m.role);
+                const content = m.role === 'tool'
+                    ? `[TOOL_RESULT: ${m.tool_call_id}]\n${m.content}`
+                    : (m.content || '[Proceeding]'); // Avoid empty content for Gemini
+
+                if (consolidatedHistory.length > 0 && consolidatedHistory[consolidatedHistory.length - 1].role === role) {
+                    consolidatedHistory[consolidatedHistory.length - 1].parts[0].text += `\n\n${content}`;
+                } else {
+                    consolidatedHistory.push({
+                        role,
+                        parts: [{ text: content }]
+                    });
+                }
+            }
+
+            if (isGemma && consolidatedHistory.length > 0 && consolidatedHistory[0].role === 'user') {
+                consolidatedHistory[0].parts[0].text = `[SYSTEM]\n${systemPromptContent}\n[/SYSTEM]\n\n${consolidatedHistory[0].parts[0].text}`;
             }
 
             const body: any = {
-                contents: history,
+                contents: consolidatedHistory,
                 generationConfig: { temperature: config.temperature }
             };
 
@@ -606,9 +620,13 @@ export async function sendAgentMessage(
                         if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
                         try {
                             const parsed = JSON.parse(cleanLine.slice(6));
-                            const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
-                            if (text) {
-                                fullContent += text;
+                            const parts = parsed.candidates?.[0]?.content?.parts;
+                            if (parts && Array.isArray(parts)) {
+                                parts.forEach((part: any) => {
+                                    if (part.text) {
+                                        fullContent += part.text;
+                                    }
+                                });
                                 onStatus({ streamedText: fullContent, phase: 'streaming' });
                             }
                         } catch { }

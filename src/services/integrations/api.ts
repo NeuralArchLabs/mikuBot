@@ -130,21 +130,33 @@ export async function sendStreamingMessage(
                 }
             }
         }
-    } else {
-        // Gemini
+    } else if (providerToUse === 'gemini') {
+        // Case specific for Gemini API Key / Google AI logic
         const isGemma = config.model.toLowerCase().includes('gemma');
-        const contents = messages.map(m => ({
-            role: m.role === 'assistant' ? 'model' : m.role,
-            parts: [{ text: m.content }]
-        }));
+
+        // Consolidate history for Gemini (Alternating roles requirement)
+        const consolidatedHistory: any[] = [];
+        for (const m of messages) {
+            const role = m.role === 'assistant' ? 'model' : (m.role === 'tool' ? 'user' : m.role);
+            const content = m.content || '[Proceeding]';
+
+            if (consolidatedHistory.length > 0 && consolidatedHistory[consolidatedHistory.length - 1].role === role) {
+                consolidatedHistory[consolidatedHistory.length - 1].parts[0].text += `\n\n${content}`;
+            } else {
+                consolidatedHistory.push({
+                    role,
+                    parts: [{ text: content }]
+                });
+            }
+        }
 
         // Gemma doesn't support separate systemInstruction; prepend to first user message
-        if (isGemma && contents.length > 0 && contents[0].role === 'user') {
-            contents[0].parts[0].text = `[SYSTEM]\n${systemPrompt}\n[/SYSTEM]\n\n${contents[0].parts[0].text}`;
+        if (isGemma && consolidatedHistory.length > 0 && consolidatedHistory[0].role === 'user') {
+            consolidatedHistory[0].parts[0].text = `[SYSTEM]\n${systemPrompt}\n[/SYSTEM]\n\n${consolidatedHistory[0].parts[0].text}`;
         }
 
         const body: any = {
-            contents,
+            contents: consolidatedHistory,
             generationConfig: { temperature: config.temperature }
         };
 
@@ -162,7 +174,7 @@ export async function sendStreamingMessage(
         );
 
         if (!response.ok) {
-            const err = await response.json();
+            const err = await response.json().catch(() => ({}));
             throw new Error(err.error?.message || `HTTP ${response.status}`);
         }
 
@@ -185,11 +197,17 @@ export async function sendStreamingMessage(
 
                     try {
                         const parsed = JSON.parse(cleanLine.slice(6));
-                        const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
-                        if (text) onChunk(text);
+                        const parts = parsed.candidates?.[0]?.content?.parts;
+                        if (parts && Array.isArray(parts)) {
+                            parts.forEach((part: any) => {
+                                if (part.text) onChunk(part.text);
+                            });
+                        }
                     } catch { }
                 }
             }
         }
+    } else {
+        throw new Error(`Provider "${providerToUse}" not explicitly handled in streaming message.`);
     }
 }
