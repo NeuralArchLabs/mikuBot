@@ -41,8 +41,9 @@ import {
 export function fixPythonicJson(raw: string): string {
     let s = raw;
 
-    // Remove Python-style comments (# ...)
-    s = s.replace(/#[^\n]*/g, '');
+    // Remove Python-style comments (# ...) - but only if not inside quotes
+    // (Simplified: only remove if it's start of line or preceded by whitespace)
+    s = s.replace(/(?:\s|^)#[^\n]*/g, '');
 
     // Replace Python booleans and None with JSON equivalents
     s = s.replace(/\bTrue\b/g, 'true');
@@ -58,24 +59,25 @@ export function fixPythonicJson(raw: string): string {
 
     // Handle "Greedy Multiline Fields" (common in Markdown/Code blocks)
     // Targets keys like content, replace, text, which often break due to raw newlines.
-    // Enhanced with a lookahead to allow internal quotes.
-    const multilineKeys = ["content", "replace", "text", "texto", "respuesta", "body", "reasoning", "sources"];
+    const multilineKeys = ["content", "replace", "text", "texto", "respuesta", "body", "reasoning", "sources", "find"];
     for (const key of multilineKeys) {
-        // This regex looks for "key": "..." and stops ONLY when it sees a comma or brace followed by another potential key.
-        const re = new RegExp(`("${key}"|'${key}')\\s*:\\s*(['"])([\\s\\S]*?)\\2(?=\\s*[,}]\\s*(?:['"][a-zA-Z0-9_]+['"]\\s*:|\\s*}))`, 'gi');
+        // This regex looks for "key": "..." and stops ONLY when it sees a comma or brace followed by another potential key or end of object.
+        // We use [\s\S] to match across newlines.
+        const re = new RegExp(`("${key}"|'${key}')\\s*:\\s*(['"])([\\s\\S]*?)\\2(?=\\s*[,}]\\s*(?:['"][a-zA-Z0-9_]+['"]\\s*:|\\s*}|$))`, 'gi');
         s = s.replace(re, (match, k, q, content) => {
-            // Only escape stuff that ISN'T already escaped
             const escaped = content
-                .replace(/(?<!\\)\\/g, '\\\\')
-                .replace(/(?<!\\)"/g, '\\"')
                 .replace(/\n/g, '\\n')
                 .replace(/\r/g, '\\r');
+            // We don't escape quotes here because it's hard to distinguish between 
+            // internal quotes intended to be part of the string vs hallucinated unescaped quotes.
+            // But we MUST at least preserve the string.
             return `${k}: "${escaped}"`;
         });
     }
 
-    // Fix raw newlines inside any double-quoted strings
-    s = s.replace(/"([^"\\]*(?:\\.[^"\\]*)*)"/g, (match, content) => {
+    // Fix raw newlines inside any double-quoted strings - use [\s\S] to cross lines
+    // We use a non-greedy match that respects escaped quotes.
+    s = s.replace(/"((?:\\.|[^"\\])*)"/g, (match, content) => {
         return '"' + content.replace(/\n/g, '\\n').replace(/\r/g, '\\r') + '"';
     });
 
@@ -506,15 +508,23 @@ function reconstructFromNarrative(text: string, tools: ToolDefinition[]): { call
             for (const [alias, realKey] of Object.entries(possibleArgKeys)) {
                 if (alias.length < 3) continue;
 
-                // Improved Regex: capture quotes or allow direct values (including bracketed arrays)
+                // Improved Regex: capture quotes (handling escapes) or allow unquoted values until common delimiters
+                // 1. (["'])(?:\\.|[^\1])*?\1  -> Quoted string with escape support
+                // 2. (\\[[\\s\\S]*?\\])      -> JSON-like array
+                // 3. ([\\s\\S]*?)(?=\\s*[,}\\n]\\s*[a-zA-Z0-9_]+[:=]|\\s*[}\\n]|$) -> Unquoted text until next key or end
                 const argRe = new RegExp(`["']?${alias}["']?\\s*[:=]\\s*(?:(["'])([\\s\\S]*?)\\1|(\\[[\\s\\S]*?\\])|([\\s\\S]*?)(?=\\s*[,}\\n]\\s*[a-zA-Z0-9_]+[:=]|\\s*[}\\n]|$))`, 'gi');
                 let argMatch;
                 while ((argMatch = argRe.exec(textToScan)) !== null) {
                     let value: any = argMatch[2] || argMatch[3] || argMatch[4];
-                    if (value) {
+                    if (value !== undefined) {
                         value = value.trim();
-                        // If it looks like a JSON array, try to parse it to avoid fingerprint mismatch
-                        if (value.startsWith('[') && value.endsWith(']')) {
+                        // If it's a quoted string, we might need to unescape some characters
+                        if (argMatch[1]) {
+                            value = value.replace(/\\"/g, '"').replace(/\\n/g, '\n').replace(/\\r/g, '\r').replace(/\\\\/g, '\\');
+                        }
+
+                        // If it looks like a JSON array, try to parse it
+                        if (typeof value === 'string' && value.startsWith('[') && value.endsWith(']')) {
                             try {
                                 const parsedArr = JSON.parse(value.replace(/'/g, '"'));
                                 if (Array.isArray(parsedArr)) value = parsedArr;

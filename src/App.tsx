@@ -891,55 +891,41 @@ NO simules resultados de herramientas ni inventes datos; si necesitas informaci�
 
             // Moved finalAssistantText outside try
 
-            if (currentState.config.provider === 'ollama') {
-                const isChatTools = currentState.agentMode === 'chat' && !effectiveToolMode;
-                const isAgentMode = currentState.agentMode === 'agent';
+            const isChatTools = currentState.agentMode === 'chat' && !effectiveToolMode;
+            const isAgentMode = currentState.agentMode === 'agent';
 
-                // En modo chat solo permitimos herramientas de lectura e investigaci처n + edici처n de contexto
-                const toolsForSession = isChatTools
-                    ? AGENT_TOOLS.filter(t => ['read_file', 'list_files', 'search_files', 'web_search', 'read_url', 'update_file', 'patch_file'].includes(t.function.name))
-                    : AGENT_TOOLS;
+            // En modo chat solo permitimos herramientas de lectura e investigaci처n + edici처n de contexto
+            const toolsForSession = isChatTools
+                ? AGENT_TOOLS.filter(t => ['read_file', 'list_files', 'search_files', 'web_search', 'read_url', 'update_file', 'patch_file'].includes(t.function.name))
+                : AGENT_TOOLS;
 
-                await sendAgentMessage(
-                    currentState.config, systemInstruction, chatHistoryLocal, toolsForSession,
-                    { ...freshState.core }, { ...freshState.additional }, { ...freshState.workSpace }, { ...freshState.tools },
-                    saveFile,
-                    deleteFile,
-                    (chunk, replace, blocks) => {
-                        finalAssistantText = replace ? chunk : finalAssistantText + chunk;
-                        setMessages(prev => prev.map(m => m.id === modelMsgId ? { ...m, text: finalAssistantText, blocks: blocks || m.blocks } : m));
-                    },
-                    (p) => setAgentStatus(prev => ({ ...prev, ...p })),
-                    (toolCall) => new Promise(resolve => setPendingToolApproval({ toolCall, resolve })),
-                    ac.signal,
-                    (history) => setMessages(prev => prev.map(m => m.id === modelMsgId ? { ...m, rawHistory: history } : m)),
-                    true, // useTextExtraction (siempre encendido si hay herramientas)
-                    isAgentMode,
-                    currentState.safeMode,
-                    currentState.approvalMode,
-                    effectiveToolMode // isInstructionMode (bot처n del rayo)
+            await sendAgentMessage(
+                currentState.config, systemInstruction, chatHistoryLocal, toolsForSession,
+                { ...freshState.core }, { ...freshState.additional }, { ...freshState.workSpace }, { ...freshState.tools },
+                saveFile,
+                deleteFile,
+                (chunk, replace, blocks) => {
+                    finalAssistantText = replace ? chunk : finalAssistantText + chunk;
+                    setMessages(prev => prev.map(m => m.id === modelMsgId ? { ...m, text: finalAssistantText, blocks: blocks || m.blocks } : m));
+                },
+                (p) => setAgentStatus(prev => ({ ...prev, ...p })),
+                (toolCall) => new Promise(resolve => setPendingToolApproval({ toolCall, resolve })),
+                ac.signal,
+                (history) => setMessages(prev => prev.map(m => m.id === modelMsgId ? { ...m, rawHistory: history } : m)),
+                true, // useTextExtraction (siempre encendido si hay herramientas)
+                isAgentMode,
+                currentState.safeMode,
+                currentState.approvalMode,
+                effectiveToolMode // isInstructionMode (bot처n del rayo)
+            );
+
+            if (isRemote && finalAssistantText) {
+                // Check if a tool already sent it
+                const wasSentByTool = agentStatus.rawMessages?.some(m =>
+                    m.role === 'assistant' &&
+                    m.tool_calls?.some((tc: any) => tc.function.name === 'send_telegram_message')
                 );
-
-                if (isRemote && finalAssistantText) {
-                    // Check if a tool already sent it
-                    const wasSentByTool = agentStatus.rawMessages?.some(m =>
-                        m.role === 'assistant' &&
-                        m.tool_calls?.some((tc: any) => tc.function.name === 'send_telegram_message')
-                    );
-                    if (!wasSentByTool) sendToTelegramDirectly(finalAssistantText);
-                }
-            } else {
-                await sendStreamingMessage(
-                    currentState.config.provider as any, currentState.config, systemInstruction, chatHistoryLocal,
-                    (chunk) => {
-                        finalAssistantText += chunk;
-                        setMessages(prev => prev.map(m => m.id === modelMsgId ? { ...m, text: finalAssistantText } : m));
-                    }
-                );
-
-                if (isRemote && finalAssistantText) {
-                    sendToTelegramDirectly(finalAssistantText);
-                }
+                if (!wasSentByTool) sendToTelegramDirectly(finalAssistantText);
             }
         } catch (error) {
             if (error instanceof DOMException && error.name === 'AbortError') return;

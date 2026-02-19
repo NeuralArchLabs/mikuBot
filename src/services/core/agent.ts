@@ -427,65 +427,198 @@ export async function sendAgentMessage(
     let modelSupportsNativeTools = true;
     let allBlocks: any[] = [];
 
-    async function streamOllamaRequest(
+    async function streamModelRequest(
         messages: any[],
         useTools: boolean,
     ): Promise<{ content: string; toolCalls: any[] }> {
-        const filteredMessages = messages.filter(m => m.content || (m.tool_calls && m.tool_calls.length > 0));
+        const provider = config.provider;
 
-        const body: any = {
-            model: config.model,
-            messages: filteredMessages,
-            stream: true,
-            options: { temperature: config.temperature },
-        };
-        if (useTools && modelSupportsNativeTools) body.tools = tools;
+        if (provider === 'ollama') {
+            const body: any = {
+                model: config.model,
+                messages: messages.filter(m => m.content || (m.tool_calls && m.tool_calls.length > 0)),
+                stream: true,
+                options: { temperature: config.temperature },
+            };
+            if (useTools && modelSupportsNativeTools) body.tools = tools;
 
-        const response = await fetch(`${config.ollamaUrl}/api/chat`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-            signal: abortSignal,
-        });
+            const response = await fetch(`${config.ollamaUrl}/api/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+                signal: abortSignal,
+            });
 
-        if (response.status === 400 && useTools && modelSupportsNativeTools) {
-            log('warn', 'Este modelo está siendo optimizado para el llamado y uso de herramientas');
-            modelSupportsNativeTools = false;
-            return streamOllamaRequest(messages, false);
-        }
+            if (response.status === 400 && useTools && modelSupportsNativeTools) {
+                log('warn', 'Este modelo está siendo optimizado para el llamado y uso de herramientas');
+                modelSupportsNativeTools = false;
+                return streamModelRequest(messages, false);
+            }
 
-        if (!response.ok) {
-            const errBody = await response.text().catch(() => '');
-            throw new Error(`Ollama HTTP ${response.status}: ${errBody}`);
-        }
+            if (!response.ok) {
+                const errBody = await response.text().catch(() => '');
+                throw new Error(`Ollama HTTP ${response.status}: ${errBody}`);
+            }
 
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
-        let fullContent = '';
-        let toolCalls: any[] = [];
+            const reader = response.body?.getReader();
+            const decoder = new TextDecoder();
+            let fullContent = '';
+            let toolCalls: any[] = [];
+            let buffer = '';
 
-        if (reader) {
-            while (true) {
-                if (abortSignal.aborted) throw new DOMException('Aborted', 'AbortError');
-                const { done, value } = await reader.read();
-                if (done) break;
-                const chunk = decoder.decode(value);
-                const lines = chunk.split('\n').filter(Boolean);
-                for (const line of lines) {
-                    try {
-                        const parsed = JSON.parse(line);
-                        if (parsed.message?.content) {
-                            fullContent += parsed.message.content;
-                            onStatus({ streamedText: fullContent, phase: 'streaming' });
-                        }
-                        if (parsed.message?.tool_calls) {
-                            toolCalls = [...toolCalls, ...parsed.message.tool_calls];
-                        }
-                    } catch { }
+            if (reader) {
+                while (true) {
+                    if (abortSignal.aborted) throw new DOMException('Aborted', 'AbortError');
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
+
+                    for (const line of lines) {
+                        const cleanLine = line.trim();
+                        if (!cleanLine) continue;
+                        try {
+                            const parsed = JSON.parse(cleanLine);
+                            if (parsed.message?.content) {
+                                fullContent += parsed.message.content;
+                                onStatus({ streamedText: fullContent, phase: 'streaming' });
+                            }
+                            if (parsed.message?.tool_calls) {
+                                toolCalls = [...toolCalls, ...parsed.message.tool_calls];
+                            }
+                        } catch { }
+                    }
                 }
             }
+            return { content: fullContent, toolCalls };
+        } else if (provider === 'groq') {
+            const body: any = {
+                model: config.model,
+                messages: messages.map(m => ({ role: m.role, content: m.content || '' })), // Groq doesn't like empty content
+                stream: true,
+                temperature: config.temperature,
+            };
+            // Note: We currently don't use native tools for Groq in the agent loop to rely on text extraction
+            // which is more robust for our complex multi-tool scenarios.
+
+            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${config.apiKeys.groq}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(body),
+                signal: abortSignal,
+            });
+
+            if (!response.ok) {
+                const err = await response.json().catch(() => ({}));
+                throw new Error(err.error?.message || `Groq HTTP ${response.status}`);
+            }
+
+            const reader = response.body?.getReader();
+            const decoder = new TextDecoder();
+            let fullContent = '';
+            let buffer = '';
+
+            if (reader) {
+                while (true) {
+                    if (abortSignal.aborted) throw new DOMException('Aborted', 'AbortError');
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
+
+                    for (const line of lines) {
+                        const cleanLine = line.trim();
+                        if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
+                        const data = cleanLine.slice(6);
+                        if (data === '[DONE]') continue;
+                        try {
+                            const parsed = JSON.parse(data);
+                            const content = parsed.choices?.[0]?.delta?.content;
+                            if (content) {
+                                fullContent += content;
+                                onStatus({ streamedText: fullContent, phase: 'streaming' });
+                            }
+                        } catch { }
+                    }
+                }
+            }
+            return { content: fullContent, toolCalls: [] };
+        } else if (provider === 'gemini') {
+            const isGemma = config.model.toLowerCase().includes('gemma');
+            const systemPromptContent = messages.find(m => m.role === 'system')?.content || '';
+            const history = messages.filter(m => m.role !== 'system').map(m => ({
+                role: m.role === 'assistant' ? 'model' : (m.role === 'tool' ? 'user' : m.role),
+                parts: [{ text: m.role === 'tool' ? `[TOOL_RESULT: ${m.tool_call_id}]\n${m.content}` : m.content }]
+            }));
+
+            if (isGemma && history.length > 0 && history[0].role === 'user') {
+                history[0].parts[0].text = `[SYSTEM]\n${systemPromptContent}\n[/SYSTEM]\n\n${history[0].parts[0].text}`;
+            }
+
+            const body: any = {
+                contents: history,
+                generationConfig: { temperature: config.temperature }
+            };
+
+            if (!isGemma) {
+                body.systemInstruction = { parts: [{ text: systemPromptContent }] };
+            }
+
+            const response = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:streamGenerateContent?alt=sse&key=${config.apiKeys.gemini}`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                    signal: abortSignal,
+                }
+            );
+
+            if (!response.ok) {
+                const err = await response.json().catch(() => ({}));
+                throw new Error(err.error?.message || `Gemini HTTP ${response.status}`);
+            }
+
+            const reader = response.body?.getReader();
+            const decoder = new TextDecoder();
+            let fullContent = '';
+            let buffer = '';
+
+            if (reader) {
+                while (true) {
+                    if (abortSignal.aborted) throw new DOMException('Aborted', 'AbortError');
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
+
+                    for (const line of lines) {
+                        const cleanLine = line.trim();
+                        if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
+                        try {
+                            const parsed = JSON.parse(cleanLine.slice(6));
+                            const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+                            if (text) {
+                                fullContent += text;
+                                onStatus({ streamedText: fullContent, phase: 'streaming' });
+                            }
+                        } catch { }
+                    }
+                }
+            }
+            return { content: fullContent, toolCalls: [] };
         }
-        return { content: fullContent, toolCalls };
+
+        throw new Error(`Unsupported provider for Agent Loop: ${provider}`);
     }
 
     let historicalContext = chatMessages;
@@ -496,7 +629,7 @@ export async function sendAgentMessage(
         historicalContext = filteredHistory.slice(-6);
     }
 
-    const ollamaMessages: any[] = [
+    const agentMessages: any[] = [
         { role: 'system', content: systemPrompt },
         ...historicalContext,
     ];
@@ -544,7 +677,7 @@ export async function sendAgentMessage(
     while (!abortSignal.aborted) {
         if (retries >= MAX_RETRIES) {
             log('warn', `Max retries reached (${MAX_RETRIES}). Requesting final explanation...`);
-            onStatus({ phase: 'error', retries, maxRetries: MAX_RETRIES, errorCount: retries, elapsedMs: Date.now() - startTime, rawMessages: [...ollamaMessages] });
+            onStatus({ phase: 'error', retries, maxRetries: MAX_RETRIES, errorCount: retries, elapsedMs: Date.now() - startTime, rawMessages: [...agentMessages] });
             break;
         }
 
@@ -566,7 +699,7 @@ export async function sendAgentMessage(
             const tasksContent = findTaskContent() || '';
             const workingMemoryBlock = `[PLAN_DE_TRABAJO_ACTUAL]\n${tasksContent || 'No hay tareas activas.'}\n[/PLAN_DE_TRABAJO_ACTUAL]`;
 
-            let systemPromptCurrent = ollamaMessages[0].content;
+            let systemPromptCurrent = agentMessages[0].content;
 
             // Simplified markers for better reliability
             const markerStart = "[PLAN_DE_TRABAJO_ACTUAL]";
@@ -577,14 +710,14 @@ export async function sendAgentMessage(
             if (sIdx !== -1 && eIdx !== -1) {
                 const before = systemPromptCurrent.substring(0, sIdx);
                 const after = systemPromptCurrent.substring(eIdx + markerEnd.length);
-                ollamaMessages[0].content = before + workingMemoryBlock + after;
+                agentMessages[0].content = before + workingMemoryBlock + after;
             } else {
                 // Initial injection fallback
                 const tasksSection = `\n\n${workingMemoryBlock}\n\n`;
                 if (systemPromptCurrent.includes('[IDIOMA — OBLIGATORIO]')) {
-                    ollamaMessages[0].content = systemPromptCurrent.replace(/(\[IDIOMA — OBLIGATORIO\].*?\n)/, `$1${tasksSection}`);
+                    agentMessages[0].content = systemPromptCurrent.replace(/(\[IDIOMA — OBLIGATORIO\].*?\n)/, `$1${tasksSection}`);
                 } else {
-                    ollamaMessages[0].content = tasksSection + systemPromptCurrent;
+                    agentMessages[0].content = tasksSection + systemPromptCurrent;
                 }
             }
         }
@@ -595,15 +728,15 @@ export async function sendAgentMessage(
             retries,
             maxRetries: MAX_RETRIES,
             elapsedMs: Date.now() - startTime,
-            rawMessages: JSON.parse(JSON.stringify(ollamaMessages)) // Deep copy to ensure UI sees current state
+            rawMessages: JSON.parse(JSON.stringify(agentMessages)) // Deep copy to ensure UI sees current state
         });
 
         let content: string;
         let nativeToolCalls: any[];
 
         try {
-            const messagesForModel = [...ollamaMessages];
-            const result = await streamOllamaRequest(messagesForModel, useTextExtraction);
+            const messagesForModel = [...agentMessages];
+            const result = await streamModelRequest(messagesForModel, useTextExtraction);
             content = result.content;
             nativeToolCalls = result.toolCalls;
         } catch (err) {
@@ -731,12 +864,12 @@ export async function sendAgentMessage(
             }
         }
 
-        ollamaMessages.push({
+        agentMessages.push({
             role: 'assistant',
             content: content || '[Calling Tools...]',
             tool_calls: uniqueToolCalls.length > 0 ? uniqueToolCalls : undefined,
         });
-        onStatus({ rawMessages: [...ollamaMessages] });
+        onStatus({ rawMessages: [...agentMessages] });
 
         allBlocks = [...allBlocks, ...iterationBlocks];
 
@@ -749,13 +882,13 @@ export async function sendAgentMessage(
 
                 if (isJustSignature || hasSubstantialText) {
                     onChunk(content || '', true, allBlocks);
-                    if (onFinalRawHistory) onFinalRawHistory([...ollamaMessages]);
-                    onStatus({ phase: 'idle', elapsedMs: Date.now() - startTime, rawMessages: [...ollamaMessages] });
+                    if (onFinalRawHistory) onFinalRawHistory([...agentMessages]);
+                    onStatus({ phase: 'idle', elapsedMs: Date.now() - startTime, rawMessages: [...agentMessages] });
                     return;
                 } else if (retries < MAX_RETRIES) {
                     retries++;
                     const nudge = '⚠️ PROTOCOLO INCOMPLETO: No has realizado ninguna acción ni has dado una respuesta final. RECUERDA: Debes usar "final_answer" para terminar. RESPONDE ÚNICAMENTE EN JSON.';
-                    ollamaMessages.push({
+                    agentMessages.push({
                         role: 'user', content: `⚠️ PROTOCOLO INCOMPLETO: No has realizado ninguna acción ni has dado una respuesta final. RECUERDA: Debes usar "final_answer" para terminar. RESPONDE ÚNICAMENTE EN JSON.
 
 **EXAMPLE (FORMAT ONLY):**
@@ -768,12 +901,12 @@ export async function sendAgentMessage(
 }}
 
 **IMPORTANT:** Every final_answer must cite the actual files or URLs used.` });
-                    onStatus({ phase: 'thinking', retries, rawMessages: [...ollamaMessages] });
+                    onStatus({ phase: 'thinking', retries, rawMessages: [...agentMessages] });
                     continue;
                 }
             } else {
                 onChunk(content || '', true, allBlocks);
-                if (onFinalRawHistory) onFinalRawHistory([...ollamaMessages]);
+                if (onFinalRawHistory) onFinalRawHistory([...agentMessages]);
                 onStatus({ phase: 'idle', elapsedMs: Date.now() - startTime });
                 break;
             }
@@ -831,8 +964,8 @@ export async function sendAgentMessage(
             if (!approved) {
                 const b = allBlocks.find(x => x.toolCall?.id === toolCall.id);
                 if (b) b.result = { success: false, error: 'Rechazado.' };
-                ollamaMessages.push({ role: 'tool', content: 'Rejected', tool_call_id: toolCall.id });
-                onStatus({ rawMessages: [...ollamaMessages] });
+                agentMessages.push({ role: 'tool', content: 'Rejected', tool_call_id: toolCall.id });
+                onStatus({ rawMessages: [...agentMessages] });
             }
             return approved;
         }
@@ -849,7 +982,7 @@ export async function sendAgentMessage(
             if (!isSuccess) {
                 retries++;
                 const errorContent = hasError ? `Error: ${hasError}` : 'Tool execution failed.';
-                ollamaMessages.push({ role: 'tool', content: errorContent, tool_call_id: toolCall.id });
+                agentMessages.push({ role: 'tool', content: errorContent, tool_call_id: toolCall.id });
 
                 const findInStore = (store: Record<string, string>, fileName: string) => {
                     const low = fileName.toLowerCase();
@@ -860,26 +993,24 @@ export async function sendAgentMessage(
                 const toolsMd = findInStore(currentFiles, 'base/tools.md') || findInStore(currentFiles, 'tools.md') || '';
                 const toolSpecificManual = extractToolInstructions(toolCall.function.name, toolsMd);
                 if (toolSpecificManual) {
-                    ollamaMessages.push({
+                    agentMessages.push({
                         role: 'system',
                         content: `⚠️ INSTRUCCIÓN TÉCNICA DE RECUPERACIÓN:\nSe detectó un fallo o uso incorrecto en "${toolCall.function.name}". Siga estrictamente estas reglas extraídas de TOOLS.md:\n\n${toolSpecificManual}`
                     });
-                    onStatus({ rawMessages: [...ollamaMessages] });
+                    onStatus({ rawMessages: [...agentMessages] });
                 }
             } else {
                 retries = 0;
                 const desc = `${toolCall.function.name}(${JSON.stringify(toolCall.function.arguments)})`;
                 actionHistory.push(desc);
-                ollamaMessages.push({ role: 'tool', content: JSON.stringify(result), tool_call_id: toolCall.id });
-                onStatus({ rawMessages: [...ollamaMessages] });
+                agentMessages.push({ role: 'tool', content: JSON.stringify(result), tool_call_id: toolCall.id });
+                onStatus({ rawMessages: [...agentMessages] });
 
                 // CRITICAL: Update local mutable stores so subsequent steps in this session see the changes
                 if (['update_file', 'patch_file'].includes(toolCall.function.name) && result.data?.filename) {
                     const { target, cleanFilename } = resolvePathAndSource(toolCall.function.arguments.filename, toolCall.function.arguments.source);
                     let newContent = toolCall.function.arguments.content;
                     if (toolCall.function.name === 'patch_file') {
-                        // For patch_file, we need to get the resulting content. 
-                        // executeToolCall already saved it, but we need to update our LOCAL store.
                         const store = getFileStore(target, currentFiles, currentAdditional, currentWorkSpace, currentTools);
                         const existing = store[cleanFilename] || '';
                         const find = toolCall.function.arguments.find;
@@ -899,7 +1030,6 @@ export async function sendAgentMessage(
                     else if (target === 'workSpace') delete currentWorkSpace[cleanFilename];
                     else if (target === 'tools') delete currentTools[cleanFilename];
                 }
-
             }
         }
 
@@ -908,8 +1038,8 @@ export async function sendAgentMessage(
             if (!v.valid) {
                 const b = allBlocks.find(x => x.toolCall?.id === tc.id);
                 if (b) b.result = { success: false, error: v.error };
-                ollamaMessages.push({ role: 'tool', content: v.error, tool_call_id: tc.id });
-                onStatus({ rawMessages: [...ollamaMessages] });
+                agentMessages.push({ role: 'tool', content: v.error, tool_call_id: tc.id });
+                onStatus({ rawMessages: [...agentMessages] });
                 return false;
             }
             return true;
@@ -941,8 +1071,6 @@ export async function sendAgentMessage(
             }
             await executeAndProcess(tc, tc.function.name);
 
-            // Si el modo seguro está activado, solo ejecutamos una herramienta por turno 
-            // para permitir que el modelo vea el resultado antes de seguir.
             if (safeMode) {
                 log('info', 'Safe Mode: Deteniendo ejecución tras un paso para revisión.');
                 break;
@@ -950,12 +1078,12 @@ export async function sendAgentMessage(
         }
 
         if (hasFinalAnswer) {
-            if (onFinalRawHistory) onFinalRawHistory([...ollamaMessages]);
-            onStatus({ phase: 'idle', elapsedMs: Date.now() - startTime, rawMessages: [...ollamaMessages] });
+            if (onFinalRawHistory) onFinalRawHistory([...agentMessages]);
+            onStatus({ phase: 'idle', elapsedMs: Date.now() - startTime, rawMessages: [...agentMessages] });
             return;
         }
 
         onChunk(content, true, allBlocks);
-        onStatus({ rawMessages: [...ollamaMessages] });
+        onStatus({ rawMessages: [...agentMessages] });
     }
 }

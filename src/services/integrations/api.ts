@@ -105,14 +105,22 @@ export async function sendStreamingMessage(
 
         const reader = response.body?.getReader();
         const decoder = new TextDecoder();
+        let buffer = '';
+
         if (reader) {
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
-                const chunk = decoder.decode(value);
-                const lines = chunk.split('\n').filter(line => line.startsWith('data: '));
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+
                 for (const line of lines) {
-                    const data = line.slice(6);
+                    const cleanLine = line.trim();
+                    if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
+
+                    const data = cleanLine.slice(6);
                     if (data === '[DONE]') continue;
                     try {
                         const parsed = JSON.parse(data);
@@ -124,19 +132,32 @@ export async function sendStreamingMessage(
         }
     } else {
         // Gemini
+        const isGemma = config.model.toLowerCase().includes('gemma');
+        const contents = messages.map(m => ({
+            role: m.role === 'assistant' ? 'model' : m.role,
+            parts: [{ text: m.content }]
+        }));
+
+        // Gemma doesn't support separate systemInstruction; prepend to first user message
+        if (isGemma && contents.length > 0 && contents[0].role === 'user') {
+            contents[0].parts[0].text = `[SYSTEM]\n${systemPrompt}\n[/SYSTEM]\n\n${contents[0].parts[0].text}`;
+        }
+
+        const body: any = {
+            contents,
+            generationConfig: { temperature: config.temperature }
+        };
+
+        if (!isGemma) {
+            body.systemInstruction = { parts: [{ text: systemPrompt }] };
+        }
+
         const response = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:streamGenerateContent?alt=sse&key=${config.apiKeys.gemini}`,
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: messages.map(m => ({
-                        role: m.role === 'assistant' ? 'model' : m.role,
-                        parts: [{ text: m.content }]
-                    })),
-                    systemInstruction: { parts: [{ text: systemPrompt }] },
-                    generationConfig: { temperature: config.temperature }
-                }),
+                body: JSON.stringify(body),
             }
         );
 
@@ -147,15 +168,23 @@ export async function sendStreamingMessage(
 
         const reader = response.body?.getReader();
         const decoder = new TextDecoder();
+        let buffer = '';
+
         if (reader) {
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
-                const chunk = decoder.decode(value);
-                const lines = chunk.split('\n').filter(line => line.startsWith('data: '));
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+
                 for (const line of lines) {
+                    const cleanLine = line.trim();
+                    if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
+
                     try {
-                        const parsed = JSON.parse(line.slice(6));
+                        const parsed = JSON.parse(cleanLine.slice(6));
                         const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
                         if (text) onChunk(text);
                     } catch { }
