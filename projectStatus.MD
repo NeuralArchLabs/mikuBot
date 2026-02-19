@@ -117,6 +117,18 @@ electron/
 
 #### 🔴 CRÍTICAS
 
+**C1. Robustez del Agent Loop (Amnesia de Tareas)**
+- **Problema**: El agente pierde el hilo en tareas largas o ignora resultados de pasos anteriores.
+- **Riesgo**: Tareas incompletas, repetición de errores y pérdida de confianza del usuario.
+- **Solución propuesta**: Implementar "Dynamic Task Anchoring" en `TASKS.md` y una auditoría pre-final obligatoria.
+
+**C2. Sistema de Skills Modular**
+- **Problema**: Añadir nuevas capacidades requiere tocar el código fuente de la app.
+- **Riesgo**: Estancamiento del potencial de Miku y dificultad para la comunidad/usuario de expandirla.
+- **Solución propuesta**: Arquitectura de "Neural Skills" basada en carpetas con manifiestos auto-indexables.
+
+**C3. API Keys expuestas en el Frontend**
+
 **C1. API Keys expuestas en el Frontend**
 - Las API keys de Gemini se pasan directamente en la URL (`?key=${config.apiKeys.gemini}`) en `api.ts:15,87`.
 - Las keys de Groq se envían en headers desde el renderer process.
@@ -299,9 +311,9 @@ electron/
 **Estado Final del Análisis**: El sistema ha dado un salto cualitativo hacia la **Omnipresencia**. Con la mejora en la memoria de contexto (3 turnos), el agente ya no "olvida" instrucciones inmediatas. La implementación de los formateadores de respuesta (`answerFormatter` y `telegramFormatter`) garantiza que la comunicación sea impecable tanto en el dashboard como en Telegram (móvil), respetando la jerarquía visual y la legibilidad. La arquitectura ahora es más robusta frente a las alucinaciones de formato de los modelos locales.
 
 **Prioridades inmediatas**:
-1.  **Neural Engines Phase 1**: Implementación de Memoria Semántica (RAG) en Python.
-2.  **Seguridad IPC**: Cerrar el canal `invoke` genérico en el preload de Electron.
-3.  **Visor 3D (Fase 2 mikuCNC)**: Integración de Three.js para previsualización de G-Code.
+1.  **Agent Loop Repair**: Implementación de protocolo de persistencia de objetivos en `TASKS.md`.
+2.  **Neural Skills System**: Diseño e implementación del motor de carga de habilidades externas.
+3.  **Neural Engines Phase 1**: Memoria Semántica (RAG) en Python.
 
 ---
 
