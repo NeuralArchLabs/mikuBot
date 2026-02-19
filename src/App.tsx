@@ -645,7 +645,17 @@ export const App = () => {
         }
 
         const prompt = segments.join('\n\n');
-        const finalPrompt = prompt || getFileDeep('IDENTITY.md') || getFileDeep('IDENTITY.MD') || 'System Identity missing.';
+        let finalPrompt = prompt || getFileDeep('IDENTITY.md') || getFileDeep('IDENTITY.MD') || 'System Identity missing.';
+
+        if (!isAgentOrInstruction) {
+            finalPrompt += `\n\n[AVISO DE SISTEMA: MODO CHAT ACTIVO]
+Te encuentras en una conversación casual. Tu prioridad es tu identidad (SOUL). 
+Tienes acceso limitado a herramientas de investigación bibliográfica (lectura) y la capacidad de actualizar tu memoria de trabajo únicamente en el archivo 'ACTIVE_CONTEXT.md' del core. 
+NO tienes permitido realizar cambios en otros archivos (código, documentos de desarrollo) ni ejecutar comandos de consola.
+Si el usuario te pide una tarea técnica compleja o de programación, invítalo a cambiar al "Modo Agente" en el selector de abajo.
+NO simules resultados de herramientas ni inventes datos; si necesitas información, usa las herramientas de lectura permitidas o sé honesto si no puedes realizar la acción.`;
+        }
+
         return finalPrompt.replace(/{{CURRENT_TIME}}/g, timeStr);
     };
 
@@ -834,10 +844,16 @@ export const App = () => {
             // Moved finalAssistantText outside try
 
             if (currentState.config.provider === 'ollama') {
-                const isToolCapable = currentState.agentMode === 'agent' || effectiveToolMode;
+                const isChatTools = currentState.agentMode === 'chat' && !effectiveToolMode;
+                const isAgentMode = currentState.agentMode === 'agent';
+
+                // En modo chat solo permitimos herramientas de lectura e investigación + edición de contexto
+                const toolsForSession = isChatTools
+                    ? AGENT_TOOLS.filter(t => ['read_file', 'list_files', 'search_files', 'web_search', 'read_url', 'update_file', 'patch_file'].includes(t.function.name))
+                    : AGENT_TOOLS;
 
                 await sendAgentMessage(
-                    currentState.config, systemInstruction, chatHistoryLocal, AGENT_TOOLS,
+                    currentState.config, systemInstruction, chatHistoryLocal, toolsForSession,
                     { ...freshState.core }, { ...freshState.additional }, { ...freshState.workSpace }, { ...freshState.tools },
                     saveFile,
                     (chunk, replace, blocks) => {
@@ -848,7 +864,11 @@ export const App = () => {
                     (toolCall) => new Promise(resolve => setPendingToolApproval({ toolCall, resolve })),
                     ac.signal,
                     (history) => setMessages(prev => prev.map(m => m.id === modelMsgId ? { ...m, rawHistory: history } : m)),
-                    isToolCapable, isToolCapable, currentState.safeMode, currentState.approvalMode
+                    true, // useTextExtraction (siempre encendido si hay herramientas)
+                    isAgentMode,
+                    currentState.safeMode,
+                    currentState.approvalMode,
+                    effectiveToolMode // isInstructionMode (botón del rayo)
                 );
 
                 if (isRemote && finalAssistantText) {

@@ -402,7 +402,8 @@ export async function sendAgentMessage(
     useTextExtraction: boolean = true,
     isAgentMode: boolean = false,
     safeMode: boolean = false,
-    approvalMode: ApprovalMode = 'auto'
+    approvalMode: ApprovalMode = 'auto',
+    isInstructionMode: boolean = false
 ): Promise<void> {
 
     const log = (type: AgentLogEntry['type'], message: string, details?: any) => {
@@ -722,11 +723,38 @@ export async function sendAgentMessage(
 
         function isAutoApproved(tc: ToolCall): boolean {
             const tn = tc.function.name;
+            const args = tc.function.arguments;
+            const target = resolveSource(args.source);
+            const filename = args.filename || '';
+
+            // 1. Siempre permitir herramientas de lectura e investigación
             if (READ_ONLY_TOOLS.has(tn)) return true;
+
+            // 2. Archivos especiales de memoria en CORE siempre permitidos
+            if (target === 'core') {
+                const lowFile = filename.toLowerCase();
+                if (lowFile === 'tasks.md' || lowFile === 'active_context.md' || lowFile.endsWith('/tasks.md') || lowFile.endsWith('/active_context.md')) {
+                    return true;
+                }
+            }
+
+            // 3. Acciones de alto riesgo SIEMPRE requieren aprobación (consola)
             if (tn === 'run_console') return false;
-            const target = resolveSource(tc.function.arguments.source);
-            if (target !== 'workSpace') return false;
-            if (tn === 'update_file') return currentWorkSpace[tc.function.arguments.filename] === undefined;
+
+            // 4. Lógica por modo
+            if (isInstructionMode) {
+                // Modo Instrucción (Rayo): Conservador. Solo auto-aprueba creación de archivos nuevos en workspace.
+                if (target !== 'workSpace') return false;
+                if (tn === 'update_file') return currentWorkSpace[filename] === undefined;
+                return false;
+            }
+
+            if (isAgentMode) {
+                // Modo Agente: Autónomo. Permite todo lo que no sea consola o archivos protegidos (protección manejada en executeToolCall)
+                return true;
+            }
+
+            // Chat Mode u otros: No auto-aprobar nada más (las de lectura ya pasaron en el punto 1)
             return false;
         }
 
@@ -852,6 +880,13 @@ export async function sendAgentMessage(
                 if (!await requestApproval(tc, tc.function.name)) continue;
             }
             await executeAndProcess(tc, tc.function.name);
+
+            // Si el modo seguro está activado, solo ejecutamos una herramienta por turno 
+            // para permitir que el modelo vea el resultado antes de seguir.
+            if (safeMode) {
+                log('info', 'Safe Mode: Deteniendo ejecución tras un paso para revisión.');
+                break;
+            }
         }
 
         if (hasFinalAnswer) {
