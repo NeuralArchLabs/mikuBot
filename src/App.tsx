@@ -2,18 +2,23 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AppState, AgentStatus, Message, PendingToolApproval, AgentMode, ModelInfo, FileSystemDirectoryHandle, FileSystemFileHandle, FileTarget, Session, ApprovalMode, SessionMetadata, PermissionStatus } from './types';
 import { DEFAULT_CONFIG, DEFAULT_FILES, AGENT_TOOLS } from './constants';
 import { createDefaultAgentStatus } from './utils';
-import { Sidebar } from './components/Sidebar';
-import { ChatArea } from './components/ChatArea';
-import { FileEditor } from './components/FileEditor';
-import { LibraryManager } from './components/LibraryManager';
-import { SettingsPanel } from './components/SettingsPanel';
-import { fetchModels, sendStreamingMessage } from './services/api';
-import { sendAgentMessage } from './services/agent';
-import { db } from './services/fileSystem';
-import { persistence } from './services/persistence';
-import { telegramService } from './services/telegramService';
-import { executeCommand } from './services/commands/executor';
-import { formatTelegramResponse } from './services/telegramFormatter';
+import {
+    Sidebar,
+    ChatArea,
+    FileEditor,
+    LibraryManager,
+    SettingsPanel
+} from './components';
+import {
+    fetchModels,
+    sendStreamingMessage,
+    sendAgentMessage,
+    db,
+    persistence,
+    telegramService,
+    executeCommand,
+    formatTelegramResponse
+} from './services';
 
 export const App = () => {
     const [state, setState] = useState<AppState>({
