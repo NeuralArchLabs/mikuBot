@@ -141,10 +141,14 @@ export const ChatArea = ({
                             return displayHistory?.map((m: any, i: number) => (
                                 <div key={i} className="bg-black/40 border border-white/5 rounded-xl p-4 font-mono text-[11px] space-y-2">
                                     <div className={`flex items-center gap-2 font-bold uppercase tracking-wider ${m.role === 'system' ? 'text-amber-500' :
-                                        m.role === 'assistant' ? 'text-blue-400' :
-                                            m.role === 'tool' ? 'text-emerald-400' : 'text-purple-400'
+                                            m.role === 'assistant' ? 'text-blue-400' :
+                                                m.role === 'tool' ? 'text-emerald-400' : 'text-purple-400'
                                         }`}>
-                                        <Icon name={m.role === 'system' ? 'shield-alt' : m.role === 'assistant' ? 'brain' : m.role === 'tool' ? 'cog' : 'user'} />
+                                        <Icon name={
+                                            m.role === 'system' ? 'shield-alt' :
+                                                m.role === 'assistant' ? 'brain' :
+                                                    m.role === 'tool' ? 'cog' : 'user'
+                                        } />
                                         [{m.role}]
                                     </div>
                                     <div className="text-slate-400 leading-relaxed whitespace-pre-wrap break-all border-l-2 border-white/10 pl-4">

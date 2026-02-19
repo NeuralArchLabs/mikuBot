@@ -183,6 +183,21 @@ export const AGENT_TOOLS: ToolDefinition[] = [
     {
         type: 'function',
         function: {
+            name: 'delete_file',
+            description: 'Delete a file. Use this to clean up temporary files or specifically to remove @CORE/TASKS.md after completing a plan.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    filename: { type: 'string', description: 'The filename to delete.' },
+                    source: { type: 'string', description: 'Where the file lives. Defaults to "workSpace".', enum: ['workSpace', 'core', 'library'] }
+                },
+                required: ['filename']
+            }
+        }
+    },
+    {
+        type: 'function',
+        function: {
             name: 'final_answer',
             description: 'Synthesize all gathered data into a final response. Cite sources. Use this ONLY to conclude the task.',
             parameters: {

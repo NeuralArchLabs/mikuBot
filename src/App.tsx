@@ -436,6 +436,56 @@ export const App = () => {
         }
     };
 
+    const deleteFile = async (name: string, target: FileTarget): Promise<boolean> => {
+        try {
+            let handle: FileSystemDirectoryHandle | null = null;
+            if (target === 'core') handle = coreHandle;
+            else if (target === 'extra') handle = extraHandle;
+            else if (target === 'workSpace') handle = workSpaceHandle;
+            else if (target === 'tools') handle = toolsHandle;
+
+            if (!handle) return false;
+
+            const parts = name.split('/').filter(p => p && p !== '.');
+            const fileName = parts.pop();
+            if (!fileName) throw new Error("Invalid filename");
+
+            let dirHandle = handle;
+            for (const folder of parts) {
+                dirHandle = await dirHandle.getDirectoryHandle(folder, { create: false });
+            }
+
+            await (dirHandle as any).removeEntry(fileName);
+
+            setState(prev => {
+                const newState = { ...prev };
+                if (target === 'core') {
+                    const next = { ...prev.files };
+                    delete next[name];
+                    newState.files = next;
+                } else if (target === 'extra') {
+                    const next = { ...prev.additionalFiles };
+                    delete next[name];
+                    newState.additionalFiles = next;
+                } else if (target === 'workSpace') {
+                    const next = { ...prev.workSpaceFiles };
+                    delete next[name];
+                    newState.workSpaceFiles = next;
+                } else if (target === 'tools') {
+                    const next = { ...prev.toolsFiles };
+                    delete next[name];
+                    newState.toolsFiles = next;
+                }
+                return newState;
+            });
+
+            return true;
+        } catch (e) {
+            console.error("Delete failed", e);
+            return false;
+        }
+    };
+
     const createFile = async (name: string, type: FileTarget) => {
         if (!name.endsWith('.md')) name += '.md';
         await saveFile(name, '# New File', type);
@@ -607,11 +657,9 @@ export const App = () => {
 
         if (isAgentOrInstruction) {
             const identity = getFileDeep('IDENTITY.md') || getFileDeep('IDENTITY.MD') || '';
-            const languageRule = `\n[MANDATORY LANGUAGE: SPANISH]\nRespond ALWAYS in Spanish unless the user speaks in another language or asks for a translation.\n`;
-
             // Active Plan Injection (Working Memory)
             const tasksContent = getFileDeep('TASKS.md') || getFileDeep('TASKS.MD');
-            const workingMemory = tasksContent ? `\n[MEMORIA DE TRABAJO - PLAN ACTUAL]\n${tasksContent}\n` : '';
+            const workingMemory = `\n[PLAN_DE_TRABAJO_ACTUAL]\n${tasksContent || 'No hay tareas activas.'}\n[/PLAN_DE_TRABAJO_ACTUAL]\n`;
 
             // Priority 1: AGENTS_MODES.MD (Primary source for modes)
             const modesContent = getFileDeep('AGENTS_MODES.md') || getFileDeep('AGENTS_MODES.MD') ||
@@ -620,14 +668,14 @@ export const App = () => {
             if (modesContent) {
                 const match = modesContent.match(/## \[INSTRUCTION MODE.*?\]\r?\n([\s\S]*?)(?=\n##|$)/);
                 const content = (match ? match[1].trim() : modesContent.trim());
-                return `${identity}\n${languageRule}\n${workingMemory}\n${content}`.replace(/{{CURRENT_TIME}}/g, timeStr);
+                return `${identity}\n${workingMemory}\n${content}`.replace(/{{CURRENT_TIME}}/g, timeStr);
             }
 
             // Fallback: AGENT_PROTOCOL.md or COMMANDS.md
             const fallback = getFileDeep('AGENT_PROTOCOL.md') || getFileDeep('AGENT_PROTOCOL.MD') ||
                 getFileDeep('COMMANDS.md') || getFileDeep('COMMANDS.MD') ||
                 'Agent Protocol missing. Please configure your Command Engine folder.';
-            return `${identity}\n${languageRule}\n${workingMemory}\n${fallback}`.replace(/{{CURRENT_TIME}}/g, timeStr);
+            return `${identity}\n${workingMemory}\n${fallback}`.replace(/{{CURRENT_TIME}}/g, timeStr);
         }
 
         const segments: string[] = [];
@@ -856,6 +904,7 @@ NO simules resultados de herramientas ni inventes datos; si necesitas informaciÃ
                     currentState.config, systemInstruction, chatHistoryLocal, toolsForSession,
                     { ...freshState.core }, { ...freshState.additional }, { ...freshState.workSpace }, { ...freshState.tools },
                     saveFile,
+                    deleteFile,
                     (chunk, replace, blocks) => {
                         finalAssistantText = replace ? chunk : finalAssistantText + chunk;
                         setMessages(prev => prev.map(m => m.id === modelMsgId ? { ...m, text: finalAssistantText, blocks: blocks || m.blocks } : m));

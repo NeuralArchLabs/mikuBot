@@ -71,6 +71,7 @@ export async function executeToolCall(
     workSpaceFiles: Record<string, string>,
     toolsFiles: Record<string, string>,
     saveFileFn: (name: string, content: string, target: FileTarget) => Promise<boolean>,
+    deleteFileFn: (name: string, target: FileTarget) => Promise<boolean>,
     config: AppConfig
 ): Promise<ToolResult> {
     const { name, arguments: args } = toolCall.function;
@@ -362,6 +363,18 @@ export async function executeToolCall(
                 }
             }
 
+            case 'delete_file': {
+                if (!args.filename) {
+                    return { success: false, error: 'Missing required parameter: filename.' };
+                }
+                const { target, cleanFilename } = resolvePathAndSource(args.filename, args.source);
+                const deleted = await deleteFileFn(cleanFilename, target);
+                if (deleted) {
+                    return { success: true, data: { filename: cleanFilename, message: `File "${cleanFilename}" deleted from ${target}.`, source: target } };
+                }
+                return { success: false, error: `Failed to delete "${cleanFilename}" from ${target}.` };
+            }
+
             case 'final_answer': {
                 return {
                     success: true,
@@ -394,6 +407,7 @@ export async function sendAgentMessage(
     workSpaceFiles: Record<string, string>,
     toolsFiles: Record<string, string>,
     saveFileFn: (name: string, content: string, target: FileTarget) => Promise<boolean>,
+    deleteFileFn: (name: string, target: FileTarget) => Promise<boolean>,
     onChunk: (text: string, replace?: boolean, blocks?: any[]) => void,
     onStatus: (status: Partial<AgentStatus>) => void,
     onToolApproval: (toolCall: ToolCall) => Promise<boolean>,
@@ -535,7 +549,54 @@ export async function sendAgentMessage(
         }
 
         iterations++;
-        onStatus({ phase: 'thinking', iteration: iterations, retries, maxRetries: MAX_RETRIES, elapsedMs: Date.now() - startTime, rawMessages: [...ollamaMessages] });
+
+        // DYNAMIC SYSTEM PROMPT REFRESH (Working Memory)
+        if (isAgentMode || isInstructionMode) {
+            const findTaskContent = () => {
+                const stores = [currentFiles, currentWorkSpace];
+                for (const store of stores) {
+                    const keys = Object.keys(store);
+                    // Buscamos 'tasks.md' o 'TASKS.md'. El prefijo @CORE ya está resuelto en el store 'currentFiles'.
+                    const taskKey = keys.find(k => k.toLowerCase() === 'tasks.md');
+                    if (taskKey) return store[taskKey];
+                }
+                return null;
+            };
+
+            const tasksContent = findTaskContent() || '';
+            const workingMemoryBlock = `[PLAN_DE_TRABAJO_ACTUAL]\n${tasksContent || 'No hay tareas activas.'}\n[/PLAN_DE_TRABAJO_ACTUAL]`;
+
+            let systemPromptCurrent = ollamaMessages[0].content;
+
+            // Simplified markers for better reliability
+            const markerStart = "[PLAN_DE_TRABAJO_ACTUAL]";
+            const markerEnd = "[/PLAN_DE_TRABAJO_ACTUAL]";
+            const sIdx = systemPromptCurrent.indexOf(markerStart);
+            const eIdx = systemPromptCurrent.indexOf(markerEnd);
+
+            if (sIdx !== -1 && eIdx !== -1) {
+                const before = systemPromptCurrent.substring(0, sIdx);
+                const after = systemPromptCurrent.substring(eIdx + markerEnd.length);
+                ollamaMessages[0].content = before + workingMemoryBlock + after;
+            } else {
+                // Initial injection fallback
+                const tasksSection = `\n\n${workingMemoryBlock}\n\n`;
+                if (systemPromptCurrent.includes('[IDIOMA — OBLIGATORIO]')) {
+                    ollamaMessages[0].content = systemPromptCurrent.replace(/(\[IDIOMA — OBLIGATORIO\].*?\n)/, `$1${tasksSection}`);
+                } else {
+                    ollamaMessages[0].content = tasksSection + systemPromptCurrent;
+                }
+            }
+        }
+
+        onStatus({
+            phase: 'thinking',
+            iteration: iterations,
+            retries,
+            maxRetries: MAX_RETRIES,
+            elapsedMs: Date.now() - startTime,
+            rawMessages: JSON.parse(JSON.stringify(ollamaMessages)) // Deep copy to ensure UI sees current state
+        });
 
         let content: string;
         let nativeToolCalls: any[];
@@ -675,6 +736,7 @@ export async function sendAgentMessage(
             content: content || '[Calling Tools...]',
             tool_calls: uniqueToolCalls.length > 0 ? uniqueToolCalls : undefined,
         });
+        onStatus({ rawMessages: [...ollamaMessages] });
 
         allBlocks = [...allBlocks, ...iterationBlocks];
 
@@ -724,18 +786,19 @@ export async function sendAgentMessage(
         function isAutoApproved(tc: ToolCall): boolean {
             const tn = tc.function.name;
             const args = tc.function.arguments;
-            const target = resolveSource(args.source);
-            const filename = args.filename || '';
+            const { target, cleanFilename } = resolvePathAndSource(args.filename || '', args.source);
 
             // 1. Siempre permitir herramientas de lectura e investigación
             if (READ_ONLY_TOOLS.has(tn)) return true;
 
-            // 2. Archivos especiales de memoria en CORE siempre permitidos
-            if (target === 'core') {
-                const lowFile = filename.toLowerCase();
-                if (lowFile === 'tasks.md' || lowFile === 'active_context.md' || lowFile.endsWith('/tasks.md') || lowFile.endsWith('/active_context.md')) {
-                    return true;
-                }
+            // 2. Archivos especiales de memoria en CORE siempre permitidos (TASKS y ACTIVE_CONTEXT)
+            const isMemoryFile = target === 'core' && (
+                cleanFilename.toLowerCase() === 'tasks.md' ||
+                cleanFilename.toLowerCase() === 'active_context.md'
+            );
+
+            if (isMemoryFile && ['update_file', 'patch_file', 'delete_file'].includes(tn)) {
+                return true;
             }
 
             // 3. Acciones de alto riesgo SIEMPRE requieren aprobación (consola)
@@ -745,7 +808,7 @@ export async function sendAgentMessage(
             if (isInstructionMode) {
                 // Modo Instrucción (Rayo): Conservador. Solo auto-aprueba creación de archivos nuevos en workspace.
                 if (target !== 'workSpace') return false;
-                if (tn === 'update_file') return currentWorkSpace[filename] === undefined;
+                if (tn === 'update_file') return currentWorkSpace[cleanFilename] === undefined;
                 return false;
             }
 
@@ -769,13 +832,14 @@ export async function sendAgentMessage(
                 const b = allBlocks.find(x => x.toolCall?.id === toolCall.id);
                 if (b) b.result = { success: false, error: 'Rechazado.' };
                 ollamaMessages.push({ role: 'tool', content: 'Rejected', tool_call_id: toolCall.id });
+                onStatus({ rawMessages: [...ollamaMessages] });
             }
             return approved;
         }
 
         async function executeAndProcess(toolCall: ToolCall, label: string): Promise<void> {
             onStatus({ phase: 'tool_executing', currentTool: label });
-            const result = await executeToolCall(toolCall, currentFiles, currentAdditional, currentWorkSpace, currentTools, saveFileFn, config);
+            const result = await executeToolCall(toolCall, currentFiles, currentAdditional, currentWorkSpace, currentTools, saveFileFn, deleteFileFn, config);
             const b = allBlocks.find(x => x.toolCall?.id === toolCall.id);
             if (b) b.result = result;
 
@@ -800,12 +864,14 @@ export async function sendAgentMessage(
                         role: 'system',
                         content: `⚠️ INSTRUCCIÓN TÉCNICA DE RECUPERACIÓN:\nSe detectó un fallo o uso incorrecto en "${toolCall.function.name}". Siga estrictamente estas reglas extraídas de TOOLS.md:\n\n${toolSpecificManual}`
                     });
+                    onStatus({ rawMessages: [...ollamaMessages] });
                 }
             } else {
                 retries = 0;
                 const desc = `${toolCall.function.name}(${JSON.stringify(toolCall.function.arguments)})`;
                 actionHistory.push(desc);
                 ollamaMessages.push({ role: 'tool', content: JSON.stringify(result), tool_call_id: toolCall.id });
+                onStatus({ rawMessages: [...ollamaMessages] });
 
                 // CRITICAL: Update local mutable stores so subsequent steps in this session see the changes
                 if (['update_file', 'patch_file'].includes(toolCall.function.name) && result.data?.filename) {
@@ -826,21 +892,14 @@ export async function sendAgentMessage(
                     else if (target === 'tools') currentTools[cleanFilename] = newContent;
                 }
 
-                if (isAgentMode) {
-                    const originalObjective = [...chatMessages].reverse().find(m => m.role === 'user')?.content || 'No objective found';
-                    const guide = `
-🧠 [MOTOR DE ESTADO — Iteración ${iterations}]
-🎯 OBJETIVO ORIGINAL: "${originalObjective.slice(0, 300)}${originalObjective.length > 300 ? '...' : ''}"
-🛠️ ÚLTIMA ACCIÓN: "${toolCall.function.name}" -> ${isSuccess ? '✅ ÉXITO' : '❌ FALLO'}
-📊 DATOS OBTENIDOS: ${JSON.stringify(result.data).slice(0, 500)}
-
-[AUDITORÍA DE PASO]
-1. ¿Esta acción completó el 100% de lo solicitado? 
-   - SI: Justifica en un <think> y usa "final_answer".
-   - NO: Re-evalúa tu plan en "@CORE/TASKS.md" y ejecuta el SIGUIENTE PASO lógico.
-2. Si fallaste: Busca una ruta alternativa. NO repitas el mismo error.`;
-                    ollamaMessages.push({ role: 'user', content: guide });
+                if (toolCall.function.name === 'delete_file' && result.data?.filename) {
+                    const { target, cleanFilename } = resolvePathAndSource(toolCall.function.arguments.filename, toolCall.function.arguments.source);
+                    if (target === 'core') delete currentFiles[cleanFilename];
+                    else if (target === 'extra') delete currentAdditional[cleanFilename];
+                    else if (target === 'workSpace') delete currentWorkSpace[cleanFilename];
+                    else if (target === 'tools') delete currentTools[cleanFilename];
                 }
+
             }
         }
 
@@ -850,6 +909,7 @@ export async function sendAgentMessage(
                 const b = allBlocks.find(x => x.toolCall?.id === tc.id);
                 if (b) b.result = { success: false, error: v.error };
                 ollamaMessages.push({ role: 'tool', content: v.error, tool_call_id: tc.id });
+                onStatus({ rawMessages: [...ollamaMessages] });
                 return false;
             }
             return true;
@@ -891,7 +951,7 @@ export async function sendAgentMessage(
 
         if (hasFinalAnswer) {
             if (onFinalRawHistory) onFinalRawHistory([...ollamaMessages]);
-            onStatus({ phase: 'idle', elapsedMs: Date.now() - startTime });
+            onStatus({ phase: 'idle', elapsedMs: Date.now() - startTime, rawMessages: [...ollamaMessages] });
             return;
         }
 
