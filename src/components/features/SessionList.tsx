@@ -13,9 +13,10 @@ interface SessionListProps {
     onExport: (id: string) => void;
     onImport: () => void;
     onExpand?: () => void;
+    askConfirm: (msg: string, position?: 'left' | 'right' | 'center') => Promise<boolean>;
 }
 
-export const SessionList = ({ sessions, loading, currentSessionId, onSelect, onDelete, onNew, onExport, onImport, onExpand }: SessionListProps) => {
+export const SessionList = React.memo(({ sessions, loading, currentSessionId, onSelect, onDelete, onNew, onExport, onImport, onExpand, askConfirm }: SessionListProps) => {
 
     return (
         <div className="flex flex-col h-full">
@@ -89,9 +90,9 @@ export const SessionList = ({ sessions, loading, currentSessionId, onSelect, onD
                                     <Icon name="upload" />
                                 </button>
                                 <button
-                                    onClick={(e) => {
+                                    onClick={async (e) => {
                                         e.stopPropagation();
-                                        if (confirm('Delete this session?')) onDelete(ss.id);
+                                        if (await askConfirm('Delete this session?', 'left')) onDelete(ss.id);
                                     }}
                                     className="p-1.5 text-slate-500 hover:text-red-400"
                                     title="Delete session"
@@ -105,4 +106,4 @@ export const SessionList = ({ sessions, loading, currentSessionId, onSelect, onD
             </div>
         </div>
     );
-};
+});

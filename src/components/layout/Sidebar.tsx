@@ -11,6 +11,7 @@ interface SidebarProps {
         onNewSession: () => void;
         onExportSession: (id: string) => void;
         onImportSession: () => void;
+        askConfirm: (msg: string, position?: 'left' | 'right' | 'center') => Promise<boolean>;
     };
     sessions: SessionMetadata[];
     loadingSessions: boolean;
@@ -41,12 +42,25 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
 
         // 1. Expansion Phase (mikuCentral -> {{ }})
         const expansionSteps = [
-            "miku{}entral",
-            "mik{{}}ntral",
-            "mi{{}}ntral",
-            "m{{}}ral",
-            "{{}}al",
-            "{{}}"
+
+            "mikuCentral",
+            "miku|entral",
+            "mik|ntral",
+            "mi|tral",
+            "m|ral",
+            "|al",
+            "{}l",
+            "{{}}",
+            "{{}}H",
+            "{{}}HI",
+            "{{}}-HI!",
+            "{{}}--HI!",
+            "{{}}-HI!",
+            "{{}}HI!",
+            "{{}}I!",
+            "{{}}!",
+            "{{}}",
+            "{}"
         ];
 
         let delay = 0;
@@ -79,12 +93,15 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
 
             // Reverse Expansion (Shrink back to name)
             const shrinkSteps = [
+                "|",
+                "{}",
                 "{{}}",
-                "{{}}al",
-                "m{{}}ral",
-                "mi{{}}ntral",
-                "mik{{}}ntral",
-                "miku{}entral",
+                "{{}}l",
+                "m{{}}al",
+                "mi{{}}ral",
+                "mik{{}}tral",
+                "miku{}ntral",
+                "miku|entral",
                 "mikuCentral"
             ];
 
@@ -104,18 +121,18 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
         <>
             <div className="bg-slate-900 border-r border-slate-700 flex flex-col h-full shadow-xl z-30 w-[72px] lg:w-64 flex-shrink-0 transition-all duration-300">
                 <div className="p-4 lg:p-6">
-                    <div className="flex items-center justify-center lg:justify-start gap-3 mb-8 group cursor-default h-10 overflow-hidden">
+                    <div className="flex items-center justify-center lg:justify-start gap-3 mb-8 group cursor-default h-10 overflow-hidden w-full px-1">
                         <div
-                            className="w-10 h-10 rounded-xl bg-slate-800 flex flex-shrink-0 items-center justify-center shadow-lg group-hover:scale-110 active:scale-95 transition-all duration-300 overflow-hidden border border-slate-700 cursor-pointer"
+                            className="w-10 h-10 rounded-xl bg-slate-800 flex flex-shrink-0 items-center justify-center shadow-md group-hover:scale-110 active:scale-95 transition-all duration-300 overflow-hidden border border-slate-700/50 cursor-pointer"
                             onClick={triggerEasterEgg}
                         >
                             <img src="/mikuBotICON.png" alt="Miku Logo" className="w-full h-full object-cover shadow-inner" />
                         </div>
-                        <div className="hidden lg:block">
-                            <h1 className={`font-bold text-lg text-white tracking-tight leading-tight transition-all duration-300 ${isAnimatingEgg ? 'text-blue-400 font-mono text-sm' : ''}`}>
+                        <div className="hidden lg:block overflow-hidden">
+                            <h1 className={`font-bold text-lg text-white tracking-tight leading-tight whitespace-nowrap overflow-hidden text-ellipsis transition-all duration-300 ${isAnimatingEgg ? 'text-blue-400 font-mono text-sm' : ''}`}>
                                 {displayName}
                             </h1>
-                            <div className="text-[10px] text-slate-500 font-mono uppercase tracking-[0.2em] leading-tight">v1.3.0</div>
+                            <div className="text-[11px] text-slate-500/80 font-bold uppercase tracking-[0.2em] leading-tight mt-0.5">v1.3.0</div>
                         </div>
                     </div>
 
@@ -129,13 +146,13 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                             <button
                                 key={tab.id}
                                 onClick={() => setState(prev => ({ ...prev, activeTab: tab.id as any, selectedFile: '' }))}
-                                className={`w-full flex items-center justify-center lg:justify-start gap-3 px-0 lg:px-4 py-3 rounded-xl transition-all duration-200 group ${state.activeTab === tab.id
-                                    ? 'bg-slate-800 text-white shadow-md border border-slate-700'
-                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                                className={`w-full flex items-center justify-center lg:justify-start gap-4 px-0 lg:px-4 py-3.5 rounded-xl transition-all duration-200 group border active:scale-95 ${state.activeTab === tab.id
+                                    ? 'bg-slate-800 text-white shadow-md border-slate-700'
+                                    : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
                                     }`}
                             >
-                                <Icon name={tab.icon} className={`text-xl lg:text-base flex-shrink-0 ${state.activeTab === tab.id ? tab.color : 'group-hover:text-slate-300'} transition-colors`} />
-                                <span className="hidden lg:inline text-sm font-medium truncate">{tab.label}</span>
+                                <Icon name={tab.icon} className={`text-2xl lg:text-lg flex-shrink-0 ${state.activeTab === tab.id ? tab.color : 'group-hover:text-slate-300'} transition-colors`} />
+                                <span className="hidden lg:inline text-base font-bold tracking-wide truncate">{tab.label}</span>
                                 {state.activeTab === tab.id && (
                                     <div className={`hidden lg:block ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0 ${tab.color.replace('text', 'bg')} shadow-glow`} />
                                 )}
@@ -145,19 +162,19 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                         {/* Mobile Sessions Button */}
                         <button
                             onClick={() => setSessionModalOpen(true)}
-                            className={`w-full flex items-center justify-center lg:hidden gap-3 px-0 py-3 mt-4 rounded-xl transition-all duration-200 group text-slate-400 hover:text-slate-200 hover:bg-slate-800/50`}
+                            className={`w-full flex items-center justify-center lg:hidden gap-3 px-0 py-3.5 mt-4 rounded-xl transition-all duration-200 group border border-transparent active:scale-95 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50`}
                             title="Neural Sessions"
                         >
-                            <Icon name="history" className={`text-xl flex-shrink-0 group-hover:text-slate-300 transition-colors`} />
+                            <Icon name="history" className={`text-2xl flex-shrink-0 group-hover:text-slate-300 transition-colors`} />
                         </button>
 
                         {/* Mobile Context Library Button */}
                         <button
                             onClick={() => setState(prev => ({ ...prev, isLibraryExpanded: true }))}
-                            className={`w-full flex items-center justify-center lg:hidden gap-3 px-0 py-3 mt-2 rounded-xl transition-all duration-200 group text-slate-400 hover:text-slate-200 hover:bg-slate-800/50`}
+                            className={`w-full flex items-center justify-center lg:hidden gap-3 px-0 py-3.5 mt-2 rounded-xl transition-all duration-200 group border border-transparent active:scale-95 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50`}
                             title="Context Library"
                         >
-                            <Icon name="book" className={`text-xl flex-shrink-0 group-hover:text-pink-400 transition-colors`} />
+                            <Icon name="book" className={`text-2xl flex-shrink-0 group-hover:text-pink-400 transition-colors`} />
                         </button>
                     </nav>
                 </div>
@@ -174,6 +191,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                             onExport={(id) => (state as any).onExportSession(id)}
                             onImport={() => (state as any).onImportSession()}
                             onExpand={() => setSessionModalOpen(true)}
+                            askConfirm={state.askConfirm}
                         />
                     </div>
 
@@ -230,9 +248,9 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                                     return { ...prev, selectedLibraryFiles: updated };
                                                 });
                                             }}
-                                            className={`w-full text-left px-2 py-1.5 rounded-lg text-xs font-mono truncate flex items-center gap-2 transition-colors ${isSelected
-                                                ? 'bg-blue-900/20 text-blue-300 border border-blue-700/30'
-                                                : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800'
+                                            className={`w-full text-left px-2 py-1.5 rounded-lg text-xs font-mono truncate flex items-center gap-2 transition-colors border active:scale-95 ${isSelected
+                                                ? 'bg-blue-900/20 text-blue-300 border-blue-700/30'
+                                                : 'border-transparent text-slate-500 hover:text-slate-300 hover:bg-slate-800'
                                                 }`}
                                         >
                                             <Icon name={isSelected ? 'check-circle' : 'circle'} className="flex-shrink-0 text-[10px]" />
@@ -279,6 +297,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                 onExport={(id) => (state as any).onExportSession(id)}
                                 onImport={() => { (state as any).onImportSession(); handleClose(); }}
                                 onExpand={() => setSessionModalOpen(true)}
+                                askConfirm={state.askConfirm}
                             />
                         </div>
                     </div>

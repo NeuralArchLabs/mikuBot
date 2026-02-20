@@ -50,6 +50,12 @@ export const SettingsPanel = ({
     // Track which provider's key we are currently editing in the global section
     const [editingProvider, setEditingProvider] = useState<Provider>(config.provider);
     const [localApiKey, setLocalApiKey] = useState('');
+    const [showFloatingSave, setShowFloatingSave] = useState(false);
+
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        // Toggle the floating button when having scrolled past the top header
+        setShowFloatingSave(e.currentTarget.scrollTop > 120);
+    };
 
     useEffect(() => {
         setLocalApiKey(config.apiKeys[editingProvider] || '');
@@ -62,7 +68,7 @@ export const SettingsPanel = ({
     const currentProvider = PROVIDERS[config.provider];
 
     return (
-        <div className="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar bg-[#050810] relative">
+        <div className="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar bg-[#050810] relative" onScroll={handleScroll}>
             {/* Subdued ambient glow background */}
             <div className="absolute top-0 left-1/4 w-1/2 h-96 bg-blue-600/10 blur-[120px] pointer-events-none rounded-full" />
             <div className="absolute bottom-0 right-1/4 w-1/3 h-64 bg-purple-600/10 blur-[100px] pointer-events-none rounded-full" />
@@ -116,16 +122,16 @@ export const SettingsPanel = ({
                         {/* WorkSpace */}
                         <div className="bg-slate-900/60 backdrop-blur-md p-5 rounded-2xl border border-emerald-500/20 shadow-xl relative overflow-hidden group hover:border-emerald-500/40 transition-colors">
                             <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex flex-shrink-0 items-center justify-center shadow-inner">
-                                    <Icon name="box" className="text-lg" />
+                            <div className="flex items-center gap-4 md:gap-3 xl:gap-4 mb-5 md:mb-4 xl:mb-5">
+                                <div className="w-14 h-14 md:w-12 md:h-12 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex flex-shrink-0 items-center justify-center shadow-inner transition-all">
+                                    <Icon name="box" className="text-3xl md:text-xl lg:text-lg xl:text-xl transition-all" />
                                 </div>
-                                <div className="truncate">
-                                    <div className="text-sm font-extrabold text-slate-100 tracking-wide">WorkSpace</div>
-                                    <div className="text-[9px] font-medium uppercase tracking-wider text-emerald-500/80">Default Directory</div>
+                                <div className="truncate flex-1">
+                                    <div className="text-xl md:text-base lg:text-sm xl:text-base font-black text-slate-100 tracking-wide mb-1 lg:mb-0 transition-all">WorkSpace</div>
+                                    <div className="text-[11px] md:text-[9px] lg:text-[8px] xl:text-[9px] font-bold uppercase tracking-widest text-emerald-500/80 truncate transition-all">Default Directory</div>
                                 </div>
                             </div>
-                            <div className="text-[10px] font-mono text-slate-400 mb-4 truncate bg-black/40 p-2.5 rounded-lg border border-white/5 shadow-inner" title={workSpacePathName}>
+                            <div className="text-xs font-mono text-slate-400 mb-5 truncate bg-black/40 p-3 rounded-xl border border-white/5 shadow-inner leading-relaxed" title={workSpacePathName}>
                                 {workSpacePathName || "Not configured"}
                             </div>
                             <button
@@ -140,16 +146,16 @@ export const SettingsPanel = ({
                         {/* Core Identity */}
                         <div className="bg-slate-900/60 backdrop-blur-md p-5 rounded-2xl border border-indigo-500/20 shadow-xl relative overflow-hidden group hover:border-indigo-500/40 transition-colors">
                             <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex flex-shrink-0 items-center justify-center shadow-inner">
-                                    <Icon name="hdd" className="text-lg" />
+                            <div className="flex items-center gap-4 md:gap-3 xl:gap-4 mb-5 md:mb-4 xl:mb-5">
+                                <div className="w-14 h-14 md:w-12 md:h-12 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex flex-shrink-0 items-center justify-center shadow-inner transition-all">
+                                    <Icon name="hdd" className="text-3xl md:text-xl lg:text-lg xl:text-xl transition-all" />
                                 </div>
-                                <div className="truncate">
-                                    <div className="text-sm font-extrabold text-slate-100 tracking-wide">Core Engine</div>
-                                    <div className="text-[9px] font-medium uppercase tracking-wider text-indigo-500/80">SOUL, USER, CONTEXT</div>
+                                <div className="truncate flex-1">
+                                    <div className="text-xl md:text-base lg:text-sm xl:text-base font-black text-slate-100 tracking-wide mb-1 lg:mb-0 transition-all">Core Engine</div>
+                                    <div className="text-[11px] md:text-[9px] lg:text-[8px] xl:text-[9px] font-bold uppercase tracking-widest text-indigo-500/80 truncate transition-all">SOUL, USER, CONTEXT</div>
                                 </div>
                             </div>
-                            <div className="text-[10px] font-mono text-slate-400 mb-4 truncate bg-black/40 p-2.5 rounded-lg border border-white/5 shadow-inner" title={corePathName}>
+                            <div className="text-xs font-mono text-slate-400 mb-5 truncate bg-black/40 p-3 rounded-xl border border-white/5 shadow-inner leading-relaxed" title={corePathName}>
                                 {corePathName || "Internal Defaults"}
                             </div>
                             <button
@@ -164,16 +170,16 @@ export const SettingsPanel = ({
                         {/* Library */}
                         <div className="bg-slate-900/60 backdrop-blur-md p-5 rounded-2xl border border-pink-500/20 shadow-xl relative overflow-hidden group hover:border-pink-500/40 transition-colors">
                             <div className="absolute top-0 right-0 w-24 h-24 bg-pink-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 rounded-xl bg-pink-500/10 border border-pink-500/20 text-pink-400 flex flex-shrink-0 items-center justify-center shadow-inner">
-                                    <Icon name="book" className="text-lg" />
+                            <div className="flex items-center gap-4 md:gap-3 xl:gap-4 mb-5 md:mb-4 xl:mb-5">
+                                <div className="w-14 h-14 md:w-12 md:h-12 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rounded-2xl bg-pink-500/10 border border-pink-500/20 text-pink-400 flex flex-shrink-0 items-center justify-center shadow-inner transition-all">
+                                    <Icon name="book" className="text-3xl md:text-xl lg:text-lg xl:text-xl transition-all" />
                                 </div>
-                                <div className="truncate">
-                                    <div className="text-sm font-extrabold text-slate-100 tracking-wide">Library</div>
-                                    <div className="text-[9px] font-medium uppercase tracking-wider text-pink-500/80">Auxiliary Context</div>
+                                <div className="truncate flex-1">
+                                    <div className="text-xl md:text-base lg:text-sm xl:text-base font-black text-slate-100 tracking-wide mb-1 lg:mb-0 transition-all">Library</div>
+                                    <div className="text-[11px] md:text-[9px] lg:text-[8px] xl:text-[9px] font-bold uppercase tracking-widest text-pink-500/80 truncate transition-all">Auxiliary Context</div>
                                 </div>
                             </div>
-                            <div className="text-[10px] font-mono text-slate-400 mb-4 truncate bg-black/40 p-2.5 rounded-lg border border-white/5 shadow-inner" title={extraPathName}>
+                            <div className="text-xs font-mono text-slate-400 mb-5 truncate bg-black/40 p-3 rounded-xl border border-white/5 shadow-inner leading-relaxed" title={extraPathName}>
                                 {extraPathName || "No Links"}
                             </div>
                             <button
@@ -188,16 +194,16 @@ export const SettingsPanel = ({
                         {/* Command Engine */}
                         <div className="bg-slate-900/60 backdrop-blur-md p-5 rounded-2xl border border-amber-500/20 shadow-xl relative overflow-hidden group hover:border-amber-500/40 transition-colors">
                             <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex flex-shrink-0 items-center justify-center shadow-inner">
-                                    <Icon name="bolt" className="text-lg" />
+                            <div className="flex items-center gap-4 md:gap-3 xl:gap-4 mb-5 md:mb-4 xl:mb-5">
+                                <div className="w-14 h-14 md:w-12 md:h-12 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex flex-shrink-0 items-center justify-center shadow-inner transition-all">
+                                    <Icon name="bolt" className="text-3xl md:text-xl lg:text-lg xl:text-xl transition-all" />
                                 </div>
-                                <div className="truncate">
-                                    <div className="text-sm font-extrabold text-slate-100 tracking-wide">Commands</div>
-                                    <div className="text-[9px] font-medium uppercase tracking-wider text-amber-500/80">Tools & Skills</div>
+                                <div className="truncate flex-1">
+                                    <div className="text-xl md:text-base lg:text-sm xl:text-base font-black text-slate-100 tracking-wide mb-1 lg:mb-0 transition-all">Commands</div>
+                                    <div className="text-[11px] md:text-[9px] lg:text-[8px] xl:text-[9px] font-bold uppercase tracking-widest text-amber-500/80 truncate transition-all">Tools & Skills</div>
                                 </div>
                             </div>
-                            <div className="text-[10px] font-mono text-slate-400 mb-4 truncate bg-black/40 p-2.5 rounded-lg border border-white/5 shadow-inner" title={toolsPathName}>
+                            <div className="text-xs font-mono text-slate-400 mb-5 truncate bg-black/40 p-3 rounded-xl border border-white/5 shadow-inner leading-relaxed" title={toolsPathName}>
                                 {toolsPathName || "Not configured"}
                             </div>
                             <button
@@ -405,14 +411,22 @@ export const SettingsPanel = ({
                     <div className="absolute -top-32 -right-32 w-80 h-80 bg-amber-600/10 blur-3xl rounded-full" />
                     <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-orange-600/10 blur-3xl rounded-full" />
 
-                    <div className="flex items-center gap-4 border-b border-amber-500/10 pb-4 relative z-10">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-900/80 to-amber-950 border border-amber-700/50 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-900/20">
-                            <Icon name="lock" className="text-xl" />
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-amber-500/10 pb-4 relative z-10">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-900/80 to-amber-950 border border-amber-700/50 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-900/20">
+                                <Icon name="lock" className="text-xl" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-orange-400 tracking-tight">Secure Credential Vault</h3>
+                                <p className="text-xs text-amber-500/60 font-medium">Manage master logic fallbacks and encrypted API keys</p>
+                            </div>
                         </div>
-                        <div>
-                            <h3 className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-orange-400 tracking-tight">Secure Credential Vault</h3>
-                            <p className="text-xs text-amber-500/60 font-medium">Manage master logic fallbacks and encrypted API keys</p>
-                        </div>
+                        <button
+                            onClick={onSaveGlobal}
+                            className="hidden md:flex h-10 px-4 bg-gradient-to-br from-blue-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-blue-900/30 transition-all items-center justify-center gap-2 border border-blue-500/30 whitespace-nowrap"
+                        >
+                            <Icon name="save" className="text-sm flex-shrink-0" /> Save Global
+                        </button>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-6 relative z-10">
@@ -476,17 +490,25 @@ export const SettingsPanel = ({
 
                             <div className="flex-1 flex flex-col justify-center">
                                 <div className="relative flex items-center group">
-                                    <div className="absolute left-4 text-slate-500 flex items-center justify-center">
+                                    <div className="absolute left-6 text-slate-500 flex items-center justify-center">
                                         <Icon name={editingProvider === 'ollama' ? 'link' : 'key'} />
                                     </div>
                                     <input
                                         type={editingProvider === 'ollama' || showApiKey ? "text" : "password"}
                                         value={editingProvider === 'ollama' ? config.ollamaUrl : localApiKey}
-                                        onChange={(e) => editingProvider === 'ollama' ? updateConfig('ollamaUrl', e.target.value) : setLocalApiKey(e.target.value)}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            if (editingProvider === 'ollama') {
+                                                updateConfig('ollamaUrl', val);
+                                            } else {
+                                                setLocalApiKey(val);
+                                                handleSaveKey(editingProvider, val);
+                                            }
+                                        }}
                                         placeholder={editingProvider === 'ollama' ? "http://localhost:11434" : `Bearer Token for ${PROVIDERS[editingProvider].name}`}
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-11 pr-24 py-3.5 text-blue-200 font-mono text-xs focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-slate-700"
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-14 pr-16 py-3.5 text-blue-200 font-mono text-xs text-center focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-slate-600 placeholder:tracking-wider placeholder:text-center"
                                     />
-                                    <div className="absolute right-2 flex items-center gap-1">
+                                    <div className="absolute right-4 flex items-center gap-1">
                                         {editingProvider !== 'ollama' && (
                                             <button
                                                 type="button"
@@ -494,14 +516,6 @@ export const SettingsPanel = ({
                                                 className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-slate-300 bg-slate-800 rounded-lg transition-colors border border-transparent hover:border-slate-600"
                                             >
                                                 <Icon name={showApiKey ? "eye-slash" : "eye"} />
-                                            </button>
-                                        )}
-                                        {editingProvider !== 'ollama' && (
-                                            <button
-                                                onClick={() => handleSaveKey(editingProvider, localApiKey)}
-                                                className="h-8 px-4 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border border-blue-500/30"
-                                            >
-                                                Save
                                             </button>
                                         )}
                                     </div>
@@ -547,7 +561,7 @@ export const SettingsPanel = ({
                                 <div>
                                     <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block ml-1">Bot Token</label>
                                     <div className="relative">
-                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
+                                        <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500">
                                             <Icon name="key" />
                                         </div>
                                         <input
@@ -555,14 +569,14 @@ export const SettingsPanel = ({
                                             value={config.telegramBotToken || ''}
                                             onChange={(e) => updateConfig('telegramBotToken', e.target.value)}
                                             placeholder="123456789:ABCDE..."
-                                            className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-9 pr-4 py-3 text-blue-200 font-mono text-xs focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-slate-700"
+                                            className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-12 pr-4 py-3 text-blue-200 font-mono text-xs focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-slate-700 placeholder:tracking-widest"
                                         />
                                     </div>
                                 </div>
                                 <div>
                                     <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block ml-1">Allowed Chat ID (Admin)</label>
                                     <div className="relative">
-                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
+                                        <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500">
                                             <Icon name="user-shield" />
                                         </div>
                                         <input
@@ -570,13 +584,22 @@ export const SettingsPanel = ({
                                             value={config.telegramChatId || ''}
                                             onChange={(e) => updateConfig('telegramChatId', e.target.value)}
                                             placeholder="Your numeric Chat ID"
-                                            className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-9 pr-4 py-3 text-blue-200 font-mono text-xs focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-slate-700"
+                                            className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-12 pr-4 py-3 text-blue-200 font-mono text-xs focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-slate-700 placeholder:tracking-widest"
                                         />
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <div className={`md:hidden pt-2 pb-6 flex justify-center sticky bottom-0 z-20 pointer-events-none transition-all duration-300 ${showFloatingSave ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+                    <button
+                        onClick={onSaveGlobal}
+                        className="pointer-events-auto w-[70%] max-w-[280px] py-3.5 bg-blue-600/50 hover:bg-blue-600/90 border border-blue-400/30 text-blue-50 hover:text-white rounded-full text-[11px] font-extrabold uppercase tracking-widest shadow-[0_4px_15px_rgba(37,99,235,0.2)] hover:shadow-[0_4px_25px_rgba(37,99,235,0.5)] backdrop-blur-md transition-all duration-300 opacity-70 hover:opacity-100 flex items-center justify-center gap-2"
+                    >
+                        <Icon name="save" className="text-sm flex-shrink-0" /> Save Config
+                    </button>
                 </div>
 
                 {/* System Alerts */}

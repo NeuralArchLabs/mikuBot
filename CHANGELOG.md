@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.3.1] - 2026-02-20
+
+### 🚀 Optimización de Rendimiento & Auditoría
+- **Memoización de Componentes Core**: Se implementó `React.memo` en componentes clave de alto nivel (como `SessionList` y relacionados) para evitar re-renderizados innecesarios del DOM cuando el estado global cambia, mejorando la fluidez neta de la aplicación sin alterar su comportamiento visual o funcional.
+- **Auditoría UI/UX Responsiva**: Resolución de problemas de visualización en distintas relaciones de aspecto. Los botones de `SettingsPanel` ahora tienen fuentes e iconografía dinámicas (`md:`, `lg:`, `xl:`) garantizando que los textos no colisionen ni se trunquen en vistas de 4 columnas, y aprovechando el espacio horizontal en móviles.
+
+### 🎨 Dialogs Inteligentes y Conciencia Espacial
+- **Notificaciones Flexibles**: El motor del `SystemDialog` (alertas personalizadas) advierte desde qué lado de la pantalla fue disparada la acción y ajusta su animación de entrada y acople final basándose en ello (derecha para guardados, izquierda para eliminaciones).
+- **Control de Resoluciones (`@media`)**: Comportamiento adaptativo real. En pantallas grandes (`1280px`+) las alertas obedecerán su conciencia lateral. En pantallas más reducidas y móviles, priorizarán siempre centrarse para no desbordar el viewport del usuario.
+
 ## [1.3.0] - 2026-02-19
 
 ### 🎨 Ultra UI Polish & Cinematic Experience

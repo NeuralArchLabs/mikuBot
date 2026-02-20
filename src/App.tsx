@@ -7,7 +7,9 @@ import {
     ChatArea,
     FileEditor,
     LibraryManager,
-    SettingsPanel
+    SettingsPanel,
+    SystemDialog,
+    SystemDialogConfig
 } from './components';
 import {
     fetchModels,
@@ -60,6 +62,21 @@ export const App = () => {
     const [toolsHandle, setToolsHandle] = useState<FileSystemDirectoryHandle | null>(null);
     const [syncing, setSyncing] = useState(false);
 
+    // System Dialogs
+    const [dialogConfig, setDialogConfig] = useState<SystemDialogConfig | null>(null);
+
+    const askConfirm = useCallback((message: string, position?: 'left' | 'right' | 'center'): Promise<boolean> => {
+        return new Promise((resolve) => {
+            setDialogConfig({ isOpen: true, type: 'confirm', message, position, resolve: (val) => { setDialogConfig(prev => prev ? { ...prev, isOpen: false } : null); resolve(val); } });
+        });
+    }, []);
+
+    const askAlert = useCallback((message: string, position?: 'left' | 'right' | 'center'): Promise<void> => {
+        return new Promise((resolve) => {
+            setDialogConfig({ isOpen: true, type: 'alert', message, position, resolve: () => { setDialogConfig(prev => prev ? { ...prev, isOpen: false } : null); resolve(); } });
+        });
+    }, []);
+
     const scrollRef = useRef<HTMLDivElement>(null);
     const stateRef = useRef(state);
     const messagesRef = useRef(messages);
@@ -91,7 +108,7 @@ export const App = () => {
 
     const onSaveGlobal = useCallback(async () => {
         if (!(window as any).electron) {
-            alert("⚠️ Desktop Engine Not Detected: Settings can only be saved to config.json when running MikuCentral as a desktop application.");
+            await askAlert("⚠️ Desktop Engine Not Detected: Settings can only be saved to config.json when running MikuCentral as a desktop application.");
             return;
         }
 
@@ -104,18 +121,18 @@ export const App = () => {
             });
 
             if (result.ok) {
-                alert("✅ Neural Engine: Configuration saved successfully to config.json");
+                await askAlert("✅ Neural Engine: Configuration saved successfully to config.json", "right");
             } else {
-                alert(`❌ Configuration Error: ${result.error || 'Unknown error occurred in main process.'}`);
+                await askAlert(`❌ Configuration Error: ${result.error || 'Unknown error occurred in main process.'}`);
             }
         } catch (e) {
             console.error("Critical failure during save:", e);
-            alert("💥 Fatal Error: The connection to the Neural Engine was lost. Check terminal for details.");
+            await askAlert("💥 Fatal Error: The connection to the Neural Engine was lost. Check terminal for details.");
         }
-    }, [state.config, state.agentMode, state.safeMode, state.approvalMode]);
+    }, [state.config, state.agentMode, state.safeMode, state.approvalMode, askAlert]);
 
     const onResetGlobal = useCallback(async () => {
-        if (confirm("Reset all settings to defaults? This will overwrite your config.json.")) {
+        if (await askConfirm("Reset all settings to defaults? This will overwrite your config.json.")) {
             await persistence.saveSettings(DEFAULT_CONFIG, 'chat', false, 'auto');
             setState(prev => ({
                 ...prev,
@@ -125,7 +142,7 @@ export const App = () => {
                 approvalMode: 'auto'
             }));
         }
-    }, []);
+    }, [askConfirm]);
 
     const onLoadConfig = useCallback(async () => {
         const loaded = await persistence.loadFromFile();
@@ -137,9 +154,9 @@ export const App = () => {
                 safeMode: loaded.safeMode || false,
                 approvalMode: loaded.approvalMode || 'auto'
             }));
-            alert("✅ Neural Engine: Configuration imported successfully.");
+            await askAlert("✅ Neural Engine: Configuration imported successfully.");
         }
-    }, []);
+    }, [askAlert]);
 
     const onExportConfig = useCallback(() => {
         persistence.exportToFile(state.config, state.agentMode, state.safeMode, state.approvalMode);
@@ -249,17 +266,17 @@ export const App = () => {
         }
     }, [onSelectSession]);
 
-    const onRewind = useCallback((index: number) => {
+    const onRewind = useCallback(async (index: number) => {
         const msg = messages[index];
         if (msg.role !== 'user') return;
 
-        if (confirm("Rewind conversation to this point? All subsequent messages will be lost.")) {
+        if (await askConfirm("Rewind conversation to this point? All subsequent messages will be lost.")) {
             const newHistory = messages.slice(0, index);
             setMessages(newHistory);
             setInput(msg.text);
             setAgentStatus(createDefaultAgentStatus());
         }
-    }, [messages]);
+    }, [messages, askConfirm]);
 
     // Auto-save current session and update title in sidebar
     useEffect(() => {
@@ -628,7 +645,7 @@ export const App = () => {
             console.error(`[App] Connection Test Failed for ${providerToTest}:`, error);
             setConnectionStatus('error');
             if (providerToTest === 'ollama') {
-                alert(`⚠️ Error Ollama (${state.config.ollamaUrl}): ${error instanceof Error ? error.message : String(error)}`);
+                await askAlert(`⚠️ Error Ollama (${state.config.ollamaUrl}): ${error instanceof Error ? error.message : String(error)}`);
             }
         } finally {
             setLoadingModels(prev => ({ ...prev, [providerToTest]: false }));
@@ -819,7 +836,10 @@ NO simules resultados de herramientas ni inventes datos; si necesitas informaci�
             // If not handled, maybe it's for the model (e.g. /imagine).
         }
 
-        if (!currentState.config.model) return alert('Select a model first.');
+        if (!currentState.config.model) {
+            await askAlert('Select a model first.');
+            return;
+        }
 
         // For Telegram, we ALWAYS assume Chat Mode for maximum identity
         const effectiveToolMode = isRemote ? false : forceToolMode;
@@ -1095,8 +1115,9 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
 
     return (
         <div className="flex h-screen w-full bg-[#0f172a] text-slate-200 overflow-hidden font-sans">
+            <SystemDialog config={dialogConfig} />
             <Sidebar
-                state={{ ...state, onSelectSession, onDeleteSession, onNewSession, onExportSession, onImportSession } as any}
+                state={{ ...state, askConfirm, onSelectSession, onDeleteSession, onNewSession, onExportSession, onImportSession } as any}
                 sessions={sessions}
                 loadingSessions={loadingSessions}
                 setState={setState}
