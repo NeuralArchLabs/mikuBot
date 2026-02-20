@@ -122,6 +122,22 @@ export const SettingsPanel = ({
                         {/* WorkSpace */}
                         <div className="bg-slate-900/60 backdrop-blur-md p-5 rounded-2xl border border-emerald-500/20 shadow-xl relative overflow-hidden group hover:border-emerald-500/40 transition-colors">
                             <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
+
+                            {/* Native Explorer Link - Absolute Corner */}
+                            {config.folderPaths?.workSpace && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        const path = config.folderPaths?.workSpace;
+                                        if (path) (window as any).electron?.invoke('fs-open-folder', path);
+                                    }}
+                                    className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/30 text-emerald-400 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-50 border border-emerald-500/20 hover:scale-110 active:scale-95 shadow-lg"
+                                    title="Open WorkSpace in Explorer"
+                                >
+                                    <Icon name="external-link-alt" className="text-[10px]" />
+                                </button>
+                            )}
+
                             <div className="flex items-center gap-4 md:gap-3 xl:gap-4 mb-5 md:mb-4 xl:mb-5">
                                 <div className="w-14 h-14 md:w-12 md:h-12 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex flex-shrink-0 items-center justify-center shadow-inner transition-all">
                                     <Icon name="box" className="text-3xl md:text-xl lg:text-lg xl:text-xl transition-all" />
@@ -130,13 +146,6 @@ export const SettingsPanel = ({
                                     <div className="text-xl md:text-base lg:text-sm xl:text-base font-black text-slate-100 tracking-wide mb-1 lg:mb-0 transition-all">WorkSpace</div>
                                     <div className="text-[11px] md:text-[9px] lg:text-[8px] xl:text-[9px] font-bold uppercase tracking-widest text-emerald-500/80 truncate transition-all">Default Directory</div>
                                 </div>
-                                <button
-                                    onClick={() => (window as any).electron?.openFolder(workSpacePathName)}
-                                    className="ml-auto w-8 h-8 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-10 border border-emerald-500/20"
-                                    title="Open WorkSpace in Explorer"
-                                >
-                                    <Icon name="expand" className="text-[10px]" />
-                                </button>
                             </div>
                             <div className="text-xs font-mono text-slate-400 mb-5 truncate bg-black/40 p-3 rounded-xl border border-white/5 shadow-inner leading-relaxed" title={workSpacePathName}>
                                 {workSpacePathName || "Not configured"}
@@ -153,6 +162,22 @@ export const SettingsPanel = ({
                         {/* Core Identity */}
                         <div className="bg-slate-900/60 backdrop-blur-md p-5 rounded-2xl border border-indigo-500/20 shadow-xl relative overflow-hidden group hover:border-indigo-500/40 transition-colors">
                             <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
+
+                            {/* Native Explorer Link - Absolute Corner */}
+                            {config.folderPaths?.core && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        const path = config.folderPaths?.core;
+                                        if (path) (window as any).electron?.invoke('fs-open-folder', path);
+                                    }}
+                                    className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/30 text-indigo-400 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-50 border border-indigo-500/20 hover:scale-110 active:scale-95 shadow-lg"
+                                    title="Open Core in Explorer"
+                                >
+                                    <Icon name="external-link-alt" className="text-[10px]" />
+                                </button>
+                            )}
+
                             <div className="flex items-center gap-4 md:gap-3 xl:gap-4 mb-5 md:mb-4 xl:mb-5">
                                 <div className="w-14 h-14 md:w-12 md:h-12 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex flex-shrink-0 items-center justify-center shadow-inner transition-all">
                                     <Icon name="hdd" className="text-3xl md:text-xl lg:text-lg xl:text-xl transition-all" />
@@ -161,13 +186,6 @@ export const SettingsPanel = ({
                                     <div className="text-xl md:text-base lg:text-sm xl:text-base font-black text-slate-100 tracking-wide mb-1 lg:mb-0 transition-all">Core</div>
                                     <div className="text-[11px] md:text-[9px] lg:text-[8px] xl:text-[9px] font-bold uppercase tracking-widest text-indigo-500/80 truncate transition-all">SOUL, USER, CONTEXT</div>
                                 </div>
-                                <button
-                                    onClick={() => (window as any).electron?.openFolder(corePathName)}
-                                    className="ml-auto w-8 h-8 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-10 border border-indigo-500/20"
-                                    title="Open Core in Explorer"
-                                >
-                                    <Icon name="expand" className="text-[10px]" />
-                                </button>
                             </div>
                             <div className="text-xs font-mono text-slate-400 mb-5 truncate bg-black/40 p-3 rounded-xl border border-white/5 shadow-inner leading-relaxed" title={corePathName}>
                                 {corePathName || "Internal Defaults"}
@@ -184,6 +202,22 @@ export const SettingsPanel = ({
                         {/* Library */}
                         <div className="bg-slate-900/60 backdrop-blur-md p-5 rounded-2xl border border-pink-500/20 shadow-xl relative overflow-hidden group hover:border-pink-500/40 transition-colors">
                             <div className="absolute top-0 right-0 w-24 h-24 bg-pink-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
+
+                            {/* Native Explorer Link - Absolute Corner */}
+                            {config.folderPaths?.extra && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        const path = config.folderPaths?.extra;
+                                        if (path) (window as any).electron?.invoke('fs-open-folder', path);
+                                    }}
+                                    className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-pink-500/10 hover:bg-pink-500/30 text-pink-400 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-50 border border-pink-500/20 hover:scale-110 active:scale-95 shadow-lg"
+                                    title="Open Library in Explorer"
+                                >
+                                    <Icon name="external-link-alt" className="text-[10px]" />
+                                </button>
+                            )}
+
                             <div className="flex items-center gap-4 md:gap-3 xl:gap-4 mb-5 md:mb-4 xl:mb-5">
                                 <div className="w-14 h-14 md:w-12 md:h-12 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rounded-2xl bg-pink-500/10 border border-pink-500/20 text-pink-400 flex flex-shrink-0 items-center justify-center shadow-inner transition-all">
                                     <Icon name="book" className="text-3xl md:text-xl lg:text-lg xl:text-xl transition-all" />
@@ -192,13 +226,6 @@ export const SettingsPanel = ({
                                     <div className="text-xl md:text-base lg:text-sm xl:text-base font-black text-slate-100 tracking-wide mb-1 lg:mb-0 transition-all">Library</div>
                                     <div className="text-[11px] md:text-[9px] lg:text-[8px] xl:text-[9px] font-bold uppercase tracking-widest text-pink-500/80 truncate transition-all">Auxiliary Context</div>
                                 </div>
-                                <button
-                                    onClick={() => (window as any).electron?.openFolder(extraPathName)}
-                                    className="ml-auto w-8 h-8 rounded-lg bg-pink-500/10 hover:bg-pink-500/20 text-pink-400 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-10 border border-pink-500/20"
-                                    title="Open Library in Explorer"
-                                >
-                                    <Icon name="expand" className="text-[10px]" />
-                                </button>
                             </div>
                             <div className="text-xs font-mono text-slate-400 mb-5 truncate bg-black/40 p-3 rounded-xl border border-white/5 shadow-inner leading-relaxed" title={extraPathName}>
                                 {extraPathName || "No Links"}
@@ -215,6 +242,22 @@ export const SettingsPanel = ({
                         {/* Command Engine */}
                         <div className="bg-slate-900/60 backdrop-blur-md p-5 rounded-2xl border border-amber-500/20 shadow-xl relative overflow-hidden group hover:border-amber-500/40 transition-colors">
                             <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
+
+                            {/* Native Explorer Link - Absolute Corner */}
+                            {config.folderPaths?.tools && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        const path = config.folderPaths?.tools;
+                                        if (path) (window as any).electron?.invoke('fs-open-folder', path);
+                                    }}
+                                    className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-amber-500/10 hover:bg-amber-500/30 text-amber-400 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-50 border border-amber-500/20 hover:scale-110 active:scale-95 shadow-lg"
+                                    title="Open Commands in Explorer"
+                                >
+                                    <Icon name="external-link-alt" className="text-[10px]" />
+                                </button>
+                            )}
+
                             <div className="flex items-center gap-4 md:gap-3 xl:gap-4 mb-5 md:mb-4 xl:mb-5">
                                 <div className="w-14 h-14 md:w-12 md:h-12 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex flex-shrink-0 items-center justify-center shadow-inner transition-all">
                                     <Icon name="bolt" className="text-3xl md:text-xl lg:text-lg xl:text-xl transition-all" />
@@ -223,13 +266,6 @@ export const SettingsPanel = ({
                                     <div className="text-xl md:text-base lg:text-sm xl:text-base font-black text-slate-100 tracking-wide mb-1 lg:mb-0 transition-all">Commands</div>
                                     <div className="text-[11px] md:text-[9px] lg:text-[8px] xl:text-[9px] font-bold uppercase tracking-widest text-amber-500/80 truncate transition-all">Tools & Skills</div>
                                 </div>
-                                <button
-                                    onClick={() => (window as any).electron?.openFolder(toolsPathName)}
-                                    className="ml-auto w-8 h-8 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-10 border border-amber-500/20"
-                                    title="Open Commands in Explorer"
-                                >
-                                    <Icon name="expand" className="text-[10px]" />
-                                </button>
                             </div>
                             <div className="text-xs font-mono text-slate-400 mb-5 truncate bg-black/40 p-3 rounded-xl border border-white/5 shadow-inner leading-relaxed" title={toolsPathName}>
                                 {toolsPathName || "Not configured"}
