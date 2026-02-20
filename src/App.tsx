@@ -772,6 +772,24 @@ export const App = () => {
         }
     }, [state.config, updateConfig]);
 
+    // Initial and dynamic model synchronization
+    useEffect(() => {
+        const syncOnLoad = async () => {
+            const providersToSync = new Set<Provider>();
+            if (state.config.chatProvider) providersToSync.add(state.config.chatProvider);
+            if (state.config.agentProvider) providersToSync.add(state.config.agentProvider);
+            if (state.config.provider) providersToSync.add(state.config.provider);
+
+            for (const p of providersToSync) {
+                // If we don't have models for this provider, try a silent sync
+                if ((models[p] || []).length === 0 && !loadingModels[p]) {
+                    handleTestConnection(p);
+                }
+            }
+        };
+        syncOnLoad();
+    }, [state.config.chatProvider, state.config.agentProvider, state.config.provider, handleTestConnection]);
+
     const constructSystemInstruction = (isForceToolMode: boolean = false, overrideState?: { core?: Record<string, string>, additional?: Record<string, string>, workSpace?: Record<string, string>, tools?: Record<string, string> }) => {
         const currentState = stateRef.current;
         const isAgentOrInstruction = currentState.agentMode === 'agent' || isForceToolMode;

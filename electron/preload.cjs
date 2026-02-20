@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('electron', {
 
     // Native FS
     selectFolder: () => ipcRenderer.invoke('fs-select-folder'),
+    openFolder: (path) => ipcRenderer.invoke('fs-open-folder', path),
     readFolder: (path) => ipcRenderer.invoke('fs-read-folder', path),
     writeFile: (data) => ipcRenderer.invoke('fs-write-file', data),
     runConsole: (data) => ipcRenderer.invoke('run-console', data),

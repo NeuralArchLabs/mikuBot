@@ -13,6 +13,9 @@
 - **Neural Component Refactoring**:
     - Reestructuración masiva de `App.tsx` para eliminar la anidación excesiva de funciones de ciclo de vida (hooks), resolviendo bugs de "Race Conditions" durante el arranque del motor de inferencia.
     - Consolidación de `restoreHandlers` para una reconexión inmediata a los subsistemas neurales al inicio.
+- **Native Explorer Integration**:
+    - Añadidos iconos de acceso directo ("Maximizar") en las tarjetas de selección de carpetas del Control Room. Ahora es posible abrir cualquier ruta configurada directamente en el explorador de archivos del sistema operativo con un solo clic.
+    - Implementación de un handler IPC seguro para la comunicación con el shell del sistema.
 
 ## [1.4.2] - 2026-02-20
 

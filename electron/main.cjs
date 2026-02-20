@@ -202,6 +202,18 @@ ipcMain.handle('fs-select-folder', async () => {
     return { ok: true, path: folderPath, name: path.basename(folderPath) };
 });
 
+ipcMain.handle('fs-open-folder', async (event, folderPath) => {
+    try {
+        if (!folderPath || !fs.existsSync(folderPath)) {
+            return { ok: false, error: 'Path does not exist' };
+        }
+        await shell.openPath(folderPath);
+        return { ok: true };
+    } catch (e) {
+        return { ok: false, error: e.message };
+    }
+});
+
 ipcMain.handle('get-default-path', () => {
     return { ok: true, path: path.join(app.getPath('home'), 'mikuCentral') };
 });

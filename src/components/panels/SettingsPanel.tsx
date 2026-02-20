@@ -130,6 +130,13 @@ export const SettingsPanel = ({
                                     <div className="text-xl md:text-base lg:text-sm xl:text-base font-black text-slate-100 tracking-wide mb-1 lg:mb-0 transition-all">WorkSpace</div>
                                     <div className="text-[11px] md:text-[9px] lg:text-[8px] xl:text-[9px] font-bold uppercase tracking-widest text-emerald-500/80 truncate transition-all">Default Directory</div>
                                 </div>
+                                <button
+                                    onClick={() => (window as any).electron?.openFolder(workSpacePathName)}
+                                    className="ml-auto w-8 h-8 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-10 border border-emerald-500/20"
+                                    title="Open WorkSpace in Explorer"
+                                >
+                                    <Icon name="expand" className="text-[10px]" />
+                                </button>
                             </div>
                             <div className="text-xs font-mono text-slate-400 mb-5 truncate bg-black/40 p-3 rounded-xl border border-white/5 shadow-inner leading-relaxed" title={workSpacePathName}>
                                 {workSpacePathName || "Not configured"}
@@ -151,9 +158,16 @@ export const SettingsPanel = ({
                                     <Icon name="hdd" className="text-3xl md:text-xl lg:text-lg xl:text-xl transition-all" />
                                 </div>
                                 <div className="truncate flex-1">
-                                    <div className="text-xl md:text-base lg:text-sm xl:text-base font-black text-slate-100 tracking-wide mb-1 lg:mb-0 transition-all">Core Engine</div>
+                                    <div className="text-xl md:text-base lg:text-sm xl:text-base font-black text-slate-100 tracking-wide mb-1 lg:mb-0 transition-all">Core</div>
                                     <div className="text-[11px] md:text-[9px] lg:text-[8px] xl:text-[9px] font-bold uppercase tracking-widest text-indigo-500/80 truncate transition-all">SOUL, USER, CONTEXT</div>
                                 </div>
+                                <button
+                                    onClick={() => (window as any).electron?.openFolder(corePathName)}
+                                    className="ml-auto w-8 h-8 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-10 border border-indigo-500/20"
+                                    title="Open Core in Explorer"
+                                >
+                                    <Icon name="expand" className="text-[10px]" />
+                                </button>
                             </div>
                             <div className="text-xs font-mono text-slate-400 mb-5 truncate bg-black/40 p-3 rounded-xl border border-white/5 shadow-inner leading-relaxed" title={corePathName}>
                                 {corePathName || "Internal Defaults"}
@@ -178,6 +192,13 @@ export const SettingsPanel = ({
                                     <div className="text-xl md:text-base lg:text-sm xl:text-base font-black text-slate-100 tracking-wide mb-1 lg:mb-0 transition-all">Library</div>
                                     <div className="text-[11px] md:text-[9px] lg:text-[8px] xl:text-[9px] font-bold uppercase tracking-widest text-pink-500/80 truncate transition-all">Auxiliary Context</div>
                                 </div>
+                                <button
+                                    onClick={() => (window as any).electron?.openFolder(extraPathName)}
+                                    className="ml-auto w-8 h-8 rounded-lg bg-pink-500/10 hover:bg-pink-500/20 text-pink-400 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-10 border border-pink-500/20"
+                                    title="Open Library in Explorer"
+                                >
+                                    <Icon name="expand" className="text-[10px]" />
+                                </button>
                             </div>
                             <div className="text-xs font-mono text-slate-400 mb-5 truncate bg-black/40 p-3 rounded-xl border border-white/5 shadow-inner leading-relaxed" title={extraPathName}>
                                 {extraPathName || "No Links"}
@@ -202,6 +223,13 @@ export const SettingsPanel = ({
                                     <div className="text-xl md:text-base lg:text-sm xl:text-base font-black text-slate-100 tracking-wide mb-1 lg:mb-0 transition-all">Commands</div>
                                     <div className="text-[11px] md:text-[9px] lg:text-[8px] xl:text-[9px] font-bold uppercase tracking-widest text-amber-500/80 truncate transition-all">Tools & Skills</div>
                                 </div>
+                                <button
+                                    onClick={() => (window as any).electron?.openFolder(toolsPathName)}
+                                    className="ml-auto w-8 h-8 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-10 border border-amber-500/20"
+                                    title="Open Commands in Explorer"
+                                >
+                                    <Icon name="expand" className="text-[10px]" />
+                                </button>
                             </div>
                             <div className="text-xs font-mono text-slate-400 mb-5 truncate bg-black/40 p-3 rounded-xl border border-white/5 shadow-inner leading-relaxed" title={toolsPathName}>
                                 {toolsPathName || "Not configured"}
@@ -238,18 +266,19 @@ export const SettingsPanel = ({
                                     <span className="font-black text-white tracking-tight text-lg">Chat Runtime</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    {config.chatProvider !== 'ollama' && (
-                                        <button
-                                            onClick={() => {
-                                                const key = prompt(`Enter API Key for ${PROVIDERS[config.chatProvider || 'gemini'].name}:`, config.apiKeys[config.chatProvider || 'gemini']);
-                                                if (key !== null) handleSaveKey(config.chatProvider || 'gemini', key);
-                                            }}
-                                            className="w-8 h-8 flex items-center justify-center bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-xl transition-all shadow-md border border-white/5"
-                                            title="Quick Key Update"
-                                        >
-                                            <Icon name="key" />
-                                        </button>
-                                    )}
+                                    <div
+                                        className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all shadow-md border ${(config.chatProvider === 'ollama' ? (models['ollama'] || []).length > 0 : !!config.apiKeys[config.chatProvider || 'gemini'])
+                                            ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]'
+                                            : 'bg-slate-800/80 text-slate-500 border-white/5'
+                                            }`}
+                                        title={
+                                            (config.chatProvider === 'ollama' ? (models['ollama'] || []).length > 0 : !!config.apiKeys[config.chatProvider || 'gemini'])
+                                                ? "Connection/Key Active"
+                                                : "Configuration Pending"
+                                        }
+                                    >
+                                        <Icon name={config.chatProvider === 'ollama' ? 'network-wired' : 'key'} />
+                                    </div>
                                     <button
                                         onClick={() => onTestConnection(config.chatProvider)}
                                         disabled={loadingModels[config.chatProvider || 'groq']}
@@ -327,18 +356,19 @@ export const SettingsPanel = ({
                                     <span className="font-black text-white tracking-tight text-lg">Agent Runtime</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    {config.agentProvider !== 'ollama' && (
-                                        <button
-                                            onClick={() => {
-                                                const key = prompt(`Enter API Key for ${PROVIDERS[config.agentProvider || 'groq'].name}:`, config.apiKeys[config.agentProvider || 'groq']);
-                                                if (key !== null) handleSaveKey(config.agentProvider || 'groq', key);
-                                            }}
-                                            className="w-8 h-8 flex items-center justify-center bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-xl transition-all shadow-md border border-white/5"
-                                            title="Quick Key Update"
-                                        >
-                                            <Icon name="key" />
-                                        </button>
-                                    )}
+                                    <div
+                                        className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all shadow-md border ${(config.agentProvider === 'ollama' ? (models['ollama'] || []).length > 0 : !!config.apiKeys[config.agentProvider || 'groq'])
+                                            ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]'
+                                            : 'bg-slate-800/80 text-slate-500 border-white/5'
+                                            }`}
+                                        title={
+                                            (config.agentProvider === 'ollama' ? (models['ollama'] || []).length > 0 : !!config.apiKeys[config.agentProvider || 'groq'])
+                                                ? "Connection/Key Active"
+                                                : "Configuration Pending"
+                                        }
+                                    >
+                                        <Icon name={config.agentProvider === 'ollama' ? 'network-wired' : 'key'} />
+                                    </div>
                                     <button
                                         onClick={() => onTestConnection(config.agentProvider)}
                                         disabled={loadingModels[config.agentProvider || 'groq']}
@@ -411,7 +441,7 @@ export const SettingsPanel = ({
                 {/* Secure Credential Vault Section */}
                 <div className="space-y-6">
                     <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
-                        <Icon name="shield-alt" className="text-amber-500" /> Neural Security & Identity Vault
+                        <Icon name="shield-alt" className="text-amber-500" /> Neural Security & Main Engine Settings
                     </label>
 
                     <div className="bg-slate-900/80 backdrop-blur-xl rounded-3xl p-8 border border-amber-700/30 shadow-[0_0_40px_rgba(251,191,36,0.05)] space-y-6 relative overflow-hidden">

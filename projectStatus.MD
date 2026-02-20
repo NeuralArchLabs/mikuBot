@@ -106,6 +106,8 @@ electron/
 | 9 | **Razonamiento redundante** | ✅ Done | Implementado sistema de bloques semánticos (`thought`/`answer`) + Intercalado cronológico + Swallowing de JSON duplicado. |
 | 10 | **Confusión de Idioma** | ✅ Done | Inyección estructural de `IDENTITY.md` + protocolo de idioma español obligatorio en `App.tsx`. |
 | 11 | **Refactor Sandbox → WorkSpace** | ✅ Done | Renombrado masivo de `sandbox` a `workSpace` en tipos, servicios, UI y herramientas para mayor claridad conceptual. |
+| 12 | **Inestabilidad en Persistencia** | ✅ Done | v1.5.0: `config.json` como Single Source of Truth. Eliminados handles de IndexedDB caducos y `localStorage` en modo escritorio. |
+| 13 | **Acceso a Carpetas Externo** | ✅ Done | Integración con el Shell nativo para abrir directorios del Control Room directamente en el explorador de archivos. |
 
 ### 3.2 Pendientes (Originales) ⏳
 | # | Problema | Severidad | Detalle |
