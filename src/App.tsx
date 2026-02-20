@@ -1149,10 +1149,32 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
         }));
         await persistence.saveSettings({ ...state.config, ...newConfig, isConfigured: true }, state.agentMode, state.safeMode, state.approvalMode);
 
-        // At this point, the folders are created at setupData.targetPath on disk. 
-        // We tell the user to manually select them in the Settings later to grant File System Access API permissions, 
-        // or attempt to use the Electron paths directly if the app is updated to bypass browser FS handles for local files.
-        await askAlert("✅ Setup Complete!\nYour environment is ready. Please go to Settings to link the 'core', 'commands', 'workspace', and 'library' folders created at " + setupData.targetPath);
+        if (setupData.handles) {
+            const { core, commands, workspace, library } = setupData.handles;
+            if (core) {
+                setCoreHandle(core);
+                await db.set('coreHandle', core);
+                syncFiles('core', core);
+            }
+            if (commands) {
+                setToolsHandle(commands);
+                await db.set('toolsHandle', commands);
+                syncFiles('tools', commands);
+            }
+            if (workspace) {
+                setWorkSpaceHandle(workspace);
+                await db.set('workSpaceHandle', workspace);
+                syncFiles('workSpace', workspace);
+            }
+            if (library) {
+                setExtraHandle(library);
+                await db.set('extraHandle', library);
+                syncFiles('extra', library);
+            }
+            await askAlert("✅ Neural Subsystems Online!\nYour environment is fully linked and ready to operate.", "right");
+        } else {
+            await askAlert("✅ Setup Complete!\nYour environment is ready. Please go to Settings to link the 'core', 'commands', 'workspace', and 'library' folders created at " + setupData.targetPath);
+        }
     };
 
     return (
