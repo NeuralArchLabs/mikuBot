@@ -1113,6 +1113,34 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
         setAgentStatus(createDefaultAgentStatus());
     }, []);
 
+    // ── Native Menu Listeners ──────────────────────────────────────────
+    useEffect(() => {
+        if ((window as any).electron && (window as any).electron.onMenuAction) {
+            const cleanup = (window as any).electron.onMenuAction((action: string) => {
+                switch (action) {
+                    case 'new-session':
+                        onNewSession();
+                        break;
+                    case 'export-config':
+                        onExportConfig();
+                        break;
+                    case 'load-config':
+                        onLoadConfig();
+                        break;
+                    case 'sync-models':
+                        handleTestConnection();
+                        break;
+                    case 'reset-config':
+                        onResetGlobal();
+                        break;
+                    default:
+                        console.warn(`Unknown menu action: ${action}`);
+                }
+            });
+            return cleanup;
+        }
+    }, [onNewSession, onExportConfig, onLoadConfig, handleTestConnection, onResetGlobal]);
+
     return (
         <div className="flex h-screen w-full bg-[#0f172a] text-slate-200 overflow-hidden font-sans miku-app-isolate">
             <SystemDialog config={dialogConfig} />

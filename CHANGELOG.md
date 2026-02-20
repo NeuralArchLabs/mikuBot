@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.4.1] - 2026-02-20
+
+### 🖥️ Native OS Integration & Production Build
+- **Application Menus Natives (MacOS/Windows)**:
+    - Reemplazo completo del menú estándar de Electron por opciones de herramientas específicas de **MikuCentral** (Nueva Sesión, Cargar/Exportar Configuración).
+    - Menú dinámico transversal: Aislado canal bidireccional entre eventos IPC y React State.
+    - Opciones exclusivas bajo `Neural Engine`: `Sync Models (Ctrl+R)` y `Reset Global Config`.
+- **Electron Build Fixes**:
+    - Ajuste de iconos y configuración del empaquetador para heredar la iconografía en dependencias `.exe` compiladas por NSIS.
+    - Definición robusta de motores (`app.isPackaged` y `resourcesPath`) evitando la pérdida de la ejecución Python externa tras el Build de ASAR.
+
 ## [1.4.0] - 2026-02-20
 
 ### 🛡️ Neural Security & File Management

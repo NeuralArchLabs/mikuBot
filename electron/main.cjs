@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -17,11 +17,15 @@ const rootPath = app.isPackaged
     ? path.dirname(app.getPath('exe'))
     : process.cwd();
 
+const resourcesPath = app.isPackaged
+    ? process.resourcesPath
+    : process.cwd();
+
 const CONFIG_FILE = path.join(rootPath, 'config.json');
 const SESSIONS_DIR = path.join(rootPath, 'sessions');
 
-console.log('Main Process: Root path is:', rootPath);
-console.log('Main Process: Config file:', CONFIG_FILE);
+console.log('Main Process: Root path (persistence):', rootPath);
+console.log('Main Process: Resources path (engine):', resourcesPath);
 
 // Ensure sessions directory exists
 if (!fs.existsSync(SESSIONS_DIR)) {
@@ -217,8 +221,8 @@ ipcMain.handle('run-console', async (event, { command, args, cwd }) => {
 
 ipcMain.handle('run-search', async (event, { query }) => {
     const { execFile } = require('child_process');
-    const pythonExe = path.join(rootPath, 'engine', 'python', 'python.exe');
-    const searchScript = path.join(rootPath, 'engine', 'search.py');
+    const pythonExe = path.join(resourcesPath, 'engine', 'python', 'python.exe');
+    const searchScript = path.join(resourcesPath, 'engine', 'search.py');
 
     return new Promise((resolve) => {
         console.log(`[Main Process] Internal Search: "${query}"`);
@@ -245,8 +249,8 @@ ipcMain.handle('run-search', async (event, { query }) => {
 
 ipcMain.handle('run-extract', async (event, { url }) => {
     const { execFile } = require('child_process');
-    const pythonExe = path.join(rootPath, 'engine', 'python', 'python.exe');
-    const extractScript = path.join(rootPath, 'engine', 'extract.py');
+    const pythonExe = path.join(resourcesPath, 'engine', 'python', 'python.exe');
+    const extractScript = path.join(resourcesPath, 'engine', 'extract.py');
 
     return new Promise((resolve) => {
         console.log(`[Main Process] Internal Extraction: "${url}"`);
@@ -355,6 +359,116 @@ ipcMain.handle('fs-write-file', async (event, { folderPath, filename, content })
     }
 });
 
+function setupAppMenu(win) {
+    const isMac = process.platform === 'darwin';
+
+    const template = [
+        ...(isMac ? [{
+            label: app.name,
+            submenu: [
+                { role: 'about' },
+                { type: 'separator' },
+                { role: 'services' },
+                { type: 'separator' },
+                { role: 'hide' },
+                { role: 'hideOthers' },
+                { role: 'unhide' },
+                { type: 'separator' },
+                { role: 'quit' }
+            ]
+        }] : []),
+        {
+            label: 'File',
+            submenu: [
+                {
+                    label: 'New Session',
+                    accelerator: 'CmdOrCtrl+N',
+                    click: () => { win.webContents.send('menu-action', 'new-session'); }
+                },
+                { type: 'separator' },
+                {
+                    label: 'Export Configuration',
+                    click: () => { win.webContents.send('menu-action', 'export-config'); }
+                },
+                {
+                    label: 'Load Configuration',
+                    click: () => { win.webContents.send('menu-action', 'load-config'); }
+                },
+                { type: 'separator' },
+                {
+                    label: 'Open Sessions Folder',
+                    click: () => { shell.openPath(SESSIONS_DIR); }
+                },
+                isMac ? { role: 'close' } : { role: 'quit' }
+            ]
+        },
+        {
+            label: 'Edit',
+            submenu: [
+                { role: 'undo' },
+                { role: 'redo' },
+                { type: 'separator' },
+                { role: 'cut' },
+                { role: 'copy' },
+                { role: 'paste' },
+                { role: 'selectAll' }
+            ]
+        },
+        {
+            label: 'View',
+            submenu: [
+                { role: 'reload' },
+                { role: 'forceReload' },
+                { role: 'toggleDevTools' },
+                { type: 'separator' },
+                { role: 'resetZoom' },
+                { role: 'zoomIn' },
+                { role: 'zoomOut' },
+                { type: 'separator' },
+                { role: 'togglefullscreen' }
+            ]
+        },
+        {
+            label: 'Neural Engine',
+            submenu: [
+                {
+                    label: 'Sync Models',
+                    accelerator: 'CmdOrCtrl+R',
+                    click: () => { win.webContents.send('menu-action', 'sync-models'); }
+                },
+                { type: 'separator' },
+                {
+                    label: 'Reset Global Config',
+                    click: () => { win.webContents.send('menu-action', 'reset-config'); }
+                }
+            ]
+        },
+        {
+            label: 'Help',
+            submenu: [
+                {
+                    label: 'Documentation',
+                    click: async () => { await shell.openExternal('https://github.com/martinezpalomera92/mikuCentralv1.0#readme'); }
+                },
+                {
+                    label: 'About MikuCentral',
+                    click: () => {
+                        dialog.showMessageBox(win, {
+                            type: 'info',
+                            title: 'MikuCentral',
+                            message: 'MikuCentral v1.4.0',
+                            detail: 'Neural AI Interface for Multi-Model Management.\nCreated with love for high-performance AI workflows.'
+                        });
+                    }
+                }
+            ]
+        }
+    ];
+
+    const menu = Menu.buildFromTemplate(template);
+    Menu.setApplicationMenu(menu);
+}
+
 // ── Window Management ────────────────────────────────────────────────
 function createWindow() {
     const win = new BrowserWindow({
@@ -362,7 +476,9 @@ function createWindow() {
         height: 800,
         minWidth: 640,
         minHeight: 650,
-        icon: path.join(__dirname, '../public/mikuBotICON.png'),
+        icon: app.isPackaged
+            ? path.join(__dirname, '../dist/mikuBotICON.png')
+            : path.join(__dirname, '../public/mikuBotICON.png'),
         webPreferences: {
             preload: path.join(__dirname, 'preload.cjs'),
             contextIsolation: true,
@@ -380,6 +496,8 @@ function createWindow() {
     } else {
         win.loadFile(path.join(__dirname, '../dist/index.html'));
     }
+
+    setupAppMenu(win);
 
     win.once('ready-to-show', () => {
         win.show();

@@ -1,7 +1,7 @@
 {
   "name": "mikucentral",
   "private": true,
-  "version": "1.4.0",
+  "version": "1.4.1",
   "type": "module",
   "description": "MikuCentral - Neural AI Interface",
   "author": "Armando Martinez",
@@ -15,11 +15,20 @@
     "files": [
       "dist/**/*",
       "electron/**/*",
+      "public/**/*",
       "package.json"
     ],
+    "extraResources": [
+      {
+        "from": "engine",
+        "to": "engine"
+      }
+    ],
     "win": {
-      "target": "nsis"
-    }
+      "target": "nsis",
+      "icon": "public/mikuBotICON.png"
+    },
+    "icon": "public/mikuBotICON.png"
   },
   "scripts": {
     "dev": "vite",

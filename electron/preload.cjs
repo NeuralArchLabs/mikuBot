@@ -18,5 +18,12 @@ contextBridge.exposeInMainWorld('electron', {
     readFolder: (path) => ipcRenderer.invoke('fs-read-folder', path),
     writeFile: (data) => ipcRenderer.invoke('fs-write-file', data),
     runConsole: (data) => ipcRenderer.invoke('run-console', data),
-    runSearch: (data) => ipcRenderer.invoke('run-search', data)
+    runSearch: (data) => ipcRenderer.invoke('run-search', data),
+
+    // Menu events listener
+    onMenuAction: (callback) => {
+        const listener = (event, action) => callback(action);
+        ipcRenderer.on('menu-action', listener);
+        return () => ipcRenderer.removeListener('menu-action', listener);
+    }
 });
