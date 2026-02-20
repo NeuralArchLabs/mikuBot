@@ -539,6 +539,47 @@ export const App = () => {
         }
     };
 
+    const wakeUpAllFolders = async () => {
+        try {
+            const hasAnyHandle = coreHandle || extraHandle || workSpaceHandle || toolsHandle;
+
+            if (hasAnyHandle) {
+                const targets: FileTarget[] = ['core', 'extra', 'workSpace', 'tools'];
+                for (const t of targets) {
+                    if (state.folderPermissions[t] !== 'granted') {
+                        await requestFolderPermission(t);
+                    }
+                }
+            } else {
+                const mainHandle = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
+
+                const coreH = await mainHandle.getDirectoryHandle('core', { create: true });
+                const toolsH = await mainHandle.getDirectoryHandle('commands', { create: true });
+                const workSpaceH = await mainHandle.getDirectoryHandle('workspace', { create: true });
+                const extraH = await mainHandle.getDirectoryHandle('library', { create: true });
+
+                setCoreHandle(coreH); await db.set('coreHandle', coreH);
+                setToolsHandle(toolsH); await db.set('toolsHandle', toolsH);
+                setWorkSpaceHandle(workSpaceH); await db.set('workSpaceHandle', workSpaceH);
+                setExtraHandle(extraH); await db.set('extraHandle', extraH);
+
+                await syncFiles('core', coreH);
+                await syncFiles('tools', toolsH);
+                await syncFiles('workSpace', workSpaceH);
+                await syncFiles('extra', extraH);
+
+                setState(prev => ({
+                    ...prev,
+                    folderPermissions: { core: 'granted', extra: 'granted', workSpace: 'granted', tools: 'granted' }
+                }));
+
+                await askAlert("✅ Neural Subsystems Online!\nYour environment is fully linked and ready to operate.", "right");
+            }
+        } catch (e) {
+            console.log("Wake up failed or cancelled", e);
+        }
+    };
+
     const requestFolderPermission = async (target: FileTarget) => {
         let handle: FileSystemDirectoryHandle | null = null;
         if (target === 'core') handle = coreHandle;
@@ -1205,6 +1246,7 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                         debugMode={state.debugMode} onDebugModeChange={(d) => setState(p => ({ ...p, debugMode: d }))}
                         folderPermissions={state.folderPermissions}
                         onRequestPermission={requestFolderPermission}
+                        onWakeUpAll={wakeUpAllFolders}
                     />
                 </div>
             )}

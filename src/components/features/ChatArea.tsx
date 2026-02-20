@@ -32,6 +32,7 @@ interface ChatAreaProps {
     onDebugModeChange: (debug: boolean) => void;
     folderPermissions: Record<string, string>;
     onRequestPermission: (target: any) => void;
+    onWakeUpAll: () => void;
 }
 
 export const ChatArea = ({
@@ -59,6 +60,7 @@ export const ChatArea = ({
     onDebugModeChange,
     folderPermissions,
     onRequestPermission,
+    onWakeUpAll,
 }: ChatAreaProps) => {
     const inputRef = React.useRef<HTMLTextAreaElement>(null);
 
@@ -99,11 +101,7 @@ export const ChatArea = ({
                     </span>
                     <button
                         title="Otorgar permisos a todos los directorios"
-                        onClick={() => {
-                            Object.keys(folderPermissions).forEach(target => {
-                                if (folderPermissions[target] !== 'granted') onRequestPermission(target);
-                            });
-                        }}
+                        onClick={onWakeUpAll}
                         className="bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 px-4 py-1.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-tighter transition-all whitespace-nowrap flex-shrink-0 shadow-lg shadow-amber-900/20"
                     >
                         Wake Up Linkages

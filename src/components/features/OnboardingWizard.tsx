@@ -33,55 +33,28 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
 
     const selectedPath = pathMode === 'default' ? defaultPath : customPath;
 
-    const handleNext = async () => {
-        if (step === 2) {
-            setLoading(true);
-            setError('');
-            try {
-                if ((window as any).electron) {
-                    const setupRes = await (window as any).electron.setupOnboarding({ targetPath: selectedPath });
-                    if (!setupRes.ok) {
-                        throw new Error("Failed to initialize folders: " + setupRes.error);
-                    }
-                }
-                setStep(3);
-            } catch (err: any) {
-                setError(err.message || 'Unknown error');
-            } finally {
-                setLoading(false);
-            }
-        } else {
-            setStep(prev => prev + 1);
-        }
-    };
-
+    const handleNext = () => setStep(prev => prev + 1);
     const handlePrev = () => setStep(prev => prev - 1);
 
-    const finishWithLinkages = async () => {
+    const finish = async () => {
         setLoading(true);
         setError('');
         try {
-            const mainHandle = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
-
-            // Validate that the user selected the actual folder by checking its name or content
-            // We just extract the handles we need
-            const coreH = await mainHandle.getDirectoryHandle('core', { create: true });
-            const commandsH = await mainHandle.getDirectoryHandle('commands', { create: true });
-            const workspaceH = await mainHandle.getDirectoryHandle('workspace', { create: true });
-            const libraryH = await mainHandle.getDirectoryHandle('library', { create: true });
+            if ((window as any).electron) {
+                const setupRes = await (window as any).electron.setupOnboarding({ targetPath: selectedPath });
+                if (!setupRes.ok) {
+                    throw new Error("Failed to create folders: " + setupRes.error);
+                }
+            }
 
             const nextConfig = {
                 ...config,
                 isConfigured: true
             };
 
-            await onComplete(nextConfig, {
-                targetPath: selectedPath,
-                handles: { core: coreH, commands: commandsH, workspace: workspaceH, library: libraryH }
-            });
+            await onComplete(nextConfig, { targetPath: selectedPath });
         } catch (err: any) {
-            console.log("Picker cancelled or failed", err);
-            setError("You must select the folder to grant offline access permissions.");
+            setError(err.message || 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -231,40 +204,12 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                             )}
                         </div>
                     )}
-
-                    {step === 4 && (
-                        <div className="w-full max-w-md space-y-6 animate-fade-in text-center">
-                            <div className="w-20 h-20 mx-auto rounded-full bg-emerald-500/10 flex items-center justify-center mb-6">
-                                <Icon name="link" className="text-4xl text-emerald-400" />
-                            </div>
-                            <h1 className="text-2xl font-bold text-white mb-2">Wake Up Linkages</h1>
-                            <p className="text-slate-400 text-sm mb-6 leading-relaxed">
-                                MikuCentral operates with <strong>strict offline privacy</strong>. To protect your system, modern web browsers require your explicit permission to access local files.
-                            </p>
-
-                            <div className="bg-slate-800/80 p-5 rounded-xl border border-slate-700 text-left">
-                                <div className="text-sm text-slate-300 font-medium mb-2">Final Step:</div>
-                                <ol className="list-decimal list-inside text-sm text-slate-400 space-y-2">
-                                    <li>Click the <strong>Wake Up Core</strong> button below.</li>
-                                    <li>A native folder picker will open.</li>
-                                    <li>Select the <code className="text-emerald-400 font-bold bg-emerald-400/10 px-1 rounded">mikuCentral</code> folder we just created at: <br /><code className="text-xs text-slate-500 block mt-1 break-all bg-slate-900 p-2 rounded">{selectedPath}</code></li>
-                                    <li>Click "Select Folder" and "View Files" (or "Save Changes") in the browser popup.</li>
-                                </ol>
-                            </div>
-
-                            {error && (
-                                <div className="text-red-400 text-xs mt-4 bg-red-900/20 py-2 rounded">
-                                    {error}
-                                </div>
-                            )}
-                        </div>
-                    )}
                 </div>
 
                 {/* Footer */}
                 <div className="p-6 border-t border-slate-800 bg-slate-900 flex justify-between items-center">
                     <div className="flex gap-1.5">
-                        {[1, 2, 3, 4].map(i => (
+                        {[1, 2, 3].map(i => (
                             <div key={i} className={`w-2 h-2 rounded-full transition-all ${step === i ? 'bg-blue-500 w-4' : 'bg-slate-700'}`} />
                         ))}
                     </div>
@@ -278,22 +223,21 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                                 Back
                             </button>
                         )}
-                        {step < 4 ? (
+                        {step < 3 ? (
                             <button
                                 onClick={handleNext}
-                                disabled={loading || (step === 2 && !selectedPath)}
-                                className="px-8 py-2 rounded-lg font-bold text-white bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-500/20 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50"
+                                className="px-8 py-2 rounded-lg font-bold text-white bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-500/20 transition-all active:scale-95 flex items-center gap-2"
                             >
-                                {loading && step === 2 ? <Icon name="spinner" className="animate-spin" /> : 'Continue'}
+                                Continue
                             </button>
                         ) : (
                             <button
-                                onClick={finishWithLinkages}
-                                disabled={loading}
+                                onClick={finish}
+                                disabled={loading || !selectedPath}
                                 className="px-8 py-2 rounded-lg font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-500/20 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50 disabled:active:scale-100"
                             >
-                                {loading ? <Icon name="spinner" className="animate-spin" /> : <Icon name="plug" />}
-                                Wake Up Core
+                                {loading ? <Icon name="spinner" className="animate-spin" /> : <Icon name="check" />}
+                                Initialize Engine
                             </button>
                         )}
                     </div>
