@@ -19,6 +19,8 @@ contextBridge.exposeInMainWorld('electron', {
     writeFile: (data) => ipcRenderer.invoke('fs-write-file', data),
     runConsole: (data) => ipcRenderer.invoke('run-console', data),
     runSearch: (data) => ipcRenderer.invoke('run-search', data),
+    getDefaultPath: () => ipcRenderer.invoke('get-default-path'),
+    setupOnboarding: (data) => ipcRenderer.invoke('setup-onboarding', data),
 
     // Menu events listener
     onMenuAction: (callback) => {

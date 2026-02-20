@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.4.2] - 2026-02-20
+
+### 🚀 Instalación y Onboarding Guiado (First Run)
+- **Onboarding Wizard**: 
+    - Implementación de un asistente visual "First Run" de 3 pasos para primera configuración.
+    - Creación y selección automática de las carpetas internas de la arquitectura (core, commands, workspace, library) en el equipo huésped (Ej. `C:\Users\...\mikuCentral`).
+    - Recopilación inicial de Claves API (Gemini, Groq) y URL Local (Ollama) desde la primera pantalla.
+- **Smart NSIS Installer**:
+    - Abandono del instalador fantasma (`oneClick: true`); se pasa a un Instalador Nativo Interactivo (`nsis`) que permite seleccionar ruta y atajos de escritorio.
+    - Script Nativo de Setup (`installer.nsh`) con requerimientos de sistema. Detecta el entorno e instala dependencias críticas y recomendadas automáticamente bajo demanda:
+        - Requisito Crítico Estructural: Instalación silenciosa de `Microsoft Visual C++ Redistributable 2015-2022 (x64)`.
+        - Dependencias de Motor Recomendadas: `Ollama` y `Git for Windows`.
+
 ## [1.4.1] - 2026-02-20
 
 ### 🖥️ Native OS Integration & Production Build

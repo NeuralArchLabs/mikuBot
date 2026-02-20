@@ -126,7 +126,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                             className="w-10 h-10 rounded-xl bg-slate-800 flex flex-shrink-0 items-center justify-center shadow-md group-hover:scale-110 active:scale-95 transition-all duration-300 overflow-hidden border border-slate-700/50 cursor-pointer"
                             onClick={triggerEasterEgg}
                         >
-                            <img src="/mikuBotICON.png" alt="Miku Logo" className="w-full h-full object-cover shadow-inner" />
+                            <img src="./mikuBotICON.png" alt="Miku Logo" className="w-full h-full object-cover shadow-inner" />
                         </div>
                         <div className="hidden lg:block overflow-hidden">
                             <h1 className={`font-bold text-lg text-white tracking-tight leading-tight whitespace-nowrap overflow-hidden text-ellipsis transition-all duration-300 ${isAnimatingEgg ? 'text-blue-400 font-mono text-sm' : ''}`}>

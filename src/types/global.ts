@@ -57,6 +57,7 @@ export interface Session {
 }
 
 export interface AppConfig {
+    isConfigured?: boolean;
     provider: Provider;
     model: string;
     chatProvider?: Provider;

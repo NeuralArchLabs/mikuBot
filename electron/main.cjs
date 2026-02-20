@@ -202,6 +202,38 @@ ipcMain.handle('fs-select-folder', async () => {
     return { ok: true, path: folderPath, name: path.basename(folderPath) };
 });
 
+ipcMain.handle('get-default-path', () => {
+    return { ok: true, path: path.join(app.getPath('home'), 'mikuCentral') };
+});
+
+ipcMain.handle('setup-onboarding', async (event, { targetPath }) => {
+    try {
+        const folders = ['core', 'commands', 'workspace', 'library'];
+        if (!fs.existsSync(targetPath)) {
+            fs.mkdirSync(targetPath, { recursive: true });
+        }
+
+        for (const f of folders) {
+            const fp = path.join(targetPath, f);
+            if (!fs.existsSync(fp)) {
+                fs.mkdirSync(fp, { recursive: true });
+            }
+        }
+
+        // Copy core/base to commands
+        const coreBasePath = path.join(resourcesPath, 'core', 'base');
+        const commandsPath = path.join(targetPath, 'commands');
+
+        if (fs.existsSync(coreBasePath)) {
+            fs.cpSync(coreBasePath, commandsPath, { recursive: true });
+        }
+
+        return { ok: true };
+    } catch (e) {
+        return { ok: false, error: e.message };
+    }
+});
+
 ipcMain.handle('run-console', async (event, { command, args, cwd }) => {
     const { exec } = require('child_process');
     return new Promise((resolve) => {
@@ -476,9 +508,14 @@ function createWindow() {
         height: 800,
         minWidth: 640,
         minHeight: 650,
-        icon: app.isPackaged
-            ? path.join(__dirname, '../dist/mikuBotICON.png')
-            : path.join(__dirname, '../public/mikuBotICON.png'),
+        icon: (() => {
+            const { nativeImage } = require('electron');
+            const iconPath = app.isPackaged
+                ? path.join(__dirname, '../dist/mikuBotICON.png')
+                : path.join(__dirname, '../public/mikuBotICON.png');
+            // Resize the image to prevent cropped/corrupted rendering on the taskbar/titlebar
+            return nativeImage.createFromPath(iconPath).resize({ width: 32, height: 32 });
+        })(),
         webPreferences: {
             preload: path.join(__dirname, 'preload.cjs'),
             contextIsolation: true,

@@ -1,7 +1,7 @@
 {
   "name": "mikucentral",
   "private": true,
-  "version": "1.4.1",
+  "version": "1.4.2",
   "type": "module",
   "description": "MikuCentral - Neural AI Interface",
   "author": "Armando Martinez",
@@ -22,11 +22,24 @@
       {
         "from": "engine",
         "to": "engine"
+      },
+      {
+        "from": "core",
+        "to": "core"
       }
     ],
     "win": {
       "target": "nsis",
       "icon": "public/mikuBotICON.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "MikuCentral",
+      "include": "installer.nsh"
     },
     "icon": "public/mikuBotICON.png"
   },

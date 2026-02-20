@@ -9,7 +9,8 @@ import {
     LibraryManager,
     SettingsPanel,
     SystemDialog,
-    SystemDialogConfig
+    SystemDialogConfig,
+    OnboardingWizard
 } from './components';
 import {
     fetchModels,
@@ -1141,8 +1142,24 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
         }
     }, [onNewSession, onExportConfig, onLoadConfig, handleTestConnection, onResetGlobal]);
 
+    const handleOnboardingComplete = async (newConfig: any, setupData: any) => {
+        setState(prev => ({
+            ...prev,
+            config: { ...prev.config, ...newConfig, isConfigured: true }
+        }));
+        await persistence.saveSettings({ ...state.config, ...newConfig, isConfigured: true }, state.agentMode, state.safeMode, state.approvalMode);
+
+        // At this point, the folders are created at setupData.targetPath on disk. 
+        // We tell the user to manually select them in the Settings later to grant File System Access API permissions, 
+        // or attempt to use the Electron paths directly if the app is updated to bypass browser FS handles for local files.
+        await askAlert("✅ Setup Complete!\nYour environment is ready. Please go to Settings to link the 'core', 'commands', 'workspace', and 'library' folders created at " + setupData.targetPath);
+    };
+
     return (
         <div className="flex h-screen w-full bg-[#0f172a] text-slate-200 overflow-hidden font-sans miku-app-isolate">
+            {!state.config.isConfigured && (
+                <OnboardingWizard onComplete={handleOnboardingComplete} />
+            )}
             <SystemDialog config={dialogConfig} />
             <Sidebar
                 state={{ ...state, askConfirm, onSelectSession, onDeleteSession, onNewSession, onExportSession, onImportSession, onDeleteFile: (n: string, t: FileTarget) => deleteFile(n, t) } as any}

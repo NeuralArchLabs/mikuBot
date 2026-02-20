@@ -242,7 +242,7 @@ export const ChatArea = ({
                                             {msg.role === 'user' ? (
                                                 <Icon name="user-circle" />
                                             ) : (
-                                                <img src="/mikuBotICON.png" alt="Miku Core Icon" className="w-3 h-3 rounded-sm object-cover brightness-110" />
+                                                <img src="./mikuBotICON.png" alt="Miku Core Icon" className="w-3 h-3 rounded-sm object-cover brightness-110" />
                                             )}
                                             {msg.role === 'user' ? 'Transmisor' : 'Neural Core'}
                                         </div>
