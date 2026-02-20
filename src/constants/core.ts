@@ -31,6 +31,10 @@ export const DEFAULT_FILES: Record<string, string> = {};
 export const DEFAULT_CONFIG: AppConfig = {
     provider: 'groq',
     model: '',
+    chatProvider: 'groq',
+    chatModel: '',
+    agentProvider: 'groq',
+    agentModel: '',
     apiKeys: { groq: '', gemini: '', ollama: '' },
     ollamaUrl: 'http://localhost:11434',
     temperature: 0.7,

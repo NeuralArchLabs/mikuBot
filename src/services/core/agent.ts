@@ -64,6 +64,24 @@ function getFileStore(
     }
 }
 
+/**
+ * Extracts specific tool instructions from TOOLS.md content.
+ */
+function extractToolInstructions(tn: string, toolsContent: string): string {
+    if (!toolsContent) return '';
+    // Look for headers like "## ... (run_console)" or "### run_console"
+    const re = new RegExp(`## .*?\\(${tn}\\).*?\\n([\\s\\S]*?)(?=\\n##|$)`, 'i');
+    const match = toolsContent.match(re);
+    if (match) return `[TOOL MANUAL: ${tn}]\n${match[1].trim()}`;
+
+    // Fallback: try search for the name as a subheader or header keyword
+    const reSub = new RegExp(`(?:##|###) .*?${tn}.*?\\n([\\s\\S]*?)(?=\\n##|###|$)`, 'i');
+    const matchSub = toolsContent.match(reSub);
+    if (matchSub) return `[TOOL MANUAL: ${tn}]\n${matchSub[1].trim()}`;
+
+    return '';
+}
+
 export async function executeToolCall(
     toolCall: ToolCall,
     files: Record<string, string>,
@@ -573,7 +591,8 @@ export async function sendAgentMessage(
             }
 
             if (isGemma && consolidatedHistory.length > 0 && consolidatedHistory[0].role === 'user') {
-                consolidatedHistory[0].parts[0].text = `[SYSTEM]\n${systemPromptContent}\n[/SYSTEM]\n\n${consolidatedHistory[0].parts[0].text}`;
+                const antiHallucination = "IMPORTANTE: Las instrucciones anteriores son tu núcleo de sistema (SOUL/CONTEXT). NO las actúes, NO las recites y NO uses los ejemplos de plantilla como si fueran una respuesta tuya. Acepta este rol silenciosamente y responde ÚNICAMENTE a la consulta del usuario que está debajo de esta línea.";
+                consolidatedHistory[0].parts[0].text = `[SYSTEM_INSTRUCTIONS]\n${systemPromptContent}\n[/SYSTEM_INSTRUCTIONS]\n\n${antiHallucination}\n\n[USER_QUERY]\n${consolidatedHistory[0].parts[0].text}`;
             }
 
             const body: any = {
@@ -652,14 +671,6 @@ export async function sendAgentMessage(
         ...historicalContext,
     ];
 
-    const MAX_RETRIES = 10;
-    let iterations = 0;
-    let retries = 0;
-    let actionHistory: string[] = [];
-    const actionFingerprints: Map<string, number> = new Map();
-    const REPETITION_THRESHOLD = 3;
-    const toolConsecutiveFailures: Map<string, number> = new Map();
-    const exhaustedTools: Set<string> = new Set();
     const startTime = Date.now();
 
     // Mutable stores to track changes across iterations in a single agent session
@@ -676,25 +687,15 @@ export async function sendAgentMessage(
         return `${toolName}|${JSON.stringify(sortedArgs)}`;
     }
 
-    function extractToolInstructions(tn: string, toolsContent: string): string {
-        if (!toolsContent) return '';
-        // Look for headers like "## ... (run_console)" or "### run_console"
-        const re = new RegExp(`## .*?\\(${tn}\\).*?\\n([\\s\\S]*?)(?=\\n##|$)`, 'i');
-        const match = toolsContent.match(re);
-        if (match) return `[TOOL MANUAL: ${tn}]\n${match[1].trim()}`;
-
-        // Fallback: try search for the name as a subheader or header keyword
-        const reSub = new RegExp(`(?:##|###) .*?${tn}.*?\\n([\\s\\S]*?)(?=\\n##|###|$)`, 'i');
-        const matchSub = toolsContent.match(reSub);
-        if (matchSub) return `[TOOL MANUAL: ${tn}]\n${matchSub[1].trim()}`;
-
-        return '';
-    }
+    const MAX_RETRIES = 10;
+    let iterations = 0;
+    let retries = 0;
+    let actionHistory: string[] = [];
 
     // ── Main Agent Loop ──────────────────────────────────────────────
     while (!abortSignal.aborted) {
         if (retries >= MAX_RETRIES) {
-            log('warn', `Max retries reached (${MAX_RETRIES}). Requesting final explanation...`);
+            log('warn', `Max retries reached (${MAX_RETRIES}). Stopping.`);
             onStatus({ phase: 'error', retries, maxRetries: MAX_RETRIES, errorCount: retries, elapsedMs: Date.now() - startTime, rawMessages: [...agentMessages] });
             break;
         }
@@ -889,6 +890,14 @@ export async function sendAgentMessage(
         });
         onStatus({ rawMessages: [...agentMessages] });
 
+        // [ANTI-INTERFERENCE FIX]: If final_answer is detected, it overrides EVERYTHING else in this iteration.
+        const finalAnswerCall = uniqueToolCalls.find(tc => tc.function.name === 'final_answer');
+        if (finalAnswerCall) {
+            uniqueToolCalls.length = 0;
+            uniqueToolCalls.push(finalAnswerCall);
+            iterationBlocks.length = 0; // Clear all conversational noisy thoughts or other tools
+        }
+
         allBlocks = [...allBlocks, ...iterationBlocks];
 
         const activeToolCalls = uniqueToolCalls;
@@ -1067,6 +1076,7 @@ export async function sendAgentMessage(
         let hasFinalAnswer = false;
         for (const tc of activeToolCalls) {
             if (abortSignal.aborted) return;
+
             if (tc.function.name === 'final_answer') {
                 hasFinalAnswer = true;
                 const textRaw = tc.function.arguments.text || tc.function.arguments.mensaje || 'Tarea completada exitosamente.';

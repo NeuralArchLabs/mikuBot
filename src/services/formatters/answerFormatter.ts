@@ -14,10 +14,10 @@
  * Formats the final response text to ensure proper rendering of newlines and markdown.
  * Specifically targets artifacts common in local LLM tool outputs.
  */
-export function formatFinalResponse(rawText: string): string {
+export function formatFinalResponse(rawText: any): string {
     if (!rawText) return '';
 
-    let formatted = rawText;
+    let formatted = typeof rawText === 'string' ? rawText : JSON.stringify(rawText, null, 2);
 
     // 1. Normalize line endings (Handle Windows \r\n and ensure they are just \n)
     formatted = formatted.replace(/\r\n/g, '\n');

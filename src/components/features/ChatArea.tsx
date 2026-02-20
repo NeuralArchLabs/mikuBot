@@ -141,8 +141,8 @@ export const ChatArea = ({
                             return displayHistory?.map((m: any, i: number) => (
                                 <div key={i} className="bg-black/40 border border-white/5 rounded-xl p-4 font-mono text-[11px] space-y-2">
                                     <div className={`flex items-center gap-2 font-bold uppercase tracking-wider ${m.role === 'system' ? 'text-amber-500' :
-                                            m.role === 'assistant' ? 'text-blue-400' :
-                                                m.role === 'tool' ? 'text-emerald-400' : 'text-purple-400'
+                                        m.role === 'assistant' ? 'text-blue-400' :
+                                            m.role === 'tool' ? 'text-emerald-400' : 'text-purple-400'
                                         }`}>
                                         <Icon name={
                                             m.role === 'system' ? 'shield-alt' :
@@ -286,6 +286,23 @@ export const ChatArea = ({
                                             {[0, 200, 400].map(ms => (
                                                 <div key={ms} className={`w-1.5 h-1.5 rounded-full bg-blue-500/50 animate-bounce delay-[${ms}ms]`} />
                                             ))}
+                                        </div>
+                                    )}
+
+                                    {/* Operative Reality Metadata */}
+                                    {msg.role === 'assistant' && msg.provider && (
+                                        <div className="mt-4 pt-3 border-t border-slate-700/50 flex items-center justify-between">
+                                            <div className="flex items-center gap-2 text-[9px] font-mono text-slate-500">
+                                                <span className="bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700/50 text-blue-400 font-bold uppercase">
+                                                    {msg.provider}
+                                                </span>
+                                                <span className="opacity-60">{msg.model || 'Default Model'}</span>
+                                            </div>
+                                            {!msg.isStreaming && (
+                                                <span className="text-[9px] font-mono text-slate-600">
+                                                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                            )}
                                         </div>
                                     )}
                                 </div>

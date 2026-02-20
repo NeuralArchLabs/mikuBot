@@ -38,6 +38,8 @@ export interface Message {
     rawHistory?: any[];
     source?: 'telegram' | 'ui';
     excludeFromContext?: boolean;
+    provider?: string;
+    model?: string;
 }
 
 export interface SessionMetadata {
@@ -57,6 +59,10 @@ export interface Session {
 export interface AppConfig {
     provider: Provider;
     model: string;
+    chatProvider?: Provider;
+    chatModel?: string;
+    agentProvider?: Provider;
+    agentModel?: string;
     apiKeys: Record<Provider, string>;
     ollamaUrl: string;
     temperature: number;

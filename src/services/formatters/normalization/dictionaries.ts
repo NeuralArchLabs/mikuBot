@@ -82,13 +82,12 @@ export const TOOL_NAME_ALIASES: Record<string, string> = {
     'modify_part': 'patch_file',
     'edit_block': 'patch_file',
     'replace_block': 'patch_file',
-    // Fallback for delete attempts -> will fail validation if not properly structured, 
-    // but at least it hits the right tool for "modifications"
-    'delete_file': 'patch_file',
-    'remove_file': 'patch_file',
-    'delete': 'patch_file',
-    'remove': 'patch_file',
-    'rm': 'patch_file',
+    // ── delete_file variants ────────────────────────────────────────
+    'delete_file': 'delete_file',
+    'remove_file': 'delete_file',
+    'delete': 'delete_file',
+    'remove': 'delete_file',
+    'rm': 'delete_file',
 
     // ── list_files variants ─────────────────────────────────────────
     'listfiles': 'list_files',
@@ -192,6 +191,11 @@ export const TOOL_NAME_ALIASES: Record<string, string> = {
     'complete': 'final_answer',
     'done': 'final_answer',
     'finish': 'final_answer',
+    'finish_response': 'final_answer',
+    'end_turn': 'final_answer',
+    'end_conversation': 'final_answer',
+    'end_task': 'final_answer',
+    'close': 'final_answer',
     'report': 'final_answer',
     'task_complete': 'final_answer',
     'print': 'final_answer',
@@ -201,6 +205,7 @@ export const TOOL_NAME_ALIASES: Record<string, string> = {
     'result': 'final_answer',
     'resultado': 'final_answer',
     'terminar': 'final_answer',
+    'finalizar': 'final_answer',
     'final': 'final_answer',
     'respuesta': 'final_answer',
     'respuesta_final': 'final_answer',
@@ -210,6 +215,8 @@ export const TOOL_NAME_ALIASES: Record<string, string> = {
     'conclusion': 'final_answer',
     'reply': 'final_answer',
     'message_user': 'final_answer',
+    'send_message': 'final_answer',
+    'send_response': 'final_answer',
 
     // ── telegram variants ───────────────────────────────────────────
     'telegram': 'send_telegram_message',
@@ -518,7 +525,7 @@ export const BLOCKED_TOOL_NAMES = new Set([
     'delete_all', 'rm_rf', 'format', 'shutdown', 'reboot',
     'export_database', 'drop_database', 'sql_query', 'execute_sql',
     'send_email', 'gmail_search', 'upload_file', 'download_file',
-    'delete_file', 'remove_file', 'curl', 'wget', 'install',
+    'curl', 'wget', 'install',
     'sudo', 'chmod', 'chown', 'kill', 'pkill', 'passwd',
 ]);
 

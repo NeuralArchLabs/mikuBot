@@ -382,26 +382,19 @@ export function recoverToolCallsFromText(
     const allWarnings: string[] = [];
     const validToolNames = tools.map(t => t.function.name);
 
-    // === CLEANING PIPELINE ===
-    let text = rawText;
-
-    // Layer 1: Strip think blocks and conversational wrappers
-    text = stripConversationalWrapper(text);
-
-    // Layer 2: Strip XML ghost tags
-    text = stripXmlTags(text);
-
-    // Layer 3: Fix Pythonic syntax & Stabilize strings
-    text = fixPythonicJson(text);
-
-    // === EXTRACTION ATTEMPTS (UNIFIED SCAN) ===
+    // === SCAN ORIGINAL TEXT ===
+    // We MUST use the original text for scanning to ensure offsets (start/end)
+    // correctly map back to the raw content for narrative segmentation in agent.ts
+    const text = rawText;
     const foundCalls: RecoveredCall[] = [];
 
     // Attempt A: JSON objects with balanced braces
     const jsonObjects = extractAllBalancedObjects(text);
     for (const obj of jsonObjects) {
         try {
-            const parsed = JSON.parse(obj.content);
+            // Internal stabilization for the JSON blob itself
+            const stabilized = fixPythonicJson(obj.content);
+            const parsed = JSON.parse(stabilized);
             const result = normalizeRawToolCall(parsed, tools);
             if (result.toolCall && !result.blocked) {
                 foundCalls.push({ toolCall: result.toolCall, start: obj.start, end: obj.end });
@@ -458,13 +451,28 @@ export function recoverToolCallsFromText(
     foundCalls.sort((a, b) => a.start - b.start);
 
     // Final internal cleanup: If we have multiple hits for the EXACT same span, keep only one.
+    // Also, if one span completely swallows another for the same tool (e.g. JSON vs Narrative), keep the larger one.
     const uniqueSpans: RecoveredCall[] = [];
-    const seenSpans = new Set<string>();
     for (const c of foundCalls) {
-        const key = `${c.start}-${c.end}-${c.toolCall.function.name}`;
-        if (!seenSpans.has(key)) {
-            uniqueSpans.push(c);
-            seenSpans.add(key);
+        // Check if `c` is already subsumed by an existing span of the same tool
+        const isSubsumed = uniqueSpans.some(existing =>
+            existing.toolCall.function.name === c.toolCall.function.name &&
+            (
+                (c.start >= existing.start && c.end <= existing.end) ||
+                // Alternatively, if they overlap more than 50%
+                (c.start <= existing.start && c.end >= existing.end)
+            )
+        );
+
+        if (!isSubsumed) {
+            // Remove any existing spans that `c` completely swallows
+            const filteredSpans = uniqueSpans.filter(existing => !(
+                existing.toolCall.function.name === c.toolCall.function.name &&
+                existing.start >= c.start && existing.end <= c.end
+            ));
+
+            uniqueSpans.length = 0;
+            uniqueSpans.push(...filteredSpans, c);
         }
     }
 

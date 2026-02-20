@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { AppState, AgentStatus, Message, PendingToolApproval, AgentMode, ModelInfo, FileSystemDirectoryHandle, FileSystemFileHandle, FileTarget, Session, ApprovalMode, SessionMetadata, PermissionStatus } from './types';
+import { AppState, AgentStatus, Message, PendingToolApproval, AgentMode, ModelInfo, FileSystemDirectoryHandle, FileSystemFileHandle, FileTarget, Session, ApprovalMode, SessionMetadata, PermissionStatus, Provider } from './types';
 import { DEFAULT_CONFIG, DEFAULT_FILES, AGENT_TOOLS } from './constants';
 import { createDefaultAgentStatus } from './utils';
 import {
@@ -43,8 +43,8 @@ export const App = () => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [models, setModels] = useState<ModelInfo[]>([]);
-    const [loadingModels, setLoadingModels] = useState(false);
+    const [models, setModels] = useState<Record<Provider, ModelInfo[]>>({ groq: [], gemini: [], ollama: [] });
+    const [loadingModels, setLoadingModels] = useState<Record<Provider, boolean>>({ groq: false, gemini: false, ollama: false });
     const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'connected' | 'error'>('idle');
 
     const [agentStatus, setAgentStatus] = useState<AgentStatus>(createDefaultAgentStatus());
@@ -604,25 +604,34 @@ export const App = () => {
         }));
     }, []);
 
-    const handleTestConnection = useCallback(async () => {
-        setLoadingModels(true);
+    const handleTestConnection = useCallback(async (customProvider?: Provider) => {
+        const providerToTest = customProvider || state.config.provider;
+
+        setLoadingModels(prev => ({ ...prev, [providerToTest]: true }));
         setConnectionStatus('testing');
         try {
-            const fetchedModels = await fetchModels(state.config.provider, state.config);
-            setModels(fetchedModels);
+            const fetchedModels = await fetchModels(providerToTest, state.config);
+            setModels(prev => ({ ...prev, [providerToTest]: fetchedModels }));
             setConnectionStatus('connected');
-            if (fetchedModels.length > 0 && !state.config.model) {
-                updateConfig('model', fetchedModels[0].id);
+
+            // Auto-select if model is empty for this specific provider configuration
+            if (fetchedModels.length > 0) {
+                if (customProvider === state.config.chatProvider && !state.config.chatModel) {
+                    updateConfig('chatModel', fetchedModels[0].id);
+                } else if (customProvider === state.config.agentProvider && !state.config.agentModel) {
+                    updateConfig('agentModel', fetchedModels[0].id);
+                } else if (!customProvider && !state.config.model) {
+                    updateConfig('model', fetchedModels[0].id);
+                }
             }
         } catch (error) {
-            console.error('[App] Connection Test Failed:', error);
+            console.error(`[App] Connection Test Failed for ${providerToTest}:`, error);
             setConnectionStatus('error');
-            setModels([]);
-            if (state.config.provider === 'ollama') {
+            if (providerToTest === 'ollama') {
                 alert(`âš ï¸ Error Ollama (${state.config.ollamaUrl}): ${error instanceof Error ? error.message : String(error)}`);
             }
         } finally {
-            setLoadingModels(false);
+            setLoadingModels(prev => ({ ...prev, [providerToTest]: false }));
         }
     }, [state.config, updateConfig]);
 
@@ -769,7 +778,20 @@ NO simules resultados de herramientas ni inventes datos; si necesitas informaciÃ
                 // If it IS a session reset, we don't even add the user command message to the list
                 // because onNewSession cleared it and we want it clean.
 
-                if (!isNewSessionCmd) {
+                const sysMsg: Message = {
+                    id: (Date.now() + 1).toString(),
+                    role: 'system',
+                    text: `âš¡ Command Executed: ${result}`,
+                    timestamp: Date.now(),
+                    excludeFromContext: true,
+                    provider: undefined,
+                    model: undefined
+                };
+
+                if (isNewSessionCmd) {
+                    // Forciply clear any residual messages from the UI and only show the command success message.
+                    setMessages([sysMsg]);
+                } else {
                     const cmdMsg: Message = {
                         id: Date.now().toString(),
                         role: 'user',
@@ -778,18 +800,9 @@ NO simules resultados de herramientas ni inventes datos; si necesitas informaciÃ
                         source: isRemote ? 'telegram' : 'ui',
                         excludeFromContext: true
                     };
-                    setMessages(prev => [...prev, cmdMsg]);
+                    setMessages(prev => [...prev, cmdMsg, sysMsg]);
                 }
 
-                // The System Result Message
-                const sysMsg: Message = {
-                    id: (Date.now() + 1).toString(),
-                    role: 'system',
-                    text: `âš¡ Command Executed: ${result}`,
-                    timestamp: Date.now(),
-                    excludeFromContext: true
-                };
-                setMessages(prev => [...prev, sysMsg]);
                 setInput('');
 
                 if (isRemote) {
@@ -819,44 +832,47 @@ NO simules resultados de herramientas ni inventes datos; si necesitas informaciÃ
             tools: { ...currentState.toolsFiles }
         };
 
-        const targets: FileTarget[] = ['core', 'extra', 'workSpace', 'tools'];
-        for (const t of targets) {
-            const isPrompt = currentState.folderPermissions[t] === 'prompt';
-            const isEmpty = (t === 'core' && Object.keys(currentState.files).length === 0) ||
-                (t === 'extra' && Object.keys(currentState.additionalFiles).length === 0) ||
-                (t === 'workSpace' && Object.keys(currentState.workSpaceFiles).length === 0) ||
-                (t === 'tools' && Object.keys(currentState.toolsFiles).length === 0);
+        if (!isRemote) {
+            const targets: FileTarget[] = ['core', 'extra', 'workSpace', 'tools'];
+            for (const t of targets) {
+                const isPrompt = currentState.folderPermissions[t] === 'prompt';
+                const isEmpty = (t === 'core' && Object.keys(currentState.files).length === 0) ||
+                    (t === 'extra' && Object.keys(currentState.additionalFiles).length === 0) ||
+                    (t === 'workSpace' && Object.keys(currentState.workSpaceFiles).length === 0) ||
+                    (t === 'tools' && Object.keys(currentState.toolsFiles).length === 0);
 
-            if (isPrompt) {
-                const fresh = await requestFolderPermission(t);
-                if (fresh) {
-                    if (t === 'core') freshState.core = fresh;
-                    if (t === 'extra') freshState.additional = fresh;
-                    if (t === 'workSpace') freshState.workSpace = fresh;
-                    if (t === 'tools') freshState.tools = fresh;
-                }
-            } else if (isEmpty) {
-                // If granted but empty (stale session), re-sync silently
-                let handle = null;
-                if (t === 'core') handle = coreHandle;
-                if (t === 'extra') handle = extraHandle;
-                if (t === 'workSpace') handle = workSpaceHandle;
-                if (t === 'tools') handle = toolsHandle;
-                if (handle) {
-                    const fresh = await syncFiles(t, handle);
+                if (isPrompt) {
+                    const fresh = await requestFolderPermission(t);
                     if (fresh) {
                         if (t === 'core') freshState.core = fresh;
                         if (t === 'extra') freshState.additional = fresh;
                         if (t === 'workSpace') freshState.workSpace = fresh;
                         if (t === 'tools') freshState.tools = fresh;
                     }
+                } else if (isEmpty) {
+                    // If granted but empty (stale session), re-sync silently
+                    let handle = null;
+                    if (t === 'core') handle = coreHandle;
+                    if (t === 'extra') handle = extraHandle;
+                    if (t === 'workSpace') handle = workSpaceHandle;
+                    if (t === 'tools') handle = toolsHandle;
+                    if (handle) {
+                        const fresh = await syncFiles(t, handle);
+                        if (fresh) {
+                            if (t === 'core') freshState.core = fresh;
+                            if (t === 'extra') freshState.additional = fresh;
+                            if (t === 'workSpace') freshState.workSpace = fresh;
+                            if (t === 'tools') freshState.tools = fresh;
+                        }
+                    }
                 }
             }
         }
 
         lastUserTextRef.current = text;
+        const userMsgId = Date.now().toString();
         const userMsg: Message = {
-            id: Date.now().toString(),
+            id: userMsgId,
             role: 'user',
             text,
             timestamp: Date.now(),
@@ -868,7 +884,31 @@ NO simules resultados de herramientas ni inventes datos; si necesitas informaciÃ
         setAgentStatus(createDefaultAgentStatus());
 
         const modelMsgId = (Date.now() + 1).toString();
-        setMessages(prev => [...prev, { id: modelMsgId, role: 'assistant', text: '', timestamp: Date.now(), isStreaming: true }]);
+
+        // Use Agent Engine if we are in Agent mode OR if the Bolt (forceToolMode) was clicked
+        const useAgentEngine = currentState.agentMode === 'agent' || forceToolMode;
+
+        // Dynamic Model/Provider Selection (Safe pairing)
+        const agentOverride = currentState.config.agentProvider && currentState.config.agentModel;
+        const chatOverride = currentState.config.chatProvider && currentState.config.chatModel;
+
+        const effectiveProvider = useAgentEngine
+            ? (agentOverride ? currentState.config.agentProvider : currentState.config.provider)
+            : (chatOverride ? currentState.config.chatProvider : currentState.config.provider);
+
+        const effectiveModel = useAgentEngine
+            ? (agentOverride ? currentState.config.agentModel : currentState.config.model)
+            : (chatOverride ? currentState.config.chatModel : currentState.config.model);
+
+        setMessages(prev => [...prev, {
+            id: modelMsgId,
+            role: 'assistant',
+            text: '',
+            timestamp: Date.now() + 1,
+            isStreaming: true,
+            provider: effectiveProvider,
+            model: effectiveModel
+        }]);
 
         const ac = new AbortController();
         abortControllerRef.current = ac;
@@ -891,16 +931,23 @@ NO simules resultados de herramientas ni inventes datos; si necesitas informaciÃ
 
             // Moved finalAssistantText outside try
 
-            const isChatTools = currentState.agentMode === 'chat' && !effectiveToolMode;
-            const isAgentMode = currentState.agentMode === 'agent';
+            const isChatTools = currentState.agentMode === 'chat';
+
+            // Dynamic Model/Provider Selection (Safe pairing)
+            // effectiveProvider and effectiveModel are already determined above
+            const effectiveConfig = {
+                ...currentState.config,
+                provider: effectiveProvider as Provider,
+                model: effectiveModel
+            };
 
             // En modo chat solo permitimos herramientas de lectura e investigaciÃ³n + ediciÃ³n de contexto
             const toolsForSession = isChatTools
-                ? AGENT_TOOLS.filter(t => ['read_file', 'list_files', 'search_files', 'web_search', 'read_url', 'update_file', 'patch_file'].includes(t.function.name))
+                ? AGENT_TOOLS.filter(t => ['read_file', 'list_files', 'search_files', 'web_search', 'read_url', 'update_file', 'patch_file', 'final_answer'].includes(t.function.name))
                 : AGENT_TOOLS;
 
             await sendAgentMessage(
-                currentState.config, systemInstruction, chatHistoryLocal, toolsForSession,
+                effectiveConfig, systemInstruction, chatHistoryLocal, toolsForSession,
                 { ...freshState.core }, { ...freshState.additional }, { ...freshState.workSpace }, { ...freshState.tools },
                 saveFile,
                 deleteFile,
@@ -913,7 +960,7 @@ NO simules resultados de herramientas ni inventes datos; si necesitas informaciÃ
                 ac.signal,
                 (history) => setMessages(prev => prev.map(m => m.id === modelMsgId ? { ...m, rawHistory: history } : m)),
                 true, // useTextExtraction (siempre encendido si hay herramientas)
-                isAgentMode,
+                useAgentEngine,
                 currentState.safeMode,
                 currentState.approvalMode,
                 effectiveToolMode // isInstructionMode (botÃ³n del rayo)
@@ -994,9 +1041,13 @@ Genera un TÃTULO corto (mÃ¡ximo 6 palabras) para esta conversaciÃ³n.
 - Resumen directo del tema.`;
 
                         let generatedTitle = '';
+                        const namingProvider = stateRef.current.config.chatProvider || stateRef.current.config.provider;
+                        const namingModel = stateRef.current.config.chatModel || stateRef.current.config.model;
+                        const namingConfig = { ...stateRef.current.config, provider: namingProvider, model: namingModel };
+
                         await sendStreamingMessage(
-                            stateRef.current.config.provider as any,
-                            stateRef.current.config,
+                            namingProvider,
+                            namingConfig,
                             namingSystemPrompt,
                             [...historyForNaming, { role: 'user', content: 'Genera el tÃ­tulo.' }],
                             (chunk) => { generatedTitle += chunk; }

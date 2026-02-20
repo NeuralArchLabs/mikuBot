@@ -6,10 +6,10 @@ import { Icon } from '../common/Common';
 interface SettingsPanelProps {
     config: AppConfig;
     updateConfig: (key: string, value: any) => void;
-    models: ModelInfo[];
-    loadingModels: boolean;
+    models: Record<Provider, ModelInfo[]>;
+    loadingModels: Record<Provider, boolean>;
     connectionStatus: 'idle' | 'testing' | 'connected' | 'error';
-    onTestConnection: () => void;
+    onTestConnection: (provider?: Provider) => void;
     onCoreSelect: () => void;
     onExtraSelect: () => void;
     onWorkSpaceSelect: () => void;
@@ -46,15 +46,17 @@ export const SettingsPanel = ({
     toolsPathName,
     syncing
 }: SettingsPanelProps) => {
-    const [localApiKey, setLocalApiKey] = useState('');
     const [showApiKey, setShowApiKey] = useState(false);
+    // Track which provider's key we are currently editing in the global section
+    const [editingProvider, setEditingProvider] = useState<Provider>(config.provider);
+    const [localApiKey, setLocalApiKey] = useState('');
 
     useEffect(() => {
-        setLocalApiKey(config.apiKeys[config.provider] || '');
-    }, [config.provider, config.apiKeys]);
+        setLocalApiKey(config.apiKeys[editingProvider] || '');
+    }, [editingProvider, config.apiKeys]);
 
-    const handleSaveKey = () => {
-        updateConfig('apiKeys', { ...config.apiKeys, [config.provider]: localApiKey });
+    const handleSaveKey = (provider: Provider, key: string) => {
+        updateConfig('apiKeys', { ...config.apiKeys, [provider]: key });
     };
 
     const currentProvider = PROVIDERS[config.provider];
@@ -200,259 +202,266 @@ export const SettingsPanel = ({
 
                 <div className="h-px bg-slate-800" />
 
-                <div className="space-y-4">
-                    <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">Select Provider</label>
-                    <div className="grid grid-cols-3 gap-4">
-                        {(Object.keys(PROVIDERS) as Provider[]).map(providerId => {
-                            const provider = PROVIDERS[providerId];
-                            const isSelected = config.provider === providerId;
-                            return (
-                                <button
-                                    key={providerId}
-                                    onClick={() => updateConfig('provider', providerId)}
-                                    className={`relative p-4 rounded-xl border-2 transition-all duration-300 ${isSelected
-                                        ? 'border-blue-500 bg-slate-800'
-                                        : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'
-                                        }`}
-                                >
-                                    <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${provider.color} flex items-center justify-center mb-3 mx-auto`}>
-                                        <Icon name={provider.icon} className="text-white text-xl" />
-                                    </div>
-                                    <div className="text-center">
-                                        <div className="font-medium text-white text-sm">{provider.name}</div>
-                                        <div className="text-[10px] text-slate-500 mt-1">
-                                            {provider.apiKeyRequired ? 'API Key Required' : 'Local Server'}
-                                        </div>
-                                    </div>
-                                    {isSelected && (
-                                        <div className="absolute top-2 right-2 w-3 h-3 bg-blue-500 rounded-full" />
+                {/* Dynamic Configuration per Mode */}
+                <div className="space-y-6">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center">
+                            <Icon name="microchip" />
+                        </div>
+                        <h3 className="text-sm font-bold text-slate-200 uppercase tracking-widest">Neural Orchestration</h3>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Chat Configuration Card */}
+                        <div className="bg-slate-800/80 rounded-2xl p-6 border border-blue-500/30 shadow-xl shadow-blue-500/5 transition-all hover:border-blue-500/50">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-2">
+                                    <Icon name="comments" className="text-blue-400 text-lg" />
+                                    <span className="font-bold text-blue-400 tracking-tight uppercase text-xs">Chat Mode Engine</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    {config.chatProvider !== 'ollama' && (
+                                        <button
+                                            onClick={() => {
+                                                const key = prompt(`Enter API Key for ${PROVIDERS[config.chatProvider || 'gemini'].name}:`, config.apiKeys[config.chatProvider || 'gemini']);
+                                                if (key !== null) handleSaveKey(config.chatProvider || 'gemini', key);
+                                            }}
+                                            className="p-1.5 bg-slate-700/50 hover:bg-slate-700 text-slate-400 rounded-md transition-all sm:flex hidden"
+                                            title="Quick Key Update"
+                                        >
+                                            <Icon name="key" />
+                                        </button>
                                     )}
-                                </button>
-                            );
-                        })}
+                                    <button
+                                        onClick={() => onTestConnection(config.chatProvider)}
+                                        disabled={loadingModels[config.chatProvider || 'groq']}
+                                        className="p-1.5 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-md transition-all flex items-center gap-1.5 text-[10px] font-bold uppercase"
+                                        title="Sync models for Chat Provider"
+                                    >
+                                        {loadingModels[config.chatProvider || 'groq'] ? <Icon name="sync fa-spin" /> : <Icon name="sync" />}
+                                        Sync
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-2 block">Provider</label>
+                                    <div className="flex gap-2">
+                                        {(Object.keys(PROVIDERS) as Provider[]).map(pId => (
+                                            <button
+                                                key={pId}
+                                                onClick={() => updateConfig('chatProvider', pId)}
+                                                className={`flex-1 p-2 rounded-lg border transition-all flex flex-col items-center gap-1 ${config.chatProvider === pId
+                                                    ? `border-${PROVIDERS[pId].color.split(' ')[0].split('-')[1]}-500 bg-slate-700`
+                                                    : 'border-slate-700 bg-slate-900/50 hover:border-slate-600'}`}
+                                            >
+                                                <Icon name={PROVIDERS[pId].icon} className={`text-sm ${config.chatProvider === pId ? 'text-white' : 'text-slate-500'}`} />
+                                                <span className="text-[9px] font-bold text-slate-300 uppercase">{PROVIDERS[pId].name.split(' ')[0]}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-2 block">Model</label>
+                                    <select
+                                        value={config.chatModel}
+                                        onChange={(e) => updateConfig('chatModel', e.target.value)}
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-500"
+                                    >
+                                        <option value="">Default/Select Model...</option>
+                                        {(models[config.chatProvider || 'groq'] || []).map(m => (
+                                            <option key={m.id} value={m.id}>{m.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Agent Configuration Card */}
+                        <div className="bg-slate-800/80 rounded-2xl p-6 border border-purple-500/30 shadow-xl shadow-purple-500/5 transition-all hover:border-purple-500/50">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-2">
+                                    <Icon name="bolt" className="text-purple-400 text-lg" />
+                                    <span className="font-bold text-purple-400 tracking-tight uppercase text-xs">Agent Mode Engine</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    {config.agentProvider !== 'ollama' && (
+                                        <button
+                                            onClick={() => {
+                                                const key = prompt(`Enter API Key for ${PROVIDERS[config.agentProvider || 'groq'].name}:`, config.apiKeys[config.agentProvider || 'groq']);
+                                                if (key !== null) handleSaveKey(config.agentProvider || 'groq', key);
+                                            }}
+                                            className="p-1.5 bg-slate-700/50 hover:bg-slate-700 text-slate-400 rounded-md transition-all sm:flex hidden"
+                                            title="Quick Key Update"
+                                        >
+                                            <Icon name="key" />
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => onTestConnection(config.agentProvider)}
+                                        disabled={loadingModels[config.agentProvider || 'groq']}
+                                        className="p-1.5 bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 rounded-md transition-all flex items-center gap-1.5 text-[10px] font-bold uppercase"
+                                        title="Sync models for Agent Provider"
+                                    >
+                                        {loadingModels[config.agentProvider || 'groq'] ? <Icon name="sync fa-spin" /> : <Icon name="sync" />}
+                                        Sync
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-2 block">Provider</label>
+                                    <div className="flex gap-2">
+                                        {(Object.keys(PROVIDERS) as Provider[]).map(pId => (
+                                            <button
+                                                key={pId}
+                                                onClick={() => updateConfig('agentProvider', pId)}
+                                                className={`flex-1 p-2 rounded-lg border transition-all flex flex-col items-center gap-1 ${config.agentProvider === pId
+                                                    ? 'border-purple-500 bg-slate-700'
+                                                    : 'border-slate-700 bg-slate-900/50 hover:border-slate-600'}`}
+                                            >
+                                                <Icon name={PROVIDERS[pId].icon} className={`text-sm ${config.agentProvider === pId ? 'text-white' : 'text-slate-500'}`} />
+                                                <span className="text-[9px] font-bold text-slate-300 uppercase">{PROVIDERS[pId].name.split(' ')[0]}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-2 block">Model</label>
+                                    <select
+                                        value={config.agentModel}
+                                        onChange={(e) => updateConfig('agentModel', e.target.value)}
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-purple-500"
+                                    >
+                                        <option value="">Default/Select Model...</option>
+                                        {(models[config.agentProvider || 'groq'] || []).map(m => (
+                                            <option key={m.id} value={m.id}>{m.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700 space-y-4">
                     <div className="flex items-center justify-between">
-                        <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
-                            {config.provider === 'ollama' ? 'Server URL' : 'API Key'}
-                        </label>
-                        <div className="flex items-center gap-2">
-                            {connectionStatus === 'connected' && (
-                                <span className="text-xs text-emerald-400 flex items-center gap-1">
-                                    <Icon name="check-circle" /> Connected
-                                </span>
-                            )}
-                            {connectionStatus === 'error' && (
-                                <span className="text-xs text-red-400 flex items-center gap-1">
-                                    <Icon name="times-circle" /> Failed
-                                </span>
-                            )}
+                        <div className="flex flex-col">
+                            <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+                                Global Credentials & Fallbacks
+                            </label>
+                            <span className="text-[10px] text-slate-500 tracking-tight">Manage your API keys for all providers here.</span>
                         </div>
                     </div>
 
-                    <div className="flex gap-2">
-                        <div className="relative flex-1">
-                            <input
-                                type={config.provider === 'ollama' || showApiKey ? "text" : "password"}
-                                value={config.provider === 'ollama' ? config.ollamaUrl : localApiKey}
-                                onChange={(e) => config.provider === 'ollama' ? updateConfig('ollamaUrl', e.target.value) : setLocalApiKey(e.target.value)}
-                                placeholder={config.provider === 'ollama' ? "http://localhost:11434" : "paste your API key here..."}
-                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-blue-500 transition-colors"
-                            />
-                            {config.provider !== 'ollama' && (
-                                <button
-                                    type="button"
-                                    onClick={() => setShowApiKey(!showApiKey)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                                    title={showApiKey ? 'Hide API Key' : 'Show API Key'}
-                                >
-                                    <Icon name={showApiKey ? "eye-slash" : "eye"} />
-                                </button>
-                            )}
-                        </div>
-                        {config.provider !== 'ollama' && (
-                            <button
-                                onClick={handleSaveKey}
-                                className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors"
-                            >
-                                Save
-                            </button>
-                        )}
-                        <button
-                            onClick={onTestConnection}
-                            disabled={loadingModels || connectionStatus === 'testing'}
-                            className="px-6 py-3 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white rounded-lg font-medium transition-colors whitespace-nowrap flex items-center gap-2"
-                        >
-                            {connectionStatus === 'testing' ? <Icon name="spinner fa-spin" /> : <Icon name="network-wired" />}
-                            Test
-                        </button>
-                    </div>
-
-                    {currentProvider.getApiKeyUrl && (
-                        <p className="text-xs text-slate-500">
-                            Don't have a key? Get one at <a href={currentProvider.getApiKeyUrl} target="_blank" rel="noopener" className="text-blue-400 hover:underline">{currentProvider.name} Console</a>
-                        </p>
-                    )}
-                </div>
-
-                <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700 space-y-4">
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                            <Icon name="search" />
-                        </div>
-                        <label className="text-sm font-bold text-slate-200">Web Search Engine</label>
-                    </div>
-                    <p className="text-xs text-slate-400">Enable real-time information retrieval using Search APIs.</p>
-
-                    <div className="space-y-3">
-                        <div className="flex gap-2">
-                            <div className="w-20 text-[10px] font-bold text-slate-500 flex items-center shrink-0">TAVILY API</div>
-                            <div className="relative flex-1">
-                                <input
-                                    type={showApiKey ? "text" : "password"}
-                                    value={config.tavilyApiKey}
-                                    onChange={(e) => updateConfig('tavilyApiKey', e.target.value)}
-                                    placeholder="Enter Tavily API Key..."
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-blue-500 transition-colors pr-10"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowApiKey(!showApiKey)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                                    title={showApiKey ? "Hide API Key" : "Show API Key"}
-                                >
-                                    <Icon name={showApiKey ? "eye-slash" : "eye"} />
-                                </button>
-                            </div>
-                        </div>
-                        <div className="flex gap-2">
-                            <div className="w-20 text-[10px] font-bold text-slate-500 flex items-center shrink-0">BRAVE API</div>
-                            <div className="relative flex-1">
-                                <input
-                                    type={showApiKey ? "text" : "password"}
-                                    value={config.braveApiKey}
-                                    onChange={(e) => updateConfig('braveApiKey', e.target.value)}
-                                    placeholder="Enter Brave Search API Key..."
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-blue-500 transition-colors pr-10"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowApiKey(!showApiKey)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                                    title={showApiKey ? "Hide API Key" : "Show API Key"}
-                                >
-                                    <Icon name={showApiKey ? "eye-slash" : "eye"} />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    <p className="text-[10px] text-slate-500">
-                        Get keys at: <a href="https://tavily.com/" target="_blank" rel="noopener" className="text-blue-400 hover:underline">Tavily.com</a> o <a href="https://api.search.brave.com/app/dashboard" target="_blank" rel="noopener" className="text-blue-400 hover:underline">Brave Search</a>
-                    </p>
-                </div>
-
-                <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700 space-y-4">
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center">
-                            <Icon name="paper-plane" />
-                        </div>
-                        <label className="text-sm font-bold text-slate-200">Remote Communication (Telegram)</label>
-                    </div>
-                    <p className="text-xs text-slate-400">Receive notifications and interact remotely via Telegram Bot API.</p>
-
-                    <div className="space-y-3">
-                        <div className="flex gap-2">
-                            <div className="w-20 text-[10px] font-bold text-slate-500 flex items-center shrink-0">BOT TOKEN</div>
-                            <div className="relative flex-1">
-                                <input
-                                    type={showApiKey ? "text" : "password"}
-                                    value={config.telegramBotToken}
-                                    onChange={(e) => updateConfig('telegramBotToken', e.target.value)}
-                                    placeholder="Enter Telegram Bot Token..."
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-blue-500 transition-colors pr-10"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowApiKey(!showApiKey)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                                    title={showApiKey ? "Hide Token" : "Show Token"}
-                                >
-                                    <Icon name={showApiKey ? "eye-slash" : "eye"} />
-                                </button>
-                            </div>
-                        </div>
-                        <div className="flex gap-2">
-                            <div className="w-20 text-[10px] font-bold text-slate-500 flex items-center shrink-0">CHAT ID</div>
-                            <input
-                                type="text"
-                                value={config.telegramChatId}
-                                onChange={(e) => updateConfig('telegramChatId', e.target.value)}
-                                placeholder="Enter your Telegram Chat ID..."
-                                className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-blue-500 transition-colors"
-                            />
-                        </div>
-                    </div>
-                    <p className="text-[10px] text-slate-500">
-                        Create a bot with <a href="https://t.me/botfather" target="_blank" rel="noopener" className="text-blue-400 hover:underline">@BotFather</a> and get your Chat ID using <a href="https://t.me/userinfobot" target="_blank" rel="noopener" className="text-blue-400 hover:underline">@userinfobot</a>.
-                    </p>
-                </div>
-
-                <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700 space-y-6">
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center">
-                            <Icon name="microchip" />
-                        </div>
-                        <label className="text-sm font-bold text-slate-200">Model Selection</label>
-                    </div>
-
-                    <div className="space-y-4">
-                        <select
-                            value={config.model}
-                            onChange={(e) => updateConfig('model', e.target.value)}
-                            disabled={loadingModels || models.filter(m => m.provider === config.provider).length === 0}
-                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white appearance-none focus:outline-none focus:border-blue-500 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Select a model"
-                        >
-                            <option value="">Select a model...</option>
-                            {models
-                                .filter(m => m.provider === config.provider)
-                                .map(model => (
-                                    <option key={model.id} value={model.id}>{model.name}</option>
-                                ))}
-                        </select>
-
-                        <div className="flex items-center gap-4 px-2">
+                    <div className="space-y-4 bg-slate-900/50 p-4 rounded-lg border border-slate-700/50">
+                        <div className="flex items-center gap-4">
                             <div className="flex-1">
-                                <div className="flex justify-between mb-2">
-                                    <label className="text-xs font-bold text-slate-400 uppercase">Creativity (Temp)</label>
-                                    <span className="text-xs font-mono text-blue-400">{config.temperature}</span>
-                                </div>
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="1"
-                                    step="0.1"
-                                    value={config.temperature}
-                                    onChange={(e) => updateConfig('temperature', parseFloat(e.target.value))}
-                                    className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                                    title={`Temperature: ${config.temperature}`}
-                                />
+                                <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Master Provider (Fallback)</label>
+                                <select
+                                    value={config.provider}
+                                    onChange={(e) => updateConfig('provider', e.target.value as Provider)}
+                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-500"
+                                >
+                                    {(Object.keys(PROVIDERS) as Provider[]).map(pId => (
+                                        <option key={pId} value={pId}>{PROVIDERS[pId].name}</option>
+                                    ))}
+                                </select>
                             </div>
+                            <div className="flex-1">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Master Model</label>
+                                <select
+                                    value={config.model}
+                                    onChange={(e) => updateConfig('model', e.target.value)}
+                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-500"
+                                >
+                                    <option value="">Select Master Model...</option>
+                                    {(models[config.provider] || []).map(m => (
+                                        <option key={m.id} value={m.id}>{m.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <button
+                                onClick={() => onTestConnection()}
+                                disabled={loadingModels[config.provider]}
+                                className="mt-5 p-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-all"
+                                title="Test Master Connection"
+                            >
+                                {loadingModels[config.provider] ? <Icon name="spinner fa-spin" /> : <Icon name="network-wired" />}
+                            </button>
+                        </div>
+
+                        <div className="h-px bg-slate-800" />
+
+                        <div className="flex items-center gap-3">
+                            <select
+                                value={editingProvider}
+                                onChange={(e) => setEditingProvider(e.target.value as Provider)}
+                                className="bg-slate-800 border-none text-blue-400 text-xs font-bold uppercase cursor-pointer focus:ring-0"
+                            >
+                                {(Object.keys(PROVIDERS) as Provider[]).map(pId => (
+                                    <option key={pId} value={pId}>{PROVIDERS[pId].name} KEY</option>
+                                ))}
+                            </select>
+                            <div className="relative flex-1">
+                                <input
+                                    type={editingProvider === 'ollama' || showApiKey ? "text" : "password"}
+                                    value={editingProvider === 'ollama' ? config.ollamaUrl : localApiKey}
+                                    onChange={(e) => editingProvider === 'ollama' ? updateConfig('ollamaUrl', e.target.value) : setLocalApiKey(e.target.value)}
+                                    placeholder={editingProvider === 'ollama' ? "http://localhost:11434" : `Enter API key for ${PROVIDERS[editingProvider].name}...`}
+                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono text-[11px] focus:outline-none focus:border-blue-500 transition-colors"
+                                />
+                                {editingProvider !== 'ollama' && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowApiKey(!showApiKey)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-400"
+                                    >
+                                        <Icon name={showApiKey ? "eye-slash" : "eye"} />
+                                    </button>
+                                )}
+                            </div>
+                            {editingProvider !== 'ollama' && (
+                                <button
+                                    onClick={() => handleSaveKey(editingProvider, localApiKey)}
+                                    className="px-4 py-2 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg text-[10px] font-bold uppercase transition-all"
+                                >
+                                    Save
+                                </button>
+                            )}
                         </div>
                     </div>
 
-                    {config.provider === 'ollama' && models.filter(m => m.provider === 'ollama').length === 0 && !loadingModels && (
-                        <div className="p-4 bg-amber-900/20 border border-amber-800/30 rounded-lg text-amber-200 text-xs flex gap-3">
-                            <Icon name="exclamation-triangle" className="text-amber-500 text-base" />
-                            <div>
-                                <p className="font-bold mb-1">Ollama not detected or no models found.</p>
-                                <p>Make sure Ollama is running and you have pulled at least one model (e.g., <code>ollama pull gemma2</code>).</p>
-                            </div>
+                    <div className="space-y-4 pt-2">
+                        <div className="flex justify-between mb-1">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase">Global Temperature</label>
+                            <span className="text-[10px] font-mono text-blue-400">{config.temperature}</span>
                         </div>
-                    )}
+                        <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.1"
+                            value={config.temperature}
+                            onChange={(e) => updateConfig('temperature', parseFloat(e.target.value))}
+                            className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                        />
+                    </div>
                 </div>
+
+                {config.provider === 'ollama' && (models['ollama'] || []).length === 0 && !loadingModels['ollama'] && (
+                    <div className="p-4 bg-amber-900/20 border border-amber-800/30 rounded-lg text-amber-200 text-xs flex gap-3">
+                        <Icon name="exclamation-triangle" className="text-amber-500 text-base" />
+                        <div>
+                            <p className="font-bold mb-1">Ollama not detected or no models found.</p>
+                            <p>Make sure Ollama is running and you have pulled at least one model (e.g., <code>ollama pull gemma2</code>).</p>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

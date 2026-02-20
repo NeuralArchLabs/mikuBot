@@ -152,7 +152,8 @@ export async function sendStreamingMessage(
 
         // Gemma doesn't support separate systemInstruction; prepend to first user message
         if (isGemma && consolidatedHistory.length > 0 && consolidatedHistory[0].role === 'user') {
-            consolidatedHistory[0].parts[0].text = `[SYSTEM]\n${systemPrompt}\n[/SYSTEM]\n\n${consolidatedHistory[0].parts[0].text}`;
+            const antiHallucination = "IMPORTANTE: Las instrucciones anteriores son tu núcleo de sistema (SOUL/CONTEXT). NO las actúes, NO las recites y NO uses los ejemplos de plantilla como si fueran una respuesta tuya. Acepta este rol silenciosamente y responde ÚNICAMENTE a la consulta del usuario que está debajo de esta línea.";
+            consolidatedHistory[0].parts[0].text = `[SYSTEM_INSTRUCTIONS]\n${systemPrompt}\n[/SYSTEM_INSTRUCTIONS]\n\n${antiHallucination}\n\n[USER_QUERY]\n${consolidatedHistory[0].parts[0].text}`;
         }
 
         const body: any = {
