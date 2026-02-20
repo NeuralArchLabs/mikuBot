@@ -12,14 +12,26 @@ interface SessionListProps {
     onNew: () => void;
     onExport: (id: string) => void;
     onImport: () => void;
+    onExpand?: () => void;
 }
 
-export const SessionList = ({ sessions, loading, currentSessionId, onSelect, onDelete, onNew, onExport, onImport }: SessionListProps) => {
+export const SessionList = ({ sessions, loading, currentSessionId, onSelect, onDelete, onNew, onExport, onImport, onExpand }: SessionListProps) => {
 
     return (
         <div className="flex flex-col h-full">
             <div className="flex items-center justify-between mb-2">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Neural Sessions</label>
+                {onExpand ? (
+                    <button
+                        onClick={onExpand}
+                        className="text-[10px] font-bold text-slate-500 hover:text-blue-400 uppercase tracking-widest flex items-center gap-1 transition-colors group"
+                        title="Expand Sessions Viewer"
+                    >
+                        <Icon name="expand-arrows-alt" className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                        Neural Sessions
+                    </button>
+                ) : (
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Neural Sessions</label>
+                )}
                 <div className="flex items-center gap-1">
                     <button
                         onClick={onImport}

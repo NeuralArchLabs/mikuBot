@@ -25,7 +25,7 @@ export const FileEditor = ({
 
     return (
         <div className="flex-1 flex h-full overflow-hidden bg-slate-900 text-slate-200">
-            <div className="w-56 bg-slate-900/50 border-r border-slate-700 flex flex-col">
+            <div className="w-auto min-w-[120px] max-w-[160px] md:min-w-[160px] md:max-w-56 lg:min-w-[200px] lg:max-w-72 xl:min-w-[240px] xl:max-w-[320px] bg-slate-900/50 border-r border-slate-700 flex flex-col flex-shrink-0 overflow-hidden">
                 <div className="p-3 flex items-center justify-between border-b border-slate-800">
                     <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Core Memory</span>
                     <button onClick={onAddFile} className="text-slate-500 hover:text-white transition-colors">
@@ -37,12 +37,12 @@ export const FileEditor = ({
                         <button
                             key={filename}
                             onClick={() => setSelectedFile(filename)}
-                            className={`w-full text-left px-4 py-3 text-xs font-mono border-l-2 transition-all flex items-center justify-between group ${selectedFile === filename
+                            className={`w-full text-left px-3 py-3 text-xs font-mono border-l-2 transition-all flex items-center justify-between group overflow-hidden ${selectedFile === filename
                                 ? 'bg-indigo-900/20 border-indigo-500 text-indigo-300'
                                 : 'border-transparent text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
                                 }`}
                         >
-                            <span className="truncate">{filename}</span>
+                            <span className="truncate pr-2">{filename}</span>
                             {filename in unsavedChanges && (
                                 <span className="w-2 h-2 rounded-full bg-amber-500" title="Unsaved changes" />
                             )}
@@ -94,9 +94,9 @@ export const FileEditor = ({
                         />
                     </>
                 ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-slate-500 opacity-30">
-                        <Icon name="file-contract" className="text-6xl mb-4" />
-                        <p>Select a file to begin editing the mikuCentral Cortex</p>
+                    <div className="flex-1 flex flex-col items-center justify-center text-slate-500 opacity-30 p-10 sm:p-16 text-center">
+                        <Icon name="file-contract" className="text-4xl sm:text-6xl mb-5 sm:mb-6" />
+                        <p className="text-[12px] sm:text-sm max-w-[240px] sm:max-w-xs leading-relaxed font-medium">Select a file to begin editing the mikuCentral Cortex</p>
                     </div>
                 )}
             </div>

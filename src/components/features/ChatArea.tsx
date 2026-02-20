@@ -92,10 +92,10 @@ export const ChatArea = ({
         <div className="flex-1 flex flex-col h-full relative bg-slate-900">
             {/* Connection Banner (Persistent Neural Link) */}
             {Object.entries(folderPermissions).some(([_, status]) => status !== 'granted') && (
-                <div className="bg-amber-900/40 border-b border-amber-500/20 p-2 flex items-center justify-center gap-4 animate-in slide-in-from-top duration-500 z-[110]">
-                    <span className="text-[11px] font-mono text-amber-200 uppercase tracking-widest flex items-center gap-2">
-                        <Icon name="exclamation-triangle" className="animate-pulse" />
-                        Neural Link Intermittent: Some local directories are sleeping.
+                <div className="bg-amber-900/40 border-b border-amber-500/20 p-2 sm:p-3 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 animate-in slide-in-from-top duration-500 z-[110] w-full max-w-full shadow-lg">
+                    <span className="text-[9px] sm:text-[11px] font-mono text-amber-200 uppercase tracking-widest flex items-center justify-center text-center gap-1.5 sm:gap-2 leading-tight w-full sm:w-auto">
+                        <Icon name="exclamation-triangle" className="animate-pulse flex-shrink-0 text-[14px]" />
+                        <span className="truncate whitespace-normal">Neural Link Intermittent: Local directories sleeping.</span>
                     </span>
                     <button
                         title="Otorgar permisos a todos los directorios"
@@ -104,9 +104,9 @@ export const ChatArea = ({
                                 if (folderPermissions[target] !== 'granted') onRequestPermission(target);
                             });
                         }}
-                        className="bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-tighter transition-all"
+                        className="bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 px-4 py-1.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-tighter transition-all whitespace-nowrap flex-shrink-0 shadow-lg shadow-amber-900/20"
                     >
-                        Wake Up All Linkages
+                        Wake Up Linkages
                     </button>
                 </div>
             )}
@@ -205,7 +205,7 @@ export const ChatArea = ({
                                     <MarkdownRenderer content={msg.text} />
                                 </div>
                             ) : (
-                                <div className={`relative max-w-[85%] lg:max-w-[70%] rounded-2xl px-5 py-4 shadow-xl transition-all duration-300 ${msg.role === 'user'
+                                <div className={`relative w-auto max-w-[95%] sm:max-w-[85%] lg:max-w-[75%] rounded-2xl p-4 sm:px-5 sm:py-4 shadow-xl transition-all duration-300 break-words ${msg.role === 'user'
                                     ? 'bg-blue-600/20 border border-blue-500/30 text-blue-50'
                                     : 'bg-slate-800 border border-slate-700 text-slate-200'
                                     }`}>
@@ -259,7 +259,7 @@ export const ChatArea = ({
                                             <span className="font-mono text-xs tracking-wider animate-pulse uppercase">Analizando Parámetros...</span>
                                         </div>
                                     ) : (
-                                        <div className="text-[13px] leading-relaxed space-y-4">
+                                        <div className="text-[12px] sm:text-[13px] leading-relaxed space-y-4 overflow-hidden break-words max-w-full w-full">
                                             {msg.blocks && msg.blocks.length > 0 ? (
                                                 <div className="space-y-4">
                                                     {msg.blocks.map((block, idx) => {

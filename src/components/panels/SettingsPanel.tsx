@@ -62,171 +62,183 @@ export const SettingsPanel = ({
     const currentProvider = PROVIDERS[config.provider];
 
     return (
-        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar bg-slate-900">
-            <div className="max-w-3xl mx-auto space-y-8">
-                <div className="flex items-center justify-between">
+        <div className="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar bg-[#050810] relative">
+            {/* Subdued ambient glow background */}
+            <div className="absolute top-0 left-1/4 w-1/2 h-96 bg-blue-600/10 blur-[120px] pointer-events-none rounded-full" />
+            <div className="absolute bottom-0 right-1/4 w-1/3 h-64 bg-purple-600/10 blur-[100px] pointer-events-none rounded-full" />
+
+            <div className="max-w-4xl mx-auto space-y-10 relative z-10">
+                {/* Header Premium Section */}
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-white/5">
                     <div>
-                        <h2 className="text-2xl font-bold text-white mb-1 tracking-tight">⚙️ Control Room</h2>
-                        <p className="text-slate-400 text-sm">Configure Neural Engine and Neural Cortex settings.</p>
+                        <h2 className="text-3xl md:text-4xl font-black text-white tracking-tighter mb-1 select-none" style={{ textShadow: '0 4px 12px rgba(255,255,255,0.15)' }}>
+                            Core System
+                        </h2>
+                        <p className="text-blue-400 text-[10px] md:text-xs font-bold tracking-widest uppercase select-none opacity-80">Platform Configuration & Runtime Keys</p>
                     </div>
-                    <div className="flex items-center gap-2 flex-wrap">
+
+                    <div className="grid grid-cols-2 lg:flex lg:flex-row lg:items-center gap-2 md:gap-3 bg-slate-900/40 p-2 md:p-3 rounded-2xl border border-white/5 backdrop-blur-sm shadow-xl flex-shrink-0 w-full lg:w-auto">
                         <button
                             onClick={onLoadConfig}
-                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold uppercase shadow-lg shadow-emerald-900/20 transition-all flex items-center gap-2"
+                            className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-gradient-to-br from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-emerald-900/20 transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-emerald-500/30 whitespace-nowrap"
                             title="Auto-detect saved config, or browse for a config.json file"
                         >
-                            <Icon name="download" /> Load Config
+                            <Icon name="download" className="text-sm xl:text-base flex-shrink-0" /> <span className="inline lg:hidden min-[1150px]:inline">Load</span>
                         </button>
                         <button
                             onClick={onExportConfig}
-                            className="px-4 py-2 border border-slate-600 text-slate-300 hover:bg-slate-700 rounded-lg text-xs font-bold uppercase transition-all flex items-center gap-2"
+                            className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-slate-600 shadow-lg whitespace-nowrap"
                             title="Download current config as JSON file"
                         >
-                            <Icon name="file-export" /> Export
+                            <Icon name="file-export" className="text-sm xl:text-base flex-shrink-0" /> <span className="inline lg:hidden min-[1150px]:inline">Export</span>
                         </button>
                         <button
                             onClick={onResetGlobal}
-                            className="px-4 py-2 border border-red-900/40 text-red-500 hover:bg-red-900/20 rounded-lg text-xs font-bold uppercase transition-all flex items-center gap-2"
+                            className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-red-950/30 hover:bg-red-900/40 text-red-400 rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-red-900/50 shadow-lg whitespace-nowrap"
                         >
-                            <Icon name="history" /> Default Presets
+                            <Icon name="history" className="text-sm xl:text-base flex-shrink-0" /> <span className="inline lg:hidden min-[1150px]:inline">Default</span>
                         </button>
                         <button
                             onClick={onSaveGlobal}
-                            className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold uppercase shadow-lg shadow-blue-900/20 transition-all flex items-center gap-2"
+                            className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-gradient-to-br from-blue-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-blue-900/30 transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-blue-500/30 whitespace-nowrap"
                         >
-                            <Icon name="save" /> Save Config
+                            <Icon name="save" className="text-sm xl:text-base flex-shrink-0" /> <span className="inline lg:hidden min-[1150px]:inline">Save</span>
                         </button>
                     </div>
                 </div>
 
-                <div className="space-y-4">
-                    <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">Knowledge Base</label>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {/* WorkSpace (Default Agent Workspace) */}
-                        <div className="bg-slate-800/50 p-4 rounded-xl border border-emerald-700/50">
-                            <div className="flex items-center gap-3 mb-3">
-                                <div className="w-10 h-10 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                {/* Knowledge Base Section */}
+                <div className="space-y-5">
+                    <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
+                        <Icon name="database" className="text-blue-500" /> Knowledge Base Pathways
+                    </label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {/* WorkSpace */}
+                        <div className="bg-slate-900/60 backdrop-blur-md p-5 rounded-2xl border border-emerald-500/20 shadow-xl relative overflow-hidden group hover:border-emerald-500/40 transition-colors">
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex flex-shrink-0 items-center justify-center shadow-inner">
                                     <Icon name="box" className="text-lg" />
                                 </div>
-                                <div>
-                                    <div className="text-sm font-bold text-slate-200">WorkSpace</div>
-                                    <div className="text-[10px] text-emerald-500/70">Default agent workspace</div>
+                                <div className="truncate">
+                                    <div className="text-sm font-extrabold text-slate-100 tracking-wide">WorkSpace</div>
+                                    <div className="text-[9px] font-medium uppercase tracking-wider text-emerald-500/80">Default Directory</div>
                                 </div>
                             </div>
-                            <div className="text-xs font-mono text-slate-400 mb-3 truncate bg-slate-900/50 p-2 rounded border border-emerald-700/30">
-                                {workSpacePathName || "Not configured — select folder"}
+                            <div className="text-[10px] font-mono text-slate-400 mb-4 truncate bg-black/40 p-2.5 rounded-lg border border-white/5 shadow-inner" title={workSpacePathName}>
+                                {workSpacePathName || "Not configured"}
                             </div>
                             <button
                                 onClick={onWorkSpaceSelect}
                                 disabled={syncing}
-                                className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-medium transition-colors flex items-center justify-center gap-2"
+                                className="w-full py-2.5 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 rounded-xl text-xs font-bold tracking-wider uppercase transition-all flex items-center justify-center gap-2 border border-emerald-500/30"
                             >
-                                {syncing ? <Icon name="sync fa-spin" /> : <Icon name="folder-open" />}
-                                Select WorkSpace Folder
+                                {syncing ? <Icon name="sync fa-spin" /> : <Icon name="folder-open" />} Select
                             </button>
                         </div>
 
                         {/* Core Identity */}
-                        <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
-                            <div className="flex items-center gap-3 mb-3">
-                                <div className="w-10 h-10 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+                        <div className="bg-slate-900/60 backdrop-blur-md p-5 rounded-2xl border border-indigo-500/20 shadow-xl relative overflow-hidden group hover:border-indigo-500/40 transition-colors">
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex flex-shrink-0 items-center justify-center shadow-inner">
                                     <Icon name="hdd" className="text-lg" />
                                 </div>
-                                <div>
-                                    <div className="text-sm font-bold text-slate-200">Core Identity</div>
-                                    <div className="text-[10px] text-slate-500">core/SOUL.md, core/USER.md, core/ACTIVE_CONTEXT.md</div>
+                                <div className="truncate">
+                                    <div className="text-sm font-extrabold text-slate-100 tracking-wide">Core Engine</div>
+                                    <div className="text-[9px] font-medium uppercase tracking-wider text-indigo-500/80">SOUL, USER, CONTEXT</div>
                                 </div>
                             </div>
-                            <div className="text-xs font-mono text-slate-400 mb-3 truncate bg-slate-900/50 p-2 rounded border border-slate-700/50">
-                                {corePathName || "Using internal defaults"}
+                            <div className="text-[10px] font-mono text-slate-400 mb-4 truncate bg-black/40 p-2.5 rounded-lg border border-white/5 shadow-inner" title={corePathName}>
+                                {corePathName || "Internal Defaults"}
                             </div>
                             <button
                                 onClick={onCoreSelect}
                                 disabled={syncing}
-                                className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-xs font-medium transition-colors flex items-center justify-center gap-2"
+                                className="w-full py-2.5 bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 rounded-xl text-xs font-bold tracking-wider uppercase transition-all flex items-center justify-center gap-2 border border-indigo-500/30"
                             >
-                                {syncing ? <Icon name="sync fa-spin" /> : <Icon name="folder-open" />}
-                                Select Core Folder
+                                {syncing ? <Icon name="sync fa-spin" /> : <Icon name="folder-open" />} Select
                             </button>
                         </div>
 
                         {/* Library */}
-                        <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
-                            <div className="flex items-center gap-3 mb-3">
-                                <div className="w-10 h-10 rounded-lg bg-pink-500/20 text-pink-400 flex items-center justify-center">
+                        <div className="bg-slate-900/60 backdrop-blur-md p-5 rounded-2xl border border-pink-500/20 shadow-xl relative overflow-hidden group hover:border-pink-500/40 transition-colors">
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-pink-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-10 h-10 rounded-xl bg-pink-500/10 border border-pink-500/20 text-pink-400 flex flex-shrink-0 items-center justify-center shadow-inner">
                                     <Icon name="book" className="text-lg" />
                                 </div>
-                                <div>
-                                    <div className="text-sm font-bold text-slate-200">Library</div>
-                                    <div className="text-[10px] text-slate-500">Additional .md context</div>
+                                <div className="truncate">
+                                    <div className="text-sm font-extrabold text-slate-100 tracking-wide">Library</div>
+                                    <div className="text-[9px] font-medium uppercase tracking-wider text-pink-500/80">Auxiliary Context</div>
                                 </div>
                             </div>
-                            <div className="text-xs font-mono text-slate-400 mb-3 truncate bg-slate-900/50 p-2 rounded border border-slate-700/50">
-                                {extraPathName || "No extra context linked"}
+                            <div className="text-[10px] font-mono text-slate-400 mb-4 truncate bg-black/40 p-2.5 rounded-lg border border-white/5 shadow-inner" title={extraPathName}>
+                                {extraPathName || "No Links"}
                             </div>
                             <button
                                 onClick={onExtraSelect}
                                 disabled={syncing}
-                                className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded text-xs font-medium transition-colors flex items-center justify-center gap-2"
+                                className="w-full py-2.5 bg-pink-600/10 hover:bg-pink-600/20 text-pink-400 rounded-xl text-xs font-bold tracking-wider uppercase transition-all flex items-center justify-center gap-2 border border-pink-500/30"
                             >
-                                {syncing ? <Icon name="sync fa-spin" /> : <Icon name="folder-plus" />}
-                                Select Library Folder
+                                {syncing ? <Icon name="sync fa-spin" /> : <Icon name="folder-plus" />} Select
                             </button>
                         </div>
 
                         {/* Command Engine */}
-                        <div className="bg-slate-800/50 p-4 rounded-xl border border-amber-900/40">
-                            <div className="flex items-center gap-3 mb-3">
-                                <div className="w-10 h-10 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                        <div className="bg-slate-900/60 backdrop-blur-md p-5 rounded-2xl border border-amber-500/20 shadow-xl relative overflow-hidden group hover:border-amber-500/40 transition-colors">
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex flex-shrink-0 items-center justify-center shadow-inner">
                                     <Icon name="bolt" className="text-lg" />
                                 </div>
-                                <div>
-                                    <div className="text-sm font-bold text-slate-200">Command Engine</div>
-                                    <div className="text-[10px] text-amber-500/70">Agent instructions & tools</div>
+                                <div className="truncate">
+                                    <div className="text-sm font-extrabold text-slate-100 tracking-wide">Commands</div>
+                                    <div className="text-[9px] font-medium uppercase tracking-wider text-amber-500/80">Tools & Skills</div>
                                 </div>
                             </div>
-                            <div className="text-xs font-mono text-slate-400 mb-3 truncate bg-slate-900/50 p-2 rounded border border-amber-900/20">
-                                {toolsPathName || "Not configured — select folder"}
+                            <div className="text-[10px] font-mono text-slate-400 mb-4 truncate bg-black/40 p-2.5 rounded-lg border border-white/5 shadow-inner" title={toolsPathName}>
+                                {toolsPathName || "Not configured"}
                             </div>
                             <button
                                 onClick={onToolsSelect}
                                 disabled={syncing}
-                                className="w-full py-2 bg-amber-700 hover:bg-amber-600 text-white rounded text-xs font-medium transition-colors flex items-center justify-center gap-2"
+                                className="w-full py-2.5 bg-amber-600/10 hover:bg-amber-600/20 text-amber-400 rounded-xl text-xs font-bold tracking-wider uppercase transition-all flex items-center justify-center gap-2 border border-amber-500/30"
                             >
-                                {syncing ? <Icon name="sync fa-spin" /> : <Icon name="folder-open" />}
-                                Select Commands Folder
+                                {syncing ? <Icon name="sync fa-spin" /> : <Icon name="folder-open" />} Select
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <div className="h-px bg-slate-800" />
+                <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
                 {/* Dynamic Configuration per Mode */}
                 <div className="space-y-6">
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center">
-                            <Icon name="microchip" />
-                        </div>
-                        <h3 className="text-sm font-bold text-slate-200 uppercase tracking-widest">Neural Orchestration</h3>
-                    </div>
+                    <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
+                        <Icon name="microchip" className="text-purple-400" /> Neural Orchestration Model Routing
+                    </label>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Chat Configuration Card */}
-                        <div className="bg-slate-800/80 rounded-2xl p-6 border border-blue-500/30 shadow-xl shadow-blue-500/5 transition-all hover:border-blue-500/50">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-2">
-                                    <Icon name="comments" className="text-blue-400 text-lg" />
-                                    <span className="font-bold text-blue-400 tracking-tight uppercase text-xs">Chat Mode Engine</span>
+                        <div className="bg-slate-900/40 backdrop-blur-md rounded-3xl p-6 border border-blue-500/20 shadow-2xl relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-full h-1 bg-gradient-to-r from-blue-600 to-cyan-400 opacity-50" />
+
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-blue-500/20 p-2 rounded-xl text-blue-400 ring-1 ring-blue-500/50">
+                                        <Icon name="comments" className="text-xl mx-0.5" />
+                                    </div>
+                                    <span className="font-black text-white tracking-tight text-lg">Chat Runtime</span>
                                 </div>
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-2">
                                     {config.chatProvider !== 'ollama' && (
                                         <button
                                             onClick={() => {
                                                 const key = prompt(`Enter API Key for ${PROVIDERS[config.chatProvider || 'gemini'].name}:`, config.apiKeys[config.chatProvider || 'gemini']);
                                                 if (key !== null) handleSaveKey(config.chatProvider || 'gemini', key);
                                             }}
-                                            className="p-1.5 bg-slate-700/50 hover:bg-slate-700 text-slate-400 rounded-md transition-all sm:flex hidden"
+                                            className="w-8 h-8 flex items-center justify-center bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-xl transition-all shadow-md border border-white/5"
                                             title="Quick Key Update"
                                         >
                                             <Icon name="key" />
@@ -235,65 +247,87 @@ export const SettingsPanel = ({
                                     <button
                                         onClick={() => onTestConnection(config.chatProvider)}
                                         disabled={loadingModels[config.chatProvider || 'groq']}
-                                        className="p-1.5 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-md transition-all flex items-center gap-1.5 text-[10px] font-bold uppercase"
+                                        className="h-8 px-3 bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/30 text-blue-400 rounded-xl transition-all flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-wider"
                                         title="Sync models for Chat Provider"
                                     >
-                                        {loadingModels[config.chatProvider || 'groq'] ? <Icon name="sync fa-spin" /> : <Icon name="sync" />}
-                                        Sync
+                                        {loadingModels[config.chatProvider || 'groq'] ? <Icon name="sync fa-spin" /> : <Icon name="sync" />} Sync
                                     </button>
                                 </div>
                             </div>
 
-                            <div className="space-y-4">
+                            <div className="space-y-5">
                                 <div>
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-2 block">Provider</label>
-                                    <div className="flex gap-2">
-                                        {(Object.keys(PROVIDERS) as Provider[]).map(pId => (
-                                            <button
-                                                key={pId}
-                                                onClick={() => updateConfig('chatProvider', pId)}
-                                                className={`flex-1 p-2 rounded-lg border transition-all flex flex-col items-center gap-1 ${config.chatProvider === pId
-                                                    ? `border-${PROVIDERS[pId].color.split(' ')[0].split('-')[1]}-500 bg-slate-700`
-                                                    : 'border-slate-700 bg-slate-900/50 hover:border-slate-600'}`}
-                                            >
-                                                <Icon name={PROVIDERS[pId].icon} className={`text-sm ${config.chatProvider === pId ? 'text-white' : 'text-slate-500'}`} />
-                                                <span className="text-[9px] font-bold text-slate-300 uppercase">{PROVIDERS[pId].name.split(' ')[0]}</span>
-                                            </button>
-                                        ))}
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block ml-1">Routing Provider</label>
+                                    <div className="flex gap-2 bg-black/20 p-1.5 rounded-2xl border border-white/5">
+                                        {(Object.keys(PROVIDERS) as Provider[]).map(pId => {
+                                            const isSelected = config.chatProvider === pId;
+                                            return (
+                                                <button
+                                                    key={pId}
+                                                    onClick={() => updateConfig('chatProvider', pId)}
+                                                    className={`flex-1 py-3 rounded-xl transition-all flex flex-col items-center justify-center gap-1.5 ${isSelected
+                                                        ? `bg-blue-600/90 text-white shadow-lg shadow-blue-900/40 ring-1 ring-white/20`
+                                                        : 'hover:bg-white/5 text-slate-400'
+                                                        }`}
+                                                >
+                                                    {pId === 'gemini' ? (
+                                                        <img src="/geminiICON.png" alt="Gemini" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]' : 'opacity-40 grayscale hover:opacity-80'}`} />
+                                                    ) : pId === 'ollama' ? (
+                                                        <img src="/ollamaICON.webp" alt="Ollama" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'brightness-0 invert opacity-40 hover:opacity-80'}`} />
+                                                    ) : pId === 'groq' ? (
+                                                        <img src="/groqICON.png" alt="Groq" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'brightness-0 invert opacity-40 hover:opacity-80'}`} />
+                                                    ) : (
+                                                        <Icon name={(PROVIDERS as any)[pId]?.icon || 'robot'} className="text-lg" />
+                                                    )}
+                                                    <span className={`text-[9px] font-black uppercase tracking-wider ${isSelected ? 'text-blue-100' : 'text-slate-500'}`}>
+                                                        {PROVIDERS[pId].name.split(' ')[0]}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-2 block">Model</label>
-                                    <select
-                                        value={config.chatModel}
-                                        onChange={(e) => updateConfig('chatModel', e.target.value)}
-                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-500"
-                                    >
-                                        <option value="">Default/Select Model...</option>
-                                        {(models[config.chatProvider || 'groq'] || []).map(m => (
-                                            <option key={m.id} value={m.id}>{m.name}</option>
-                                        ))}
-                                    </select>
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block ml-1">Active Model</label>
+                                    <div className="relative">
+                                        <select
+                                            value={config.chatModel}
+                                            onChange={(e) => updateConfig('chatModel', e.target.value)}
+                                            className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-4 py-3.5 text-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50 appearance-none shadow-inner"
+                                        >
+                                            <option value="">Select Target Architecture...</option>
+                                            {(models[config.chatProvider || 'groq'] || []).map(m => (
+                                                <option key={m.id} value={m.id}>{m.name}</option>
+                                            ))}
+                                        </select>
+                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                                            <Icon name="chevron-down" />
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         {/* Agent Configuration Card */}
-                        <div className="bg-slate-800/80 rounded-2xl p-6 border border-purple-500/30 shadow-xl shadow-purple-500/5 transition-all hover:border-purple-500/50">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-2">
-                                    <Icon name="bolt" className="text-purple-400 text-lg" />
-                                    <span className="font-bold text-purple-400 tracking-tight uppercase text-xs">Agent Mode Engine</span>
+                        <div className="bg-slate-900/40 backdrop-blur-md rounded-3xl p-6 border border-purple-500/20 shadow-2xl relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-full h-1 bg-gradient-to-r from-purple-600 to-pink-500 opacity-50" />
+
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-purple-500/20 p-2 rounded-xl text-purple-400 ring-1 ring-purple-500/50">
+                                        <Icon name="bolt" className="text-xl mx-1" />
+                                    </div>
+                                    <span className="font-black text-white tracking-tight text-lg">Agent Runtime</span>
                                 </div>
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-2">
                                     {config.agentProvider !== 'ollama' && (
                                         <button
                                             onClick={() => {
                                                 const key = prompt(`Enter API Key for ${PROVIDERS[config.agentProvider || 'groq'].name}:`, config.apiKeys[config.agentProvider || 'groq']);
                                                 if (key !== null) handleSaveKey(config.agentProvider || 'groq', key);
                                             }}
-                                            className="p-1.5 bg-slate-700/50 hover:bg-slate-700 text-slate-400 rounded-md transition-all sm:flex hidden"
+                                            className="w-8 h-8 flex items-center justify-center bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-xl transition-all shadow-md border border-white/5"
                                             title="Quick Key Update"
                                         >
                                             <Icon name="key" />
@@ -302,163 +336,258 @@ export const SettingsPanel = ({
                                     <button
                                         onClick={() => onTestConnection(config.agentProvider)}
                                         disabled={loadingModels[config.agentProvider || 'groq']}
-                                        className="p-1.5 bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 rounded-md transition-all flex items-center gap-1.5 text-[10px] font-bold uppercase"
+                                        className="h-8 px-3 bg-purple-600/10 hover:bg-purple-600/20 border border-purple-500/30 text-purple-400 rounded-xl transition-all flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-wider"
                                         title="Sync models for Agent Provider"
                                     >
-                                        {loadingModels[config.agentProvider || 'groq'] ? <Icon name="sync fa-spin" /> : <Icon name="sync" />}
-                                        Sync
+                                        {loadingModels[config.agentProvider || 'groq'] ? <Icon name="sync fa-spin" /> : <Icon name="sync" />} Sync
                                     </button>
                                 </div>
                             </div>
 
-                            <div className="space-y-4">
+                            <div className="space-y-5">
                                 <div>
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-2 block">Provider</label>
-                                    <div className="flex gap-2">
-                                        {(Object.keys(PROVIDERS) as Provider[]).map(pId => (
-                                            <button
-                                                key={pId}
-                                                onClick={() => updateConfig('agentProvider', pId)}
-                                                className={`flex-1 p-2 rounded-lg border transition-all flex flex-col items-center gap-1 ${config.agentProvider === pId
-                                                    ? 'border-purple-500 bg-slate-700'
-                                                    : 'border-slate-700 bg-slate-900/50 hover:border-slate-600'}`}
-                                            >
-                                                <Icon name={PROVIDERS[pId].icon} className={`text-sm ${config.agentProvider === pId ? 'text-white' : 'text-slate-500'}`} />
-                                                <span className="text-[9px] font-bold text-slate-300 uppercase">{PROVIDERS[pId].name.split(' ')[0]}</span>
-                                            </button>
-                                        ))}
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block ml-1">Routing Provider</label>
+                                    <div className="flex gap-2 bg-black/20 p-1.5 rounded-2xl border border-white/5">
+                                        {(Object.keys(PROVIDERS) as Provider[]).map(pId => {
+                                            const isSelected = config.agentProvider === pId;
+                                            return (
+                                                <button
+                                                    key={pId}
+                                                    onClick={() => updateConfig('agentProvider', pId)}
+                                                    className={`flex-1 py-3 rounded-xl transition-all flex flex-col items-center justify-center gap-1.5 ${isSelected
+                                                        ? `bg-purple-600/90 text-white shadow-lg shadow-purple-900/40 ring-1 ring-white/20`
+                                                        : 'hover:bg-white/5 text-slate-400'
+                                                        }`}
+                                                >
+                                                    {pId === 'gemini' ? (
+                                                        <img src="/geminiICON.png" alt="Gemini" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]' : 'opacity-40 grayscale hover:opacity-80'}`} />
+                                                    ) : pId === 'ollama' ? (
+                                                        <img src="/ollamaICON.webp" alt="Ollama" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'brightness-0 invert opacity-40 hover:opacity-80'}`} />
+                                                    ) : pId === 'groq' ? (
+                                                        <img src="/groqICON.png" alt="Groq" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'brightness-0 invert opacity-40 hover:opacity-80'}`} />
+                                                    ) : (
+                                                        <Icon name={(PROVIDERS as any)[pId]?.icon || 'robot'} className="text-lg" />
+                                                    )}
+                                                    <span className={`text-[9px] font-black uppercase tracking-wider ${isSelected ? 'text-purple-100' : 'text-slate-500'}`}>
+                                                        {PROVIDERS[pId].name.split(' ')[0]}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-2 block">Model</label>
-                                    <select
-                                        value={config.agentModel}
-                                        onChange={(e) => updateConfig('agentModel', e.target.value)}
-                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-purple-500"
-                                    >
-                                        <option value="">Default/Select Model...</option>
-                                        {(models[config.agentProvider || 'groq'] || []).map(m => (
-                                            <option key={m.id} value={m.id}>{m.name}</option>
-                                        ))}
-                                    </select>
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block ml-1">Active Model</label>
+                                    <div className="relative">
+                                        <select
+                                            value={config.agentModel}
+                                            onChange={(e) => updateConfig('agentModel', e.target.value)}
+                                            className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-4 py-3.5 text-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/50 appearance-none shadow-inner"
+                                        >
+                                            <option value="">Select Target Architecture...</option>
+                                            {(models[config.agentProvider || 'groq'] || []).map(m => (
+                                                <option key={m.id} value={m.id}>{m.name}</option>
+                                            ))}
+                                        </select>
+                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                                            <Icon name="chevron-down" />
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700 space-y-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex flex-col">
-                            <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
-                                Global Credentials & Fallbacks
-                            </label>
-                            <span className="text-[10px] text-slate-500 tracking-tight">Manage your API keys for all providers here.</span>
+                {/* Secure Credential Vault */}
+                <div className="bg-slate-900/80 backdrop-blur-xl rounded-3xl p-8 border border-amber-700/30 shadow-[0_0_40px_rgba(251,191,36,0.05)] space-y-6 relative overflow-hidden">
+                    <div className="absolute -top-32 -right-32 w-80 h-80 bg-amber-600/10 blur-3xl rounded-full" />
+                    <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-orange-600/10 blur-3xl rounded-full" />
+
+                    <div className="flex items-center gap-4 border-b border-amber-500/10 pb-4 relative z-10">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-900/80 to-amber-950 border border-amber-700/50 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-900/20">
+                            <Icon name="lock" className="text-xl" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-orange-400 tracking-tight">Secure Credential Vault</h3>
+                            <p className="text-xs text-amber-500/60 font-medium">Manage master logic fallbacks and encrypted API keys</p>
                         </div>
                     </div>
 
-                    <div className="space-y-4 bg-slate-900/50 p-4 rounded-lg border border-slate-700/50">
-                        <div className="flex items-center gap-4">
-                            <div className="flex-1">
-                                <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Master Provider (Fallback)</label>
-                                <select
-                                    value={config.provider}
-                                    onChange={(e) => updateConfig('provider', e.target.value as Provider)}
-                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-500"
-                                >
-                                    {(Object.keys(PROVIDERS) as Provider[]).map(pId => (
-                                        <option key={pId} value={pId}>{PROVIDERS[pId].name}</option>
-                                    ))}
-                                </select>
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-6 relative z-10">
+                        {/* Fallback Config */}
+                        <div className="md:col-span-5 bg-black/40 rounded-2xl p-5 border border-white/5 flex flex-col h-full">
+                            <div>
+                                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Master Fallback Routing</h4>
+                                <div className="space-y-4">
+                                    <div>
+                                        <select
+                                            value={config.provider}
+                                            onChange={(e) => updateConfig('provider', e.target.value as Provider)}
+                                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-slate-300 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-slate-500"
+                                        >
+                                            {(Object.keys(PROVIDERS) as Provider[]).map(pId => (
+                                                <option key={pId} value={pId}>{PROVIDERS[pId].name} Provider</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="relative">
+                                        <select
+                                            value={config.model}
+                                            onChange={(e) => updateConfig('model', e.target.value)}
+                                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-slate-300 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-slate-500 appearance-none"
+                                        >
+                                            <option value="">Master Model Fallback...</option>
+                                            {(models[config.provider] || []).map(m => (
+                                                <option key={m.id} value={m.id}>{m.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="flex-1">
-                                <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Master Model</label>
-                                <select
-                                    value={config.model}
-                                    onChange={(e) => updateConfig('model', e.target.value)}
-                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-500"
-                                >
-                                    <option value="">Select Master Model...</option>
-                                    {(models[config.provider] || []).map(m => (
-                                        <option key={m.id} value={m.id}>{m.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <button
-                                onClick={() => onTestConnection()}
-                                disabled={loadingModels[config.provider]}
-                                className="mt-5 p-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-all"
-                                title="Test Master Connection"
-                            >
-                                {loadingModels[config.provider] ? <Icon name="spinner fa-spin" /> : <Icon name="network-wired" />}
-                            </button>
-                        </div>
-
-                        <div className="h-px bg-slate-800" />
-
-                        <div className="flex items-center gap-3">
-                            <select
-                                value={editingProvider}
-                                onChange={(e) => setEditingProvider(e.target.value as Provider)}
-                                className="bg-slate-800 border-none text-blue-400 text-xs font-bold uppercase cursor-pointer focus:ring-0"
-                            >
-                                {(Object.keys(PROVIDERS) as Provider[]).map(pId => (
-                                    <option key={pId} value={pId}>{PROVIDERS[pId].name} KEY</option>
-                                ))}
-                            </select>
-                            <div className="relative flex-1">
-                                <input
-                                    type={editingProvider === 'ollama' || showApiKey ? "text" : "password"}
-                                    value={editingProvider === 'ollama' ? config.ollamaUrl : localApiKey}
-                                    onChange={(e) => editingProvider === 'ollama' ? updateConfig('ollamaUrl', e.target.value) : setLocalApiKey(e.target.value)}
-                                    placeholder={editingProvider === 'ollama' ? "http://localhost:11434" : `Enter API key for ${PROVIDERS[editingProvider].name}...`}
-                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono text-[11px] focus:outline-none focus:border-blue-500 transition-colors"
-                                />
-                                {editingProvider !== 'ollama' && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowApiKey(!showApiKey)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-400"
-                                    >
-                                        <Icon name={showApiKey ? "eye-slash" : "eye"} />
-                                    </button>
-                                )}
-                            </div>
-                            {editingProvider !== 'ollama' && (
+                            <div className="mt-auto pt-4">
                                 <button
-                                    onClick={() => handleSaveKey(editingProvider, localApiKey)}
-                                    className="px-4 py-2 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg text-[10px] font-bold uppercase transition-all"
+                                    onClick={() => onTestConnection()}
+                                    disabled={loadingModels[config.provider]}
+                                    className="w-full py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2"
                                 >
-                                    Save
+                                    {loadingModels[config.provider] ? <Icon name="spinner fa-spin" /> : <Icon name="network-wired" />} Ping Master Endpoint
                                 </button>
-                            )}
+                            </div>
+                        </div>
+
+                        {/* Keys */}
+                        <div className="md:col-span-7 bg-black/40 rounded-2xl p-5 border border-white/5 flex flex-col">
+                            <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Key Management</h4>
+
+                            <div className="flex gap-2 bg-slate-900 p-1.5 rounded-xl border border-white/5 mb-4">
+                                {(Object.keys(PROVIDERS) as Provider[]).map(pId => (
+                                    <button
+                                        key={pId}
+                                        onClick={() => setEditingProvider(pId)}
+                                        className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${editingProvider === pId ? 'bg-slate-700 text-white shadow' : 'text-slate-500 hover:text-slate-300'
+                                            }`}
+                                    >
+                                        {PROVIDERS[pId].name.split(' ')[0]}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="flex-1 flex flex-col justify-center">
+                                <div className="relative flex items-center group">
+                                    <div className="absolute left-4 text-slate-500 flex items-center justify-center">
+                                        <Icon name={editingProvider === 'ollama' ? 'link' : 'key'} />
+                                    </div>
+                                    <input
+                                        type={editingProvider === 'ollama' || showApiKey ? "text" : "password"}
+                                        value={editingProvider === 'ollama' ? config.ollamaUrl : localApiKey}
+                                        onChange={(e) => editingProvider === 'ollama' ? updateConfig('ollamaUrl', e.target.value) : setLocalApiKey(e.target.value)}
+                                        placeholder={editingProvider === 'ollama' ? "http://localhost:11434" : `Bearer Token for ${PROVIDERS[editingProvider].name}`}
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-11 pr-24 py-3.5 text-blue-200 font-mono text-xs focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-slate-700"
+                                    />
+                                    <div className="absolute right-2 flex items-center gap-1">
+                                        {editingProvider !== 'ollama' && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowApiKey(!showApiKey)}
+                                                className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-slate-300 bg-slate-800 rounded-lg transition-colors border border-transparent hover:border-slate-600"
+                                            >
+                                                <Icon name={showApiKey ? "eye-slash" : "eye"} />
+                                            </button>
+                                        )}
+                                        {editingProvider !== 'ollama' && (
+                                            <button
+                                                onClick={() => handleSaveKey(editingProvider, localApiKey)}
+                                                className="h-8 px-4 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border border-blue-500/30"
+                                            >
+                                                Save
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="mt-6 flex flex-col gap-3 p-4 bg-slate-900/50 rounded-xl border border-white/5">
+                                    <div className="flex justify-between items-center">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                            <Icon name="thermometer-half" /> Inference Temperature
+                                        </label>
+                                        <span className="bg-slate-800 text-blue-400 font-mono text-xs font-bold px-2 py-1 rounded-md border border-slate-700">
+                                            {config.temperature.toFixed(1)}
+                                        </span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="1"
+                                        step="0.1"
+                                        value={config.temperature}
+                                        onChange={(e) => updateConfig('temperature', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer accent-blue-500"
+                                    />
+                                    <div className="flex justify-between text-[9px] text-slate-600 font-bold uppercase tracking-wider px-1">
+                                        <span>Precise / Analytical</span>
+                                        <span>Creative / Hallucinative</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="space-y-4 pt-2">
-                        <div className="flex justify-between mb-1">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase">Global Temperature</label>
-                            <span className="text-[10px] font-mono text-blue-400">{config.temperature}</span>
+                    {/* Telegram Protocol */}
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-6 relative z-10 pt-2">
+                        <div className="md:col-span-12 bg-black/40 rounded-2xl p-5 border border-white/5 flex flex-col md:flex-row gap-6">
+                            <div className="md:w-1/3">
+                                <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                    <Icon name="paper-plane" /> Telegram Protocol
+                                </h4>
+                                <p className="text-[10px] text-slate-500 font-medium leading-relaxed">Link Miku to a Telegram Bot for remote mobile interactions. Leave blank to disable.</p>
+                            </div>
+                            <div className="md:w-2/3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block ml-1">Bot Token</label>
+                                    <div className="relative">
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
+                                            <Icon name="key" />
+                                        </div>
+                                        <input
+                                            type="password"
+                                            value={config.telegramBotToken || ''}
+                                            onChange={(e) => updateConfig('telegramBotToken', e.target.value)}
+                                            placeholder="123456789:ABCDE..."
+                                            className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-9 pr-4 py-3 text-blue-200 font-mono text-xs focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-slate-700"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block ml-1">Allowed Chat ID (Admin)</label>
+                                    <div className="relative">
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
+                                            <Icon name="user-shield" />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            value={config.telegramChatId || ''}
+                                            onChange={(e) => updateConfig('telegramChatId', e.target.value)}
+                                            placeholder="Your numeric Chat ID"
+                                            className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-9 pr-4 py-3 text-blue-200 font-mono text-xs focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-slate-700"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <input
-                            type="range"
-                            min="0"
-                            max="1"
-                            step="0.1"
-                            value={config.temperature}
-                            onChange={(e) => updateConfig('temperature', parseFloat(e.target.value))}
-                            className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                        />
                     </div>
                 </div>
 
+                {/* System Alerts */}
                 {config.provider === 'ollama' && (models['ollama'] || []).length === 0 && !loadingModels['ollama'] && (
-                    <div className="p-4 bg-amber-900/20 border border-amber-800/30 rounded-lg text-amber-200 text-xs flex gap-3">
-                        <Icon name="exclamation-triangle" className="text-amber-500 text-base" />
+                    <div className="p-5 bg-gradient-to-r from-amber-900/40 to-amber-900/10 border border-amber-500/30 rounded-2xl text-amber-200 text-sm flex gap-4 items-center shadow-lg backdrop-blur-sm animate-pulse">
+                        <div className="w-12 h-12 bg-amber-500/20 rounded-xl flex items-center justify-center text-amber-400 border border-amber-500/20 flex-shrink-0">
+                            <Icon name="exclamation-triangle" className="text-2xl" />
+                        </div>
                         <div>
-                            <p className="font-bold mb-1">Ollama not detected or no models found.</p>
-                            <p>Make sure Ollama is running and you have pulled at least one model (e.g., <code>ollama pull gemma2</code>).</p>
+                            <p className="font-extrabold mb-1 tracking-tight text-amber-100">Local Neural Engine Unresponsive</p>
+                            <p className="text-xs text-amber-200/70 font-medium">Verify Ollama is active on <code>{config.ollamaUrl}</code> and that at least one model is initialized in memory.</p>
                         </div>
                     </div>
                 )}
@@ -466,3 +595,4 @@ export const SettingsPanel = ({
         </div>
     );
 };
+

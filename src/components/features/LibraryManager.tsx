@@ -83,7 +83,7 @@ export const LibraryManager = ({
     if (!isOpen) return null;
 
     return (
-        <div className="absolute inset-0 z-50 bg-slate-900/95 backdrop-blur-sm flex items-center justify-center p-8 transition-opacity duration-300 border-none">
+        <div className="absolute inset-0 z-[120] bg-slate-900/95 backdrop-blur-sm flex items-center justify-center p-8 transition-opacity duration-300 border-none">
             <div className="bg-slate-950 border border-slate-700 w-full max-w-6xl h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
                 {/* ── Header ─────────────────────────────────────────── */}
                 <div className="h-16 border-b border-slate-800 flex items-center justify-between px-6 bg-slate-900">
@@ -105,9 +105,11 @@ export const LibraryManager = ({
                         </button>
                         <button
                             onClick={onAdd}
-                            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700 transition-colors text-xs font-medium flex items-center gap-2"
+                            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700 transition-colors text-xs font-medium flex items-center gap-2 whitespace-nowrap"
                         >
-                            <Icon name="plus" /> New Document
+                            <Icon name="plus" />
+                            <span className="hidden sm:inline">New Document</span>
+                            <span className="inline sm:hidden">New Doc</span>
                         </button>
                         <button onClick={onClose} title="Close Library Manager" className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 flex items-center justify-center transition-colors">
                             <Icon name="times" />

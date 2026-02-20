@@ -29,7 +29,7 @@ export const App = () => {
         toolsFiles: {},
         selectedLibraryFiles: [],
         activeTab: 'chat' as const,
-        selectedFile: 'SOUL.md',
+        selectedFile: '',
         isLibraryExpanded: false,
         unsavedChanges: {},
         agentMode: 'chat' as AgentMode,
