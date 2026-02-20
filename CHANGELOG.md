@@ -17,6 +17,8 @@
     - Añadidos iconos de acceso directo ("External Link") en el extremo superior derecho de las tarjetas.
     - Corregida la lógica de rutas: ahora se pasan rutas absolutas del motor neural al shell nativo.
     - Se ha migrado a llamadas IPC directas (`invoke`) para garantizar la compatibilidad en modo desarrollo.
+- **Architectural Refinement**:
+    - Consolidación de la lógica de estado en `App.tsx` y `services/`, permitiendo que la carpeta `hooks/` quede como reserva técnica. Esto reduce la fragmentación del código y mejora la velocidad de carga del motor neural.
 
 ## [1.4.2] - 2026-02-20
 

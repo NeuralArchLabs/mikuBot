@@ -73,6 +73,7 @@ src/
 │   ├── CollapsibleTextBlock — Texto colapsable
 │   ├── Common.tsx         — Icon + MarkdownRenderer compartidos
 │   └── SessionList.tsx    — Lista de sesiones
+├── hooks/                 (Vacío) — Carpeta reservada para futura lógica de UI reutilizable; lógica actual consolidada en Services/App.tsx.
 ├── services/
 │   ├── agent.ts           (803 líneas) — Motor del agent loop + Proxy Stores (Real-time Sync)
 │   ├── api.ts             (126 líneas) — Streaming para Groq/Gemini
@@ -108,6 +109,7 @@ electron/
 | 11 | **Refactor Sandbox → WorkSpace** | ✅ Done | Renombrado masivo de `sandbox` a `workSpace` en tipos, servicios, UI y herramientas para mayor claridad conceptual. |
 | 12 | **Inestabilidad en Persistencia** | ✅ Done | v1.5.0: `config.json` como Single Source of Truth. Eliminados handles de IndexedDB caducos y `localStorage` en modo escritorio. |
 | 13 | **Acceso a Carpetas Externo** | ✅ Done | Integración con el Shell nativo para abrir directorios del Control Room directamente en el explorador de archivos. |
+| 14 | **Consolidación Arquitectónica** | ✅ Done | Simplificación del flujo de datos migrando lógica de `hooks/` a `services/` y `App.tsx` para evitar race conditions y asegurar un despliegue atómico de la configuración. |
 
 ### 3.2 Pendientes (Originales) ⏳
 | # | Problema | Severidad | Detalle |
