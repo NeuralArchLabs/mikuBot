@@ -60,33 +60,43 @@ MikuCentral es mucho más que un simple chat; es un orquestador de agentes con l
 ### Arquitectura de Archivos
 ```
 src/
-├── App.tsx               (529 líneas) — Orquestador principal de estado y routing
+├── App.tsx               (1248 líneas) — Orquestador principal de estado y routing
 ├── components/
-│   ├── ChatArea.tsx       (243 líneas) — Área de chat con bloques de herramientas
-│   ├── LibraryManager.tsx (258 líneas) — Gestor de contexto con blueprints y editor
-│   ├── SettingsPanel.tsx  (345 líneas) — Configuración de proveedores y carpetas
-│   ├── Sidebar.tsx        (136 líneas) — Navegación y gestión de sesiones
-│   ├── FileEditor.tsx     — Editor de archivos core (Cortex)
-│   ├── ToolBlock.tsx      — Rendering de bloques de herramientas
-│   ├── ToolApprovalPanel  — Panel de aprobación glassmórfico
-│   ├── AgentStatusPanel   — Panel de estado del agente
-│   ├── CollapsibleTextBlock — Texto colapsable
-│   ├── Common.tsx         — Icon + MarkdownRenderer compartidos
-│   └── SessionList.tsx    — Lista de sesiones
-├── hooks/                 (Vacío) — Carpeta reservada para futura lógica de UI reutilizable; lógica actual consolidada en Services/App.tsx.
+│   ├── features/
+│   │   ├── ChatArea.tsx       (436 líneas) — Área de chat con bloques de herramientas
+│   │   ├── LibraryManager.tsx (320 líneas) — Gestor de contexto con blueprints y editor
+│   │   ├── FileEditor.tsx     (137 líneas) — Editor de archivos core (Cortex)
+│   │   ├── SessionList.tsx    (113 líneas) — Lista de sesiones
+│   │   └── OnboardingWizard.tsx (234 líneas) — Setup inicial guiado
+│   ├── panels/
+│   │   ├── SettingsPanel.tsx  (651 líneas) — Configuración de proveedores y carpetas
+│   │   ├── AgentStatusPanel.tsx (173 líneas) — Panel de estado del agente
+│   │   └── ToolApprovalPanel.tsx (148 líneas) — Panel de aprobación glassmórfico
+│   ├── layout/
+│   │   └── Sidebar.tsx        (285 líneas) — Navegación y gestión de sesiones
+│   └── common/
+│       ├── ToolBlock.tsx      (129 líneas) — Rendering de bloques de herramientas
+│       ├── Common.tsx         (15 líneas)  — Icon + MarkdownRenderer compartidos
+│       └── CollapsibleTextBlock.tsx (59 líneas) — Texto colapsable
+├── hooks/                 (Vacío) — Lógica consolidada en Services/App.tsx.
 ├── services/
-│   ├── agent.ts           (803 líneas) — Motor del agent loop + Proxy Stores (Real-time Sync)
-│   ├── api.ts             (126 líneas) — Streaming para Groq/Gemini
-│   ├── toolCallNormalizer.ts (1074 líneas) — Recuperación de alucinaciones + Normalización de Arrays
-│   ├── fileSystem.ts      — IndexedDB para handles de directorios
-│   └── persistence.ts     — Abstracción de persistencia Electron
-├── types/index.ts         (184 líneas) — Definiciones de tipos (MessageBlock: thought, answer)
-├── utils/index.ts         (188 líneas) — safeFetch, validation, markdown → HTML
-├── constants/index.ts     (356 líneas) — Herramientas, proveedores, blueprints
-└── index.css              (478 líneas) — Estilos custom + animaciones Safari-Fixes
+│   ├── core/
+│   │   ├── agent.ts           (975 líneas) — Motor del agent loop + Proxy Stores
+│   │   ├── fileSystem.ts      (27 líneas)  — IndexedDB para handles
+│   │   └── persistence.ts     (191 líneas) — Persistencia Electron
+│   ├── integrations/
+│   │   ├── api.ts             (190 líneas) — Streaming para Groq/Gemini
+│   │   └── telegramService.ts (81 líneas)  — Integración remota
+│   └── formatters/
+│       ├── toolCallNormalizer.ts (545 líneas) — Reparación de alucinaciones
+│       └── normalization/dictionaries.ts (547 líneas) — Diccionario de corrección
+├── types/global.ts        (173 líneas) — Definiciones de tipos globales
+├── utils/helpers/index.ts (89 líneas)  — safeFetch, validation, etc.
+├── constants/core.ts      (394 líneas) — Herramientas, proveedores, blueprints
+└── index.css              (608 líneas) — Estilos custom + animaciones
 electron/
-├── main.cjs               (196 líneas) — Proceso principal Electron
-└── preload.cjs            (16 líneas)  — Bridge IPC
+├── main.cjs               (534 líneas) — Proceso principal Electron
+└── preload.cjs            (27 líneas)  — Bridge IPC
 ```
 
 ---
