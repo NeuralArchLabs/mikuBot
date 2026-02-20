@@ -262,9 +262,10 @@ electron/
 |---------|--------|
 | `src/index.css` | `@keyframes` Genie (macOS expand/shrink) + GPU acceleration (`will-change`). |
 | `src/App.tsx` | Contenedores animados para Chat, Editors (Slide) y Control Room (Darken). |
-| `src/components/layout/Sidebar.tsx` | `DeepSessionModal` con origen lateral (25% superior). + Icono bibliotecas en Slim Mode. + Versión v1.3.0. |
+| `src/components/layout/Sidebar.tsx` | `DeepSessionModal` con origen lateral (25% superior). + Icono bibliotecas en Slim Mode. + Versión v1.3.0. + Easter Egg: Neural Signature. |
 | `src/components/features/LibraryManager.tsx` | Animación Genie (origen inferior) + Close delay sync. + Botón responsivo ("New Doc"). |
 | `src/components/features/SessionList.tsx` | Botón expansible en el encabezado para el modal inmersivo. |
+| `src/utils/easterEgg.ts` | **Nuevo**: Motor de firmas dinámicas con sets de emojis aleatorios. |
 | `electron/main.cjs` | `minWidth` ajustado a 640px para estabilidad visual. |
 
 ### v1.1 — 15 Feb 2026 (Sprint 0: Reparaciones Iniciales)

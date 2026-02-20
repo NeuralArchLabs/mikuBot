@@ -3,6 +3,7 @@ import { AppState, Provider, SessionMetadata } from '../../types';
 import { PROVIDERS } from '../../constants';
 import { Icon } from '../common/Common';
 import { SessionList } from '../features/SessionList';
+import { getRandomSignature } from '../../utils/easterEgg';
 
 interface SidebarProps {
     state: AppState & {
@@ -16,7 +17,6 @@ interface SidebarProps {
     setState: React.Dispatch<React.SetStateAction<AppState>>;
     onClear: () => void;
 }
-
 export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState, onClear }: SidebarProps) => {
     const [sessionModalOpen, setSessionModalOpen] = useState(false);
     const [isClosing, setIsClosing] = useState(false);
@@ -29,16 +29,92 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
         }, 400);
     };
 
+    const [displayName, setDisplayName] = useState('mikuCentral');
+    const [isAnimatingEgg, setIsAnimatingEgg] = useState(false);
+
+    const triggerEasterEgg = () => {
+        if (isAnimatingEgg) return;
+        setIsAnimatingEgg(true);
+
+        const original = "mikuCentral";
+        const signature = `{{${getRandomSignature()}}}`;
+
+        // 1. Expansion Phase (mikuCentral -> {{ }})
+        const expansionSteps = [
+            "miku{}entral",
+            "mik{{}}ntral",
+            "mi{{}}ntral",
+            "m{{}}ral",
+            "{{}}al",
+            "{{}}"
+        ];
+
+        let delay = 0;
+        expansionSteps.forEach((step, i) => {
+            setTimeout(() => setDisplayName(step), delay);
+            delay += 70;
+        });
+
+        // 2. Typing/Revealing Phase
+        const fullContent = signature.slice(2, -2); // Get "EMOJI FACE EMOJI"
+        for (let i = 0; i <= fullContent.length; i++) {
+            setTimeout(() => {
+                const currentContent = fullContent.slice(0, i);
+                setDisplayName(`{{${currentContent}}}`);
+            }, delay);
+            delay += 50;
+        }
+
+        // 3. Reverse Phase
+        setTimeout(() => {
+            // Reverse Typing
+            let reverseDelay = 0;
+            for (let i = fullContent.length; i >= 0; i--) {
+                setTimeout(() => {
+                    const currentContent = fullContent.slice(0, i);
+                    setDisplayName(`{{${currentContent}}}`);
+                }, reverseDelay);
+                reverseDelay += 30;
+            }
+
+            // Reverse Expansion (Shrink back to name)
+            const shrinkSteps = [
+                "{{}}",
+                "{{}}al",
+                "m{{}}ral",
+                "mi{{}}ntral",
+                "mik{{}}ntral",
+                "miku{}entral",
+                "mikuCentral"
+            ];
+
+            shrinkSteps.forEach((step, i) => {
+                setTimeout(() => setDisplayName(step), reverseDelay);
+                reverseDelay += 70;
+            });
+
+            setTimeout(() => {
+                setIsAnimatingEgg(false);
+            }, reverseDelay);
+
+        }, delay + 3000);
+    };
+
     return (
         <>
             <div className="bg-slate-900 border-r border-slate-700 flex flex-col h-full shadow-xl z-30 w-[72px] lg:w-64 flex-shrink-0 transition-all duration-300">
                 <div className="p-4 lg:p-6">
                     <div className="flex items-center justify-center lg:justify-start gap-3 mb-8 group cursor-default h-10 overflow-hidden">
-                        <div className="w-10 h-10 rounded-xl bg-slate-800 flex flex-shrink-0 items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300 overflow-hidden border border-slate-700">
+                        <div
+                            className="w-10 h-10 rounded-xl bg-slate-800 flex flex-shrink-0 items-center justify-center shadow-lg group-hover:scale-110 active:scale-95 transition-all duration-300 overflow-hidden border border-slate-700 cursor-pointer"
+                            onClick={triggerEasterEgg}
+                        >
                             <img src="/mikuBotICON.png" alt="Miku Logo" className="w-full h-full object-cover shadow-inner" />
                         </div>
                         <div className="hidden lg:block">
-                            <h1 className="font-bold text-lg text-white tracking-tight leading-tight">mikuCentral</h1>
+                            <h1 className={`font-bold text-lg text-white tracking-tight leading-tight transition-all duration-300 ${isAnimatingEgg ? 'text-blue-400 font-mono text-sm' : ''}`}>
+                                {displayName}
+                            </h1>
                             <div className="text-[10px] text-slate-500 font-mono uppercase tracking-[0.2em] leading-tight">v1.3.0</div>
                         </div>
                     </div>

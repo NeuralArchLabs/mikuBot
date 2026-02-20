@@ -11,6 +11,7 @@
     - **Cortex & Command Editors**: Nueva animación de deslizamiento lateral lento (0.6s) que aporta elegancia al navegar entre códigos.
     - **Neural Chat**: Efecto de revelado gradual desde el fondo para una transición inmersiva.
     - **Control Room**: Animación de oscurecimiento y escalado sutil para enfatizar la profundidad del panel de configuración.
+- **Easter Egg: Neural Signature**: Nueva interacción cinemática al hacer clic en el logo de mikuBot que revela la firma dinámica del agente (`{{🧠≈̼^.┬.̼^≈‿⟆✨}}`) con una secuencia de "succión" y reversión simétrica.
 
 ### 🛠️ Mejoras de Navegación y Estructura
 - **Deep Session Modal**: El visualizador de sesiones ahora es un modal centralizado inmersivo con backdrop-blur, permitiendo una gestión mucho más cómoda que en la barra lateral estrecha.
