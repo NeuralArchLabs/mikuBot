@@ -104,6 +104,13 @@ export const App = () => {
                 safeMode: saved.safeMode || false,
                 approvalMode: saved.approvalMode || 'auto'
             }));
+        } else {
+            // Missing config.json: Create it with presets
+            if ((window as any).electron) {
+                console.log('[App] No config.json found. Creating with presets.');
+                await persistence.saveSettings(DEFAULT_CONFIG, 'chat', false, 'auto');
+            }
+            // Defaults are already in initial state
         }
     }, []);
 
@@ -355,28 +362,46 @@ export const App = () => {
 
     const syncFiles = useCallback(async (
         target: FileTarget,
-        handle: FileSystemDirectoryHandle
+        handle: FileSystemDirectoryHandle | null,
+        staticPath?: string
     ) => {
         setSyncing(true);
         try {
-            const newFiles: Record<string, string> = {};
+            let newFiles: Record<string, string> = {};
+            const isElectron = !!(window as any).electron?.invoke;
 
-            const readDir = async (dirHandle: FileSystemDirectoryHandle, path = '') => {
-                for await (const entry of (dirHandle as any).values()) {
-                    if (entry.kind === 'file' && /\.(md|txt|json|js|jsx|ts|tsx|html|css|py|java|c|cpp|h|hpp|rs|go|rb|php)$/i.test(entry.name)) {
-                        const fileHandle = entry as FileSystemFileHandle;
-                        const file = await fileHandle.getFile();
-                        const text = await file.text();
-                        newFiles[path + entry.name] = text;
-                    } else if (entry.kind === 'directory') {
-                        if (['node_modules', '.git', 'dist', 'build', '.next', '.vs', '.idea'].includes(entry.name)) continue;
-                        const newPath = path + entry.name + '/';
-                        await readDir(entry as FileSystemDirectoryHandle, newPath);
-                    }
+            if (isElectron && staticPath) {
+                console.log(`[IPC] Syncing ${target} via static path: ${staticPath}`);
+                const res = await (window as any).electron.invoke('fs-read-folder', staticPath);
+                if (res.ok) {
+                    newFiles = res.files;
+                } else {
+                    console.warn(`IPC sync failed for ${target}:`, res.error);
+                    return {};
                 }
-            };
-
-            await readDir(handle);
+            } else if (handle) {
+                const readDir = async (dirHandle: FileSystemDirectoryHandle, path = '') => {
+                    for await (const entry of (dirHandle as any).values()) {
+                        if (entry.kind === 'file' && /\.(md|txt|json|js|jsx|ts|tsx|html|css|py|java|c|cpp|h|hpp|rs|go|rb|php)$/i.test(entry.name)) {
+                            const fileHandle = entry as FileSystemFileHandle;
+                            try {
+                                const file = await fileHandle.getFile();
+                                const text = await file.text();
+                                newFiles[path + entry.name] = text;
+                            } catch (err) {
+                                console.warn(`Error reading ${entry.name}:`, err);
+                            }
+                        } else if (entry.kind === 'directory') {
+                            if (['node_modules', '.git', 'dist', 'build', '.next', '.vs', '.idea'].includes(entry.name)) continue;
+                            const newPath = path + entry.name + '/';
+                            await readDir(entry as FileSystemDirectoryHandle, newPath);
+                        }
+                    }
+                };
+                await readDir(handle);
+            } else {
+                return {};
+            }
 
             setState(prev => {
                 switch (target) {
@@ -387,7 +412,7 @@ export const App = () => {
                 }
                 return prev;
             });
-            return newFiles; // Return for immediate use
+            return newFiles;
         } catch (e) {
             console.error(`Error syncing ${target}`, e);
             return {};
@@ -400,36 +425,45 @@ export const App = () => {
         if (!name) return false;
 
         try {
-            let handle: FileSystemDirectoryHandle | null;
+            let handle: FileSystemDirectoryHandle | null = null;
             switch (target) {
                 case 'core': handle = coreHandle; break;
                 case 'extra': handle = extraHandle; break;
                 case 'workSpace': handle = workSpaceHandle; break;
                 case 'tools': handle = toolsHandle; break;
             }
-            if (!handle) throw new Error(`No folder configured for "${target}". Select one in Settings.`);
 
-            if ((handle as any).queryPermission) {
-                const status = await (handle as any).queryPermission({ mode: 'readwrite' });
-                if (status !== 'granted') {
-                    const request = await (handle as any).requestPermission({ mode: 'readwrite' });
-                    if (request !== 'granted') throw new Error("Write permission denied by user");
+            const staticPath = state.config.folderPaths?.[target];
+            const isElectron = !!(window as any).electron?.invoke;
+
+            if (isElectron && staticPath) {
+                const res = await (window as any).electron.invoke('fs-write-file', { folderPath: staticPath, filename: name, content });
+                if (!res.ok) throw new Error(res.error);
+            } else if (handle) {
+                if ((handle as any).queryPermission) {
+                    const status = await (handle as any).queryPermission({ mode: 'readwrite' });
+                    if (status !== 'granted') {
+                        const request = await (handle as any).requestPermission({ mode: 'readwrite' });
+                        if (request !== 'granted') throw new Error("Write permission denied by user");
+                    }
                 }
+
+                const parts = name.split('/').filter(p => p && p !== '.');
+                const fileName = parts.pop();
+                if (!fileName) throw new Error("Invalid filename");
+
+                let dirHandle = handle;
+                for (const folder of parts) {
+                    dirHandle = await dirHandle.getDirectoryHandle(folder, { create: true });
+                }
+
+                const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(content);
+                await writable.close();
+            } else {
+                throw new Error(`No folder configured for "${target}". Select one in Settings.`);
             }
-
-            const parts = name.split('/').filter(p => p && p !== '.');
-            const fileName = parts.pop();
-            if (!fileName) throw new Error("Invalid filename");
-
-            let dirHandle = handle;
-            for (const folder of parts) {
-                dirHandle = await dirHandle.getDirectoryHandle(folder, { create: true });
-            }
-
-            const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
-            const writable = await fileHandle.createWritable();
-            await writable.write(content);
-            await writable.close();
 
             setState(prev => {
                 const nextUnsaved = { ...prev.unsavedChanges };
@@ -462,18 +496,25 @@ export const App = () => {
             else if (target === 'workSpace') handle = workSpaceHandle;
             else if (target === 'tools') handle = toolsHandle;
 
-            if (!handle) return false;
+            const staticPath = state.config.folderPaths?.[target];
+            const isElectron = !!(window as any).electron?.invoke;
 
-            const parts = name.split('/').filter(p => p && p !== '.');
-            const fileName = parts.pop();
-            if (!fileName) throw new Error("Invalid filename");
+            if (isElectron && staticPath) {
+                const res = await (window as any).electron.invoke('fs-delete-file', { folderPath: staticPath, filename: name });
+                if (!res.ok) throw new Error(res.error);
+            } else if (handle) {
+                const parts = name.split('/').filter(p => p && p !== '.');
+                const fileName = parts.pop();
+                if (!fileName) throw new Error("Invalid filename");
 
-            let dirHandle = handle;
-            for (const folder of parts) {
-                dirHandle = await dirHandle.getDirectoryHandle(folder, { create: false });
+                let dirHandle = handle;
+                for (const folder of parts) {
+                    dirHandle = await dirHandle.getDirectoryHandle(folder, { create: false });
+                }
+                await (dirHandle as any).removeEntry(fileName);
+            } else {
+                return false;
             }
-
-            await (dirHandle as any).removeEntry(fileName);
 
             setState(prev => {
                 const newState = { ...prev };
@@ -511,37 +552,71 @@ export const App = () => {
 
     const handleSelectFolder = async (type: FileTarget) => {
         try {
-            const handle = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
-            switch (type) {
-                case 'core':
-                    setCoreHandle(handle);
-                    await db.set('coreHandle', handle);
-                    await syncFiles('core', handle);
-                    break;
-                case 'extra':
-                    setExtraHandle(handle);
-                    await db.set('extraHandle', handle);
-                    await syncFiles('extra', handle);
-                    break;
-                case 'workSpace':
-                    setWorkSpaceHandle(handle);
-                    await db.set('workSpaceHandle', handle);
-                    await syncFiles('workSpace', handle);
-                    break;
-                case 'tools':
-                    setToolsHandle(handle);
-                    await db.set('toolsHandle', handle);
-                    await syncFiles('tools', handle);
-                    break;
+            const isElectron = !!(window as any).electron;
+            let folderPath = '';
+            let folderName = '';
+            let handle: FileSystemDirectoryHandle | null = null;
+
+            if (isElectron && (window as any).electron.invoke) {
+                // Native Desktop Selection
+                const res = await (window as any).electron.invoke('fs-select-folder');
+                if (!res.ok) return;
+                folderPath = res.path;
+                folderName = res.name;
+                // In Electron we might not have a Handle for the browser API if we used the native picker,
+                // but syncFiles can now work with just the static path.
+            } else {
+                // Web/Fallback Selection
+                handle = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
+                folderName = handle.name;
             }
+
+            // 1. Update Handles (for browser API compatibility)
+            if (handle) {
+                if (type === 'core') { setCoreHandle(handle); await db.set('coreHandle', handle); }
+                if (type === 'extra') { setExtraHandle(handle); await db.set('extraHandle', handle); }
+                if (type === 'workSpace') { setWorkSpaceHandle(handle); await db.set('workSpaceHandle', handle); }
+                if (type === 'tools') { setToolsHandle(handle); await db.set('toolsHandle', handle); }
+            }
+
+            // 2. Update Config Paths (The single source of truth for config.json)
+            setState(prev => ({
+                ...prev,
+                config: {
+                    ...prev.config,
+                    folderPaths: { ...prev.config.folderPaths, [type]: folderPath || prev.config.folderPaths[type] },
+                    folderNames: { ...prev.config.folderNames, [type]: folderName || prev.config.folderNames[type] }
+                }
+            }));
+
+            // 3. Trigger immediate Sync
+            await syncFiles(type, handle, folderPath);
+
         } catch (e) {
-            console.log("Folder select cancelled", e);
+            console.log("Folder select failed or cancelled", e);
         }
     };
 
     const wakeUpAllFolders = async () => {
         try {
             const hasAnyHandle = coreHandle || extraHandle || workSpaceHandle || toolsHandle;
+            const staticPaths = state.config.folderPaths;
+            const isElectron = !!(window as any).electron?.invoke;
+
+            if (isElectron && staticPaths && staticPaths.core) {
+                // IPC Fast Path
+                await syncFiles('core', null, staticPaths.core);
+                await syncFiles('tools', null, staticPaths.tools);
+                await syncFiles('workSpace', null, staticPaths.workSpace);
+                await syncFiles('extra', null, staticPaths.extra);
+
+                setState(prev => ({
+                    ...prev,
+                    folderPermissions: { core: 'granted', extra: 'granted', workSpace: 'granted', tools: 'granted' }
+                }));
+                await askAlert("✅ Neural Subsystems Online!\n\nLinkages restored automatically via internal framework.", "center");
+                return;
+            }
 
             if (hasAnyHandle) {
                 const targets: FileTarget[] = ['core', 'extra', 'workSpace', 'tools'];
@@ -573,7 +648,7 @@ export const App = () => {
                     folderPermissions: { core: 'granted', extra: 'granted', workSpace: 'granted', tools: 'granted' }
                 }));
 
-                await askAlert("✅ Neural Subsystems Online!\nYour environment is fully linked and ready to operate.", "right");
+                await askAlert("✅ Neural Subsystems Online!\n\nYour environment is fully linked and ready to operate.", "center");
             }
         } catch (e) {
             console.log("Wake up failed or cancelled", e);
@@ -605,47 +680,50 @@ export const App = () => {
     };
 
     // Initial handles restoration
+    // Initial handles restoration
     useEffect(() => {
-        const restoreHandles = async () => {
+        const restoreHandlers = async () => {
             try {
                 const results: Record<FileTarget, PermissionStatus> = { core: 'prompt', extra: 'prompt', workSpace: 'prompt', tools: 'prompt' };
+                const isElectron = !!(window as any).electron;
+                const saved = await persistence.loadSettings();
+                const staticPaths = saved?.config?.folderPaths;
 
-                const core = await db.get('coreHandle');
-                if (core) {
-                    setCoreHandle(core);
-                    const perm = await (core as any).queryPermission({ mode: 'read' }) as PermissionStatus;
-                    results.core = perm;
-                    if (perm === 'granted') syncFiles('core', core);
-                }
+                // Priority 1: Electron IPC (Strictly from config.json)
+                if (isElectron && staticPaths?.core) {
+                    await syncFiles('core', null, staticPaths.core);
+                    await syncFiles('extra', null, staticPaths.extra);
+                    await syncFiles('workSpace', null, staticPaths.workSpace);
+                    await syncFiles('tools', null, staticPaths.tools);
 
-                const extra = await db.get('extraHandle');
-                if (extra) {
-                    setExtraHandle(extra);
-                    const perm = await (extra as any).queryPermission({ mode: 'read' }) as PermissionStatus;
-                    results.extra = perm;
-                    if (perm === 'granted') syncFiles('extra', extra);
-                }
+                    results.core = 'granted';
+                    results.extra = 'granted';
+                    results.workSpace = 'granted';
+                    results.tools = 'granted';
+                } else {
+                    // Priority 2: Browser File System Access API (Handles from IndexedDB)
+                    const targets: FileTarget[] = ['core', 'extra', 'workSpace', 'tools'];
+                    for (const t of targets) {
+                        const h = await db.get(t + 'Handle');
+                        if (h) {
+                            if (t === 'core') setCoreHandle(h);
+                            if (t === 'extra') setExtraHandle(h);
+                            if (t === 'workSpace') setWorkSpaceHandle(h);
+                            if (t === 'tools') setToolsHandle(h);
 
-                const workSpace = await db.get('workSpaceHandle');
-                if (workSpace) {
-                    setWorkSpaceHandle(workSpace);
-                    const perm = await (workSpace as any).queryPermission({ mode: 'read' }) as PermissionStatus;
-                    results.workSpace = perm;
-                    if (perm === 'granted') syncFiles('workSpace', workSpace);
-                }
-
-                const tools = await db.get('toolsHandle');
-                if (tools) {
-                    setToolsHandle(tools);
-                    const perm = await (tools as any).queryPermission({ mode: 'read' }) as PermissionStatus;
-                    results.tools = perm;
-                    if (perm === 'granted') syncFiles('tools', tools);
+                            const perm = await (h as any).queryPermission({ mode: 'read' }) as PermissionStatus;
+                            results[t] = perm;
+                            if (perm === 'granted') syncFiles(t, h);
+                        }
+                    }
                 }
 
                 setState(prev => ({ ...prev, folderPermissions: results as any }));
-            } catch (e) { console.error("Restore failed", e); }
+            } catch (e) {
+                console.error("Restore failed", e);
+            }
         };
-        restoreHandles();
+        restoreHandlers();
     }, [syncFiles]);
 
     // ── Chat Logic ─────────────────────────────────────────────
@@ -1190,6 +1268,8 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
         }));
         await persistence.saveSettings({ ...state.config, ...newConfig, isConfigured: true }, state.agentMode, state.safeMode, state.approvalMode);
 
+        const isElectron = !!(window as any).electron?.invoke;
+
         if (setupData.handles) {
             const { core, commands, workspace, library } = setupData.handles;
             if (core) {
@@ -1212,9 +1292,20 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                 await db.set('extraHandle', library);
                 syncFiles('extra', library);
             }
-            await askAlert("✅ Neural Subsystems Online!\nYour environment is fully linked and ready to operate.", "right");
+            await askAlert("✅ Neural Subsystems Online!\n\nYour environment is fully linked and ready to operate.", "center");
+        } else if (isElectron && newConfig.folderPaths) {
+            await syncFiles('core', null, newConfig.folderPaths.core);
+            await syncFiles('tools', null, newConfig.folderPaths.tools);
+            await syncFiles('workSpace', null, newConfig.folderPaths.workSpace);
+            await syncFiles('extra', null, newConfig.folderPaths.extra);
+
+            setState(prev => ({
+                ...prev,
+                folderPermissions: { core: 'granted', extra: 'granted', workSpace: 'granted', tools: 'granted' }
+            }));
+            await askAlert("✅ Neural Subsystems Online!\n\nYour environment is fully linked and auto-configured via internal channels.", "center");
         } else {
-            await askAlert("✅ Setup Complete!\nYour environment is ready. Please go to Settings to link the 'core', 'commands', 'workspace', and 'library' folders created at " + setupData.targetPath);
+            await askAlert(`✅ Setup Complete!\n\nYour environment is ready. Please go to Settings to link the 'core', 'commands', 'workspace', and 'library' folders created at ${setupData.targetPath}`, "center");
         }
     };
 
@@ -1296,8 +1387,11 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                         onCoreSelect={() => handleSelectFolder('core')} onExtraSelect={() => handleSelectFolder('extra')} onWorkSpaceSelect={() => handleSelectFolder('workSpace')} onToolsSelect={() => handleSelectFolder('tools')}
                         onSaveGlobal={onSaveGlobal} onResetGlobal={onResetGlobal}
                         onLoadConfig={onLoadConfig} onExportConfig={onExportConfig}
-                        corePathName={coreHandle?.name || ''} extraPathName={extraHandle?.name || ''}
-                        workSpacePathName={workSpaceHandle?.name || ''} toolsPathName={toolsHandle?.name || ''} syncing={syncing}
+                        corePathName={coreHandle?.name || state.config.folderPaths?.core || ''}
+                        extraPathName={extraHandle?.name || state.config.folderPaths?.extra || ''}
+                        workSpacePathName={workSpaceHandle?.name || state.config.folderPaths?.workSpace || ''}
+                        toolsPathName={toolsHandle?.name || state.config.folderPaths?.tools || ''}
+                        syncing={syncing}
                     />
                 </div>
             )}

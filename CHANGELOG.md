@@ -1,12 +1,27 @@
 # Changelog
 
+## [1.5.0] - 2026-02-20
+
+### 🛡️ Config Persistence & Neural Stability
+- **Single Source of Truth (config.json)**:
+    - Eliminación completa de `localStorage` para configuraciones globales en entornos nativos de Electron. Ahora el sistema confía íntegramente en `config.json` como la única fuente de verdad autoritativa.
+    - Sincronización bidireccional atómica: Los cambios en el panel de Ajustes se escriben directamente al disco y se inyectan en el estado neural en tiempo real.
+- **Master Path Enforcement**:
+    - Las operaciones de sistema de archivos (Sync, Save, Delete) ahora priorizan las rutas configuradas en `config.json` sobre los handles temporales de IndexedDB cuando se ejecuta en modo escritorio. Esto garantiza que la estructura del Workspace se mantenga íntegra tras reinicios de la aplicación sin requerir re-autorizaciones manuales de carpetas.
+- **Configuración Auto-Sanable (Self-Healing)**:
+    - Implementación de un motor de recuperación de configuración. Si el sistema detecta la ausencia de `config.json` (borrado accidental o primer arranque), genera automáticamente una configuración base con presets de seguridad.
+- **Neural Component Refactoring**:
+    - Reestructuración masiva de `App.tsx` para eliminar la anidación excesiva de funciones de ciclo de vida (hooks), resolviendo bugs de "Race Conditions" durante el arranque del motor de inferencia.
+    - Consolidación de `restoreHandlers` para una reconexión inmediata a los subsistemas neurales al inicio.
+
 ## [1.4.2] - 2026-02-20
 
 ### 🚀 Instalación y Onboarding Guiado (First Run)
-- **Onboarding Wizard**: 
+- **Onboarding Wizard Integration**: 
     - Implementación de un asistente visual "First Run" de 3 pasos para primera configuración.
     - Creación y selección automática de las carpetas internas de la arquitectura (core, commands, workspace, library) en el equipo huésped (Ej. `C:\Users\...\mikuCentral`).
     - Recopilación inicial de Claves API (Gemini, Groq) y URL Local (Ollama) desde la primera pantalla.
+    - **IPC Auto-Sync & Fallback**: MikuCentral ahora sincroniza las carpetas automáticamente usando procesos nativos del File System de Node.js (via IPC) si detecta que está corriendo dentro de Electron. Esto elimina por completo los pop-ups de permisos manuales de la Web File System Access API de navegadores durante el despliegue nativo.
 - **Smart NSIS Installer**:
     - Abandono del instalador fantasma (`oneClick: true`); se pasa a un Instalador Nativo Interactivo (`nsis`) que permite seleccionar ruta y atajos de escritorio.
     - Script Nativo de Setup (`installer.nsh`) con requerimientos de sistema. Detecta el entorno e instala dependencias críticas y recomendadas automáticamente bajo demanda:

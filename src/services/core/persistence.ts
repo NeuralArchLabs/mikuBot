@@ -14,29 +14,30 @@ export const persistence = {
     async saveSettings(config: AppConfig, agentMode: string, safeMode: boolean, approvalMode: string): Promise<boolean> {
         const payload = { config, agentMode, safeMode, approvalMode };
 
-        // 1. Try Electron IPC
         if (electron) {
             try {
                 const result = await electron.saveSettings(payload);
-                if (result.ok) return true;
+                if (result.ok) {
+                    console.log('[Persistence] Settings saved to config.json');
+                    return true;
+                }
             } catch (e) {
-                console.warn('[Persistence] Electron save failed, falling back to localStorage:', e);
+                console.error('[Persistence] Electron save failed:', e);
+                return false;
             }
         }
 
-        // 2. localStorage fallback
+        // Web/Fallback mode
         try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
             console.log('[Persistence] Settings saved to localStorage');
             return true;
         } catch (e) {
-            console.error('[Persistence] Failed to save to localStorage:', e);
             return false;
         }
     },
 
     async loadSettings(): Promise<{ config: AppConfig; agentMode: string; safeMode: boolean; approvalMode: any } | null> {
-        // 1. Try Electron IPC
         if (electron) {
             try {
                 const result = await electron.loadSettings();
@@ -45,23 +46,20 @@ export const persistence = {
                     return result.settings;
                 }
             } catch (e) {
-                console.warn('[Persistence] Electron load failed, trying localStorage:', e);
+                console.warn('[Persistence] Electron load failed:', e);
             }
         }
 
-        // 2. localStorage fallback
+        // Fallback for web or if Electron load failed
         try {
             const raw = localStorage.getItem(STORAGE_KEY);
             if (raw) {
                 const parsed = JSON.parse(raw);
                 if (parsed && parsed.config) {
-                    console.log('[Persistence] Settings loaded from localStorage');
                     return parsed;
                 }
             }
-        } catch (e) {
-            console.error('[Persistence] Failed to read localStorage:', e);
-        }
+        } catch (e) { }
 
         return null;
     },

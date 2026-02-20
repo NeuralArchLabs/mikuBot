@@ -391,6 +391,18 @@ ipcMain.handle('fs-write-file', async (event, { folderPath, filename, content })
     }
 });
 
+ipcMain.handle('fs-delete-file', async (event, { folderPath, filename }) => {
+    try {
+        const fullPath = path.join(folderPath, filename);
+        if (fs.existsSync(fullPath)) {
+            fs.unlinkSync(fullPath);
+        }
+        return { ok: true };
+    } catch (error) {
+        return { ok: false, error: error.message };
+    }
+});
+
 function setupAppMenu(win) {
     const isMac = process.platform === 'darwin';
 

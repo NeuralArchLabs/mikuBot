@@ -1,6 +1,6 @@
-# Project Status: MikuCentral v1.3.0 🚀
+# Project Status: MikuCentral v1.5.0 🚀
 
-> **Última actualización**: 19 de febrero de 2026
+> **Última actualización**: 20 de febrero de 2026
 > **Autor del análisis**: Antigravity AI Engine
 
 Este documento detalla el análisis exhaustivo del proyecto **MikuCentral**, una interfaz de IA neural y asistente personal integral diseñada para la soberanía tecnológica local, la ejecución de agentes autónomos y la persistencia automodificable en todas las facetas de la vida del usuario (personal, profesional y financiera).
@@ -139,6 +139,7 @@ electron/
 - La línea `invoke: (channel, data) => ipcRenderer.invoke(channel, data)` permite invocar **cualquier** handler IPC desde el renderer, no solo los registrados.
 - **Riesgo**: Si se inyecta código malicioso en el renderer, puede invocar handlers arbitrarios.
 - **Solución propuesta**: Reemplazar el `invoke` genérico con handlers explícitos por canal (ya tiene helpers como `saveSettings`, pero el genérico sigue expuesto).
+- **Update v1.5.0**: Las operaciones críticas de persistencia ahora usan handlers explícitos en `persistence.ts`.
 
 **C3. `sendStreamingMessage` no tiene agent loop para Groq/Gemini**
 - En `api.ts`, los proveedores Groq y Gemini solo soportan modo chat (streaming de texto). No tienen capacidad de ejecutar herramientas.
@@ -147,10 +148,8 @@ electron/
 
 #### 🟡 IMPORTANTES
 
-**I1. `App.tsx` es un God Component (529 líneas)**
-- Gestiona: estado global, chat, archivos, sesiones, configuración, handles del filesystem, construcción del prompt, y routing.
-- **Riesgo**: Difícil de mantener, testear y extender. No es posible añadir features sin tocar este archivo.
-- **Solución propuesta**: Extraer a custom hooks: `useFileSystem()`, `useChat()`, `useSettings()`, `useSessions()`.
+**I1. Descomposición de App.tsx**
+- **Estado v1.5.0**: Se ha realizado una refactorización parcial para aplanar funciones y mejorar la legibilidad, reduciendo la complejidad de `App.tsx` considerablemente, aunque sigue operando como God Component. Se ha priorizado la estabilidad de la persistencia JSON.
 
 **I2. Renderer Markdown con regex inseguro (`toHtml`)**
 - `utils/index.ts:149-187` usa regex para convertir Markdown → HTML y luego lo inyecta con `dangerouslySetInnerHTML`.

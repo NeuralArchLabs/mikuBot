@@ -47,9 +47,16 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                 }
             }
 
+            const cleanPath = selectedPath.replace(/\\/g, '/');
             const nextConfig = {
                 ...config,
-                isConfigured: true
+                isConfigured: true,
+                folderPaths: {
+                    core: cleanPath + '/core',
+                    tools: cleanPath + '/commands',
+                    workSpace: cleanPath + '/workspace',
+                    extra: cleanPath + '/library'
+                }
             };
 
             await onComplete(nextConfig, { targetPath: selectedPath });
@@ -61,8 +68,8 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/90 backdrop-blur-md">
-            <div className="bg-slate-900 border border-slate-700 shadow-2xl rounded-2xl w-full max-w-2xl overflow-hidden flex flex-col h-[600px] animate-macos-expand">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4">
+            <div className="bg-slate-900 border border-slate-700 shadow-2xl rounded-2xl w-full max-w-2xl overflow-hidden flex flex-col h-[85vh] min-h-[500px] max-h-[800px] animate-macos-expand">
                 {/* Header */}
                 <div className="h-16 flex items-center justify-start px-6 border-b border-slate-800 bg-slate-950 gap-4">
                     <img src="./mikuBotICON.png" alt="Logo" className="w-8 h-8 object-cover rounded shadow-inner" />
