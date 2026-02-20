@@ -10,6 +10,8 @@ interface LibraryManagerProps {
     onToggleSelect: (name: string) => void;
     onSave: (name: string, content: string) => Promise<boolean>;
     onAdd: () => void;
+    onDelete: (name: string) => Promise<boolean>;
+    askConfirm: (msg: string, position?: 'left' | 'right' | 'center') => Promise<boolean>;
 }
 
 export const LibraryManager = ({
@@ -19,7 +21,9 @@ export const LibraryManager = ({
     selectedFiles,
     onToggleSelect,
     onSave,
-    onAdd
+    onAdd,
+    onDelete,
+    askConfirm
 }: LibraryManagerProps) => {
     const [isClosing, setIsClosing] = useState(false);
     const [viewFile, setViewFile] = useState<string | null>(null);
@@ -80,6 +84,16 @@ export const LibraryManager = ({
             setSaving(false);
         }
     }, [onSave]);
+
+    const handleDelete = useCallback(async (name: string) => {
+        if (await askConfirm(`Are you sure you want to permanently delete "${name}" from your library?`, 'center')) {
+            const ok = await onDelete(name);
+            if (ok && viewFile === name) {
+                setViewFile(null);
+                setEditMode(false);
+            }
+        }
+    }, [askConfirm, onDelete, viewFile]);
 
     const handleClose = useCallback(() => {
         setIsClosing(true);
@@ -184,7 +198,7 @@ export const LibraryManager = ({
                                         <div
                                             key={name}
                                             onClick={() => { setViewFile(name); setEditMode(false); }}
-                                            className={`w-full group flex items-center justify-between p-2 rounded cursor-pointer transition-all ${isActive ? 'bg-slate-800' : 'hover:bg-slate-800/50'
+                                            className={`group relative w-full flex items-center justify-between p-2 rounded cursor-pointer transition-all ${isActive ? 'bg-slate-800' : 'hover:bg-slate-800/50'
                                                 }`}
                                         >
                                             <div className="flex items-center gap-3 overflow-hidden">
@@ -197,11 +211,21 @@ export const LibraryManager = ({
                                                 >
                                                     <Icon name="check" className="text-[10px]" />
                                                 </div>
-                                                <div className="truncate">
+                                                <div className="truncate pr-8">
                                                     <div className={`text-sm font-mono truncate ${isActive ? 'text-pink-300' : 'text-slate-300'}`}>{name}</div>
                                                     <div className="text-[10px] text-slate-600 truncate">{files[name].length} chars</div>
                                                 </div>
                                             </div>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDelete(name);
+                                                }}
+                                                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all rounded hover:bg-red-500/10"
+                                                title="Delete file"
+                                            >
+                                                <Icon name="times" />
+                                            </button>
                                         </div>
                                     );
                                 })
@@ -214,7 +238,18 @@ export const LibraryManager = ({
                         {viewFile ? (
                             <>
                                 <div className="h-10 border-b border-slate-800 flex items-center justify-between px-4 bg-slate-900/30">
-                                    <span className="text-xs font-mono text-slate-500">{viewFile}</span>
+                                    <div className="flex items-center gap-4">
+                                        <span className="text-xs font-mono text-slate-500">{viewFile}</span>
+                                        {!editMode && (
+                                            <button
+                                                onClick={() => handleDelete(viewFile)}
+                                                className="text-slate-600 hover:text-red-400 p-1.5 transition-colors rounded hover:bg-red-500/10"
+                                                title="Delete file"
+                                            >
+                                                <Icon name="trash" />
+                                            </button>
+                                        )}
+                                    </div>
                                     <div className="flex items-center gap-2">
                                         {editMode ? (
                                             <>
@@ -292,7 +327,7 @@ export const LibraryManager = ({
                         {selectedFiles.length} files selected for injection • {Object.keys(files).length} total
                     </div>
                     <button
-                        onClick={handleClose}
+                        onClick={onClose}
                         className="px-6 py-2 bg-pink-600 hover:bg-pink-500 text-white rounded font-medium text-sm transition-colors shadow-lg shadow-pink-900/20"
                     >
                         Apply Application Context

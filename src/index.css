@@ -600,17 +600,28 @@
 @keyframes chat-reveal-kf {
   0% {
     opacity: 0;
-    transform: translateY(10px);
   }
 
   100% {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
 .animate-chat {
   animation: chat-reveal-kf 0.5s ease-out forwards;
+}
+
+/* Layout Isolation */
+.miku-sidebar-isolate {
+  contain: layout;
+  height: 100vh;
+}
+
+.miku-app-isolate {
+  contain: size layout;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
 }
 
 /* Dialog Animations (Responsive) */

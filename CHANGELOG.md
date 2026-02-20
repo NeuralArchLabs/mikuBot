@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.4.0] - 2026-02-20
+
+### 🛡️ Neural Security & File Management
+- **Implementación de File Deletion**:
+    - **Capa de Seguridad Multinivel**: Introducción de un flujo de borrado irreversible con confirmación obligatoria en Library Manager, Cortex y Command Editor.
+    - **Risk Disclaimers**: Las áreas críticas (Cortex y Commands) ahora presentan un aviso de riesgo técnico previo a la confirmación final para prevenir pérdida de datos del sistema.
+    - **Borrado Físico Real**: Integración directa con el File System Access API para eliminar entradas del disco y sincronizar el estado reactivo inmediatamente.
+- **Rediseño del Secure Credential Vault**:
+    - **Arquitectura de Tres Secciones**: El panel de configuración se ha reestructurado visualmente para elevar la seguridad a una sección primaria propia, separándola de la orquestación de modelos.
+    - **Identidad Visual Ámbar**: Nueva iconografía (`shield-alt`) y separadores de gradiente premium para enfatizar el área de bóveda de credenciales y protocolo de Telegram.
+
 ## [1.3.1] - 2026-02-20
 
 ### 🚀 Optimización de Rendimiento & Auditoría

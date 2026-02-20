@@ -406,186 +406,194 @@ export const SettingsPanel = ({
                     </div>
                 </div>
 
-                {/* Secure Credential Vault */}
-                <div className="bg-slate-900/80 backdrop-blur-xl rounded-3xl p-8 border border-amber-700/30 shadow-[0_0_40px_rgba(251,191,36,0.05)] space-y-6 relative overflow-hidden">
-                    <div className="absolute -top-32 -right-32 w-80 h-80 bg-amber-600/10 blur-3xl rounded-full" />
-                    <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-orange-600/10 blur-3xl rounded-full" />
+                <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-amber-500/10 pb-4 relative z-10">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-900/80 to-amber-950 border border-amber-700/50 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-900/20">
-                                <Icon name="lock" className="text-xl" />
-                            </div>
-                            <div>
-                                <h3 className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-orange-400 tracking-tight">Secure Credential Vault</h3>
-                                <p className="text-xs text-amber-500/60 font-medium">Manage master logic fallbacks and encrypted API keys</p>
-                            </div>
-                        </div>
-                        <button
-                            onClick={onSaveGlobal}
-                            className="hidden md:flex h-10 px-4 bg-gradient-to-br from-blue-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-blue-900/30 transition-all items-center justify-center gap-2 border border-blue-500/30 whitespace-nowrap"
-                        >
-                            <Icon name="save" className="text-sm flex-shrink-0" /> Save Global
-                        </button>
-                    </div>
+                {/* Secure Credential Vault Section */}
+                <div className="space-y-6">
+                    <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
+                        <Icon name="shield-alt" className="text-amber-500" /> Neural Security & Identity Vault
+                    </label>
 
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-6 relative z-10">
-                        {/* Fallback Config */}
-                        <div className="md:col-span-5 bg-black/40 rounded-2xl p-5 border border-white/5 flex flex-col h-full">
-                            <div>
-                                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Master Fallback Routing</h4>
-                                <div className="space-y-4">
-                                    <div>
-                                        <select
-                                            value={config.provider}
-                                            onChange={(e) => updateConfig('provider', e.target.value as Provider)}
-                                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-slate-300 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-slate-500"
-                                        >
-                                            {(Object.keys(PROVIDERS) as Provider[]).map(pId => (
-                                                <option key={pId} value={pId}>{PROVIDERS[pId].name} Provider</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="relative">
-                                        <select
-                                            value={config.model}
-                                            onChange={(e) => updateConfig('model', e.target.value)}
-                                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-slate-300 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-slate-500 appearance-none"
-                                        >
-                                            <option value="">Master Model Fallback...</option>
-                                            {(models[config.provider] || []).map(m => (
-                                                <option key={m.id} value={m.id}>{m.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
+                    <div className="bg-slate-900/80 backdrop-blur-xl rounded-3xl p-8 border border-amber-700/30 shadow-[0_0_40px_rgba(251,191,36,0.05)] space-y-6 relative overflow-hidden">
+                        <div className="absolute -top-32 -right-32 w-80 h-80 bg-amber-600/10 blur-3xl rounded-full" />
+                        <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-orange-600/10 blur-3xl rounded-full" />
+
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-amber-500/10 pb-4 relative z-10">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-900/80 to-amber-950 border border-amber-700/50 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-900/20">
+                                    <Icon name="lock" className="text-xl" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-orange-400 tracking-tight">Secure Credential Vault</h3>
+                                    <p className="text-xs text-amber-500/60 font-medium">Manage master logic fallbacks and encrypted API keys</p>
                                 </div>
                             </div>
-                            <div className="mt-auto pt-4">
-                                <button
-                                    onClick={() => onTestConnection()}
-                                    disabled={loadingModels[config.provider]}
-                                    className="w-full py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2"
-                                >
-                                    {loadingModels[config.provider] ? <Icon name="spinner fa-spin" /> : <Icon name="network-wired" />} Ping Master Endpoint
-                                </button>
-                            </div>
+                            <button
+                                onClick={onSaveGlobal}
+                                className="hidden md:flex h-10 px-4 bg-gradient-to-br from-blue-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-blue-900/30 transition-all items-center justify-center gap-2 border border-blue-500/30 whitespace-nowrap"
+                            >
+                                <Icon name="save" className="text-sm flex-shrink-0" /> Save Global
+                            </button>
                         </div>
 
-                        {/* Keys */}
-                        <div className="md:col-span-7 bg-black/40 rounded-2xl p-5 border border-white/5 flex flex-col">
-                            <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Key Management</h4>
-
-                            <div className="flex gap-2 bg-slate-900 p-1.5 rounded-xl border border-white/5 mb-4">
-                                {(Object.keys(PROVIDERS) as Provider[]).map(pId => (
-                                    <button
-                                        key={pId}
-                                        onClick={() => setEditingProvider(pId)}
-                                        className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${editingProvider === pId ? 'bg-slate-700 text-white shadow' : 'text-slate-500 hover:text-slate-300'
-                                            }`}
-                                    >
-                                        {PROVIDERS[pId].name.split(' ')[0]}
-                                    </button>
-                                ))}
-                            </div>
-
-                            <div className="flex-1 flex flex-col justify-center">
-                                <div className="relative flex items-center group">
-                                    <div className="absolute left-6 text-slate-500 flex items-center justify-center">
-                                        <Icon name={editingProvider === 'ollama' ? 'link' : 'key'} />
-                                    </div>
-                                    <input
-                                        type={editingProvider === 'ollama' || showApiKey ? "text" : "password"}
-                                        value={editingProvider === 'ollama' ? config.ollamaUrl : localApiKey}
-                                        onChange={(e) => {
-                                            const val = e.target.value;
-                                            if (editingProvider === 'ollama') {
-                                                updateConfig('ollamaUrl', val);
-                                            } else {
-                                                setLocalApiKey(val);
-                                                handleSaveKey(editingProvider, val);
-                                            }
-                                        }}
-                                        placeholder={editingProvider === 'ollama' ? "http://localhost:11434" : `Bearer Token for ${PROVIDERS[editingProvider].name}`}
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-14 pr-16 py-3.5 text-blue-200 font-mono text-xs text-center focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-slate-600 placeholder:tracking-wider placeholder:text-center"
-                                    />
-                                    <div className="absolute right-4 flex items-center gap-1">
-                                        {editingProvider !== 'ollama' && (
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowApiKey(!showApiKey)}
-                                                className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-slate-300 bg-slate-800 rounded-lg transition-colors border border-transparent hover:border-slate-600"
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 relative z-10">
+                            {/* Fallback Config */}
+                            <div className="md:col-span-5 bg-black/40 rounded-2xl p-5 border border-white/5 flex flex-col h-full">
+                                <div>
+                                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Master Fallback Routing</h4>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <select
+                                                value={config.provider}
+                                                onChange={(e) => updateConfig('provider', e.target.value as Provider)}
+                                                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-slate-300 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-slate-500"
                                             >
-                                                <Icon name={showApiKey ? "eye-slash" : "eye"} />
-                                            </button>
-                                        )}
+                                                {(Object.keys(PROVIDERS) as Provider[]).map(pId => (
+                                                    <option key={pId} value={pId}>{PROVIDERS[pId].name} Provider</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="relative">
+                                            <select
+                                                value={config.model}
+                                                onChange={(e) => updateConfig('model', e.target.value)}
+                                                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-slate-300 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-slate-500 appearance-none"
+                                            >
+                                                <option value="">Master Model Fallback...</option>
+                                                {(models[config.provider] || []).map(m => (
+                                                    <option key={m.id} value={m.id}>{m.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
+                                <div className="mt-auto pt-4">
+                                    <button
+                                        onClick={() => onTestConnection()}
+                                        disabled={loadingModels[config.provider]}
+                                        className="w-full py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2"
+                                    >
+                                        {loadingModels[config.provider] ? <Icon name="spinner fa-spin" /> : <Icon name="network-wired" />} Ping Master Endpoint
+                                    </button>
+                                </div>
+                            </div>
 
-                                <div className="mt-6 flex flex-col gap-3 p-4 bg-slate-900/50 rounded-xl border border-white/5">
-                                    <div className="flex justify-between items-center">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                            <Icon name="thermometer-half" /> Inference Temperature
-                                        </label>
-                                        <span className="bg-slate-800 text-blue-400 font-mono text-xs font-bold px-2 py-1 rounded-md border border-slate-700">
-                                            {config.temperature.toFixed(1)}
-                                        </span>
+                            {/* Keys */}
+                            <div className="md:col-span-7 bg-black/40 rounded-2xl p-5 border border-white/5 flex flex-col">
+                                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Key Management</h4>
+
+                                <div className="flex gap-2 bg-slate-900 p-1.5 rounded-xl border border-white/5 mb-4">
+                                    {(Object.keys(PROVIDERS) as Provider[]).map(pId => (
+                                        <button
+                                            key={pId}
+                                            onClick={() => setEditingProvider(pId)}
+                                            className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${editingProvider === pId ? 'bg-slate-700 text-white shadow' : 'text-slate-500 hover:text-slate-300'
+                                                }`}
+                                        >
+                                            {PROVIDERS[pId].name.split(' ')[0]}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <div className="flex-1 flex flex-col justify-center">
+                                    <div className="relative flex items-center group">
+                                        <div className="absolute left-6 text-slate-500 flex items-center justify-center">
+                                            <Icon name={editingProvider === 'ollama' ? 'link' : 'key'} />
+                                        </div>
+                                        <input
+                                            type={editingProvider === 'ollama' || showApiKey ? "text" : "password"}
+                                            value={editingProvider === 'ollama' ? config.ollamaUrl : localApiKey}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (editingProvider === 'ollama') {
+                                                    updateConfig('ollamaUrl', val);
+                                                } else {
+                                                    setLocalApiKey(val);
+                                                    handleSaveKey(editingProvider, val);
+                                                }
+                                            }}
+                                            placeholder={editingProvider === 'ollama' ? "http://localhost:11434" : `Bearer Token for ${PROVIDERS[editingProvider].name}`}
+                                            className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-14 pr-16 py-3.5 text-blue-200 font-mono text-xs text-center focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-slate-600 placeholder:tracking-wider placeholder:text-center"
+                                        />
+                                        <div className="absolute right-4 flex items-center gap-1">
+                                            {editingProvider !== 'ollama' && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowApiKey(!showApiKey)}
+                                                    className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-slate-300 bg-slate-800 rounded-lg transition-colors border border-transparent hover:border-slate-600"
+                                                >
+                                                    <Icon name={showApiKey ? "eye-slash" : "eye"} />
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
-                                    <input
-                                        type="range"
-                                        min="0"
-                                        max="1"
-                                        step="0.1"
-                                        value={config.temperature}
-                                        onChange={(e) => updateConfig('temperature', parseFloat(e.target.value))}
-                                        className="w-full h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer accent-blue-500"
-                                    />
-                                    <div className="flex justify-between text-[9px] text-slate-600 font-bold uppercase tracking-wider px-1">
-                                        <span>Precise / Analytical</span>
-                                        <span>Creative / Hallucinative</span>
+
+                                    <div className="mt-6 flex flex-col gap-3 p-4 bg-slate-900/50 rounded-xl border border-white/5">
+                                        <div className="flex justify-between items-center">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                                <Icon name="thermometer-half" /> Inference Temperature
+                                            </label>
+                                            <span className="bg-slate-800 text-blue-400 font-mono text-xs font-bold px-2 py-1 rounded-md border border-slate-700">
+                                                {config.temperature.toFixed(1)}
+                                            </span>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max="1"
+                                            step="0.1"
+                                            value={config.temperature}
+                                            onChange={(e) => updateConfig('temperature', parseFloat(e.target.value))}
+                                            className="w-full h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer accent-blue-500"
+                                        />
+                                        <div className="flex justify-between text-[9px] text-slate-600 font-bold uppercase tracking-wider px-1">
+                                            <span>Precise / Analytical</span>
+                                            <span>Creative / Hallucinative</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    {/* Telegram Protocol */}
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-6 relative z-10 pt-2">
-                        <div className="md:col-span-12 bg-black/40 rounded-2xl p-5 border border-white/5 flex flex-col md:flex-row gap-6">
-                            <div className="md:w-1/3">
-                                <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                                    <Icon name="paper-plane" /> Telegram Protocol
-                                </h4>
-                                <p className="text-[10px] text-slate-500 font-medium leading-relaxed">Link Miku to a Telegram Bot for remote mobile interactions. Leave blank to disable.</p>
-                            </div>
-                            <div className="md:w-2/3 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block ml-1">Bot Token</label>
-                                    <div className="relative">
-                                        <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500">
-                                            <Icon name="key" />
-                                        </div>
-                                        <input
-                                            type="password"
-                                            value={config.telegramBotToken || ''}
-                                            onChange={(e) => updateConfig('telegramBotToken', e.target.value)}
-                                            placeholder="123456789:ABCDE..."
-                                            className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-12 pr-4 py-3 text-blue-200 font-mono text-xs focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-slate-700 placeholder:tracking-widest"
-                                        />
-                                    </div>
+                        {/* Telegram Protocol */}
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 relative z-10 pt-2">
+                            <div className="md:col-span-12 bg-black/40 rounded-2xl p-5 border border-white/5 flex flex-col md:flex-row gap-6">
+                                <div className="md:w-1/3">
+                                    <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                        <Icon name="paper-plane" /> Telegram Protocol
+                                    </h4>
+                                    <p className="text-[10px] text-slate-500 font-medium leading-relaxed">Link Miku to a Telegram Bot for remote mobile interactions. Leave blank to disable.</p>
                                 </div>
-                                <div>
-                                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block ml-1">Allowed Chat ID (Admin)</label>
-                                    <div className="relative">
-                                        <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500">
-                                            <Icon name="user-shield" />
+                                <div className="md:w-2/3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block ml-1">Bot Token</label>
+                                        <div className="relative">
+                                            <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500">
+                                                <Icon name="key" />
+                                            </div>
+                                            <input
+                                                type="password"
+                                                value={config.telegramBotToken || ''}
+                                                onChange={(e) => updateConfig('telegramBotToken', e.target.value)}
+                                                placeholder="123456789:ABCDE..."
+                                                className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-12 pr-4 py-3 text-blue-200 font-mono text-xs focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-slate-700 placeholder:tracking-widest"
+                                            />
                                         </div>
-                                        <input
-                                            type="text"
-                                            value={config.telegramChatId || ''}
-                                            onChange={(e) => updateConfig('telegramChatId', e.target.value)}
-                                            placeholder="Your numeric Chat ID"
-                                            className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-12 pr-4 py-3 text-blue-200 font-mono text-xs focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-slate-700 placeholder:tracking-widest"
-                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block ml-1">Allowed Chat ID (Admin)</label>
+                                        <div className="relative">
+                                            <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500">
+                                                <Icon name="user-shield" />
+                                            </div>
+                                            <input
+                                                type="text"
+                                                value={config.telegramChatId || ''}
+                                                onChange={(e) => updateConfig('telegramChatId', e.target.value)}
+                                                placeholder="Your numeric Chat ID"
+                                                className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-12 pr-4 py-3 text-blue-200 font-mono text-xs focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-slate-700 placeholder:tracking-widest"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </div>

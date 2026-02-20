@@ -1114,10 +1114,10 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
     }, []);
 
     return (
-        <div className="flex h-screen w-full bg-[#0f172a] text-slate-200 overflow-hidden font-sans">
+        <div className="flex h-screen w-full bg-[#0f172a] text-slate-200 overflow-hidden font-sans miku-app-isolate">
             <SystemDialog config={dialogConfig} />
             <Sidebar
-                state={{ ...state, askConfirm, onSelectSession, onDeleteSession, onNewSession, onExportSession, onImportSession } as any}
+                state={{ ...state, askConfirm, onSelectSession, onDeleteSession, onNewSession, onExportSession, onImportSession, onDeleteFile: (n: string, t: FileTarget) => deleteFile(n, t) } as any}
                 sessions={sessions}
                 loadingSessions={loadingSessions}
                 setState={setState}
@@ -1150,6 +1150,8 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                         onSave={(n, c) => saveFile(n, c, 'core')} unsavedChanges={state.unsavedChanges}
                         setUnsavedChanges={(u) => setState(p => ({ ...p, unsavedChanges: typeof u === 'function' ? u(p.unsavedChanges) : u }))}
                         onAddFile={() => createFile(`New_Core_${Date.now()}`, 'core')}
+                        onDelete={(n) => deleteFile(n, 'core')}
+                        askConfirm={askConfirm}
                     />
                 </div>
             )}
@@ -1162,6 +1164,8 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                         onSave={(n, c) => saveFile(n, c, 'tools')} unsavedChanges={state.unsavedChanges}
                         setUnsavedChanges={(u) => setState(p => ({ ...p, unsavedChanges: typeof u === 'function' ? u(p.unsavedChanges) : u }))}
                         onAddFile={() => createFile(`Cmd_${Date.now()}`, 'tools')}
+                        onDelete={(n) => deleteFile(n, 'tools')}
+                        askConfirm={askConfirm}
                     />
                 </div>
             )}
@@ -1171,6 +1175,8 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                 files={state.additionalFiles} selectedFiles={state.selectedLibraryFiles}
                 onToggleSelect={(n) => setState(p => ({ ...p, selectedLibraryFiles: p.selectedLibraryFiles.includes(n) ? p.selectedLibraryFiles.filter(f => f !== n) : [...p.selectedLibraryFiles, n] }))}
                 onSave={(n, c) => saveFile(n, c, 'extra')} onAdd={() => createFile(`Library_${Date.now()}`, 'extra')}
+                onDelete={(n) => deleteFile(n, 'extra')}
+                askConfirm={askConfirm}
             />
 
             {state.activeTab === 'settings' && (

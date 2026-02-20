@@ -65,7 +65,7 @@ export const ChatArea = ({
     // Auto-focus input when agent finishes
     React.useEffect(() => {
         if (!isLoading) {
-            inputRef.current?.focus();
+            inputRef.current?.focus({ preventScroll: true });
         }
     }, [isLoading]);
 

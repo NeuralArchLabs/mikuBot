@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { AppState, Provider, SessionMetadata } from '../../types';
-import { PROVIDERS } from '../../constants';
+import { AppState, SessionMetadata } from '../../types';
 import { Icon } from '../common/Common';
 import { SessionList } from '../features/SessionList';
 import { getRandomSignature } from '../../utils/easterEgg';
@@ -11,6 +10,7 @@ interface SidebarProps {
         onNewSession: () => void;
         onExportSession: (id: string) => void;
         onImportSession: () => void;
+        onDeleteFile: (name: string, target: 'core' | 'extra' | 'workSpace' | 'tools') => Promise<boolean>;
         askConfirm: (msg: string, position?: 'left' | 'right' | 'center') => Promise<boolean>;
     };
     sessions: SessionMetadata[];
@@ -119,7 +119,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
 
     return (
         <>
-            <div className="bg-slate-900 border-r border-slate-700 flex flex-col h-full shadow-xl z-30 w-[72px] lg:w-64 flex-shrink-0 transition-all duration-300">
+            <div className="bg-slate-900 border-r border-slate-700 flex flex-col h-full shadow-xl z-30 w-[72px] lg:w-64 flex-shrink-0 transition-all duration-300 overflow-y-auto overflow-x-hidden custom-scrollbar miku-sidebar-isolate">
                 <div className="p-4 lg:p-6">
                     <div className="flex items-center justify-center lg:justify-start gap-3 mb-8 group cursor-default h-10 overflow-hidden w-full px-1">
                         <div
@@ -132,9 +132,11 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                             <h1 className={`font-bold text-lg text-white tracking-tight leading-tight whitespace-nowrap overflow-hidden text-ellipsis transition-all duration-300 ${isAnimatingEgg ? 'text-blue-400 font-mono text-sm' : ''}`}>
                                 {displayName}
                             </h1>
-                            <div className="text-[11px] text-slate-500/80 font-bold uppercase tracking-[0.2em] leading-tight mt-0.5">v1.3.0</div>
+                            <div className="text-[11px] text-slate-500/80 font-bold uppercase tracking-[0.2em] leading-tight mt-0.5">v1.4.0</div>
                         </div>
                     </div>
+
+                    <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-6" />
 
                     <nav className="space-y-1">
                         {[
@@ -195,23 +197,9 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                         />
                     </div>
 
-                    <div className="p-4 border-t border-slate-700 bg-slate-900/40">
-                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 px-2">System Engine</div>
-                        <div className="bg-slate-800/50 rounded-xl p-3 border border-slate-700">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className={`w-2 h-2 rounded-full ${state.config.model ? 'bg-emerald-500 shadow-emerald-500/50 shadow-sm animate-pulse' : 'bg-slate-600'}`} />
-                                <span className="text-xs text-slate-300 font-medium truncate">
-                                    {state.config.model ? (state.config.model.split('/').pop()) : 'Offline'}
-                                </span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-mono text-slate-500">{PROVIDERS[state.config.provider].name}</span>
-                                <div className="px-1.5 py-0.5 rounded bg-slate-700 text-[8px] text-slate-400 font-bold uppercase tracking-tighter">Active</div>
-                            </div>
-                        </div>
-                    </div>
 
-                    <div className="p-4 border-t border-slate-700 bg-slate-900/60">
+                    <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                    <div className="p-4 bg-slate-900/60">
                         <div className="flex items-center justify-between mb-2 px-1">
                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Context Library</label>
                             <button
@@ -233,36 +221,48 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                 </div>
                             </div>
                         ) : (
-                            <div className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar">
+                            <div className="space-y-1 max-h-64 overflow-y-auto custom-scrollbar">
                                 {Object.keys(state.additionalFiles || {}).map(filename => {
                                     const isSelected = (state.selectedLibraryFiles || []).includes(filename);
                                     return (
-                                        <button
-                                            key={filename}
-                                            onClick={() => {
-                                                setState(prev => {
-                                                    const current = prev.selectedLibraryFiles || [];
-                                                    const updated = isSelected
-                                                        ? current.filter(f => f !== filename)
-                                                        : [...current, filename];
-                                                    return { ...prev, selectedLibraryFiles: updated };
-                                                });
-                                            }}
-                                            className={`w-full text-left px-2 py-1.5 rounded-lg text-xs font-mono truncate flex items-center gap-2 transition-colors border active:scale-95 ${isSelected
-                                                ? 'bg-blue-900/20 text-blue-300 border-blue-700/30'
-                                                : 'border-transparent text-slate-500 hover:text-slate-300 hover:bg-slate-800'
-                                                }`}
-                                        >
-                                            <Icon name={isSelected ? 'check-circle' : 'circle'} className="flex-shrink-0 text-[10px]" />
-                                            <span className="truncate">{filename}</span>
-                                        </button>
+                                        <div key={filename} className="group relative">
+                                            <button
+                                                onClick={() => {
+                                                    setState(prev => {
+                                                        const current = prev.selectedLibraryFiles || [];
+                                                        const updated = isSelected
+                                                            ? current.filter(f => f !== filename)
+                                                            : [...current, filename];
+                                                        return { ...prev, selectedLibraryFiles: updated };
+                                                    });
+                                                }}
+                                                className={`w-full text-left px-2 py-1.5 rounded-lg text-xs font-mono truncate flex items-center gap-2 transition-colors border active:scale-95 ${isSelected
+                                                    ? 'bg-blue-900/20 text-blue-300 border-blue-700/30'
+                                                    : 'border-transparent text-slate-500 hover:text-slate-300 hover:bg-slate-800'
+                                                    }`}
+                                            >
+                                                <Icon name={isSelected ? 'check-circle' : 'circle'} className="flex-shrink-0 text-[10px]" />
+                                                <span className="truncate pr-6">{filename}</span>
+                                            </button>
+                                            <button
+                                                onClick={async (e) => {
+                                                    e.stopPropagation();
+                                                    if (await state.askConfirm(`Permanently delete ${filename} from Context Library?`, 'right')) {
+                                                        await state.onDeleteFile(filename, 'extra');
+                                                    }
+                                                }}
+                                                className="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all rounded-md hover:bg-red-500/10"
+                                                title="Delete file"
+                                            >
+                                                <Icon name="times" className="text-[10px]" />
+                                            </button>
+                                        </div>
                                     );
                                 })}
                             </div>
                         )}
                     </div>
                 </div>
-
             </div>
 
             {/* Deep Session Modal (Available on Mobile & Desktop) */}
@@ -277,7 +277,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                     <Icon name="history" className="text-xl" />
                                 </div>
                                 <div>
-                                    <h2 className="text-lg font-bold text-white uppercase tracking-wider">Neural Sessions</h2>
+                                    <h2 className="text-lg font-bold text-white tracking-wider">Session Manager</h2>
                                     <p className="text-xs text-slate-500">Manage, load and branch conversation states</p>
                                 </div>
                             </div>
@@ -297,6 +297,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                 onExport={(id) => (state as any).onExportSession(id)}
                                 onImport={() => { (state as any).onImportSession(); handleClose(); }}
                                 onExpand={() => setSessionModalOpen(true)}
+                                isModal={true}
                                 askConfirm={state.askConfirm}
                             />
                         </div>
