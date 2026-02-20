@@ -1,6 +1,6 @@
-# Project Status: MikuCentral v1.2.0 🚀
+# Project Status: MikuCentral v1.3.0 🚀
 
-> **Última actualización**: 18 de febrero de 2026
+> **Última actualización**: 19 de febrero de 2026
 > **Autor del análisis**: Antigravity AI Engine
 
 Este documento detalla el análisis exhaustivo del proyecto **MikuCentral**, una interfaz de IA neural y asistente personal integral diseñada para la soberanía tecnológica local, la ejecución de agentes autónomos y la persistencia automodificable en todas las facetas de la vida del usuario (personal, profesional y financiera).
@@ -256,6 +256,16 @@ electron/
 ---
 
 ## 7. Log de Cambios 📋
+
+### v1.3 — 19 Feb 2026 (Cinematic UI & Experience Overhaul)
+| Archivo | Cambio |
+|---------|--------|
+| `src/index.css` | `@keyframes` Genie (macOS expand/shrink) + GPU acceleration (`will-change`). |
+| `src/App.tsx` | Contenedores animados para Chat, Editors (Slide) y Control Room (Darken). |
+| `src/components/layout/Sidebar.tsx` | `DeepSessionModal` con origen dinámico. + Icono bibliotecas en Slim Mode. + Versión v1.3.0. |
+| `src/components/features/LibraryManager.tsx` | Animación Genie (origen inferior) + Close delay sync. + Botón responsivo ("New Doc"). |
+| `src/components/features/SessionList.tsx` | Botón expansible en el encabezado para el modal inmersivo. |
+| `electron/main.cjs` | `minWidth` ajustado a 640px para estabilidad visual. |
 
 ### v1.1 — 15 Feb 2026 (Sprint 0: Reparaciones Iniciales)
 | Archivo | Cambio |

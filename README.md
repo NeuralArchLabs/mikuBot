@@ -1,4 +1,4 @@
-# 🌐 mikuCentral v1.1 — Advanced AI Agent OS
+# 🌐 mikuCentral v1.3.0 — Advanced AI Agent OS
 
 mikuCentral es un entorno de ejecución de agentes autónomos diseñado para Armando. Combina una interfaz premium con un motor de razonamiento neural capaz de interactuar con el sistema de archivos local, ejecutar comandos de consola y realizar investigaciones en la web en tiempo real.
 

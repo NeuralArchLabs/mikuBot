@@ -21,6 +21,7 @@ export const LibraryManager = ({
     onSave,
     onAdd
 }: LibraryManagerProps) => {
+    const [isClosing, setIsClosing] = useState(false);
     const [viewFile, setViewFile] = useState<string | null>(null);
     const [editMode, setEditMode] = useState(false);
     const [editContent, setEditContent] = useState('');
@@ -80,11 +81,20 @@ export const LibraryManager = ({
         }
     }, [onSave]);
 
+    const handleClose = useCallback(() => {
+        setIsClosing(true);
+        setTimeout(() => {
+            onClose();
+            setIsClosing(false);
+        }, 400);
+    }, [onClose]);
+
     if (!isOpen) return null;
 
     return (
-        <div className="absolute inset-0 z-[120] bg-slate-900/95 backdrop-blur-sm flex items-center justify-center p-8 transition-opacity duration-300 border-none">
-            <div className="bg-slate-950 border border-slate-700 w-full max-w-6xl h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        <div className={`absolute inset-0 z-[120] bg-slate-900/95 backdrop-blur-sm flex items-center justify-center p-8 transition-opacity duration-300 border-none ${isClosing ? 'opacity-0' : 'opacity-100'}`}>
+            <div className={`bg-slate-950 border border-slate-700 w-full max-w-6xl h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden ${isClosing ? 'animate-macos-shrink-bottom' : 'animate-macos-expand-bottom'}`}>
+
                 {/* ── Header ─────────────────────────────────────────── */}
                 <div className="h-16 border-b border-slate-800 flex items-center justify-between px-6 bg-slate-900">
                     <div className="flex items-center gap-3">
@@ -111,7 +121,7 @@ export const LibraryManager = ({
                             <span className="hidden sm:inline">New Document</span>
                             <span className="inline sm:hidden">New Doc</span>
                         </button>
-                        <button onClick={onClose} title="Close Library Manager" className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 flex items-center justify-center transition-colors">
+                        <button onClick={handleClose} title="Close Library Manager" className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 flex items-center justify-center transition-colors">
                             <Icon name="times" />
                         </button>
                     </div>
@@ -282,7 +292,7 @@ export const LibraryManager = ({
                         {selectedFiles.length} files selected for injection • {Object.keys(files).length} total
                     </div>
                     <button
-                        onClick={onClose}
+                        onClick={handleClose}
                         className="px-6 py-2 bg-pink-600 hover:bg-pink-500 text-white rounded font-medium text-sm transition-colors shadow-lg shadow-pink-900/20"
                     >
                         Apply Application Context

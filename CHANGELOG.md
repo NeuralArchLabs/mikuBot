@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.3.0] - 2026-02-19
+
+### 🎨 Ultra UI Polish & Cinematic Experience
+- **Sistema de Animaciones "Genie" (Style macOS)**:
+    - Implementación de transiciones de expansión y contracción elásticas para los modales de Sesiones y Biblioteca de Contexto.
+    - Orígenes dinámicos: Las sesiones emergen desde la parte superior del menú y la biblioteca desde la parte inferior, optimizando la jerarquía visual.
+    - Aceleración por GPU (`will-change`) para asegurar 60fps constantes durante las transiciones.
+- **Transiciones de Pestañas Suaves**:
+    - **Cortex & Command Editors**: Nueva animación de deslizamiento lateral lento (0.6s) que aporta elegancia al navegar entre códigos.
+    - **Neural Chat**: Efecto de revelado gradual desde el fondo para una transición inmersiva.
+    - **Control Room**: Animación de oscurecimiento y escalado sutil para enfatizar la profundidad del panel de configuración.
+
+### 🛠️ Mejoras de Navegación y Estructura
+- **Deep Session Modal**: El visualizador de sesiones ahora es un modal centralizado inmersivo con backdrop-blur, permitiendo una gestión mucho más cómoda que en la barra lateral estrecha.
+- **Slim Mode (Context Library)**: Nuevo icono de "Libro" en la barra lateral contraída (slim) para acceso instantáneo a la biblioteca en resoluciones mínimas.
+- **Resolución Crítica Optimizada**: Ajuste del ancho mínimo de la aplicación a **640px** (breakpoint SM estándar), asegurando que todos los elementos se vean perfectos sin amontonarse.
+- **Renombrado Estratégico**: Cambio de "Library Context" a **Context Library** para una mejor semántica en el flujo de trabajo.
+
+### 🐛 Bug Fixes
+- **Z-Index Layering**: Reparación de colisiones visuales entre modales y banners de conexión pendientes. Los modales ahora se sitúan siempre por encima de cualquier otro elemento del sistema.
+- **Dynamic New Doc Button**: El botón de "New Document" ahora detecta el ancho de pantalla y se contrae a "New Doc" para evitar solapamientos en ventanas pequeñas.
+
+
 ## [1.2.0] - 2026-02-18
 
 ### ✨ Mejoras en el Contexto del Agente

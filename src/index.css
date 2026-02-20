@@ -490,3 +490,130 @@
 .parallel-indicator {
   animation: parallel-pulse 1.5s ease-in-out infinite;
 }
+
+/* ── New Logic Animations ────────────────────────────────────────── */
+
+@keyframes slide-in-left-right {
+  0% {
+    transform: translateX(-30px);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-left-right {
+  animation: slide-in-left-right 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ── Optimized Genie Animations (GPU Accelerated) ──────────────── */
+@keyframes macos-expand-kf {
+  0% {
+    transform: scale(0.1);
+    opacity: 0;
+    filter: blur(8px);
+  }
+
+  75% {
+    transform: scale(1.01);
+    opacity: 1;
+    filter: blur(0);
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+@keyframes macos-shrink-kf {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+    filter: blur(0);
+  }
+
+  100% {
+    transform: scale(0.05);
+    opacity: 0;
+    filter: blur(12px);
+  }
+}
+
+.animate-macos-expand-bottom {
+  animation: macos-expand-kf 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  transform-origin: left bottom;
+  will-change: transform, opacity;
+}
+
+.animate-macos-shrink-bottom {
+  animation: macos-shrink-kf 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  transform-origin: left bottom;
+  will-change: transform, opacity;
+}
+
+.animate-macos-expand-top {
+  animation: macos-expand-kf 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  transform-origin: left top;
+  will-change: transform, opacity;
+}
+
+.animate-macos-shrink-top {
+  animation: macos-shrink-kf 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  transform-origin: left top;
+  will-change: transform, opacity;
+}
+
+@keyframes control-room-enter {
+  0% {
+    opacity: 0;
+    filter: brightness(0.3);
+    transform: scale(0.99);
+  }
+
+  100% {
+    opacity: 1;
+    filter: brightness(1);
+    transform: scale(1);
+  }
+}
+
+.animate-control-room {
+  animation: control-room-enter 0.5s ease-out forwards;
+}
+
+@keyframes fade-in-scale {
+  0% {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fade-scale {
+  animation: fade-in-scale 0.3s ease-out forwards;
+}
+
+@keyframes chat-reveal-kf {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-chat {
+  animation: chat-reveal-kf 0.5s ease-out forwards;
+}

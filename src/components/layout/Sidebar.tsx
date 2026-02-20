@@ -19,6 +19,15 @@ interface SidebarProps {
 
 export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState, onClear }: SidebarProps) => {
     const [sessionModalOpen, setSessionModalOpen] = useState(false);
+    const [isClosing, setIsClosing] = useState(false);
+
+    const handleClose = () => {
+        setIsClosing(true);
+        setTimeout(() => {
+            setSessionModalOpen(false);
+            setIsClosing(false);
+        }, 400);
+    };
 
     return (
         <>
@@ -30,7 +39,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                         </div>
                         <div className="hidden lg:block">
                             <h1 className="font-bold text-lg text-white tracking-tight leading-tight">mikuCentral</h1>
-                            <div className="text-[10px] text-slate-500 font-mono uppercase tracking-[0.2em] leading-tight">v.1.2.0-alpha</div>
+                            <div className="text-[10px] text-slate-500 font-mono uppercase tracking-[0.2em] leading-tight">v1.3.0</div>
                         </div>
                     </div>
 
@@ -164,9 +173,9 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
 
             {/* Deep Session Modal (Available on Mobile & Desktop) */}
             {sessionModalOpen && (
-                <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-sm" onClick={() => setSessionModalOpen(false)} />
-                    <div className="relative w-full max-w-2xl bg-slate-950 border border-slate-700 shadow-2xl flex flex-col rounded-2xl overflow-hidden h-[85vh] sm:h-[75vh]">
+                <div className={`fixed inset-0 z-[120] flex items-center justify-center p-4 transition-opacity duration-300 ${isClosing ? 'opacity-0' : 'opacity-100'}`}>
+                    <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-sm" onClick={handleClose} />
+                    <div className={`relative w-full max-w-2xl bg-slate-950 border border-slate-700 shadow-2xl flex flex-col rounded-2xl overflow-hidden h-[85vh] sm:h-[75vh] ${isClosing ? 'animate-macos-shrink-top' : 'animate-macos-expand-top'}`}>
                         {/* Header */}
                         <div className="h-16 flex items-center justify-between px-6 border-b border-slate-800 bg-slate-900">
                             <div className="flex items-center gap-3">
@@ -178,7 +187,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                     <p className="text-xs text-slate-500">Manage, load and branch conversation states</p>
                                 </div>
                             </div>
-                            <button onClick={() => setSessionModalOpen(false)} className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 flex items-center justify-center transition-colors">
+                            <button onClick={handleClose} className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 flex items-center justify-center transition-colors">
                                 <Icon name="times" />
                             </button>
                         </div>
@@ -188,11 +197,12 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                 sessions={sessions}
                                 loading={loadingSessions}
                                 currentSessionId={state.sessionId}
-                                onSelect={(id) => { (state as any).onSelectSession(id); setSessionModalOpen(false); }}
+                                onSelect={(id) => { (state as any).onSelectSession(id); handleClose(); }}
                                 onDelete={(id) => (state as any).onDeleteSession(id)}
-                                onNew={() => { (state as any).onNewSession(); setSessionModalOpen(false); }}
+                                onNew={() => { (state as any).onNewSession(); handleClose(); }}
                                 onExport={(id) => (state as any).onExportSession(id)}
-                                onImport={() => { (state as any).onImportSession(); setSessionModalOpen(false); }}
+                                onImport={() => { (state as any).onImportSession(); handleClose(); }}
+                                onExpand={() => setSessionModalOpen(true)}
                             />
                         </div>
                     </div>

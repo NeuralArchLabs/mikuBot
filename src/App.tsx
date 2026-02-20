@@ -1104,39 +1104,45 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
             />
 
             {state.activeTab === 'chat' && (
-                <ChatArea
-                    messages={messages} isLoading={isLoading} input={input} setInput={setInput}
-                    onSend={() => processMessage(input)} onSendAsInstruction={() => processMessage(input, true)}
-                    onAbort={handleAbortAgent} onReprompt={handleReprompt} onRewind={onRewind} scrollRef={scrollRef}
-                    agentStatus={agentStatus} pendingApproval={pendingToolApproval}
-                    onApproveToolCall={handleApproveToolCall} onRejectToolCall={handleRejectToolCall}
-                    agentMode={state.agentMode} onAgentModeChange={(m) => setState(p => ({ ...p, agentMode: m }))}
-                    safeMode={state.safeMode} onSafeModeChange={(s) => setState(p => ({ ...p, safeMode: s }))}
-                    approvalMode={state.approvalMode} onApprovalModeChange={(a) => setState(p => ({ ...p, approvalMode: a }))}
-                    debugMode={state.debugMode} onDebugModeChange={(d) => setState(p => ({ ...p, debugMode: d }))}
-                    folderPermissions={state.folderPermissions}
-                    onRequestPermission={requestFolderPermission}
-                />
+                <div className="flex-1 flex flex-col h-full animate-chat">
+                    <ChatArea
+                        messages={messages} isLoading={isLoading} input={input} setInput={setInput}
+                        onSend={() => processMessage(input)} onSendAsInstruction={() => processMessage(input, true)}
+                        onAbort={handleAbortAgent} onReprompt={handleReprompt} onRewind={onRewind} scrollRef={scrollRef}
+                        agentStatus={agentStatus} pendingApproval={pendingToolApproval}
+                        onApproveToolCall={handleApproveToolCall} onRejectToolCall={handleRejectToolCall}
+                        agentMode={state.agentMode} onAgentModeChange={(m) => setState(p => ({ ...p, agentMode: m }))}
+                        safeMode={state.safeMode} onSafeModeChange={(s) => setState(p => ({ ...p, safeMode: s }))}
+                        approvalMode={state.approvalMode} onApprovalModeChange={(a) => setState(p => ({ ...p, approvalMode: a }))}
+                        debugMode={state.debugMode} onDebugModeChange={(d) => setState(p => ({ ...p, debugMode: d }))}
+                        folderPermissions={state.folderPermissions}
+                        onRequestPermission={requestFolderPermission}
+                    />
+                </div>
             )}
 
             {state.activeTab === 'cortex' && (
-                <FileEditor
-                    files={state.files} selectedFile={state.selectedFile}
-                    setSelectedFile={(f) => setState(p => ({ ...p, selectedFile: f }))}
-                    onSave={(n, c) => saveFile(n, c, 'core')} unsavedChanges={state.unsavedChanges}
-                    setUnsavedChanges={(u) => setState(p => ({ ...p, unsavedChanges: typeof u === 'function' ? u(p.unsavedChanges) : u }))}
-                    onAddFile={() => createFile(`New_Core_${Date.now()}`, 'core')}
-                />
+                <div className="flex-1 flex flex-col h-full animate-slide-left-right">
+                    <FileEditor
+                        files={state.files} selectedFile={state.selectedFile}
+                        setSelectedFile={(f) => setState(p => ({ ...p, selectedFile: f }))}
+                        onSave={(n, c) => saveFile(n, c, 'core')} unsavedChanges={state.unsavedChanges}
+                        setUnsavedChanges={(u) => setState(p => ({ ...p, unsavedChanges: typeof u === 'function' ? u(p.unsavedChanges) : u }))}
+                        onAddFile={() => createFile(`New_Core_${Date.now()}`, 'core')}
+                    />
+                </div>
             )}
 
             {state.activeTab === 'commands' && (
-                <FileEditor
-                    files={state.toolsFiles} selectedFile={state.selectedFile}
-                    setSelectedFile={(f) => setState(p => ({ ...p, selectedFile: f }))}
-                    onSave={(n, c) => saveFile(n, c, 'tools')} unsavedChanges={state.unsavedChanges}
-                    setUnsavedChanges={(u) => setState(p => ({ ...p, unsavedChanges: typeof u === 'function' ? u(p.unsavedChanges) : u }))}
-                    onAddFile={() => createFile(`Cmd_${Date.now()}`, 'tools')}
-                />
+                <div className="flex-1 flex flex-col h-full animate-slide-left-right">
+                    <FileEditor
+                        files={state.toolsFiles} selectedFile={state.selectedFile}
+                        setSelectedFile={(f) => setState(p => ({ ...p, selectedFile: f }))}
+                        onSave={(n, c) => saveFile(n, c, 'tools')} unsavedChanges={state.unsavedChanges}
+                        setUnsavedChanges={(u) => setState(p => ({ ...p, unsavedChanges: typeof u === 'function' ? u(p.unsavedChanges) : u }))}
+                        onAddFile={() => createFile(`Cmd_${Date.now()}`, 'tools')}
+                    />
+                </div>
             )}
 
             <LibraryManager
@@ -1147,15 +1153,17 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
             />
 
             {state.activeTab === 'settings' && (
-                <SettingsPanel
-                    config={state.config} updateConfig={updateConfig} models={models} loadingModels={loadingModels}
-                    connectionStatus={connectionStatus} onTestConnection={handleTestConnection}
-                    onCoreSelect={() => handleSelectFolder('core')} onExtraSelect={() => handleSelectFolder('extra')} onWorkSpaceSelect={() => handleSelectFolder('workSpace')} onToolsSelect={() => handleSelectFolder('tools')}
-                    onSaveGlobal={onSaveGlobal} onResetGlobal={onResetGlobal}
-                    onLoadConfig={onLoadConfig} onExportConfig={onExportConfig}
-                    corePathName={coreHandle?.name || ''} extraPathName={extraHandle?.name || ''}
-                    workSpacePathName={workSpaceHandle?.name || ''} toolsPathName={toolsHandle?.name || ''} syncing={syncing}
-                />
+                <div className="flex-1 flex flex-col h-full animate-control-room">
+                    <SettingsPanel
+                        config={state.config} updateConfig={updateConfig} models={models} loadingModels={loadingModels}
+                        connectionStatus={connectionStatus} onTestConnection={handleTestConnection}
+                        onCoreSelect={() => handleSelectFolder('core')} onExtraSelect={() => handleSelectFolder('extra')} onWorkSpaceSelect={() => handleSelectFolder('workSpace')} onToolsSelect={() => handleSelectFolder('tools')}
+                        onSaveGlobal={onSaveGlobal} onResetGlobal={onResetGlobal}
+                        onLoadConfig={onLoadConfig} onExportConfig={onExportConfig}
+                        corePathName={coreHandle?.name || ''} extraPathName={extraHandle?.name || ''}
+                        workSpacePathName={workSpaceHandle?.name || ''} toolsPathName={toolsHandle?.name || ''} syncing={syncing}
+                    />
+                </div>
             )}
         </div>
     );
