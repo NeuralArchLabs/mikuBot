@@ -175,7 +175,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
             {sessionModalOpen && (
                 <div className={`fixed inset-0 z-[120] flex items-center justify-center p-4 transition-opacity duration-300 ${isClosing ? 'opacity-0' : 'opacity-100'}`}>
                     <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-sm" onClick={handleClose} />
-                    <div className={`relative w-full max-w-2xl bg-slate-950 border border-slate-700 shadow-2xl flex flex-col rounded-2xl overflow-hidden h-[85vh] sm:h-[75vh] ${isClosing ? 'animate-macos-shrink-top' : 'animate-macos-expand-top'}`}>
+                    <div className={`relative w-full max-w-2xl bg-slate-950 border border-slate-700 shadow-2xl flex flex-col rounded-2xl overflow-hidden h-[85vh] sm:h-[75vh] ${isClosing ? 'animate-macos-shrink-left' : 'animate-macos-expand-left'}`}>
                         {/* Header */}
                         <div className="h-16 flex items-center justify-between px-6 border-b border-slate-800 bg-slate-900">
                             <div className="flex items-center gap-3">

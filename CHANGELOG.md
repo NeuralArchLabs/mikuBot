@@ -5,7 +5,7 @@
 ### 🎨 Ultra UI Polish & Cinematic Experience
 - **Sistema de Animaciones "Genie" (Style macOS)**:
     - Implementación de transiciones de expansión y contracción elásticas para los modales de Sesiones y Biblioteca de Contexto.
-    - Orígenes dinámicos: Las sesiones emergen desde la parte superior del menú y la biblioteca desde la parte inferior, optimizando la jerarquía visual.
+    - Orígenes dinámicos: Las sesiones emergen desde el lateral izquierdo (25% superior) y la biblioteca desde la parte inferior, optimizando la jerarquía visual.
     - Aceleración por GPU (`will-change`) para asegurar 60fps constantes durante las transiciones.
 - **Transiciones de Pestañas Suaves**:
     - **Cortex & Command Editors**: Nueva animación de deslizamiento lateral lento (0.6s) que aporta elegancia al navegar entre códigos.

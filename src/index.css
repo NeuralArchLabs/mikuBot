@@ -556,15 +556,15 @@
   will-change: transform, opacity;
 }
 
-.animate-macos-expand-top {
+.animate-macos-expand-left {
   animation: macos-expand-kf 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-  transform-origin: left top;
+  transform-origin: left 25%;
   will-change: transform, opacity;
 }
 
-.animate-macos-shrink-top {
+.animate-macos-shrink-left {
   animation: macos-shrink-kf 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  transform-origin: left top;
+  transform-origin: left 25%;
   will-change: transform, opacity;
 }
 
