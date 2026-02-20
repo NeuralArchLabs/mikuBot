@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { AppState, AgentStatus, Message, PendingToolApproval, AgentMode, ModelInfo, FileSystemDirectoryHandle, FileSystemFileHandle, FileTarget, Session, ApprovalMode, SessionMetadata, PermissionStatus, Provider } from './types';
+import { AppState, AgentStatus, Message, PendingToolApproval, AgentMode, ModelInfo, FileSystemDirectoryHandle, FileSystemFileHandle, FileTarget, Session, ApprovalMode, SessionMetadata, PermissionStatus, Provider, AppConfig } from './types';
 import { DEFAULT_CONFIG, DEFAULT_FILES, AGENT_TOOLS } from './constants';
 import { createDefaultAgentStatus } from './utils';
 import {
@@ -138,37 +138,6 @@ export const App = () => {
             await askAlert("💥 Fatal Error: The connection to the Neural Engine was lost. Check terminal for details.");
         }
     }, [state.config, state.agentMode, state.safeMode, state.approvalMode, askAlert]);
-
-    const onResetGlobal = useCallback(async () => {
-        if (await askConfirm("Reset all settings to defaults? This will overwrite your config.json.")) {
-            await persistence.saveSettings(DEFAULT_CONFIG, 'chat', false, 'auto');
-            setState(prev => ({
-                ...prev,
-                config: DEFAULT_CONFIG,
-                agentMode: 'chat',
-                safeMode: false,
-                approvalMode: 'auto'
-            }));
-        }
-    }, [askConfirm]);
-
-    const onLoadConfig = useCallback(async () => {
-        const loaded = await persistence.loadFromFile();
-        if (loaded) {
-            setState(prev => ({
-                ...prev,
-                config: loaded.config,
-                agentMode: loaded.agentMode as AgentMode,
-                safeMode: loaded.safeMode || false,
-                approvalMode: loaded.approvalMode || 'auto'
-            }));
-            await askAlert("✅ Neural Engine: Configuration imported successfully.");
-        }
-    }, [askAlert]);
-
-    const onExportConfig = useCallback(() => {
-        persistence.exportToFile(state.config, state.agentMode, state.safeMode, state.approvalMode);
-    }, [state.config, state.agentMode, state.safeMode, state.approvalMode]);
 
     // ── Session Management ─────────────────────────────────────────────
 
@@ -371,6 +340,10 @@ export const App = () => {
             const isElectron = !!(window as any).electron?.invoke;
 
             if (isElectron && staticPath) {
+                if (!staticPath.trim()) {
+                    console.log(`[IPC] Skipping sync for ${target}: path is empty`);
+                    return {};
+                }
                 console.log(`[IPC] Syncing ${target} via static path: ${staticPath}`);
                 const res = await (window as any).electron.invoke('fs-read-folder', staticPath);
                 if (res.ok) {
@@ -420,6 +393,88 @@ export const App = () => {
             setSyncing(false);
         }
     }, []);
+
+    const restoreAndSync = useCallback(async (customConfig?: AppConfig) => {
+        try {
+            const isElectron = !!(window as any).electron;
+            const configToUse = customConfig || state.config;
+            const staticPaths = configToUse.folderPaths;
+            const results: Record<FileTarget, PermissionStatus> = { core: 'prompt', extra: 'prompt', workSpace: 'prompt', tools: 'prompt' };
+
+            if (isElectron && staticPaths) {
+                console.log("[Restore] Electron Mode: syncing via static paths");
+                const targets: FileTarget[] = ['core', 'extra', 'workSpace', 'tools'];
+                for (const t of targets) {
+                    const path = staticPaths[t];
+                    if (path) {
+                        await syncFiles(t, null, path);
+                        results[t] = 'granted';
+                    }
+                }
+            } else {
+                console.log("[Restore] Browser Mode: syncing via handles");
+                const targets: FileTarget[] = ['core', 'extra', 'workSpace', 'tools'];
+                for (const t of targets) {
+                    const h = await db.get(t + 'Handle');
+                    if (h) {
+                        if (t === 'core') setCoreHandle(h);
+                        if (t === 'extra') setExtraHandle(h);
+                        if (t === 'workSpace') setWorkSpaceHandle(h);
+                        if (t === 'tools') setToolsHandle(h);
+
+                        const perm = await (h as any).queryPermission({ mode: 'read' }) as PermissionStatus;
+                        results[t] = perm;
+                        if (perm === 'granted') await syncFiles(t, h);
+                    }
+                }
+            }
+            setState(prev => ({ ...prev, folderPermissions: results as any }));
+        } catch (e) {
+            console.error("Restore and Sync failed", e);
+        }
+    }, [state.config, syncFiles]);
+
+    const onLoadConfig = useCallback(async () => {
+        const loaded = await persistence.loadFromFile();
+        if (loaded) {
+            const mergedConfig = { ...DEFAULT_CONFIG, ...loaded.config };
+            const newState = {
+                config: mergedConfig,
+                agentMode: loaded.agentMode as AgentMode,
+                safeMode: loaded.safeMode || false,
+                approvalMode: loaded.approvalMode || 'auto'
+            };
+
+            // 1. Update React State
+            setState(prev => ({ ...prev, ...newState }));
+
+            // 2. Persist to Disk immediately (Single Source of Truth)
+            if ((window as any).electron) {
+                await persistence.saveSettings(mergedConfig, newState.agentMode, newState.safeMode, newState.approvalMode);
+            }
+
+            // 3. Trigger immediate sync with new paths
+            await restoreAndSync(mergedConfig);
+
+            await askAlert("✅ Neural Engine: Configuration imported and synchronized successfully.");
+        }
+    }, [askAlert, restoreAndSync]);
+
+    const onExportConfig = useCallback(() => {
+        persistence.exportToFile(state.config, state.agentMode, state.safeMode, state.approvalMode);
+    }, [state.config, state.agentMode, state.safeMode, state.approvalMode]);
+
+    const onResetGlobal = useCallback(async () => {
+        if (await askConfirm("Are you sure? This will reset all settings to defaults. Folder paths will be cleared.")) {
+            setState(prev => ({
+                ...prev,
+                config: DEFAULT_CONFIG,
+                agentMode: 'chat',
+                safeMode: false,
+                approvalMode: 'auto'
+            }));
+        }
+    }, [askConfirm]);
 
     const saveFile = async (name: string, content: string, target: FileTarget) => {
         if (!name) return false;
@@ -682,49 +737,8 @@ export const App = () => {
     // Initial handles restoration
     // Initial handles restoration
     useEffect(() => {
-        const restoreHandlers = async () => {
-            try {
-                const results: Record<FileTarget, PermissionStatus> = { core: 'prompt', extra: 'prompt', workSpace: 'prompt', tools: 'prompt' };
-                const isElectron = !!(window as any).electron;
-                const saved = await persistence.loadSettings();
-                const staticPaths = saved?.config?.folderPaths;
-
-                // Priority 1: Electron IPC (Strictly from config.json)
-                if (isElectron && staticPaths?.core) {
-                    await syncFiles('core', null, staticPaths.core);
-                    await syncFiles('extra', null, staticPaths.extra);
-                    await syncFiles('workSpace', null, staticPaths.workSpace);
-                    await syncFiles('tools', null, staticPaths.tools);
-
-                    results.core = 'granted';
-                    results.extra = 'granted';
-                    results.workSpace = 'granted';
-                    results.tools = 'granted';
-                } else {
-                    // Priority 2: Browser File System Access API (Handles from IndexedDB)
-                    const targets: FileTarget[] = ['core', 'extra', 'workSpace', 'tools'];
-                    for (const t of targets) {
-                        const h = await db.get(t + 'Handle');
-                        if (h) {
-                            if (t === 'core') setCoreHandle(h);
-                            if (t === 'extra') setExtraHandle(h);
-                            if (t === 'workSpace') setWorkSpaceHandle(h);
-                            if (t === 'tools') setToolsHandle(h);
-
-                            const perm = await (h as any).queryPermission({ mode: 'read' }) as PermissionStatus;
-                            results[t] = perm;
-                            if (perm === 'granted') syncFiles(t, h);
-                        }
-                    }
-                }
-
-                setState(prev => ({ ...prev, folderPermissions: results as any }));
-            } catch (e) {
-                console.error("Restore failed", e);
-            }
-        };
-        restoreHandlers();
-    }, [syncFiles]);
+        restoreAndSync();
+    }, [restoreAndSync]);
 
     // ── Chat Logic ─────────────────────────────────────────────
 

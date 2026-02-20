@@ -1,11 +1,19 @@
 # Changelog
 
-## [1.5.0] - 2026-02-20
+## [1.5.1] - 2026-02-21
+### Added
+- **Native Explorer Integration**: Añadidos iconos de acceso directo ("External Link") en las tarjetas de carpeta para apertura rápida.
+- **Architectural Refinement**: Consolidación de lógica en `services/` y `App.tsx`, optimizando la carpeta `hooks/`.
 
-### 🛡️ Config Persistence & Neural Stability
-- **Single Source of Truth (config.json)**:
-    - Eliminación completa de `localStorage` para configuraciones globales en entornos nativos de Electron. Ahora el sistema confía íntegramente en `config.json` como la única fuente de verdad autoritativa.
-    - Sincronización bidireccional atómica: Los cambios en el panel de Ajustes se escriben directamente al disco y se inyectan en el estado neural en tiempo real.
+### Fixed
+- **Config Import Fix**: Corregido bug crítico donde la importación de JSON no persistía inmediatamente en disco ni sincronizaba las carpetas en tiempo real. Ahora la importación es atómica y persistente.
+- **Path Protocol**: Mejora en la interpretación de rutas absolutas de Windows en modo producción (`isPackaged`).
+
+## [1.5.0] - 2026-02-20
+### Added
+- **Single Source of Truth**: Migración completa a `config.json` como base de datos de configuración única para Electron.
+- **Native IPC Persistencia**: Implementación de handlers robustos para carga/salvado de estado neural.
+- **UI Redesign**: Reposicionamiento de los botones de apertura de carpeta a la esquina superior derecha con nuevos iconos.
 - **Master Path Enforcement**:
     - Las operaciones de sistema de archivos (Sync, Save, Delete) ahora priorizan las rutas configuradas en `config.json` sobre los handles temporales de IndexedDB cuando se ejecuta en modo escritorio. Esto garantiza que la estructura del Workspace se mantenga íntegra tras reinicios de la aplicación sin requerir re-autorizaciones manuales de carpetas.
 - **Configuración Auto-Sanable (Self-Healing)**:
@@ -13,12 +21,11 @@
 - **Neural Component Refactoring**:
     - Reestructuración masiva de `App.tsx` para eliminar la anidación excesiva de funciones de ciclo de vida (hooks), resolviendo bugs de "Race Conditions" durante el arranque del motor de inferencia.
     - Consolidación de `restoreHandlers` para una reconexión inmediata a los subsistemas neurales al inicio.
+
+### Fixed
 - **Native Explorer Integration**:
-    - Añadidos iconos de acceso directo ("External Link") en el extremo superior derecho de las tarjetas.
     - Corregida la lógica de rutas: ahora se pasan rutas absolutas del motor neural al shell nativo.
     - Se ha migrado a llamadas IPC directas (`invoke`) para garantizar la compatibilidad en modo desarrollo.
-- **Architectural Refinement**:
-    - Consolidación de la lógica de estado en `App.tsx` y `services/`, permitiendo que la carpeta `hooks/` quede como reserva técnica. Esto reduce la fragmentación del código y mejora la velocidad de carga del motor neural.
 
 ## [1.4.2] - 2026-02-20
 
