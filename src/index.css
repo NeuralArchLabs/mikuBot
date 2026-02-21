@@ -129,6 +129,7 @@
   cursor: pointer;
   color: #a78bfa;
   font-weight: 500;
+  -webkit-user-select: none;
   user-select: none;
   padding: 0.15em 0;
 }
@@ -345,8 +346,8 @@
 /* Glassmorphic Tool Approval Panel */
 .approval-panel-glass {
   background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
   border: 1px solid rgba(148, 163, 184, 0.1);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   border-radius: 0.75rem;
