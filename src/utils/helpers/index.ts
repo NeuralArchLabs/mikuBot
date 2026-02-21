@@ -1,4 +1,4 @@
-import { ToolCall, AgentStatus } from '../../types';
+import { ToolCall, ToolDefinition, AgentStatus } from '../../types';
 import { AGENT_TOOLS } from '../../constants';
 
 export async function safeFetch(url: string, options: any = {}) {
@@ -23,11 +23,11 @@ export async function safeFetch(url: string, options: any = {}) {
     return response.json();
 }
 
-export function validateToolArgs(toolCall: ToolCall): { valid: boolean; error?: string } {
+export function validateToolArgs(toolCall: ToolCall, tools: ToolDefinition[]): { valid: boolean; error?: string } {
     const { name, arguments: args } = toolCall.function;
-    const toolDef = AGENT_TOOLS.find(t => t.function.name === name);
+    const toolDef = tools.find(t => t.function.name === name);
     if (!toolDef) {
-        return { valid: false, error: `Unknown tool "${name}". Available: ${AGENT_TOOLS.map(t => t.function.name).join(', ')}` };
+        return { valid: false, error: `Unknown tool "${name}". Available: ${tools.map(t => t.function.name).join(', ')}` };
     }
     const params = toolDef.function.parameters;
     for (const field of params.required) {

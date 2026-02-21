@@ -150,20 +150,46 @@ export function stripConversationalWrapper(text: string): string {
    §10  NORMALIZE - Helpers
    ═══════════════════════════════════════════════════════════════════════ */
 
-function normalizeJsonKeys(obj: any): { name: string; arguments: any } | null {
+function normalizeJsonKeys(obj: any, validToolNames: string[] = []): { name: string; arguments: any } | null {
     if (!obj || typeof obj !== 'object') return null;
 
     let name = '';
     let args: any = {};
 
-    // Find name/function field
+    // 1. Standard Extraction (name, arguments labels)
     for (const key in obj) {
         const canonical = KEY_ALIASES[key.toLowerCase()];
         if (canonical === 'name') name = obj[key];
         if (canonical === 'arguments') args = obj[key];
-        // Direct match if alias not found
         if (key.toLowerCase() === 'name') name = obj[key];
         if (key.toLowerCase() === 'arguments') args = obj[key];
+    }
+
+    // 2. Specialized Shorthand Detection: { "final_answer": "..." }
+    // If we don't have a 'name' but we have a key that matches a common tool name
+    if (!name) {
+        for (const key in obj) {
+            const lowerKey = key.toLowerCase().trim();
+            // Check if this key itself is a tool name (direct or alias)
+            const aliasedTool = TOOL_NAME_ALIASES[lowerKey] || (validToolNames.includes(lowerKey) ? lowerKey : null);
+
+            if (aliasedTool) {
+                name = aliasedTool;
+                const val = obj[key];
+
+                if (typeof val === 'string') {
+                    // Map value to the primary field of that tool
+                    if (aliasedTool === 'final_answer') args = { text: val };
+                    else if (aliasedTool === 'update_file') args = { content: val };
+                    else if (aliasedTool === 'read_file') args = { filename: val };
+                    else if (aliasedTool === 'web_search') args = { query: val };
+                    else args = { [key]: val }; // Fallback
+                } else if (val && typeof val === 'object' && !Array.isArray(val)) {
+                    args = val; // Nested arguments
+                }
+                break;
+            }
+        }
     }
 
     // Handle nested cases: { "tool_call": { "name": "...", "arguments": {...} } }
@@ -279,7 +305,7 @@ export function normalizeRawToolCall(
     const validToolNames = tools.map(t => t.function.name);
 
     // Step 1: Normalize top-level JSON keys
-    const normalized = normalizeJsonKeys(rawObj);
+    const normalized = normalizeJsonKeys(rawObj, validToolNames);
     if (!normalized) {
         return { toolCall: null, blocked: false, warnings: ['Could not extract name/arguments from object'], original: rawObj };
     }
@@ -445,6 +471,52 @@ export function recoverToolCallsFromText(
     if (narrResult.calls.length > 0) {
         foundCalls.push(...narrResult.calls);
         allWarnings.push(...narrResult.warnings);
+    }
+
+    // Attempt D: Bare-Key Recovery (e.g. "final_answer: content" or "update_file: filename: tasks.md content: ...")
+    // This handles models that output key-value pairs without JSON braces.
+    const bareKeys = [...validToolNames, ...Object.keys(TOOL_NAME_ALIASES)];
+    for (const keyCandidate of bareKeys) {
+        const escaped = keyCandidate.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // Match: /^final_answer:\s*(.*)/ or /final_answer:\s*(.*)/
+        const bareRe = new RegExp(`(?:^|\\n)(${escaped})\\s*[:=]\\s*([\\s\\S]*?)(?=\\n[a-z0-9_]+\\s*[:=]|\\n[^\\s]|$)`, 'gi');
+        let m;
+        while ((m = bareRe.exec(text)) !== null) {
+            const rawName = m[1];
+            const rawValue = m[2].trim();
+            const nameResult = normalizeToolName(rawName, validToolNames);
+            if (!nameResult.canonical) continue;
+
+            const canonical = nameResult.canonical;
+            const args: Record<string, any> = {};
+
+            // If the rawValue itself has sub-keys (e.g. "filename: foo.md\ncontent: key"), parse them
+            const subKeyPattern = /^(?:\s*)([a-z0-9_]+)\s*[:=]\s*(.*)$/gm;
+            let subMatch;
+            let foundSubKeys = false;
+            while ((subMatch = subKeyPattern.exec(rawValue)) !== null) {
+                args[subMatch[1].trim()] = subMatch[2].trim();
+                foundSubKeys = true;
+            }
+
+            if (!foundSubKeys) {
+                // If no sub-keys, map the whole value to the primary field
+                if (canonical === 'final_answer') args.text = rawValue;
+                else if (canonical === 'read_file') args.filename = rawValue;
+                else if (canonical === 'update_file') args.content = rawValue;
+                else args.text = rawValue; // fallback
+            }
+
+            foundCalls.push({
+                toolCall: {
+                    id: `bare-${Math.random().toString(36).slice(2, 11)}`,
+                    function: { name: canonical, arguments: normalizeArgKeys(canonical, args) }
+                },
+                start: m.index,
+                end: m.index + m[0].length
+            });
+            allWarnings.push(`Recovered via Bare-Key Heuristic: ${canonical}`);
+        }
     }
 
     // Sort by start position for easier chronological processing

@@ -134,9 +134,9 @@ export const TOOL_NAME_ALIASES: Record<string, string> = {
     'buscar_internet': 'web_search',
     'buscar_web': 'web_search',
     'busqueda_web': 'web_search',
-    'search_online': 'web_search',
-    'internet_query': 'web_search',
     'query_web': 'web_search',
+    'search_online': 'web_search',
+    'google': 'web_search',
 
     // ── read_url variants ───────────────────────────────────────────
     'readurl': 'read_url',
@@ -154,6 +154,7 @@ export const TOOL_NAME_ALIASES: Record<string, string> = {
     'open_url': 'read_url',
     'load_url': 'read_url',
     'get_page': 'read_url',
+    'read_url_content': 'read_url',
     'summarize_page': 'read_url',
     'ask_page': 'read_url',
 
@@ -480,8 +481,6 @@ export const ARG_KEY_ALIASES: Record<string, Record<string, string>> = {
         'texto': 'text',
         'respuesta': 'text',
         'mensaje': 'text',
-        'conclusíon': 'text',
-        'conclusión': 'text',
         'texto_final': 'text',
         'resultado_final': 'text',
         // -> reasoning
@@ -489,6 +488,9 @@ export const ARG_KEY_ALIASES: Record<string, Record<string, string>> = {
         'logic': 'reasoning',
         'razonamiento': 'reasoning',
         'pensamiento': 'reasoning',
+        'conclusion': 'reasoning',
+        'conclusión': 'reasoning',
+        'conclusíon': 'reasoning',
         // -> sources
         'url': 'sources',
         'links': 'sources',
@@ -508,6 +510,15 @@ export const ARG_KEY_ALIASES: Record<string, Record<string, string>> = {
         'chat': 'chat_id',
         'to': 'chat_id',
         'recipient': 'chat_id',
+    },
+    get_crypto_price: {
+        'crypto': 'coin_id',
+        'coin': 'coin_id',
+        'moneda': 'coin_id',
+        'currency': 'vs_currency',
+        'vs': 'vs_currency',
+        'target': 'vs_currency',
+        'divisa': 'vs_currency',
     },
 };
 
@@ -565,5 +576,22 @@ export const VALUE_ALIASES: Record<string, Record<string, any>> = {
         'avanzado': 'advanced',
         'profundo': 'advanced',
         'completo': 'advanced'
+    },
+    coin_id: {
+        'bitcoin': 'bitcoin',
+        'ethereum': 'ethereum',
+        'solana': 'solana',
+        'cardano': 'cardano',
+        'tether': 'tether',
+        'ripple': 'ripple',
+        'dogecoin': 'dogecoin',
+    },
+    vs_currency: {
+        'usd': 'usd',
+        'eur': 'eur',
+        'mxn': 'mxn',
+        'dolar': 'usd',
+        'dólar': 'usd',
+        'euro': 'eur',
     }
 };

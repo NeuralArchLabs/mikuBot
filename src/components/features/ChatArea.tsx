@@ -33,6 +33,7 @@ interface ChatAreaProps {
     folderPermissions: Record<string, string>;
     onRequestPermission: (target: any) => void;
     onWakeUpAll: () => void;
+    askAlert: (message: string, position?: 'left' | 'right' | 'center') => Promise<void>;
 }
 
 export const ChatArea = ({
@@ -61,6 +62,7 @@ export const ChatArea = ({
     folderPermissions,
     onRequestPermission,
     onWakeUpAll,
+    askAlert
 }: ChatAreaProps) => {
     const inputRef = React.useRef<HTMLTextAreaElement>(null);
 
@@ -76,6 +78,23 @@ export const ChatArea = ({
             e.preventDefault();
             onSend();
         }
+    };
+
+    const handleCopyAllLogs = () => {
+        const lastHistoryMsg = [...messages].reverse().find(m => m.rawHistory);
+        const displayHistory = (isLoading || !lastHistoryMsg) ? agentStatus.rawMessages : lastHistoryMsg.rawHistory;
+
+        if (!displayHistory) return;
+
+        const text = displayHistory.map((m: any) => {
+            let content = `[${m.role.toUpperCase()}]\n${m.content || ''}`;
+            if (m.tool_calls) content += `\n[TOOL CALLS]\n${JSON.stringify(m.tool_calls, null, 2)}`;
+            if (m.tool_call_id) content += `\n[TOOL CALL ID]: ${m.tool_call_id}`;
+            return content;
+        }).join('\n\n' + '='.repeat(60) + '\n\n');
+
+        navigator.clipboard.writeText(text);
+        askAlert('✅ Neural Logs: Historial completo copiado al portapapeles con éxito.', 'right');
     };
 
     const isAgentActive = !['idle'].includes(agentStatus.phase) && isLoading;
@@ -124,9 +143,22 @@ export const ChatArea = ({
                                 <p className="text-[10px] text-purple-400/60 font-mono">Raw Context & Internal Log Streaming</p>
                             </div>
                         </div>
-                        <button onClick={() => onDebugModeChange(false)} className="text-slate-500 hover:text-white transition-colors" title="Close Debug Interface">
-                            <Icon name="times" />
-                        </button>
+                        <div className="ml-auto flex items-center gap-3">
+                            <button
+                                onClick={handleCopyAllLogs}
+                                className="bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 px-3 py-1.5 rounded-lg border border-purple-500/30 text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 transition-all"
+                                title="Copiar todo el historial raw al portapapeles"
+                            >
+                                <Icon name="copy" /> Copy All Logs
+                            </button>
+                            <button
+                                onClick={() => onDebugModeChange(false)}
+                                className="text-slate-500 hover:text-white transition-colors p-2"
+                                title="Close Debug Interface"
+                            >
+                                <Icon name="times" />
+                            </button>
+                        </div>
                     </div>
 
                     <div className="flex-1 overflow-y-auto space-y-4 custom-scrollbar pr-2">
@@ -203,7 +235,7 @@ export const ChatArea = ({
                                     <MarkdownRenderer content={msg.text} />
                                 </div>
                             ) : (
-                                <div className={`relative w-auto max-w-[95%] sm:max-w-[85%] lg:max-w-[75%] rounded-2xl p-4 sm:px-5 sm:py-4 shadow-xl transition-all duration-300 break-words ${msg.role === 'user'
+                                <div className={`relative w-auto max-w-[95%] sm:max-w-[85%] lg:max-w-[75%] rounded-2xl p-4 sm:px-5 sm:py-4 shadow-xl transition-all duration-300 break-words message-pop-in ${msg.role === 'user'
                                     ? 'bg-blue-600/20 border border-blue-500/30 text-blue-50'
                                     : 'bg-slate-800 border border-slate-700 text-slate-200'
                                     }`}>
@@ -265,8 +297,9 @@ export const ChatArea = ({
                                                             return <MarkdownRenderer key={idx} content={block.content} />;
                                                         } else if (block.type === 'thought' || block.type === 'text') {
                                                             const hasTools = msg.blocks.some(b => b.type === 'tool_call');
-                                                            if (hasTools && !debugMode) return null;
-                                                            return <CollapsibleTextBlock key={idx} content={block.content} forceCollapsed={isOld} />;
+                                                            // Force collapse by default if it's an interleaved thought in a tool session
+                                                            const forceCollapse = isOld || (hasTools && !debugMode);
+                                                            return <CollapsibleTextBlock key={idx} content={block.content} forceCollapsed={forceCollapse} isThought={block.type === 'thought'} />;
                                                         } else if (block.type === 'tool_call') {
                                                             return <ToolBlock key={idx} block={block} isOld={isOld} />;
                                                         }

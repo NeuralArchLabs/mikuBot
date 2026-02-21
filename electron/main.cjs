@@ -319,6 +319,126 @@ ipcMain.handle('run-extract', async (event, { url }) => {
     });
 });
 
+ipcMain.handle('list-skills', async (event, { toolsPath }) => {
+    try {
+        if (!toolsPath) return { ok: false, error: 'Tools path not provided' };
+        const skillsPath = path.join(toolsPath, 'skills');
+        console.log(`[Main Process] Listing skills from: ${skillsPath}`);
+
+        if (!fs.existsSync(skillsPath)) {
+            return { ok: true, skills: [] };
+        }
+
+        const skills = [];
+        const folders = fs.readdirSync(skillsPath);
+
+        for (const folder of folders) {
+            const skillDir = path.join(skillsPath, folder);
+            if (fs.statSync(skillDir).isDirectory()) {
+                const manifestPath = path.join(skillDir, 'manifest.json');
+                if (fs.existsSync(manifestPath)) {
+                    try {
+                        const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+                        manifest.__folderName = folder; // Attach internal folder name
+                        skills.push(manifest);
+                    } catch (e) {
+                        console.warn(`[Main Process] Failed to parse manifest for skill ${folder}:`, e.message);
+                    }
+                }
+            }
+        }
+
+        return { ok: true, skills };
+    } catch (error) {
+        console.error('[Main Process] list-skills error:', error);
+        return { ok: false, error: error.message };
+    }
+});
+
+ipcMain.handle('execute-skill', async (event, { toolsPath, skillName, args }) => {
+    try {
+        if (!toolsPath || !skillName) return { ok: false, error: 'Missing parameters' };
+
+        const skillsPath = path.join(toolsPath, 'skills');
+        let skillPath = path.join(skillsPath, skillName);
+        let manifestPath = path.join(skillPath, 'manifest.json');
+
+        // Robust Resolution: If folder doesn't match name, search manifests
+        if (!fs.existsSync(manifestPath)) {
+            const folders = fs.readdirSync(skillsPath);
+            let found = false;
+            for (const folder of folders) {
+                const testPath = path.join(skillsPath, folder, 'manifest.json');
+                if (fs.existsSync(testPath)) {
+                    const m = JSON.parse(fs.readFileSync(testPath, 'utf8'));
+                    if (m.name === skillName) {
+                        skillPath = path.join(skillsPath, folder);
+                        manifestPath = testPath;
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            if (!found) {
+                return { ok: false, error: `Skill "${skillName}" not found or manifest missing.` };
+            }
+        }
+
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+        const entryFile = path.join(skillPath, manifest.entry);
+
+        if (!fs.existsSync(entryFile)) {
+            return { ok: false, error: `Entry file "${manifest.entry}" not found for skill "${skillName}".` };
+        }
+
+        console.log(`[Main Process] Executing skill: ${skillName} (${manifest.runtime})`);
+
+        if (manifest.runtime === 'python') {
+            const { execFile } = require('child_process');
+            const pythonExe = path.join(resourcesPath, 'engine', 'python', 'python.exe');
+
+            return new Promise((resolve) => {
+                execFile(pythonExe, [entryFile, JSON.stringify(args)], (error, stdout, stderr) => {
+                    if (error) {
+                        console.error(`[Main Process] Skill execution error (${skillName}):`, error);
+                        return resolve({ ok: false, error: error.message, stderr });
+                    }
+                    try {
+                        const match = stdout.match(/\{[\s\S]*\}/);
+                        const data = match ? JSON.parse(match[0]) : stdout.trim();
+                        resolve({ ok: true, data });
+                    } catch (e) {
+                        resolve({ ok: true, data: stdout.trim() });
+                    }
+                });
+            });
+        } else if (manifest.runtime === 'node') {
+            const { exec } = require('child_process');
+            // Using the node version from electron or system? 
+            // In Electron, we can use process.execPath for the electron binary, 
+            // but for a script we normally want just 'node'.
+            return new Promise((resolve) => {
+                const cmd = `node "${entryFile}" '${JSON.stringify(args)}'`;
+                exec(cmd, (error, stdout, stderr) => {
+                    if (error) return resolve({ ok: false, error: error.message, stderr });
+                    try {
+                        const match = stdout.match(/\{[\s\S]*\}/);
+                        const data = match ? JSON.parse(match[0]) : stdout.trim();
+                        resolve({ ok: true, data });
+                    } catch (e) {
+                        resolve({ ok: true, data: stdout.trim() });
+                    }
+                });
+            });
+        }
+
+        return { ok: false, error: `Unsupported runtime: ${manifest.runtime}` };
+    } catch (error) {
+        console.error('[Main Process] execute-skill error:', error);
+        return { ok: false, error: error.message };
+    }
+});
+
 ipcMain.handle('fs-read-folder', async (event, folderPath) => {
     console.log(`[Main] Request to read folder: "${folderPath}"`);
 

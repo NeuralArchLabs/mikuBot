@@ -8,6 +8,7 @@ import { validateToolArgs, safeFetch } from '../../utils';
 import { recoverToolCallsFromText, normalizeRawToolCall, RecoveredCall } from '../formatters/toolCallNormalizer';
 import { formatFinalResponse } from '../formatters/answerFormatter';
 import { formatTelegramResponse } from '../formatters/telegramFormatter';
+import { TOOL_NAME_ALIASES } from '../formatters/normalization/dictionaries';
 
 /**
  * Resolves the source and filename from a tool call.
@@ -404,11 +405,47 @@ export async function executeToolCall(
                 };
             }
 
-            default:
+            default: {
+                // Dynamic Skills Integration
+                const isElectron = typeof window !== 'undefined' && (window as any).electron?.invoke;
+                if (isElectron && config.folderPaths?.tools) {
+                    try {
+                        // We check if this tool exists in the skills library
+                        const skillsResponse = await (window as any).electron.invoke('list-skills', { toolsPath: config.folderPaths.tools });
+                        if (skillsResponse.ok && Array.isArray(skillsResponse.skills)) {
+                            const skill = skillsResponse.skills.find((s: any) => s.name === name);
+                            if (skill) {
+                                const execution = await (window as any).electron.invoke('execute-skill', {
+                                    toolsPath: config.folderPaths.tools,
+                                    skillName: name,
+                                    args: args
+                                });
+                                if (execution.ok) {
+                                    return { success: true, data: execution.data };
+                                }
+                                return { success: false, error: execution.error || `Error executing skill ${name}` };
+                            }
+                        }
+                    } catch (err) {
+                        console.error(`[Agent] Failed to check/execute dynamic skill ${name}:`, err);
+                    }
+                }
+
+                let availableSkillsMsg = "";
+                if (isElectron && config.folderPaths?.tools) {
+                    try {
+                        const skillsResponse = await (window as any).electron.invoke('list-skills', { toolsPath: config.folderPaths.tools });
+                        if (skillsResponse.ok && Array.isArray(skillsResponse.skills)) {
+                            availableSkillsMsg = ` (Skills detectadas: ${skillsResponse.skills.map((s: any) => s.name).join(', ')})`;
+                        }
+                    } catch { }
+                }
+
                 return {
                     success: false,
-                    error: `❌ Unknown tool: "${name}". Valid tools are: read_file, update_file, list_files, search_files, web_search, read_url, run_console, final_answer. If you have the data, use "final_answer".`
+                    error: `❌ Unknown tool: "${name}".${availableSkillsMsg} Ensure its manifest.json is correct and use the exact name defined there.`
                 };
+            }
         }
     } catch (e) {
         return { success: false, error: `Tool execution error: ${e instanceof Error ? e.message : String(e)}` };
@@ -692,6 +729,10 @@ export async function sendAgentMessage(
     let retries = 0;
     let actionHistory: string[] = [];
 
+    // Capture original trigger request for Mission Anchoring
+    const missionTrigger = historicalContext.filter(m => m.role === 'user').slice(-1)[0]?.content || 'Sin objetivo definido.';
+    let lastExecutionFeedback = 'Inicio de misión.';
+
     // ── Main Agent Loop ──────────────────────────────────────────────
     while (!abortSignal.aborted) {
         if (retries >= MAX_RETRIES) {
@@ -702,13 +743,12 @@ export async function sendAgentMessage(
 
         iterations++;
 
-        // DYNAMIC SYSTEM PROMPT REFRESH (Working Memory)
+        // DYNAMIC SYSTEM PROMPT REFRESH (Awareness & Working Memory)
         if (isAgentMode || isInstructionMode) {
             const findTaskContent = () => {
                 const stores = [currentFiles, currentWorkSpace];
                 for (const store of stores) {
                     const keys = Object.keys(store);
-                    // Buscamos 'tasks.md' o 'TASKS.md'. El prefijo @CORE ya está resuelto en el store 'currentFiles'.
                     const taskKey = keys.find(k => k.toLowerCase() === 'tasks.md');
                     if (taskKey) return store[taskKey];
                 }
@@ -716,23 +756,41 @@ export async function sendAgentMessage(
             };
 
             const tasksContent = findTaskContent() || '';
-            const workingMemoryBlock = `[PLAN_DE_TRABAJO_ACTUAL]\n${tasksContent || 'No hay tareas activas.'}\n[/PLAN_DE_TRABAJO_ACTUAL]`;
+
+            // Focus Mode Extraction
+            const taskLines = tasksContent.split('\n');
+            const lastDone = taskLines.filter(l => l.includes('[x]')).pop()?.trim() || 'Ninguna (Inicio)';
+            const nextTodo = taskLines.find(l => l.includes('[ ]'))?.trim() || 'Finalización / Limpieza';
+
+            // Build Mission Anchor & Operation Focus
+            const awarenessBlock = `
+[ESTADO_DEL_AGENTE]
+Misión Original: "${missionTrigger}"
+Turno Actual: ${iterations} de ${MAX_RETRIES}
+[/ESTADO_DEL_AGENTE]
+
+[FOCO_DE_OPERACIÓN]
+Resultado Anterior: ${lastExecutionFeedback}
+Tarea Completada: ${lastDone}
+Siguiente Acción: ${nextTodo}
+${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa los datos del "Resultado Anterior" para tu respuesta final. NUNCA inventes números.' : ''}
+[/FOCO_DE_OPERACIÓN]`;
 
             let systemPromptCurrent = agentMessages[0].content;
 
             // Simplified markers for better reliability
-            const markerStart = "[PLAN_DE_TRABAJO_ACTUAL]";
-            const markerEnd = "[/PLAN_DE_TRABAJO_ACTUAL]";
+            const markerStart = "[ESTADO_DEL_AGENTE]";
+            const markerEnd = "[/FOCO_DE_OPERACIÓN]";
             const sIdx = systemPromptCurrent.indexOf(markerStart);
             const eIdx = systemPromptCurrent.indexOf(markerEnd);
 
             if (sIdx !== -1 && eIdx !== -1) {
                 const before = systemPromptCurrent.substring(0, sIdx);
                 const after = systemPromptCurrent.substring(eIdx + markerEnd.length);
-                agentMessages[0].content = before + workingMemoryBlock + after;
+                agentMessages[0].content = before + awarenessBlock + after;
             } else {
-                // Initial injection fallback
-                const tasksSection = `\n\n${workingMemoryBlock}\n\n`;
+                // Initial injection
+                const tasksSection = `\n\n${awarenessBlock}\n\n`;
                 if (systemPromptCurrent.includes('[IDIOMA — OBLIGATORIO]')) {
                     agentMessages[0].content = systemPromptCurrent.replace(/(\[IDIOMA — OBLIGATORIO\].*?\n)/, `$1${tasksSection}`);
                 } else {
@@ -747,7 +805,8 @@ export async function sendAgentMessage(
             retries,
             maxRetries: MAX_RETRIES,
             elapsedMs: Date.now() - startTime,
-            rawMessages: JSON.parse(JSON.stringify(agentMessages)) // Deep copy to ensure UI sees current state
+            rawMessages: JSON.parse(JSON.stringify(agentMessages)), // Deep copy to ensure UI sees current state
+            currentSystemPrompt: agentMessages[0].content
         });
 
         let content: string;
@@ -888,14 +947,37 @@ export async function sendAgentMessage(
             content: content || '[Calling Tools...]',
             tool_calls: uniqueToolCalls.length > 0 ? uniqueToolCalls : undefined,
         });
+
+        // DYNAMIC SYNC: Emit blocks early so thoughts & tools appear before execution
+        onChunk(content || '', false, [...allBlocks, ...iterationBlocks]);
         onStatus({ rawMessages: [...agentMessages] });
 
         // [ANTI-INTERFERENCE FIX]: If final_answer is detected, it overrides EVERYTHING else in this iteration.
         const finalAnswerCall = uniqueToolCalls.find(tc => tc.function.name === 'final_answer');
         if (finalAnswerCall) {
+            // Task Protocol Enforcement: Do not allow final_answer if TASKS.md exists
+            const hasTasksFile = Object.keys(currentFiles).some(k => k.toLowerCase() === 'tasks.md') ||
+                Object.keys(currentWorkSpace).some(k => k.toLowerCase() === 'tasks.md');
+
+            if (hasTasksFile && isAgentMode) {
+                log('warn', 'Agent tried to answer while TASKS.md is still active. Force rejection.');
+                uniqueToolCalls.length = 0;
+                agentMessages.push({
+                    role: 'user',
+                    content: '⚠️ BLOQUEO DE PROTOCOLO: No puedes dar un "final_answer" mientras `@CORE/TASKS.md` exista. Debes completar TODAS las tareas pendientes, marcar los checks `[x]` y finalmente ELIMINAR el archivo con `delete_file` antes de responder.'
+                });
+                onStatus({ phase: 'thinking', rawMessages: [...agentMessages] });
+                continue;
+            }
+
             uniqueToolCalls.length = 0;
             uniqueToolCalls.push(finalAnswerCall);
-            iterationBlocks.length = 0; // Clear all conversational noisy thoughts or other tools
+            // Keep actual blocks (thoughts) but remove other tool calls that might have leaked
+            const toolIndex = iterationBlocks.findIndex(b => b.type === 'tool_call');
+            if (toolIndex !== -1) {
+                // Keep only thoughts and the final_answer itself (if it was added as a block, which it isn't yet)
+                iterationBlocks.splice(toolIndex);
+            }
         }
 
         allBlocks = [...allBlocks, ...iterationBlocks];
@@ -905,7 +987,7 @@ export async function sendAgentMessage(
         if (activeToolCalls.length === 0) {
             const isJustSignature = signatureRegex.test(content || '') && (content?.length || 0) < 100;
             if (isAgentMode) {
-                const hasSubstantialText = (content?.length || 0) > 20;
+                const hasSubstantialText = (content?.length || 0) > 15;
 
                 if (isJustSignature || hasSubstantialText) {
                     onChunk(content || '', true, allBlocks);
@@ -914,20 +996,26 @@ export async function sendAgentMessage(
                     return;
                 } else if (retries < MAX_RETRIES) {
                     retries++;
-                    const nudge = '⚠️ PROTOCOLO INCOMPLETO: No has realizado ninguna acción ni has dado una respuesta final. RECUERDA: Debes usar "final_answer" para terminar. RESPONDE ÚNICAMENTE EN JSON.';
-                    agentMessages.push({
-                        role: 'user', content: `⚠️ PROTOCOLO INCOMPLETO: No has realizado ninguna acción ni has dado una respuesta final. RECUERDA: Debes usar "final_answer" para terminar. RESPONDE ÚNICAMENTE EN JSON.
 
-**EXAMPLE (FORMAT ONLY):**
-{"name": "tool_name", "arguments": {"param": "value"}}
-...
+                    // Check if the previous message was already a technical error nudge to avoid redundancy
+                    const lastMsg = agentMessages[agentMessages.length - 1];
+                    if (lastMsg && lastMsg.role === 'user' && lastMsg.content.includes('⚠️ ERROR TÉCNICO')) {
+                        onStatus({ phase: 'thinking', retries, rawMessages: [...agentMessages] });
+                        continue; // Skip the redundant "Incomplete Protocol" nudge if we already nudged for a tool error
+                    }
+
+                    agentMessages.push({
+                        role: 'user', content: `⚠️ PROTOCOLO DE AGENTE INCOMPLETO:
+Has proporcionado texto, pero ninguna herramienta (JSON). Si ya tienes la respuesta final para Armando, debes usar obligatoriamente la herramienta "final_answer".
+
+**EJEMPLO DE CIERRE:**
 {"name": "final_answer", "arguments": {
-  "text": "Final response summary.",
-  "reasoning": "Internal logic.",
-  "sources": ["SOURCE_1", "SOURCE_2"]
+  "text": "Tu respuesta final aquí...",
+  "reasoning": "Breve explicación de por qué esta es la respuesta.",
+  "sources": ["fuente1.md", "url_sitio"]
 }}
 
-**IMPORTANT:** Every final_answer must cite the actual files or URLs used.` });
+Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO respondas solo con texto.` });
                     onStatus({ phase: 'thinking', retries, rawMessages: [...agentMessages] });
                     continue;
                 }
@@ -1003,34 +1091,44 @@ export async function sendAgentMessage(
             const b = allBlocks.find(x => x.toolCall?.id === toolCall.id);
             if (b) b.result = result;
 
+            // DYNAMIC SYNC: Update UI after each tool execution
+            onChunk("", false, allBlocks);
+
             const isSuccess = result?.success && result?.data?.success !== false;
             const hasError = result?.error || (result?.data?.success === false && result?.data?.error);
 
             if (!isSuccess) {
                 retries++;
                 const errorContent = hasError ? `Error: ${hasError}` : 'Tool execution failed.';
+                lastExecutionFeedback = `❌ FALLO: ${errorContent}`;
                 agentMessages.push({ role: 'tool', content: errorContent, tool_call_id: toolCall.id });
 
-                const findInStore = (store: Record<string, string>, fileName: string) => {
-                    const low = fileName.toLowerCase();
-                    const key = Object.keys(store).find(k => k.toLowerCase() === low || k.toLowerCase().endsWith('/' + low));
-                    return key ? store[key] : null;
-                };
-
-                const toolsMd = findInStore(currentFiles, 'base/tools.md') || findInStore(currentFiles, 'tools.md') || '';
-                const toolSpecificManual = extractToolInstructions(toolCall.function.name, toolsMd);
-                if (toolSpecificManual) {
+                // Fetch JIT Snippet for recovery
+                const snippet = extractToolSnippet(toolCall.function.name);
+                if (snippet) {
+                    const snippetBlock = `\n\nEJEMPLO DE USO CORRECTO:\n${snippet}`;
                     agentMessages.push({
-                        role: 'system',
-                        content: `⚠️ INSTRUCCIÓN TÉCNICA DE RECUPERACIÓN:\nSe detectó un fallo o uso incorrecto en "${toolCall.function.name}". Siga estrictamente estas reglas extraídas de TOOLS.md:\n\n${toolSpecificManual}`
+                        role: 'user',
+                        content: `⚠️ INSTRUCCIÓN DE RECUPERACIÓN: Se detectó un fallo en "${toolCall.function.name}". Utiliza este formato exacto para corregirlo:${snippetBlock}`
                     });
                     onStatus({ rawMessages: [...agentMessages] });
                 }
             } else {
                 retries = 0;
+                const resultData = result.data || {};
+                const summary = JSON.stringify(resultData).substring(0, 200);
+                lastExecutionFeedback = `✅ ÉXITO: "${toolCall.function.name}" completada. DATOS OBTENIDOS: ${summary}${summary.length >= 200 ? '...' : ''}`;
+
                 const desc = `${toolCall.function.name}(${JSON.stringify(toolCall.function.arguments)})`;
                 actionHistory.push(desc);
                 agentMessages.push({ role: 'tool', content: JSON.stringify(result), tool_call_id: toolCall.id });
+
+                // [CONTEXT ANCHOR]: Force the data into the most recent memory slot for small models
+                agentMessages.push({
+                    role: 'user',
+                    content: `📌 DATOS OBTENIDOS: La herramienta "${toolCall.function.name}" devolvió:\n${summary}\n\nREGLA: Usa esta información exacta. No alucines ni inventes otros valores.`
+                });
+
                 onStatus({ rawMessages: [...agentMessages] });
 
                 // CRITICAL: Update local mutable stores so subsequent steps in this session see the changes
@@ -1060,13 +1158,87 @@ export async function sendAgentMessage(
             }
         }
 
+        function extractToolSnippet(toolName: string): string {
+            // 1. Try to find in CORE Library
+            const libraryFile = Object.keys(currentFiles).find(k => k.toLowerCase().endsWith('tool_usage_library.md'));
+            const libraryContent = libraryFile ? currentFiles[libraryFile] : '';
+
+            if (libraryContent) {
+                const escapedName = toolName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const regex = new RegExp(`## \\[${escapedName}\\]\\s*\\r?\\n([\\s\\S]*?)(?=\\n##|$)`, 'i');
+                const match = libraryContent.match(regex);
+                if (match) return match[1].trim();
+            }
+
+            // 2. Try to find in Skill Folder (usage.md)
+            const skillUsageFile = Object.keys(currentTools).find(k =>
+                k.toLowerCase().includes(toolName.toLowerCase()) && k.toLowerCase().endsWith('usage.md')
+            );
+            if (skillUsageFile) return currentTools[skillUsageFile];
+
+            return "";
+        }
+
+        function autoExtractSources(actions: string[], history: any[]): string[] {
+            const found: Set<string> = new Set();
+
+            // 1. Scan for filenames (common in core tools)
+            actions.forEach(a => {
+                const fileMatch = a.match(/"filename"\s*:\s*"(.*?)"/i);
+                if (fileMatch) found.add(fileMatch[1]);
+            });
+
+            // 2. Cross-reference actions with dynamic tool metadata
+            actions.forEach(a => {
+                tools.forEach(t => {
+                    const toolName = t.function.name;
+                    // Check if toolName is present in the action string (e.g. "tool_name(...)")
+                    const nameRegex = new RegExp(`(^|[^a-zA-Z0-9_])${toolName}([^a-zA-Z0-9_]|$)`, 'i');
+                    if (nameRegex.test(a)) {
+                        const canonical = TOOL_NAME_ALIASES[toolName.toLowerCase()] || toolName;
+                        if (['web_search', 'read_url'].includes(canonical)) {
+                            found.add("Investigación Web");
+                        } else if (canonical !== 'final_answer' && !['read_file', 'update_file', 'patch_file', 'delete_file', 'list_files', 'search_files'].includes(canonical)) {
+                            // Use the first part of the description as the source name
+                            const desc = t.function.description.split('.')[0].split('|')[0].trim();
+                            found.add(`Neural Skill: ${desc || toolName}`);
+                        }
+                    }
+                });
+            });
+
+            // 3. Scan for URLs in tool responses
+            history.forEach(m => {
+                if (m.role === 'tool' && typeof m.content === 'string' && m.content.length < 5000) {
+                    const urls = m.content.match(/https?:\/\/[a-z0-9.-]+\.[a-z]{2,}/gi);
+                    if (urls) urls.slice(0, 2).forEach(u => found.add(u));
+                }
+            });
+            return Array.from(found);
+        }
+
         function validateAndReport(tc: ToolCall): boolean {
-            const v = validateToolArgs(tc);
+            const v = validateToolArgs(tc, tools);
             if (!v.valid) {
                 const b = allBlocks.find(x => x.toolCall?.id === tc.id);
                 if (b) b.result = { success: false, error: v.error };
-                agentMessages.push({ role: 'tool', content: v.error, tool_call_id: tc.id });
+
+                // Fetch JIT Snippet
+                const snippet = extractToolSnippet(tc.function.name);
+                const snippetBlock = snippet ? `\n\nEJEMPLO DE USO CORRECTO:\n${snippet}` : "";
+
+                // Content for the tool response
+                agentMessages.push({ role: 'tool', content: `ERROR DE VALIDACIÓN: ${v.error}${snippetBlock}`, tool_call_id: tc.id });
+
+                // ALSO inject a user message as a "correction force" for small models
+                agentMessages.push({
+                    role: 'user',
+                    content: `⚠️ ERROR TÉCNICO: Intentaste usar la herramienta "${tc.function.name}" pero los parámetros son incorrectos.\n\nDETALLE: ${v.error}${snippetBlock}\n\nPOR FAVOR, CORRIGE TU LLAMADA EN LA SIGUIENTE ITERACIÓN. No inventes datos.`
+                });
+
                 onStatus({ rawMessages: [...agentMessages] });
+                // Update UI with the failure result in the block
+                onChunk("", false, allBlocks);
                 return false;
             }
             return true;
@@ -1079,16 +1251,38 @@ export async function sendAgentMessage(
 
             if (tc.function.name === 'final_answer') {
                 hasFinalAnswer = true;
-                const textRaw = tc.function.arguments.text || tc.function.arguments.mensaje || 'Tarea completada exitosamente.';
+                const args = tc.function.arguments;
+                // Canonical keys handled by normalizeArgKeys in toolCallNormalizer
+                const textRaw = args.text || 'Tarea completada exitosamente.';
+                const reasoning = args.reasoning || '';
                 const text = formatFinalResponse(textRaw);
-                const sources = tc.function.arguments.sources || [];
+                let sources = args.sources || [];
 
-                let finalContent = text;
-                if (sources.length > 0) {
-                    finalContent += '\n\n**Fuentes Consultadas:**\n' + sources.map((s: string) => `- ${s}`).join('\n');
+                // AUTO-SYNERGY: If the model didn't provide sources, we find them
+                if (sources.length === 0) {
+                    sources = autoExtractSources(actionHistory, agentMessages);
                 }
 
+                let finalContent = text;
+
+                // Add reasoning if provided as a discrete parameter
+                if (reasoning) {
+                    finalContent = `> **Conclusión:** ${reasoning}\n\n${finalContent}`;
+                }
+
+                if (sources.length > 0) {
+                    finalContent += '\n\n---\n**🧠 Bibliografía y Contexto:**\n' + sources.map((s: string) => `· ${s}`).join('\n');
+                }
+
+                // RENDERING: Update blocks for immediate UI display
                 allBlocks.push({ type: 'answer', content: finalContent });
+
+                // PERSISTENCE: Overwrite content in the message history so it's not "empty" or just "[Calling Tools...]"
+                const lastAssistant = [...agentMessages].reverse().find(m => m.role === 'assistant');
+                if (lastAssistant) {
+                    lastAssistant.content = finalContent;
+                }
+
                 onChunk(finalContent, true, allBlocks);
                 break;
             }

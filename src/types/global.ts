@@ -163,6 +163,7 @@ export interface AgentStatus {
     streamedText: string;
     errorCount: number;
     rawMessages?: any[];
+    currentSystemPrompt?: string;
 }
 
 export interface PendingToolApproval {
