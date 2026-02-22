@@ -88,6 +88,7 @@ export interface AppConfig {
         workSpace: string;
         tools: string;
     };
+    skillsConfig?: Record<string, Record<string, any>>;
 }
 
 export type ApprovalMode = 'auto' | 'manual';
@@ -100,7 +101,7 @@ export interface AppState {
     workSpaceFiles: Record<string, string>;
     toolsFiles: Record<string, string>;
     selectedLibraryFiles: string[];
-    activeTab: 'chat' | 'cortex' | 'commands' | 'settings';
+    activeTab: 'chat' | 'cortex' | 'commands' | 'settings' | 'skills';
     selectedFile: string;
     isLibraryExpanded: boolean;
     unsavedChanges: Record<string, string>;

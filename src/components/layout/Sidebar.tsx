@@ -164,7 +164,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                             <h1 className={`font-bold text-lg text-white tracking-tight leading-tight whitespace-nowrap overflow-hidden text-ellipsis transition-all duration-300 ${isAnimatingEgg ? 'text-blue-400 font-mono text-sm' : ''}`}>
                                 {displayName}
                             </h1>
-                            <div className="text-[11px] text-slate-500/80 font-bold uppercase tracking-[0.2em] leading-tight mt-0.5">v1.5.1</div>
+                            <div className="text-[11px] text-slate-500/80 font-bold uppercase tracking-[0.2em] leading-tight mt-0.5">v1.6.0</div>
                         </div>
                     </div>
 
@@ -175,6 +175,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                             { id: 'chat', label: 'Neural Chat', icon: 'comments', color: 'text-blue-400' },
                             { id: 'cortex', label: 'Cortex Editor', icon: 'project-diagram', color: 'text-indigo-400' },
                             { id: 'commands', label: 'Command Editor', icon: 'bolt', color: 'text-amber-400' },
+                            { id: 'skills', label: 'Neural Skills', icon: 'puzzle-piece', color: 'text-cyan-400' },
                             { id: 'settings', label: 'Control Room', icon: 'cog', color: 'text-slate-400' }
                         ].map(tab => (
                             <button

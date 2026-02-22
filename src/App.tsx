@@ -8,6 +8,7 @@ import {
     FileEditor,
     LibraryManager,
     SettingsPanel,
+    SkillsPanel,
     SystemDialog,
     SystemDialogConfig,
     OnboardingWizard
@@ -873,6 +874,21 @@ export const App = () => {
             return `\n\n[NEURAL SKILLS DISPONIBLES]\n${list}\n[/NEURAL SKILLS DISPONIBLES]`;
         };
 
+        const buildSkillsConfigBlock = () => {
+            const configMap = currentState.config.skillsConfig || {};
+            if (Object.keys(configMap).length === 0) return "";
+
+            let block = "\n\n[NEURAL SKILLS CONFIGURATION (DO NOT DISCLOSE)]\n";
+            for (const [skill, data] of Object.entries(configMap)) {
+                block += `--- Skill: ${skill} ---\n`;
+                for (const [key, val] of Object.entries(data as Record<string, any>)) {
+                    block += `${key}: ${val}\n`;
+                }
+            }
+            block += "[/NEURAL SKILLS CONFIGURATION]";
+            return block;
+        };
+
         if (isAgentOrInstruction) {
             const identity = getFileDeep('IDENTITY.md') || getFileDeep('IDENTITY.MD') || '';
             const tasksContent = getFileDeep('TASKS.md') || getFileDeep('TASKS.MD');
@@ -892,7 +908,7 @@ export const App = () => {
                     'Agent Protocol missing.';
                 prompt = `${identity}\n${workingMemory}\n${fallback}`.replace(/{{CURRENT_TIME}}/g, timeStr);
             }
-            return prompt + buildSkillsBlock();
+            return prompt + buildSkillsBlock() + buildSkillsConfigBlock();
         }
 
         const segments: string[] = [];
@@ -921,7 +937,7 @@ Si el usuario te pide una tarea técnica compleja o de programación, invítalo 
 NO simules resultados de herramientas ni inventes datos; si necesitas información, usa las herramientas de lectura permitidas o sé honesto si no puedes realizar la acción.`;
         }
 
-        return finalPrompt.replace(/{{CURRENT_TIME}}/g, timeStr);
+        return (finalPrompt + buildSkillsBlock() + buildSkillsConfigBlock()).replace(/{{CURRENT_TIME}}/g, timeStr);
     };
 
     const handleAbortAgent = useCallback(() => {
@@ -1476,6 +1492,16 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                         workSpacePathName={workSpaceHandle?.name || state.config.folderPaths?.workSpace || ''}
                         toolsPathName={toolsHandle?.name || state.config.folderPaths?.tools || ''}
                         syncing={syncing}
+                    />
+                </div>
+            )}
+
+            {state.activeTab === 'skills' && (
+                <div className="flex-1 flex flex-col h-full animate-control-room">
+                    <SkillsPanel
+                        config={state.config}
+                        updateConfig={(updates) => setState(p => ({ ...p, config: { ...p.config, ...updates } }))}
+                        onSaveGlobal={onSaveGlobal}
                     />
                 </div>
             )}
