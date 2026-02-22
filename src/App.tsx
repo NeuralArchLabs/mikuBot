@@ -56,6 +56,7 @@ export const App = () => {
     const [loadingSessions, setLoadingSessions] = useState(true);
     const abortControllerRef = useRef<AbortController | null>(null);
     const lastUserTextRef = useRef<string>('');
+    const lastForceToolModeRef = useRef<boolean>(false);
 
     const [coreHandle, setCoreHandle] = useState<FileSystemDirectoryHandle | null>(null);
     const [extraHandle, setExtraHandle] = useState<FileSystemDirectoryHandle | null>(null);
@@ -1080,6 +1081,7 @@ NO simules resultados de herramientas ni inventes datos; si necesitas informaci�
         }
 
         lastUserTextRef.current = text;
+        lastForceToolModeRef.current = forceToolMode;
         const userMsgId = Date.now().toString();
         const userMsg: Message = {
             id: userMsgId,
@@ -1314,7 +1316,9 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
     }, [processMessage]);
 
     const handleReprompt = useCallback(() => {
-        if (lastUserTextRef.current && !isLoading) processMessage('Continue from where you stopped.', false);
+        if (lastUserTextRef.current && !isLoading) {
+            processMessage('Continue from where you stopped.', lastForceToolModeRef.current);
+        }
     }, [isLoading, processMessage]);
 
     const handleClear = useCallback(() => {
