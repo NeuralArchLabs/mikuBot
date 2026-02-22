@@ -65,6 +65,25 @@ export const ChatArea = ({
     askAlert
 }: ChatAreaProps) => {
     const inputRef = React.useRef<HTMLTextAreaElement>(null);
+    const [isSent, setIsSent] = React.useState(false);
+    const [boltGlow, setBoltGlow] = React.useState(false);
+
+    const handleSend = () => {
+        setIsSent(true);
+        onSend();
+        setTimeout(() => setIsSent(false), 700);
+    };
+
+    const handleSendAsInstruction = () => {
+        setBoltGlow(true);
+        setIsSent(true);
+        // Delay slightly to show the glow before sending (and triggering isLoading)
+        setTimeout(() => {
+            onSendAsInstruction();
+            setBoltGlow(false);
+            setTimeout(() => setIsSent(false), 700);
+        }, 300);
+    };
 
     // Auto-focus input when agent finishes
     React.useEffect(() => {
@@ -76,7 +95,7 @@ export const ChatArea = ({
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            onSend();
+            handleSend();
         }
     };
 
@@ -389,23 +408,23 @@ export const ChatArea = ({
                     </select>
 
                     {/* Agent-only toggles: Approval Mode + Safe Mode */}
-                    {agentMode === 'agent' && (
-                        <>
+                    <div className={`mode-transition-wrap ${agentMode === 'agent' ? 'visible-mode agent-options-enter' : 'hidden-mode agent-options-exit'}`}>
+                        <div className="flex items-center gap-2">
                             <div className="w-px h-4 bg-slate-700" />
 
                             {/* Approval Mode Toggle */}
                             <button
                                 onClick={() => onApprovalModeChange(approvalMode === 'auto' ? 'manual' : 'auto')}
                                 className={`flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-200 ${approvalMode === 'manual'
-                                    ? 'bg-red-500/15 border-red-500/30 text-red-400 shadow-sm shadow-red-500/10'
-                                    : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-400 hover:border-slate-600'
+                                    ? 'bg-blue-500/15 border-blue-500/30 text-blue-400 shadow-sm shadow-blue-500/10'
+                                    : 'bg-amber-500/15 border-amber-500/30 text-amber-400 shadow-sm shadow-amber-500/10'
                                     }`}
                                 title={approvalMode === 'manual'
                                     ? 'Aprobación Manual: CADA herramienta necesita tu OK'
                                     : 'Auto-Aprobación: solo operaciones peligrosas piden permiso'
                                 }
                             >
-                                <Icon name={approvalMode === 'manual' ? 'lock' : 'unlock'} />
+                                <Icon name={approvalMode === 'manual' ? 'lock' : 'unlock'} className="icon-pulse" />
                                 {approvalMode === 'manual' ? 'MANUAL' : 'AUTO'}
                             </button>
 
@@ -413,19 +432,19 @@ export const ChatArea = ({
                             <button
                                 onClick={() => onSafeModeChange(!safeMode)}
                                 className={`flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-200 ${safeMode
-                                    ? 'bg-amber-500/15 border-amber-500/30 text-amber-400 shadow-sm shadow-amber-500/10'
-                                    : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-400 hover:border-slate-600'
+                                    ? 'bg-blue-500/15 border-blue-500/30 text-blue-400 shadow-sm shadow-blue-500/10'
+                                    : 'bg-amber-500/15 border-amber-500/30 text-amber-400 shadow-sm shadow-amber-500/10'
                                     }`}
                                 title={safeMode
                                     ? 'Modo Seguro ON: herramientas se ejecutan una a la vez, con output entre cada una'
-                                    : 'Modo Seguro OFF: herramientas se ejecutan en batch (más rápido)'
+                                    : 'Modo Seguro OFF: herramientas se ejecutan en batch (más rápido, mayor consumo)'
                                 }
                             >
-                                <Icon name="shield-alt" />
+                                {safeMode ? <Icon name="shield-alt" className="icon-pulse" /> : <span className="font-black tracking-tighter mr-0.5 animate-pulse">{'>>>'}</span>}
                                 {safeMode ? 'SAFE' : 'BATCH'}
                             </button>
-                        </>
-                    )}
+                        </div>
+                    </div>
 
                     <span className="text-[10px] text-slate-600 font-mono hidden sm:inline-block ml-2">
                         {agentMode === 'chat'
@@ -458,41 +477,47 @@ export const ChatArea = ({
                         className="flex-1 bg-slate-800/50 border border-slate-700 rounded-lg py-3 px-4 text-slate-200 font-mono text-sm placeholder-slate-600 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none min-h-[50px]"
                         rows={1}
                     />
-                    {isLoading ? (
+                    {/* Abort Group (Active when Loading) */}
+                    <div className={`mode-transition-wrap ${isLoading ? 'visible-mode action-enter' : 'hidden-mode action-exit'}`}>
                         <button
                             onClick={onAbort}
-                            className="h-[50px] px-3 bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors flex items-center justify-center"
-                            title="Abort"
+                            className={`h-[50px] px-4 btn-abort-premium text-white rounded-xl flex items-center justify-center min-w-[50px] pulse-glow ${agentMode === 'agent' || agentStatus.lastExecutionFeedback?.includes('INSTRUCCIÓN') ? 'btn-halo' : ''}`}
+                            title="Abort Neural Process"
                         >
-                            <Icon name="stop" />
+                            <Icon name="stop" className={isLoading ? 'icon-spin-once' : 'icon-spin-reverse'} />
                         </button>
-                    ) : (
-                        <>
+                    </div>
+
+                    {/* Send/Instruction Group (Active when Idle) */}
+                    <div className={`flex items-center gap-2 mode-transition-wrap ${!isLoading ? 'visible-mode action-enter' : 'hidden-mode action-exit'}`}>
+                        <button
+                            onClick={handleSend}
+                            disabled={!input.trim()}
+                            className="h-[50px] px-4 btn-premium text-white rounded-xl flex items-center justify-center min-w-[50px] disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Send Signal"
+                        >
+                            <Icon name="arrow-right" className={isSent ? 'send-icon-fly' : ''} />
+                        </button>
+
+                        <div className={`mode-transition-wrap ${agentMode !== 'agent' ? 'visible-mode instruction-enter' : 'hidden-mode instruction-exit'}`}>
                             <button
-                                onClick={onSend}
+                                onClick={handleSendAsInstruction}
                                 disabled={!input.trim()}
-                                className="h-[50px] px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Enviar"
+                                className={`h-[50px] px-4 btn-instruction-premium text-white rounded-xl flex items-center justify-center min-w-[50px] disabled:opacity-50 disabled:cursor-not-allowed text-[10px] font-bold ${boltGlow ? 'pulse-glow' : ''}`}
+                                title="Send as Direct Instruction (Forces tool call)"
                             >
-                                <Icon name="arrow-right" />
+                                <Icon name="bolt" className={boltGlow ? 'instruction-bolt-glow' : (isSent ? 'icon-pulse' : '')} />
                             </button>
-                            <button
-                                onClick={onSendAsInstruction}
-                                disabled={!input.trim()}
-                                className="h-[50px] px-3 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed text-[10px] font-bold"
-                                title="Enviar como instrucción: fuerza al modelo a responder con llamada a herramienta"
-                            >
-                                <Icon name="bolt" />
-                            </button>
-                        </>
-                    )}
+                        </div>
+                    </div>
+
                     {!isLoading && agentStatus.iteration > 0 && agentStatus.phase !== 'idle' && (
                         <button
                             onClick={onReprompt}
-                            className="h-[50px] px-3 bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-colors flex items-center justify-center"
-                            title="Continuar"
+                            className="h-[50px] px-4 btn-continue-premium text-white rounded-xl flex items-center justify-center min-w-[50px] pulse-glow"
+                            title="Resume Task"
                         >
-                            <Icon name="redo" />
+                            <Icon name="redo" className="icon-spin-once" />
                         </button>
                     )}
                 </div>

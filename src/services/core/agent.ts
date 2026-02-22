@@ -764,11 +764,16 @@ export async function sendAgentMessage(
     const missionTrigger = historicalContext.filter(m => m.role === 'user').slice(-1)[0]?.content || 'Sin objetivo definido.';
     let lastExecutionFeedback = 'Inicio de misión.';
 
+    // Proxy onStatus to always include feedback for visual synchronization
+    const localOnStatus = (status: Partial<AgentStatus>) => {
+        onStatus({ ...status, lastExecutionFeedback });
+    };
+
     // ── Main Agent Loop ──────────────────────────────────────────────
     while (!abortSignal.aborted) {
         if (retries >= MAX_RETRIES) {
             log('warn', `Max retries reached (${MAX_RETRIES}). Stopping.`);
-            onStatus({ phase: 'error', retries, maxRetries: MAX_RETRIES, errorCount: retries, elapsedMs: Date.now() - startTime, rawMessages: [...agentMessages] });
+            localOnStatus({ phase: 'error', retries, maxRetries: MAX_RETRIES, errorCount: retries, elapsedMs: Date.now() - startTime, rawMessages: [...agentMessages] });
             break;
         }
 
@@ -801,12 +806,10 @@ export async function sendAgentMessage(
             }
 
             // Build Mission Anchor & Operation Focus
-            const awarenessBlock = `
-[ESTADO_DEL_AGENTE]
+            const awarenessBlock = `[ESTADO_DEL_AGENTE]
 Misión Original: "${missionTrigger}"
 Turno Actual: ${iterations} de ${MAX_RETRIES}
 [/ESTADO_DEL_AGENTE]
-
 [FOCO_DE_OPERACIÓN]
 Resultado Anterior: ${lastExecutionFeedback}
 Tarea Completada: ${lastDone}
@@ -828,7 +831,7 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
                 agentMessages[0].content = before + awarenessBlock + after;
             } else {
                 // Initial injection
-                const tasksSection = `\n\n${awarenessBlock}\n\n`;
+                const tasksSection = `\n${awarenessBlock}\n`;
                 if (systemPromptCurrent.includes('[IDIOMA — OBLIGATORIO]')) {
                     agentMessages[0].content = systemPromptCurrent.replace(/(\[IDIOMA — OBLIGATORIO\].*?\n)/, `$1${tasksSection}`);
                 } else {
@@ -837,7 +840,7 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
             }
         }
 
-        onStatus({
+        localOnStatus({
             phase: 'thinking',
             iteration: iterations,
             retries,
@@ -974,7 +977,7 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
 
         // DYNAMIC SYNC: Emit blocks early so thoughts & tools appear before execution
         onChunk(content || '', false, [...allBlocks, ...mergedIterationBlocks]);
-        onStatus({ rawMessages: [...agentMessages] });
+        localOnStatus({ rawMessages: [...agentMessages] });
 
         // [ANTI-INTERFERENCE FIX]: If final_answer is detected, ensure protocol compliance
         const finalAnswerCall = uniqueToolCalls.find(tc => tc.function.name === 'final_answer');
@@ -1004,7 +1007,7 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
                     role: 'user',
                     content: '⚠️ BLOQUEO DE PROTOCOLO: No puedes dar un "final_answer" mientras `@CORE/TASKS.md` exista o esté siendo actualizado. Debes completar TODAS las tareas, marcar los checks `[x]` y finalmente ELIMINAR el archivo con `delete_file` antes de responder.'
                 });
-                onStatus({ phase: 'thinking', rawMessages: [...agentMessages] });
+                localOnStatus({ phase: 'thinking', rawMessages: [...agentMessages] });
                 continue;
             }
 
@@ -1030,7 +1033,7 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
                 if (isJustSignature || hasSubstantialText) {
                     onChunk(content || '', true, allBlocks);
                     if (onFinalRawHistory) onFinalRawHistory([...agentMessages]);
-                    onStatus({ phase: 'idle', elapsedMs: Date.now() - startTime, rawMessages: [...agentMessages] });
+                    localOnStatus({ phase: 'idle', elapsedMs: Date.now() - startTime, rawMessages: [...agentMessages] });
                     return;
                 } else if (retries < MAX_RETRIES) {
                     retries++;
@@ -1038,7 +1041,7 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
                     // Check if the previous message was already a technical error nudge to avoid redundancy
                     const lastMsg = agentMessages[agentMessages.length - 1];
                     if (lastMsg && lastMsg.role === 'user' && lastMsg.content.includes('⚠️ ERROR TÉCNICO')) {
-                        onStatus({ phase: 'thinking', retries, rawMessages: [...agentMessages] });
+                        localOnStatus({ phase: 'thinking', retries, rawMessages: [...agentMessages] });
                         continue; // Skip the redundant "Incomplete Protocol" nudge if we already nudged for a tool error
                     }
 
@@ -1060,13 +1063,13 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
             } else {
                 onChunk(content || '', true, allBlocks);
                 if (onFinalRawHistory) onFinalRawHistory([...agentMessages]);
-                onStatus({ phase: 'idle', elapsedMs: Date.now() - startTime });
+                localOnStatus({ phase: 'idle', elapsedMs: Date.now() - startTime });
                 break;
             }
         }
 
         // --- Execute tool calls ---
-        onStatus({ phase: 'tool_calling' });
+        localOnStatus({ phase: 'tool_calling' });
         const READ_ONLY_TOOLS = new Set(['read_file', 'list_files', 'search_files', 'web_search', 'read_url']);
 
         function isAutoApproved(tc: ToolCall): boolean {
@@ -1112,9 +1115,10 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
         }
 
         async function requestApproval(toolCall: ToolCall, label: string): Promise<boolean> {
-            onStatus({ currentTool: label, phase: 'waiting_approval' });
+            localOnStatus({ currentTool: label, phase: 'waiting_approval' });
             const approved = await onToolApproval(toolCall);
             if (!approved) {
+                lastExecutionFeedback = `⚠️ RECHAZADO: El usuario no permitió ejecutar "${toolCall.function.name}".`;
                 const b = allBlocks.find(x => x.toolCall?.id === toolCall.id);
                 if (b) b.result = { success: false, error: 'Rechazado.' };
                 agentMessages.push({ role: 'tool', content: 'Rejected', tool_call_id: toolCall.id });
@@ -1124,7 +1128,7 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
         }
 
         async function executeAndProcess(toolCall: ToolCall, label: string): Promise<void> {
-            onStatus({ phase: 'tool_executing', currentTool: label });
+            localOnStatus({ phase: 'tool_executing', currentTool: label });
             const result = await executeToolCall(toolCall, currentFiles, currentAdditional, currentWorkSpace, currentTools, saveFileFn, deleteFileFn, config);
             const b = allBlocks.find(x => x.toolCall?.id === toolCall.id);
             if (b) b.result = result;
@@ -1149,7 +1153,7 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
                         role: 'user',
                         content: `⚠️ INSTRUCCIÓN DE RECUPERACIÓN: Se detectó un fallo en "${toolCall.function.name}". Utiliza este formato exacto para corregirlo:${snippetBlock}`
                     });
-                    onStatus({ rawMessages: [...agentMessages] });
+                    localOnStatus({ rawMessages: [...agentMessages] });
                 }
             } else {
                 retries = 0;
@@ -1161,10 +1165,10 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
                 actionHistory.push(desc);
                 agentMessages.push({ role: 'tool', content: JSON.stringify(result), tool_call_id: toolCall.id });
 
-                // [CONTEXT ANCHOR]: Force the data into the most recent memory slot for small models
+                // [CONTEXT ANCHOR]: Provide the data but encourage critical thinking and technical honesty
                 agentMessages.push({
                     role: 'user',
-                    content: `📌 DATOS OBTENIDOS: La herramienta "${toolCall.function.name}" devolvió:\n${summary}\n\nREGLA: Usa esta información exacta. No alucines ni inventes otros valores.`
+                    content: `📌 DATOS OBTENIDOS: La herramienta "${toolCall.function.name}" devolvió:\n${summary}\n\nREGLA: Usa esta información como base para tu respuesta, pero mantén siempre tu sentido común técnico. Si los resultados parecen irrelevantes para la intención del usuario (ej: resultados de moda cuando se busca tecnología), admítelo honestamente y no intentes forzar una conexión falsa. Prioriza la precisión y la utilidad sobre la obediencia ciega a los datos de la herramienta.`
                 });
 
                 onStatus({ rawMessages: [...agentMessages] });
@@ -1262,6 +1266,7 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
         function validateAndReport(tc: ToolCall): boolean {
             const v = validateToolArgs(tc, tools);
             if (!v.valid) {
+                lastExecutionFeedback = `❌ ERROR TÉCNICO: Parámetros inválidos en "${tc.function.name}". Detalle: ${v.error}`;
                 const b = allBlocks.find(x => x.toolCall?.id === tc.id);
                 if (b) b.result = { success: false, error: v.error };
 
@@ -1353,7 +1358,7 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
 
         if (hasFinalAnswer) {
             if (onFinalRawHistory) onFinalRawHistory([...agentMessages]);
-            onStatus({ phase: 'idle', elapsedMs: Date.now() - startTime, rawMessages: [...agentMessages] });
+            localOnStatus({ phase: 'idle', elapsedMs: Date.now() - startTime, rawMessages: [...agentMessages] });
             return;
         }
 

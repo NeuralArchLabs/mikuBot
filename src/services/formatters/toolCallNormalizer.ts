@@ -119,8 +119,8 @@ export function stripXmlTags(text: string): string {
 export function stripConversationalWrapper(text: string): string {
     let s = text.trim();
 
-    // 1. Strip think blocks
-    s = s.replace(/<think>[\s\S]*?<\/think>/gi, '');
+    // 1. Strip think blocks (including possible markdown/backtick wrappers)
+    s = s.replace(/`*<think>[\s\S]*?<\/think>`*/gi, '');
 
     // 2. Strip Markdown code fences (```json ... ```)
     s = s.replace(/```[a-z]*\n?([\s\S]*?)\n?```/gi, '$1');
@@ -153,17 +153,52 @@ export function stripConversationalWrapper(text: string): string {
 function normalizeJsonKeys(obj: any, validToolNames: string[] = []): { name: string; arguments: any } | null {
     if (!obj || typeof obj !== 'object') return null;
 
+    // Recursive search for tool_calls array (Mercury/OpenAI style)
+    if (obj.tool_calls && Array.isArray(obj.tool_calls) && obj.tool_calls.length > 0) {
+        return normalizeJsonKeys(obj.tool_calls[0], validToolNames);
+    }
+
     let name = '';
     let args: any = {};
 
     // 1. Standard Extraction (name, arguments labels)
     for (const key in obj) {
-        const canonical = KEY_ALIASES[key.toLowerCase()];
+        const lowerKey = key.toLowerCase();
+        const canonical = KEY_ALIASES[lowerKey];
         if (canonical === 'name') name = obj[key];
-        if (canonical === 'arguments') args = obj[key];
-        if (key.toLowerCase() === 'name') name = obj[key];
-        if (key.toLowerCase() === 'arguments') args = obj[key];
+        else if (canonical === 'arguments') args = obj[key];
+        else if (lowerKey === 'name') name = obj[key];
+        else if (lowerKey === 'arguments') args = obj[key];
+
+        // Handle specialized "function" wrapper: { "function": { "name": "...", "arguments": "..." } }
+        if (lowerKey === 'function' && typeof obj[key] === 'object') {
+            const inner = normalizeJsonKeys(obj[key], validToolNames);
+            if (inner) {
+                name = inner.name;
+                args = inner.arguments;
+            }
+        }
     }
+
+    // NEW: Heuristic for Flat JSON Structures
+    // If we found a tool name but the 'arguments'/'args' field is still empty/null,
+    // we search for all other fields and collect them as arguments.
+    if (name && (!args || (typeof args === 'object' && Object.keys(args).length === 0))) {
+        const flatArgs: any = {};
+        for (const key in obj) {
+            const lowerKey = key.toLowerCase();
+            const canonical = KEY_ALIASES[lowerKey];
+            // If it's not a known structural key (name, arguments, function), it's probably an argument
+            if (canonical !== 'name' && canonical !== 'arguments' && lowerKey !== 'name' && lowerKey !== 'arguments' && lowerKey !== 'function') {
+                flatArgs[key] = obj[key];
+            }
+        }
+        if (Object.keys(flatArgs).length > 0) {
+            args = flatArgs;
+        }
+    }
+
+    // 2. Specialized Shorthand Detection: { "final_answer": "..." }
 
     // 2. Specialized Shorthand Detection: { "final_answer": "..." }
     // If we don't have a 'name' but we have a key that matches a common tool name

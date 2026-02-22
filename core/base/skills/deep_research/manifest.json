@@ -1,0 +1,28 @@
+{
+    "name": "deep_research",
+    "description": "Investigación exhaustiva y multi-idioma. Realiza búsquedas cruzadas (Español e Inglés), filtra información irrelevante y extrae el contenido técnico real de múltiples fuentes para reportar datos precisos y actualizados.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "topic": {
+                "type": "string",
+                "description": "El tema técnico o complejo a investigar."
+            },
+            "target_language": {
+                "type": "string",
+                "enum": [
+                    "es",
+                    "en",
+                    "both"
+                ],
+                "description": "Idioma de búsqueda. 'both' es el recomendado para precisión técnica.",
+                "default": "both"
+            }
+        },
+        "required": [
+            "topic"
+        ]
+    },
+    "runtime": "python",
+    "entry": "main.py"
+}

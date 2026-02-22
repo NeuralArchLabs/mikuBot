@@ -1,0 +1,23 @@
+{
+    "name": "web_research",
+    "description": "Búsqueda web inteligente que no solo busca snippets, sino que extrae y analiza el contenido real de los sitios más relevantes para evitar información superficial o errónea.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "El tema o pregunta específica a investigar."
+            },
+            "max_sites": {
+                "type": "integer",
+                "description": "Número de sitios a leer y extraer (1-5). Por defecto 3.",
+                "default": 3
+            }
+        },
+        "required": [
+            "query"
+        ]
+    },
+    "runtime": "python",
+    "entry": "main.py"
+}

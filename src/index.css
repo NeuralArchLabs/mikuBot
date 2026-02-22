@@ -687,13 +687,13 @@
 /* Default Mobile behavior (centered translation) */
 .animate-dialog-enter-right {
   animation: dialog-enter-right-kf 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-  transform-origin: center;
+  transform-origin: right top;
   will-change: transform, opacity;
 }
 
 .animate-dialog-exit-right {
   animation: dialog-exit-right-kf 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  transform-origin: center;
+  transform-origin: right top;
   will-change: transform, opacity;
 }
 
@@ -713,12 +713,12 @@
 @media (min-width: 1280px) {
   .animate-dialog-enter-right {
     animation: dialog-enter-right-kf 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-    transform-origin: right center;
+    transform-origin: right top;
   }
 
   .animate-dialog-exit-right {
     animation: dialog-exit-right-kf 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-    transform-origin: right center;
+    transform-origin: right top;
   }
 
   .animate-dialog-enter-left {
@@ -746,4 +746,355 @@
 
 .message-pop-in {
   animation: message-pop-in-kf 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   PREMIUM UI ENHANCEMENTS — Buttons & Controls
+   ────────────────────────────────────────────────────────────────────── */
+
+.btn-premium {
+  @apply relative transition-all duration-300;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.8) 0%, rgba(29, 78, 216, 0.9) 100%);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  background-clip: padding-box;
+  box-shadow: 0 4px 15px -3px rgba(37, 99, 235, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+}
+
+.btn-premium:hover:not(:disabled) {
+  @apply -translate-y-0.5;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.9) 0%, rgba(37, 99, 235, 1) 100%);
+  box-shadow: 0 12px 25px -5px rgba(37, 99, 235, 0.5), 0 0 20px rgba(59, 130, 246, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  z-index: 10;
+}
+
+.btn-premium:active:not(:disabled) {
+  @apply translate-y-0 scale-95;
+}
+
+.btn-abort-premium {
+  @apply relative transition-all duration-300;
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.8) 0%, rgba(185, 28, 28, 0.9) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  background-clip: padding-box;
+  box-shadow: 0 4px 15px -3px rgba(220, 38, 38, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+}
+
+.btn-abort-premium:hover {
+  @apply -translate-y-0.5;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.9) 0%, rgba(220, 38, 38, 1) 100%);
+  box-shadow: 0 12px 25px -5px rgba(220, 38, 38, 0.5), 0 0 20px rgba(239, 68, 68, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  z-index: 10;
+}
+
+.btn-instruction-premium {
+  @apply relative transition-all duration-300;
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.8) 0%, rgba(126, 34, 206, 0.9) 100%);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  background-clip: padding-box;
+  box-shadow: 0 4px 15px -3px rgba(147, 51, 234, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+}
+
+.btn-instruction-premium:hover:not(:disabled) {
+  @apply -translate-y-0.5;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.9) 0%, rgba(147, 51, 234, 1) 100%);
+  box-shadow: 0 12px 25px -5px rgba(147, 51, 234, 0.5), 0 0 20px rgba(168, 85, 247, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  z-index: 10;
+}
+
+.btn-continue-premium {
+  @apply relative transition-all duration-300;
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.8) 0%, rgba(180, 83, 9, 0.9) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  background-clip: padding-box;
+  box-shadow: 0 4px 15px -3px rgba(217, 119, 6, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+}
+
+.btn-continue-premium:hover {
+  @apply -translate-y-0.5;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.9) 0%, rgba(217, 119, 6, 1) 100%);
+  box-shadow: 0 12px 25px -5px rgba(217, 119, 6, 0.5), 0 0 20px rgba(245, 158, 11, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  z-index: 10;
+}
+
+/* Halo Effect for Active Process */
+.btn-halo {
+  position: relative;
+}
+
+.btn-halo::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  background: linear-gradient(90deg, #ff4d4d, #f9cb28, #32ff7e, #18dcff, #7d5fff, #ff4d4d);
+  background-size: 200% auto;
+  border-radius: 14px;
+  z-index: -1;
+  animation: shine 2s linear infinite;
+  opacity: 0.8;
+  filter: blur(4px);
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   INTERACTIVE MICRO-ANIMATIONS
+   ────────────────────────────────────────────────────────────────────── */
+
+/* Flying arrow for Send Button (Elegant version) */
+@keyframes send-icon-fly-kf {
+  0% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+    filter: blur(0);
+  }
+
+  25% {
+    transform: translateX(10px) scale(0.95);
+    opacity: 0.8;
+  }
+
+  45% {
+    transform: translateX(40px) scale(1.2) skewX(-15deg);
+    opacity: 0;
+    filter: blur(2px);
+  }
+
+  46% {
+    transform: translateX(-40px) scale(1.2) skewX(15deg);
+    opacity: 0;
+    filter: blur(2px);
+  }
+
+  75% {
+    transform: translateX(-10px) scale(0.95);
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+.send-icon-fly {
+  animation: send-icon-fly-kf 0.7s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+/* Spin animations */
+@keyframes icon-spin-once-kf {
+  from {
+    transform: rotate(0deg) scale(0.8);
+  }
+
+  to {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+@keyframes icon-spin-reverse-kf {
+  from {
+    transform: rotate(360deg) scale(1);
+  }
+
+  to {
+    transform: rotate(0deg) scale(0.8);
+  }
+}
+
+.icon-spin-once {
+  animation: icon-spin-once-kf 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.icon-spin-reverse {
+  animation: icon-spin-reverse-kf 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Instruction Glow trigger */
+@keyframes instruction-bolt-glow-kf {
+  0% {
+    filter: drop-shadow(0 0 0 rgba(168, 85, 247, 0));
+    transform: scale(1);
+  }
+
+  50% {
+    filter: drop-shadow(0 0 15px rgba(168, 85, 247, 1));
+    transform: scale(1.3);
+  }
+
+  100% {
+    filter: drop-shadow(0 0 0 rgba(168, 85, 247, 0));
+    transform: scale(1);
+  }
+}
+
+.instruction-bolt-glow {
+  animation: instruction-bolt-glow-kf 0.5s ease-in-out;
+}
+
+/* Pulse for active/warning icons */
+@keyframes icon-pulse-kf {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.2);
+    filter: brightness(1.3);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+.icon-pulse {
+  animation: icon-pulse-kf 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Layout Logic: Entrance of Agent Options */
+@keyframes agent-options-enter-kf {
+  0% {
+    opacity: 0;
+    transform: translateX(-20px) scale(0.9);
+    filter: blur(4px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.agent-options-enter {
+  animation: agent-options-enter-kf 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Layout Logic: Exit of Agent Options (Reverse) */
+@keyframes agent-options-exit-kf {
+  0% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    filter: blur(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(-20px) scale(0.9);
+    filter: blur(4px);
+  }
+}
+
+.agent-options-exit {
+  animation: agent-options-exit-kf 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  pointer-events: none;
+}
+
+/* Layout Logic: Exit of Instruction Button */
+@keyframes instruction-exit-kf {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(0.5) translateY(10px) rotate(15deg);
+  }
+}
+
+.instruction-exit {
+  animation: instruction-exit-kf 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  pointer-events: none;
+}
+
+/* Layout Logic: Entrance of Instruction Button (Reverse) */
+@keyframes instruction-enter-kf {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) translateY(10px) rotate(-15deg);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0) rotate(0);
+  }
+}
+
+.instruction-enter {
+  animation: instruction-enter-kf 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Transition Utility for Mode Switchers & Loading States */
+.mode-transition-wrap {
+  display: flex;
+  align-items: center;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: visible;
+  /* Prevent hover clipping */
+  flex-shrink: 0;
+}
+
+.mode-transition-wrap.hidden-mode {
+  max-width: 0;
+  opacity: 0;
+  margin: 0;
+  padding: 0;
+  transform: scale(0.8);
+  pointer-events: none;
+}
+
+.mode-transition-wrap.visible-mode {
+  max-width: 500px;
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Generic Action Entrance/Exit (for buttons) */
+@keyframes action-enter-kf {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.9);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.action-enter {
+  animation: action-enter-kf 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes action-exit-kf {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.9);
+  }
+}
+
+.action-exit {
+  animation: action-exit-kf 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Glow for active execution */
+@keyframes pulse-glow-kf {
+
+  0%,
+  100% {
+    box-shadow: 0 0 5px rgba(59, 130, 246, 0.2);
+  }
+
+  50% {
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+  }
+}
+
+.pulse-glow {
+  animation: pulse-glow-kf 2s infinite ease-in-out;
 }

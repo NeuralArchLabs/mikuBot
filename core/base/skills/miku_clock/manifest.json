@@ -1,0 +1,19 @@
+{
+    "name": "miku_clock",
+    "description": "Obtiene la hora actual con un mensaje personalizado de Miku.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "format": {
+                "type": "string",
+                "enum": [
+                    "12h",
+                    "24h"
+                ],
+                "description": "Formato de hora"
+            }
+        }
+    },
+    "runtime": "python",
+    "entry": "main.py"
+}

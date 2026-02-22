@@ -54,6 +54,11 @@ export interface Session {
     title: string;
     messages: Message[];
     timestamp: number;
+    agentMode?: AgentMode;
+    safeMode?: boolean;
+    approvalMode?: ApprovalMode;
+    debugMode?: boolean;
+    draft?: string;
 }
 
 export interface AppConfig {
@@ -164,6 +169,7 @@ export interface AgentStatus {
     errorCount: number;
     rawMessages?: any[];
     currentSystemPrompt?: string;
+    lastExecutionFeedback?: string;
 }
 
 export interface PendingToolApproval {

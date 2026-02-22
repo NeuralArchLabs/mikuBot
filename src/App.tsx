@@ -37,7 +37,7 @@ export const App = () => {
         unsavedChanges: {},
         agentMode: 'chat' as AgentMode,
         sessionId: null,
-        safeMode: false,
+        safeMode: true,
         approvalMode: 'auto' as ApprovalMode,
         debugMode: false,
         folderPermissions: { core: 'prompt', extra: 'prompt', workSpace: 'prompt', tools: 'prompt' }
@@ -101,7 +101,7 @@ export const App = () => {
                 ...prev,
                 config: { ...DEFAULT_CONFIG, ...saved.config },
                 agentMode: (saved.agentMode || 'chat') as AgentMode,
-                safeMode: saved.safeMode || false,
+                safeMode: saved.safeMode !== undefined ? saved.safeMode : true,
                 approvalMode: saved.approvalMode || 'auto'
             }));
         } else {
@@ -157,7 +157,12 @@ export const App = () => {
             id,
             title: 'New Neural Branch',
             messages: [],
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            agentMode: 'chat',
+            safeMode: true,
+            approvalMode: 'auto',
+            debugMode: false,
+            draft: ''
         };
 
         // Optimistic UI update
@@ -169,9 +174,17 @@ export const App = () => {
         };
         setSessions(prev => [meta, ...prev]);
         setMessages([]);
+        setInput('');
         setAgentStatus(createDefaultAgentStatus());
         setPendingToolApproval(null);
-        setState(prev => ({ ...prev, sessionId: id }));
+        setState(prev => ({
+            ...prev,
+            sessionId: id,
+            agentMode: 'chat',
+            safeMode: true,
+            approvalMode: 'auto',
+            debugMode: false
+        }));
 
         await persistence.saveSession(newSession);
     }, []);
@@ -186,14 +199,22 @@ export const App = () => {
             abortControllerRef.current = null;
         }
 
-        // Switch selection immediately for snappiness
-        setState(prev => ({ ...prev, sessionId: id }));
-
         const session = await persistence.loadSession(id);
         if (session) {
-            setMessages(session.messages);
+            setMessages(session.messages || []);
+            setInput(session.draft || '');
+            setState(prev => ({
+                ...prev,
+                sessionId: id,
+                agentMode: session.agentMode || 'chat',
+                safeMode: session.safeMode !== undefined ? session.safeMode : true,
+                approvalMode: session.approvalMode || 'auto',
+                debugMode: session.debugMode || false
+            }));
         } else {
             setMessages([]);
+            setInput('');
+            setState(prev => ({ ...prev, sessionId: id, agentMode: 'chat' }));
         }
     }, [state.sessionId]);
 
@@ -247,7 +268,7 @@ export const App = () => {
         const msg = messages[index];
         if (msg.role !== 'user') return;
 
-        if (await askConfirm("Rewind conversation to this point? All subsequent messages will be lost.")) {
+        if (await askConfirm("Rewind conversation to this point? All subsequent messages will be lost.", 'right')) {
             const newHistory = messages.slice(0, index);
             setMessages(newHistory);
             setInput(msg.text);
@@ -257,7 +278,7 @@ export const App = () => {
 
     // Auto-save current session and update title in sidebar
     useEffect(() => {
-        if (state.sessionId && messages.length > 0) {
+        if (state.sessionId) {
             const timer = setTimeout(() => {
                 const currentSession = sessions.find(s => s.id === state.sessionId);
                 const firstRealMsg = messages.find(m => !m.excludeFromContext && m.role === 'user');
@@ -269,8 +290,6 @@ export const App = () => {
                     currentSession.title === 'Active Session' ||
                     (candidateContent && currentSession.title === candidateContent);
 
-                // If it is default, we update it to the first message content if available (better than "New Neural Branch")
-                // But we don't want to overwrite a custom title.
                 const title = isDefaultTitle
                     ? (candidateContent || currentSession?.title || 'New Neural Branch')
                     : currentSession!.title;
@@ -279,7 +298,12 @@ export const App = () => {
                     id: state.sessionId!,
                     title,
                     messages,
-                    timestamp: Date.now()
+                    timestamp: Date.now(),
+                    agentMode: state.agentMode,
+                    safeMode: state.safeMode,
+                    approvalMode: state.approvalMode,
+                    debugMode: state.debugMode,
+                    draft: input
                 });
 
                 // Update sidebar metadata optimistically
@@ -296,7 +320,7 @@ export const App = () => {
             }, 1000);
             return () => clearTimeout(timer);
         }
-    }, [messages, state.sessionId, sessions]);
+    }, [messages, input, state.sessionId, state.agentMode, state.safeMode, state.approvalMode, state.debugMode, sessions]);
 
     useEffect(() => {
         loadGlobalSettings();
@@ -470,7 +494,7 @@ export const App = () => {
                 ...prev,
                 config: DEFAULT_CONFIG,
                 agentMode: 'chat',
-                safeMode: false,
+                safeMode: true,
                 approvalMode: 'auto'
             }));
         }
@@ -1396,7 +1420,7 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                         onAbort={handleAbortAgent} onReprompt={handleReprompt} onRewind={onRewind} scrollRef={scrollRef}
                         agentStatus={agentStatus} pendingApproval={pendingToolApproval}
                         onApproveToolCall={handleApproveToolCall} onRejectToolCall={handleRejectToolCall}
-                        agentMode={state.agentMode} onAgentModeChange={(m) => setState(p => ({ ...p, agentMode: m }))}
+                        agentMode={state.agentMode} onAgentModeChange={(m) => setState(p => ({ ...p, agentMode: m, safeMode: m === 'agent' ? true : p.safeMode }))}
                         safeMode={state.safeMode} onSafeModeChange={(s) => setState(p => ({ ...p, safeMode: s }))}
                         approvalMode={state.approvalMode} onApprovalModeChange={(a) => setState(p => ({ ...p, approvalMode: a }))}
                         debugMode={state.debugMode} onDebugModeChange={(d) => setState(p => ({ ...p, debugMode: d }))}
