@@ -1,6 +1,6 @@
-# 🌐 mikuCentral v1.5.1 — Neural AI Interface & Agent OS
+# 🌐 mikuCentral v1.6.0 — Neural AI Interface & Agent OS
 
-![Version](https://img.shields.io/badge/version-1.5.1-blue.svg?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-1.6.0-blue.svg?style=for-the-badge)
 ![Status](https://img.shields.io/badge/status-stable-green.svg?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-private-red.svg?style=for-the-badge)
 
@@ -15,10 +15,11 @@
 - **Razonamiento Estructurado**: Un motor de extracción propietario permite que incluso modelos básicos sigan protocolos de herramientas (tool calling) mediante síntesis de texto.
 - **Neural Flow**: Interfaz que separa visualmente el pensamiento interno (*Internal Monologue*) de las acciones técnicas ejecutadas por el agente.
 
-### 🛡️ Persistencia y Soberanía (Neural Persistence)
+### 🛡️ Persistencia y Soberanía (Session States)
+- **Session-Scoped Configuration**: Cada chat guarda su propio modo (Chat/Agent), estados de seguridad y borradores de texto inteligentes.
 - **Single Source of Truth**: Gestión de configuración centralizada en `config.json`. Sin dependencias de almacenamiento volátil del navegador.
 - **Atomic Import/Export**: Capacidad de exportar e importar configuraciones completas de la IA, incluyendo llaves API, rutas de memoria y modelos preferidos.
-- **Session Management**: Sistema de persistencia de sesiones locales para ramificar conversaciones y mantener contextos históricos infinitos.
+- **Neural Resilience**: Persistencia de sesiones locales para ramificar conversaciones y mantener contextos históricos infinitos.
 
 ### 🛠️ Ecosistema de Herramientas (The Toolbelt)
 - **Native File System**: Lectura, escritura, borrado y particionamiento de archivos en tiempo real con rutas absolutas de Windows.
@@ -26,9 +27,11 @@
 - **Web Intelligence**: Motor de búsqueda integrado y extractor de markdown desde URLs para investigación profunda.
 - **Native Explorer**: Integración directa con el explorador de Windows para abrir carpetas de proyecto con un solo click.
 
-### 🎨 Estética Cyber-Dark Premium
+### 🎨 Estética Cinema-Dark Premium
+- **Premium VFX**: Botones con animaciones de "Halo" dinámico, efectos de glifo pulsante y transiciones de "vuelo" para el envío de datos.
+- **Visual Feedback Loop**: La interfaz reacciona físicamente al éxito o fallo de las tareas mediante sincronización visual con el motor neural.
 - **Glassmorphism UI**: Interfaz diseñada con capas de profundidad, desenfoques dinámicos y micro-animaciones fluidas.
-- **Neural Sidebar**: Navegación rápida entre Chat, Editor de Cortex, Panel de Comandos y Centro de Control.
+- **Neural Sidebar**: Navegación rápida con animación de firma neural sofisticada al interactuar con el logo del sistema.
 - **Onboarding Wizard**: Asistente de configuración inicial para una puesta en marcha automatizada en menos de 60 segundos.
 
 ---

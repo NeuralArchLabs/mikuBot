@@ -1,6 +1,6 @@
-# Project Status: MikuCentral v1.5.1 🚀
+# Project Status: MikuCentral v1.6.0 🚀
 
-> **Última actualización**: 21 de febrero de 2026
+> **Última actualización**: 22 de febrero de 2026
 > **Autor del análisis**: Antigravity AI Engine
 
 Este documento detalla el análisis exhaustivo del proyecto **MikuCentral**, una interfaz de IA neural y asistente personal integral diseñada para la soberanía tecnológica local, la ejecución de agentes autónomos y la persistencia automodificable en todas las facetas de la vida del usuario (personal, profesional y financiera).
@@ -14,6 +14,7 @@ MikuCentral es mucho más que un simple chat; es un orquestador de agentes con l
 ### 🤖 Inteligencia Multimodelo
 *   **Soporte de Proveedores**: Integración nativa con **Ollama** (local), **Gemini** (Google Cloud) y **Groq** (LPU de baja latencia).
 *   **Inferencia Estructurada**: Capacidad de forzar salidas JSON y manejar herramientas (function calling) incluso en modelos que no lo soportan de forma nativa mediante su motor de extracción.
+*   **Visual Feedback Loop**: La UI reacciona mediante animaciones CSS complejas (Halo effects, glifo pulsante) al estado del agente en tiempo real.
 *   **Fallback Automático**: Si un modelo no soporta native tool calling (HTTP 400), se desactiva transparentemente y se cae a extracción por texto.
 
 ### 🛠️ Herramientas de Agencia (Toolbelt) — 8 herramientas
@@ -120,6 +121,9 @@ electron/
 | 12 | **Inestabilidad en Persistencia** | ✅ Done | v1.5.0: `config.json` como Single Source of Truth. Eliminados handles de IndexedDB caducos y `localStorage` en modo escritorio. |
 | 13 | **Acceso a Carpetas Externo** | ✅ Done | Integración con el Shell nativo para abrir directorios del Control Room directamente en el explorador de archivos. |
 | 14 | **Consolidación Arquitectónica** | ✅ Done | Simplificación del flujo de datos migrando lógica de `hooks/` a `services/` y `App.tsx` para evitar race conditions y asegurar un despliegue atómico de la configuración. |
+| 15 | **Confusión entre Sesiones** | ✅ Done | v1.6.0: Implementada persistencia de modo (Agent/Chat), safeMode y borradores por sesión única. |
+| 16 | **Falta de Feedback Visual** | ✅ Done | v1.6.0: Animaciones de Halo, spin-reverse y bolt-glow sincronizadas con el `AgentStatus`. |
+| 17 | **Clipping en UI Premium** | ✅ Done | Ajustado `overflow` y `background-clip` en botones para permitir efectos de resplandor externos. |
 
 ### 3.2 Pendientes (Originales) ⏳
 | # | Problema | Severidad | Detalle |
@@ -269,6 +273,15 @@ electron/
 ---
 
 ## 7. Log de Cambios 📋
+
+### v1.6 — 22 Feb 2026 (Cinematic Dynamics & Session Context)
+| Archivo | Cambio |
+|---------|--------|
+| `src/components/layout/Sidebar.tsx` | **Refinamiento Logo**: Nueva secuencia de firma neural con símbolos de escape corregidos y timing cinemático. |
+| `src/components/features/ChatArea.tsx` | **Visual Reactions**: Implementación de `.btn-halo` (rainbow border), `.icon-spin-once` (entrada) y `.icon-spin-reverse` (salida). |
+| `src/App.tsx` | **Session Persistence**: `onNewSession` y `onSelectSession` ahora gestionan estados de modo y borradores de forma independiente. |
+| `src/services/core/agent.ts` | **Feedback Sync**: Inyección de `lastExecutionFeedback` en el canal de estado para notificar a la UI sobre el éxito/fallo de tareas. |
+| `src/index.css` | **Premium Styles**: Optimización de `box-shadows`, eliminación de bordes cortados y nuevas `@keyframes` de vuelo de icono. |
 
 ### v1.3 — 19 Feb 2026 (Cinematic UI & Experience Overhaul)
 | Archivo | Cambio |

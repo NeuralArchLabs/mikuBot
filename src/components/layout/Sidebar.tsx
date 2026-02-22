@@ -51,16 +51,23 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
             "|al",
             "{}l",
             "{{}}",
-            "{{}}H",
-            "{{}}HI",
-            "{{}}-HI!",
+            "{{}}/",
+            "{{}}--",
+            "{{}}-\\",
+            "{{}}--H-",
+            "{{}}--HI",
             "{{}}--HI!",
-            "{{}}-HI!",
-            "{{}}HI!",
-            "{{}}I!",
-            "{{}}!",
-            "{{}}",
-            "{}"
+            "{{}}--HI!",
+            "{{}}--HI!",
+            "{{}}--HI\\",
+            "{{}}--H-",
+            "{{}}--/",
+            "{{}}-|",
+            "{{}\\",
+            "{{}-",
+            "{{/",
+            "{|",
+            "-"
         ];
 
         let delay = 0;
@@ -97,12 +104,20 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                 "{}",
                 "{{}}",
                 "{{}}l",
-                "m{{}}al",
-                "mi{{}}ral",
-                "mik{{}}tral",
-                "miku{}ntral",
-                "miku|entral",
-                "mikuCentral"
+                "/{{}}a\\",
+                "m-{{}}r-l",
+                "mi\\{{}}t/al",
+                "mik|{}n|}al",
+                "mik{/e\\}ral",
+                "mi{u--nt}al",
+                "m{ku\\entr}l",
+                "{iku|entra}",
+                "miku/entral}",
+                "miku-entral\\",
+                "miku\\entral|",
+                "miku|entral/",
+                "miku/entral-",
+                "mikuCentral",
             ];
 
             shrinkSteps.forEach((step, i) => {
@@ -281,7 +296,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                     <p className="text-xs text-slate-500">Manage, load and branch conversation states</p>
                                 </div>
                             </div>
-                            <button onClick={handleClose} className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 flex items-center justify-center transition-colors">
+                            <button onClick={handleClose} className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 flex items-center justify-center transition-colors" title="Close Session Manager">
                                 <Icon name="times" />
                             </button>
                         </div>

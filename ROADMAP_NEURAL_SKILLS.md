@@ -2,12 +2,12 @@
 
 Este documento detalla la ruta técnica para implementar el sistema de habilidades modulares en MikuBot, permitiendo que el agente adquiera nuevas capacidades sin modificar el núcleo de la aplicación.
 
-## 1. Fase de Infraestructura (Backend) 🏗️
+## 1. Fase de Infraestructura (Backend) 🏗️ ✅
 El proceso principal de Electron debe ser capaz de gestionar las habilidades físicas en el disco.
 
-- [ ] **IPC: `list-skills`**: Handler que escanea `engine/skills/**/manifest.json` y devuelve un array de objetos de herramienta compatibles con OpenAI/Ollama.
-- [ ] **IPC: `execute-skill`**: Handler genérico que recibe el nombre de la skill y los argumentos, identifica el punto de entrada (`main.py` o `logic.js`) y lo ejecuta devolviendo el resultado en JSON.
-- [ ] **Carpeta de Habilidades**: Creación de la estructura base en el sistema de archivos.
+- [x] **IPC: `list-skills`**: Handler que escanea `engine/skills/**/manifest.json` y devuelve un array de objetos de herramienta compatibles con OpenAI/Ollama.
+- [x] **IPC: `execute-skill`**: Handler genérico que recibe el nombre de la skill y los argumentos, identifica el punto de entrada (`main.py` o `logic.js`) y lo ejecuta devolviendo el resultado en JSON.
+- [x] **Carpeta de Habilidades**: Creación de la estructura base en el sistema de archivos.
 
 ## 2. Fase de Integración (Agent Logic) 🧠
 El `agent.ts` debe transformarse de un sistema estático a uno dinámico.
@@ -32,9 +32,10 @@ Definir el formato de una "Skill" para que Armando pueda crear las suyas.
   }
   ```
 
-## 4. Fase de Prueba (PoC) 🧪
-- [ ] **Skill: `miku_clock`**: Una skill simple en Python que devuelva la hora con un mensaje personalizado de Miku.
-- [ ] **Verificación**: El agente debe ser capaz de ver la herramienta en su "toolbelt" y usarla con éxito.
+## 4. Fase de Prueba (PoC) 🧪 ✅
+- [x] **Skill: `miku_clock`**: Una skill simple en Python que devuelva la hora con un mensaje personalizado de Miku.
+- [x] **Verificación**: El agente es capaz de ver la herramienta en su "toolbelt" y usarla con éxito.
+- [x] **Nuevas Skills Beta**: `crypto_tracker`, `deep_research`, `web_research`.
 
 ## 5. Próximos Pasos tras el Sistema de Skills
 Una vez que el sistema sea estable, las siguientes skills serán:
