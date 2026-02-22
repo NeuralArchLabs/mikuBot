@@ -282,6 +282,7 @@ electron/
 | `src/components/panels/ToolApprovalPanel.tsx` | **Keyboard Control**: Implementada escucha global para `Alt+Enter` (Autorizar) y `Alt+Backspace` (Denegar). |
 | `src/App.tsx` | **Progression Dynamics**: Auto-nombramiento de sesión a los 3 turnos y actualización progresiva cada 10 turnos basado en el nuevo contexto. |
 | `src/services/core/agent.ts` | **Feedback Sync**: Inyección de `lastExecutionFeedback` en el canal de estado para notificar a la UI sobre el éxito/fallo de tareas. |
+| `core/base/skills/gmail_imap` | **Communication Skill**: Integración neural con Gmail vía IMAP para lectura y búsqueda de correos. |
 | `src/index.css` | **Premium Styles**: Optimización de `box-shadows`, eliminación de bordes cortados y nuevas `@keyframes` de vuelo de icono. |
 
 ### v1.3 — 19 Feb 2026 (Cinematic UI & Experience Overhaul)
