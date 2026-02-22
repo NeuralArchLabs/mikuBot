@@ -280,7 +280,7 @@ electron/
 | `src/components/layout/Sidebar.tsx` | **Refinamiento Logo**: Nueva secuencia de firma neural con símbolos de escape corregidos y timing cinemático. |
 | `src/components/features/ChatArea.tsx` | **Visual Reactions & UX**: Implementación de `.btn-halo` y atajos de teclado (`Alt+Enter` para instrucciones/aprobación, `Esc` para abortar, `Enter` para reanudar si el input está vacío). |
 | `src/components/panels/ToolApprovalPanel.tsx` | **Keyboard Control**: Implementada escucha global para `Alt+Enter` (Autorizar) y `Alt+Backspace` (Denegar). |
-| `src/App.tsx` | **Neural Continuity**: Implementada persistencia de `forceToolMode` en re-prompts para asegurar que el agente reanude con el motor correcto (Instruction/Agent). |
+| `src/App.tsx` | **Progression Dynamics**: Auto-nombramiento de sesión a los 3 turnos y actualización progresiva cada 10 turnos basado en el nuevo contexto. |
 | `src/services/core/agent.ts` | **Feedback Sync**: Inyección de `lastExecutionFeedback` en el canal de estado para notificar a la UI sobre el éxito/fallo de tareas. |
 | `src/index.css` | **Premium Styles**: Optimización de `box-shadows`, eliminación de bordes cortados y nuevas `@keyframes` de vuelo de icono. |
 

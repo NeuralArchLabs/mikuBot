@@ -82,7 +82,7 @@ export const App = () => {
     const scrollRef = useRef<HTMLDivElement>(null);
     const stateRef = useRef(state);
     const messagesRef = useRef(messages);
-    const namedSessionsRef = useRef<Set<string>>(new Set());
+    const namedSessionsTurnsRef = useRef<Map<string, number>>(new Map());
     const processMessageRef = useRef<(text: string, force: boolean, remote: boolean) => Promise<void>>(async () => { });
 
     useEffect(() => {
@@ -1231,7 +1231,6 @@ NO simules resultados de herramientas ni inventes datos; si necesitas informaci�
                 }
 
                 // Determine if the current title is "default" (generated or generic)
-                // We check if it matches the first real user message
                 const firstRealMsg = historyForNaming.find(m => m.role === 'user');
                 const firstMsgContent = firstRealMsg?.content?.slice(0, 30);
 
@@ -1240,36 +1239,27 @@ NO simules resultados de herramientas ni inventes datos; si necesitas informaci�
                     currentSession.title === 'Active Session' ||
                     (firstMsgContent && currentSession.title === firstMsgContent);
 
-                // If it's already named (and not default), we exit. 
-                // We ONLY exit if it's named AND we've already tracked it.
-                if (!isDefault && namedSessionsRef.current.has(sid)) return;
+                const msgCount = historyForNaming.length;
+                const lastNamedTurnCount = namedSessionsTurnsRef.current.get(sid) || 0;
 
-                // Append the just-generated assistant response if it's not in the list yet
-                // (chatHistoryLocal usually includes user msg, but NOT the new assistant msg)
-                // We check if the last message in history is the same as finalAssistantText
-                const lastMsg = historyForNaming[historyForNaming.length - 1];
-                if (!lastMsg || lastMsg.role !== 'assistant' || lastMsg.content !== finalAssistantText) {
-                    if (finalAssistantText) {
-                        historyForNaming.push({ role: 'assistant', content: finalAssistantText });
-                    }
-                }
+                // TRIGGER LOGIC:
+                // 1. Initial name: 3rd turn (msgCount >= 6) AND it's still default.
+                // 2. Refresh: Every 10 turns (msgCount >= lastNamedTurnCount + 20).
+                const shouldNameInitial = isDefault && msgCount >= 6 && lastNamedTurnCount === 0;
+                const shouldRefreshName = !isDefault && msgCount >= lastNamedTurnCount + 20 && lastNamedTurnCount > 0;
 
-                console.log(`[AutoName] Check: Count=${historyForNaming.length}, SID=${sid}, IsDefault=${isDefault}`);
-
-                // Trigger on 3rd turn (6 messages) or later.
-                if (historyForNaming.length >= 6) {
-                    // Mark as attempted to avoid spamming, BUT only if we succeed inside.
-                    // Actually, let's mark it now, and remove if fail.
-                    namedSessionsRef.current.add(sid);
+                if (shouldNameInitial || shouldRefreshName) {
+                    // Update turn count immediately to avoid multi-triggering before completion
+                    namedSessionsTurnsRef.current.set(sid, msgCount);
 
                     try {
-                        console.log("[AutoName] Triggering generation...");
+                        console.log(`[AutoName] Triggering ${shouldRefreshName ? 'refresh' : 'initial'} generation (Turn: ${msgCount / 2})...`);
                         const namingSystemPrompt = `Eres un experto en taxonomía de conversaciones.
 Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
 - Español.
 - Sin comillas.
 - Sin "Título:".
-- Resumen directo del tema.`;
+- Resumen directo del tema actual (ajusta si el tema cambió).`;
 
                         let generatedTitle = '';
                         const namingProvider = stateRef.current.config.chatProvider || stateRef.current.config.provider;
@@ -1298,12 +1288,12 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                                 timestamp: Date.now()
                             });
                         } else {
-                            // If output was empty, allow retry
-                            namedSessionsRef.current.delete(sid);
+                            // If output was empty, revert turn count to allow retry
+                            namedSessionsTurnsRef.current.set(sid, lastNamedTurnCount);
                         }
                     } catch (e) {
                         console.error("[AutoName] Failed:", e);
-                        namedSessionsRef.current.delete(sid);
+                        namedSessionsTurnsRef.current.set(sid, lastNamedTurnCount);
                     }
                 }
             }, 1000);
