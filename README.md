@@ -80,6 +80,17 @@
 
 ---
 
+## ⌨️ Atajos de Teclado (Keyboard Shortcuts)
+Optimiza tu flujo de trabajo neural con estos atajos:
+
+| Atajo | Acción |
+| :--- | :--- |
+| `Enter` | Enviar mensaje estándar (Standard Signal) |
+| `Alt + Enter` | Enviar como **Instrucción Directa** (⚡ Forces Tool Call) |
+| `Shift + Enter` | Nueva línea en el editor |
+
+---
+
 ## 📂 Estructura de la Arquitectura Neural
 
 - `electron/`: Proceso principal nativo (main process). Handlers de persistencia y sistema de archivos.

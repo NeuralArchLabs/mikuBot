@@ -93,9 +93,14 @@ export const ChatArea = ({
     }, [isLoading]);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleSend();
+        if (e.key === 'Enter') {
+            if (e.altKey) {
+                e.preventDefault();
+                handleSendAsInstruction();
+            } else if (!e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+            }
         }
     };
 
