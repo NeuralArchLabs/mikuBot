@@ -112,7 +112,15 @@ export const ChatArea = ({
                 handleSendAsInstruction();
             } else if (!e.shiftKey) {
                 e.preventDefault();
-                handleSend();
+
+                // Logic: If there's a pending task to resume and input is empty, Enter resumes it.
+                // Otherwise, it sends whatever is in the input field.
+                const canReprompt = !isLoading && agentStatus.iteration > 0 && agentStatus.phase !== 'idle';
+                if (canReprompt && !input.trim()) {
+                    onReprompt();
+                } else {
+                    handleSend();
+                }
             }
         }
     };

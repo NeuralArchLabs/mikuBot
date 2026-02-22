@@ -85,7 +85,7 @@ Optimiza tu flujo de trabajo neural con estos atajos:
 
 | Atajo | Acción |
 | :--- | :--- |
-| `Enter` | Enviar mensaje estándar (Standard Signal) |
+| `Enter` | Enviar señal / **Reanudar tarea** (si el input está vacío) |
 | `Alt + Enter` | **En el Editor**: Enviar como Instrucción (⚡ Forces Tool Call) |
 | `Alt + Enter` | **En Aprobación**: Autorizar ejecución de herramienta (Authorize) |
 | `Alt + Backspace` | **En Aprobación**: Denegar ejecución de herramienta (Deny) |
