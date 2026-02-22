@@ -452,6 +452,37 @@ export async function executeToolCall(
     }
 }
 
+/**
+ * Cleans narrative segments to remove technical noise, protocol echoes, and JSON fragments.
+ */
+function cleanThoughtContent(text: string, signatureRegex: RegExp): string {
+    let s = (text || '').trim();
+    if (!s) return '';
+
+    // Standard headers/shards (including UI-like headers the model might hallucinate)
+    if (!signatureRegex.test(s.slice(0, 100))) {
+        s = s.replace(/^(?:I apologize|My apologies|...|You are right|You are correct|My core programming|I will now proceed|¡Disculpa!|Disculpa|Tienes razón|He cometido un error|Aquí está|Perdón|Thinking Process|Neural Flow|Neural Core|Proceso de Razonamiento|Active Reasoning|Razonamiento Activo|Flujo Neural|Core de Miku)[\s\S]*?(?={|\[)/i, '');
+        s = s.replace(/^(?:functionality of the|I have successfully|Now I will|Checking files|I will now)[\s\S]*?$/im, '');
+        s = s.replace(/\[[x\s]\]\s*@?CORE\/[^\s]*/gi, '');
+        // Strip the repetitive "Active Reasoning" / "Razonamiento" if it appears as a standalone line
+        s = s.replace(/^\s*(?:Active Reasoning|Razonamiento Activo|Razonamiento|Neural Core|Miku Core)\s*$/gim, '');
+    }
+
+    // JSON & Code blocks
+    s = s.replace(/```(?:json|JSON)?\s*\{[\s\S]*?\}\s*```/gi, '');
+    s = s.replace(/\{[\s\S]*?\}/g, (match) => {
+        const lowerMatch = match.toLowerCase();
+        const toolMarkers = ['"name":', '"action":', '"function":', '"filename":', '"content":', '"url":', '"query":', '"coin_id":', '"text":'];
+        return toolMarkers.some(m => lowerMatch.includes(m.toLowerCase())) ? '' : match;
+    });
+
+    // Cleanup stray markdown markers that didn't get caught
+    s = s.replace(/```(?:json|JSON)?/gi, '');
+    s = s.replace(/```/g, '');
+
+    return s.trim();
+}
+
 export async function sendAgentMessage(
     config: AppConfig,
     systemPrompt: string,
@@ -758,9 +789,16 @@ export async function sendAgentMessage(
             const tasksContent = findTaskContent() || '';
 
             // Focus Mode Extraction
-            const taskLines = tasksContent.split('\n');
+            const taskLines = tasksContent.trim() ? tasksContent.split('\n') : [];
             const lastDone = taskLines.filter(l => l.includes('[x]')).pop()?.trim() || 'Ninguna (Inicio)';
-            const nextTodo = taskLines.find(l => l.includes('[ ]'))?.trim() || 'Finalización / Limpieza';
+
+            // If the file is empty or only has the header, give a smart suggestion
+            let nextTodo = 'Analizar y ejecutar (Tarea Simple) o Planificar (Tarea Compleja)';
+            if (taskLines.length > 0) {
+                const foundTodo = taskLines.find(l => l.includes('[ ]'))?.trim();
+                if (foundTodo) nextTodo = foundTodo;
+                else nextTodo = 'Finalización / Limpieza';
+            }
 
             // Build Mission Anchor & Operation Focus
             const awarenessBlock = `
@@ -872,35 +910,10 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
 
         for (const rc of sortedPosCalls) {
             const rawSegment = (content || '').substring(curIdx, rc.start);
-            if (rawSegment.trim()) {
-                let cleanSeg = rawSegment.trim();
+            const cleanSeg = cleanThoughtContent(rawSegment, signatureRegex);
 
-                // Aggressive Noise Stripper - Purge conversational shards and technical-garbage
-                if (!signatureRegex.test(cleanSeg.slice(0, 100))) {
-                    cleanSeg = cleanSeg.replace(/^(?:I apologize|My apologies|...|You are right|You are correct|My core programming|I will now proceed|¡Disculpa!|Disculpa|Tienes razón|He cometido un error|Aquí está|Perdón|Thinking Process|Neural Flow|Neural Core|Proceso de Razonamiento)[\s\S]*?(?={|\[)/i, '');
-                    // Strip common technical repetitions that models often output around JSON
-                    cleanSeg = cleanSeg.replace(/^(?:functionality of the|I have successfully|Now I will|Checking files|I will now)[\s\S]*?$/im, '');
-                }
-
-                // Aggressive Tool Call & JSON Snippet Stripper
-                cleanSeg = cleanSeg.replace(/```(?:json|JSON)?\s*\{[\s\S]*?\}\s*```/g, '');
-
-                // Regex for finding JSON blocks that look like tool calls to strip them from narrative
-                cleanSeg = cleanSeg.replace(/\{[\s\S]*?\}/g, (match) => {
-                    const lowerMatch = match.toLowerCase();
-                    const looksLikeTool = lowerMatch.includes('"name":') || lowerMatch.includes('"action":') || lowerMatch.includes('"function":');
-                    if (looksLikeTool) {
-                        try {
-                            JSON.parse(match); // verify it's validish JSON
-                            return '';
-                        } catch { return match; }
-                    }
-                    return match;
-                });
-
-                if (cleanSeg.trim() && cleanSeg.trim().length > 2) {
-                    iterationBlocks.push({ type: 'thought', content: cleanSeg.trim() });
-                }
+            if (cleanSeg && cleanSeg.length > 2) {
+                iterationBlocks.push({ type: 'thought', content: cleanSeg });
             }
 
             // B. Extract thoughts embedded in tool arguments for separate display above the tool
@@ -933,14 +946,25 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
         }
 
         const finalRawSegment = (content || '').substring(curIdx);
-        if (finalRawSegment.trim()) {
-            let cleanFinal = finalRawSegment.trim();
-            cleanFinal = cleanFinal.replace(/```(?:json|JSON)?\s*\{[\s\S]*?\}\s*```/g, '').trim();
-            if (cleanFinal && cleanFinal.length > 2) {
-                const isOnlyText = uniqueToolCalls.length === 0;
-                iterationBlocks.push({ type: isOnlyText ? 'answer' : 'thought', content: cleanFinal });
-            }
+        const cleanFinal = cleanThoughtContent(finalRawSegment, signatureRegex);
+        if (cleanFinal && cleanFinal.length > 2) {
+            const isOnlyText = uniqueToolCalls.length === 0;
+            iterationBlocks.push({ type: isOnlyText ? 'answer' : 'thought', content: cleanFinal });
         }
+
+        // CONSOLIDATION: Merge consecutive thoughts to avoid fragmented UI
+        const mergedIterationBlocks: any[] = [];
+        iterationBlocks.forEach(block => {
+            const last = mergedIterationBlocks[mergedIterationBlocks.length - 1];
+            if (last && last.type === 'thought' && block.type === 'thought') {
+                last.content += `\n\n${block.content}`;
+            } else {
+                // Final validation: only push non-empty blocks
+                if (block.content && block.content.trim().length > 1) {
+                    mergedIterationBlocks.push(block);
+                }
+            }
+        });
 
         agentMessages.push({
             role: 'assistant',
@@ -949,38 +973,52 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
         });
 
         // DYNAMIC SYNC: Emit blocks early so thoughts & tools appear before execution
-        onChunk(content || '', false, [...allBlocks, ...iterationBlocks]);
+        onChunk(content || '', false, [...allBlocks, ...mergedIterationBlocks]);
         onStatus({ rawMessages: [...agentMessages] });
 
-        // [ANTI-INTERFERENCE FIX]: If final_answer is detected, it overrides EVERYTHING else in this iteration.
+        // [ANTI-INTERFERENCE FIX]: If final_answer is detected, ensure protocol compliance
         const finalAnswerCall = uniqueToolCalls.find(tc => tc.function.name === 'final_answer');
         if (finalAnswerCall) {
             // Task Protocol Enforcement: Do not allow final_answer if TASKS.md exists
             const hasTasksFile = Object.keys(currentFiles).some(k => k.toLowerCase() === 'tasks.md') ||
                 Object.keys(currentWorkSpace).some(k => k.toLowerCase() === 'tasks.md');
 
-            if (hasTasksFile && isAgentMode) {
-                log('warn', 'Agent tried to answer while TASKS.md is still active. Force rejection.');
+            // NEW: If the model is CREATING/UPDATING tasks.md and also answering, that's a protocol violation
+            const isUpdatingTasks = uniqueToolCalls.some(tc =>
+                tc.function.name === 'update_file' &&
+                (tc.function.arguments.filename || '').toLowerCase().includes('tasks.md')
+            );
+
+            // Exception: If the model is DELIVERING and ALSO DELETING tasks.md in this turn, allow it.
+            const isDeletingTasks = uniqueToolCalls.some(tc =>
+                tc.function.name === 'delete_file' &&
+                (tc.function.arguments.filename || '').toLowerCase().includes('tasks.md')
+            );
+
+            const isViolation = (hasTasksFile && !isDeletingTasks) || (isUpdatingTasks && !isDeletingTasks);
+
+            if (isViolation && isAgentMode) {
+                log('warn', 'Agent tried to answer while TASKS.md is active or being updated. Force rejection.');
                 uniqueToolCalls.length = 0;
                 agentMessages.push({
                     role: 'user',
-                    content: '⚠️ BLOQUEO DE PROTOCOLO: No puedes dar un "final_answer" mientras `@CORE/TASKS.md` exista. Debes completar TODAS las tareas pendientes, marcar los checks `[x]` y finalmente ELIMINAR el archivo con `delete_file` antes de responder.'
+                    content: '⚠️ BLOQUEO DE PROTOCOLO: No puedes dar un "final_answer" mientras `@CORE/TASKS.md` exista o esté siendo actualizado. Debes completar TODAS las tareas, marcar los checks `[x]` y finalmente ELIMINAR el archivo con `delete_file` antes de responder.'
                 });
                 onStatus({ phase: 'thinking', rawMessages: [...agentMessages] });
                 continue;
             }
 
+            // Optimization: Remove ONLY redundant completion tools, keep the real work (file ops, etc)
+            const forbiddenWithFinal = ['talk', 'say', 'respond', 'conclude', 'finish', 'summary', 'final_summary'];
+            const cleanedCalls = uniqueToolCalls.filter(tc => !forbiddenWithFinal.includes(tc.function.name));
+
+            // Re-order so final_answer is ALWAYS last in the execution loop
+            const withoutFinal = cleanedCalls.filter(tc => tc.function.name !== 'final_answer');
             uniqueToolCalls.length = 0;
-            uniqueToolCalls.push(finalAnswerCall);
-            // Keep actual blocks (thoughts) but remove other tool calls that might have leaked
-            const toolIndex = iterationBlocks.findIndex(b => b.type === 'tool_call');
-            if (toolIndex !== -1) {
-                // Keep only thoughts and the final_answer itself (if it was added as a block, which it isn't yet)
-                iterationBlocks.splice(toolIndex);
-            }
+            uniqueToolCalls.push(...withoutFinal, finalAnswerCall);
         }
 
-        allBlocks = [...allBlocks, ...iterationBlocks];
+        allBlocks = [...allBlocks, ...mergedIterationBlocks];
 
         const activeToolCalls = uniqueToolCalls;
 
@@ -1182,10 +1220,14 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
         function autoExtractSources(actions: string[], history: any[]): string[] {
             const found: Set<string> = new Set();
 
-            // 1. Scan for filenames (common in core tools)
+            // 1. Scan for filenames (exclude internal protocol files)
             actions.forEach(a => {
                 const fileMatch = a.match(/"filename"\s*:\s*"(.*?)"/i);
-                if (fileMatch) found.add(fileMatch[1]);
+                if (fileMatch) {
+                    const fn = fileMatch[1];
+                    const isInternal = fn.startsWith('@CORE/') || fn.toLowerCase() === 'tasks.md' || fn.toLowerCase() === 'active_context.md';
+                    if (!isInternal) found.add(fn);
+                }
             });
 
             // 2. Cross-reference actions with dynamic tool metadata
@@ -1255,6 +1297,16 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
                 // Canonical keys handled by normalizeArgKeys in toolCallNormalizer
                 const textRaw = args.text || 'Tarea completada exitosamente.';
                 const reasoning = args.reasoning || '';
+
+                // REDUNDANCY CHECK: If we have a thought block exactly matches textRaw, remove it
+                const redundantIdx = mergedIterationBlocks.findIndex(b =>
+                    b.type === 'thought' &&
+                    (b.content.trim() === textRaw.trim() || textRaw.trim().includes(b.content.trim()))
+                );
+                if (redundantIdx !== -1 && textRaw.length > 20) {
+                    mergedIterationBlocks.splice(redundantIdx, 1);
+                }
+
                 const text = formatFinalResponse(textRaw);
                 let sources = args.sources || [];
 

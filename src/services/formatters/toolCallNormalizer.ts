@@ -192,9 +192,40 @@ function normalizeJsonKeys(obj: any, validToolNames: string[] = []): { name: str
         }
     }
 
+    // 3. Heuristic Tool Inference: { "filename": "...", "content": "..." } -> update_file
+    // If we have no name but we have keys that uniquely identify a tool
+    if (!name) {
+        const objKeys = Object.keys(obj).map(k => k.toLowerCase());
+
+        // Profiles for inference
+        if (objKeys.includes('filename') && (objKeys.includes('content') || objKeys.includes('text'))) {
+            name = 'update_file';
+            args = obj;
+        } else if (objKeys.includes('filename') && objKeys.includes('find') && objKeys.includes('replace')) {
+            name = 'patch_file';
+            args = obj;
+        } else if (objKeys.includes('filename') && objKeys.length === 1) {
+            name = 'read_file';
+            args = obj;
+        } else if (objKeys.includes('query') && (objKeys.length === 1 || objKeys.includes('search_depth'))) {
+            name = 'web_search';
+            args = obj;
+        } else if (objKeys.includes('coin_id')) {
+            name = 'get_crypto_price';
+            args = obj;
+        } else if ((objKeys.includes('text') || objKeys.includes('mensaje') || objKeys.includes('content')) && (objKeys.length <= 3)) {
+            // High probability it's a final_answer if it only has text/reasoning/sources
+            const finalKeys = ['text', 'mensaje', 'message', 'content', 'reasoning', 'razonamiento', 'sources', 'fuentes'];
+            if (objKeys.every(k => finalKeys.includes(k))) {
+                name = 'final_answer';
+                args = obj;
+            }
+        }
+    }
+
     // Handle nested cases: { "tool_call": { "name": "...", "arguments": {...} } }
-    if (!name && obj.tool_call) return normalizeJsonKeys(obj.tool_call);
-    if (!name && obj.function_call) return normalizeJsonKeys(obj.function_call);
+    if (!name && obj.tool_call) return normalizeJsonKeys(obj.tool_call, validToolNames);
+    if (!name && obj.function_call) return normalizeJsonKeys(obj.function_call, validToolNames);
 
     if (name) return { name, arguments: args || {} };
     return null;
@@ -658,6 +689,14 @@ export function extractAllBalancedObjects(text: string): { content: string; star
                 results.push({ content: obj, start: i, end: i + obj.length });
                 i += obj.length;
                 continue;
+            } else {
+                // LINGERING FRAGMENT: If we found a '{' but no closing '}', and we are near the end,
+                // we treat the rest of the string as a potential fragment for repairJson.
+                const remaining = text.substring(i);
+                if (remaining.includes('"') || remaining.includes(':')) {
+                    results.push({ content: remaining, start: i, end: text.length });
+                }
+                break;
             }
         }
         i++;
