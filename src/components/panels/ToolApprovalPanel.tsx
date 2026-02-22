@@ -15,6 +15,23 @@ export const ToolApprovalPanel = React.memo(({
 }: ToolApprovalPanelProps) => {
     const [status, setStatus] = useState<'waiting' | 'approved' | 'rejected'>('waiting');
 
+    React.useEffect(() => {
+        const handleKeyDownMain = (e: KeyboardEvent) => {
+            if (status !== 'waiting') return;
+
+            if (e.altKey && e.key === 'Enter') {
+                e.preventDefault();
+                handleApprove();
+            } else if (e.altKey && e.key === 'Backspace') {
+                e.preventDefault();
+                handleReject();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDownMain);
+        return () => window.removeEventListener('keydown', handleKeyDownMain);
+    }, [status]);
+
     const handleApprove = () => {
         setStatus('approved');
         setTimeout(() => {

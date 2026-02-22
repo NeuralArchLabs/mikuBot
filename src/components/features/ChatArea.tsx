@@ -92,6 +92,19 @@ export const ChatArea = ({
         }
     }, [isLoading]);
 
+    React.useEffect(() => {
+        const handleGlobalKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && !e.altKey && !e.shiftKey && !e.ctrlKey) {
+                if (isLoading) {
+                    onAbort();
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleGlobalKeyDown);
+        return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+    }, [isLoading, onAbort]);
+
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
             if (e.altKey) {
