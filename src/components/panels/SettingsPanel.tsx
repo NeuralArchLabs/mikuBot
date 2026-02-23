@@ -157,7 +157,7 @@ export const SettingsPanel = ({
                     {/* Knowledge Base Section */}
                     <div className="space-y-5">
                         <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
-                            <Icon name="database" className="text-blue-500" /> Knowledge Base Pathways
+                            <Icon name="database" className="text-blue-500" /> Neural System Pathways
                         </label>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             {/* WorkSpace */}
