@@ -4,7 +4,7 @@
  */
 import { ToolCall, ToolResult, ToolDefinition, AppConfig, AgentStatus, AgentLogEntry, FileTarget, ApprovalMode } from '../../types';
 import { PROTECTED_CORE_FILES, CONSOLE_ALLOWED_COMMANDS, CONSOLE_BLOCKED_PATTERNS } from '../../constants';
-import { validateToolArgs, safeFetch } from '../../utils';
+import { validateToolArgs, safeFetch, streamViaProxy } from '../../utils';
 import { recoverToolCallsFromText, normalizeRawToolCall, RecoveredCall } from '../formatters/toolCallNormalizer';
 import { formatFinalResponse } from '../formatters/answerFormatter';
 import { formatTelegramResponse } from '../formatters/telegramFormatter';
@@ -263,9 +263,9 @@ export async function executeToolCall(
 
             case 'read_url': {
                 // Prioritize Native Internal Extraction (Python trafilatura bridge)
-                if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
+                if (typeof window !== 'undefined' && (window as any).electron?.runExtract) {
                     try {
-                        const response = await (window as any).electron.invoke('run-extract', { url: args.url });
+                        const response = await (window as any).electron.runExtract({ url: args.url });
                         if (response.ok) {
                             return { success: true, data: response.data };
                         }
@@ -354,7 +354,7 @@ export async function executeToolCall(
                 }
 
                 // Security Layer 3: This runs in the browser, so we delegate to Electron
-                const isElectron = !!(window as any).electron?.invoke;
+                const isElectron = !!(window as any).electron?.runConsole;
                 if (!isElectron) {
                     return {
                         success: false,
@@ -363,7 +363,7 @@ export async function executeToolCall(
                 }
 
                 try {
-                    const result = await (window as any).electron.invoke('run-console', {
+                    const result = await (window as any).electron.runConsole({
                         command: cmd,
                         args: cmdArgs,
                         cwd: args.cwd || '',
@@ -407,15 +407,15 @@ export async function executeToolCall(
 
             default: {
                 // Dynamic Skills Integration
-                const isElectron = typeof window !== 'undefined' && (window as any).electron?.invoke;
+                const isElectron = typeof window !== 'undefined' && (window as any).electron?.listSkills;
                 if (isElectron && config.folderPaths?.tools) {
                     try {
                         // We check if this tool exists in the skills library
-                        const skillsResponse = await (window as any).electron.invoke('list-skills', { toolsPath: config.folderPaths.tools });
+                        const skillsResponse = await (window as any).electron.listSkills({ toolsPath: config.folderPaths.tools });
                         if (skillsResponse.ok && Array.isArray(skillsResponse.skills)) {
                             const skill = skillsResponse.skills.find((s: any) => s.name === name);
                             if (skill) {
-                                const execution = await (window as any).electron.invoke('execute-skill', {
+                                const execution = await (window as any).electron.executeSkill({
                                     toolsPath: config.folderPaths.tools,
                                     skillName: name,
                                     args: args
@@ -434,7 +434,7 @@ export async function executeToolCall(
                 let availableSkillsMsg = "";
                 if (isElectron && config.folderPaths?.tools) {
                     try {
-                        const skillsResponse = await (window as any).electron.invoke('list-skills', { toolsPath: config.folderPaths.tools });
+                        const skillsResponse = await (window as any).electron.listSkills({ toolsPath: config.folderPaths.tools });
                         if (skillsResponse.ok && Array.isArray(skillsResponse.skills)) {
                             availableSkillsMsg = ` (Skills detectadas: ${skillsResponse.skills.map((s: any) => s.name).join(', ')})`;
                         }
@@ -518,6 +518,7 @@ export async function sendAgentMessage(
         useTools: boolean,
     ): Promise<{ content: string; toolCalls: any[] }> {
         const provider = config.provider;
+        const isElectronProxy = !!(window as any).electron?.apiStream;
 
         if (provider === 'ollama') {
             const body: any = {
@@ -528,125 +529,200 @@ export async function sendAgentMessage(
             };
             if (useTools && modelSupportsNativeTools) body.tools = tools;
 
-            const response = await fetch(`${config.ollamaUrl}/api/chat`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body),
-                signal: abortSignal,
-            });
+            if (isElectronProxy) {
+                let fullContent = '';
+                let toolCalls: any[] = [];
+                let buffer = '';
 
-            if (response.status === 400 && useTools && modelSupportsNativeTools) {
-                log('warn', 'Este modelo está siendo optimizado para el llamado y uso de herramientas');
-                modelSupportsNativeTools = false;
-                return streamModelRequest(messages, false);
-            }
-
-            if (!response.ok) {
-                const errBody = await response.text().catch(() => '');
-                throw new Error(`Ollama HTTP ${response.status}: ${errBody}`);
-            }
-
-            const reader = response.body?.getReader();
-            const decoder = new TextDecoder();
-            let fullContent = '';
-            let toolCalls: any[] = [];
-            let buffer = '';
-
-            if (reader) {
-                while (true) {
-                    if (abortSignal.aborted) throw new DOMException('Aborted', 'AbortError');
-                    const { done, value } = await reader.read();
-                    if (done) break;
-
-                    buffer += decoder.decode(value, { stream: true });
-                    const lines = buffer.split('\n');
-                    buffer = lines.pop() || '';
-
-                    for (const line of lines) {
-                        const cleanLine = line.trim();
-                        if (!cleanLine) continue;
-                        try {
-                            const parsed = JSON.parse(cleanLine);
-                            if (parsed.message?.content) {
-                                fullContent += parsed.message.content;
-                                onStatus({ streamedText: fullContent, phase: 'streaming' });
+                try {
+                    await streamViaProxy({
+                        provider: 'ollama',
+                        model: config.model,
+                        body,
+                        ollamaUrl: config.ollamaUrl,
+                        abortSignal,
+                        onChunk: (raw) => {
+                            buffer += raw;
+                            const lines = buffer.split('\n');
+                            buffer = lines.pop() || '';
+                            for (const line of lines) {
+                                if (!line.trim()) continue;
+                                try {
+                                    const parsed = JSON.parse(line);
+                                    if (parsed.message?.content) {
+                                        fullContent += parsed.message.content;
+                                        onStatus({ streamedText: fullContent, phase: 'streaming' });
+                                    }
+                                    if (parsed.message?.tool_calls) {
+                                        toolCalls = [...toolCalls, ...parsed.message.tool_calls];
+                                    }
+                                } catch { }
                             }
-                            if (parsed.message?.tool_calls) {
-                                toolCalls = [...toolCalls, ...parsed.message.tool_calls];
-                            }
-                        } catch { }
+                        }
+                    });
+                } catch (err: any) {
+                    // Handle HTTP 400 for tool fallback (match original behavior)
+                    if (err.message?.includes('HTTP 400') && useTools && modelSupportsNativeTools) {
+                        log('warn', 'Este modelo está siendo optimizado para el llamado y uso de herramientas');
+                        modelSupportsNativeTools = false;
+                        return streamModelRequest(messages, false);
+                    }
+                    throw err;
+                }
+                return { content: fullContent, toolCalls };
+            } else {
+                // Direct fetch fallback (browser dev & local Ollama)
+                const response = await fetch(`${config.ollamaUrl}/api/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                    signal: abortSignal,
+                });
+
+                if (response.status === 400 && useTools && modelSupportsNativeTools) {
+                    log('warn', 'Este modelo está siendo optimizado para el llamado y uso de herramientas');
+                    modelSupportsNativeTools = false;
+                    return streamModelRequest(messages, false);
+                }
+
+                if (!response.ok) {
+                    const errBody = await response.text().catch(() => '');
+                    throw new Error(`Ollama HTTP ${response.status}: ${errBody}`);
+                }
+
+                const reader = response.body?.getReader();
+                const decoder = new TextDecoder();
+                let fullContent = '';
+                let toolCalls: any[] = [];
+                let buffer = '';
+
+                if (reader) {
+                    while (true) {
+                        if (abortSignal.aborted) throw new DOMException('Aborted', 'AbortError');
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+
+                        for (const line of lines) {
+                            const cleanLine = line.trim();
+                            if (!cleanLine) continue;
+                            try {
+                                const parsed = JSON.parse(cleanLine);
+                                if (parsed.message?.content) {
+                                    fullContent += parsed.message.content;
+                                    onStatus({ streamedText: fullContent, phase: 'streaming' });
+                                }
+                                if (parsed.message?.tool_calls) {
+                                    toolCalls = [...toolCalls, ...parsed.message.tool_calls];
+                                }
+                            } catch { }
+                        }
                     }
                 }
+                return { content: fullContent, toolCalls };
             }
-            return { content: fullContent, toolCalls };
         } else if (provider === 'groq') {
             const body: any = {
                 model: config.model,
-                messages: messages.map(m => ({ role: m.role, content: m.content || '' })), // Groq doesn't like empty content
+                messages: messages.map(m => ({ role: m.role, content: m.content || '' })),
                 stream: true,
                 temperature: config.temperature,
             };
-            // Note: We currently don't use native tools for Groq in the agent loop to rely on text extraction
-            // which is more robust for our complex multi-tool scenarios.
 
-            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${config.apiKeys.groq}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(body),
-                signal: abortSignal,
-            });
+            if (isElectronProxy) {
+                // ── Secure Path: Route through main process (API key injected server-side)
+                let fullContent = '';
+                let buffer = '';
 
-            if (!response.ok) {
-                const err = await response.json().catch(() => ({}));
-                throw new Error(err.error?.message || `Groq HTTP ${response.status}`);
-            }
+                await streamViaProxy({
+                    provider: 'groq',
+                    model: config.model,
+                    body,
+                    abortSignal,
+                    onChunk: (raw) => {
+                        buffer += raw;
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+                        for (const line of lines) {
+                            const cleanLine = line.trim();
+                            if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
+                            const data = cleanLine.slice(6);
+                            if (data === '[DONE]') continue;
+                            try {
+                                const parsed = JSON.parse(data);
+                                const content = parsed.choices?.[0]?.delta?.content;
+                                if (content) {
+                                    fullContent += content;
+                                    onStatus({ streamedText: fullContent, phase: 'streaming' });
+                                }
+                            } catch { }
+                        }
+                    }
+                });
+                return { content: fullContent, toolCalls: [] };
+            } else {
+                // ── Fallback: direct fetch (browser dev mode only)
+                const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${config.apiKeys.groq}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(body),
+                    signal: abortSignal,
+                });
 
-            const reader = response.body?.getReader();
-            const decoder = new TextDecoder();
-            let fullContent = '';
-            let buffer = '';
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.error?.message || `Groq HTTP ${response.status}`);
+                }
 
-            if (reader) {
-                while (true) {
-                    if (abortSignal.aborted) throw new DOMException('Aborted', 'AbortError');
-                    const { done, value } = await reader.read();
-                    if (done) break;
+                const reader = response.body?.getReader();
+                const decoder = new TextDecoder();
+                let fullContent = '';
+                let buffer = '';
 
-                    buffer += decoder.decode(value, { stream: true });
-                    const lines = buffer.split('\n');
-                    buffer = lines.pop() || '';
+                if (reader) {
+                    while (true) {
+                        if (abortSignal.aborted) throw new DOMException('Aborted', 'AbortError');
+                        const { done, value } = await reader.read();
+                        if (done) break;
 
-                    for (const line of lines) {
-                        const cleanLine = line.trim();
-                        if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
-                        const data = cleanLine.slice(6);
-                        if (data === '[DONE]') continue;
-                        try {
-                            const parsed = JSON.parse(data);
-                            const content = parsed.choices?.[0]?.delta?.content;
-                            if (content) {
-                                fullContent += content;
-                                onStatus({ streamedText: fullContent, phase: 'streaming' });
-                            }
-                        } catch { }
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+
+                        for (const line of lines) {
+                            const cleanLine = line.trim();
+                            if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
+                            const data = cleanLine.slice(6);
+                            if (data === '[DONE]') continue;
+                            try {
+                                const parsed = JSON.parse(data);
+                                const content = parsed.choices?.[0]?.delta?.content;
+                                if (content) {
+                                    fullContent += content;
+                                    onStatus({ streamedText: fullContent, phase: 'streaming' });
+                                }
+                            } catch { }
+                        }
                     }
                 }
+                return { content: fullContent, toolCalls: [] };
             }
-            return { content: fullContent, toolCalls: [] };
         } else if (provider === 'gemini') {
             const isGemma = config.model.toLowerCase().includes('gemma');
             const systemPromptContent = messages.find(m => m.role === 'system')?.content || '';
 
-            // Reconstruct history ensuring roles alternate (Gemini Requirement)
             const consolidatedHistory: any[] = [];
             for (const m of messages.filter(msg => msg.role !== 'system')) {
                 const role = m.role === 'assistant' ? 'model' : (m.role === 'tool' ? 'user' : m.role);
                 const content = m.role === 'tool'
                     ? `[TOOL_RESULT: ${m.tool_call_id}]\n${m.content}`
-                    : (m.content || '[Proceeding]'); // Avoid empty content for Gemini
+                    : (m.content || '[Proceeding]');
 
                 if (consolidatedHistory.length > 0 && consolidatedHistory[consolidatedHistory.length - 1].role === role) {
                     consolidatedHistory[consolidatedHistory.length - 1].parts[0].text += `\n\n${content}`;
@@ -672,55 +748,91 @@ export async function sendAgentMessage(
                 body.systemInstruction = { parts: [{ text: systemPromptContent }] };
             }
 
-            const response = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:streamGenerateContent?alt=sse&key=${config.apiKeys.gemini}`,
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body),
-                    signal: abortSignal,
+            if (isElectronProxy) {
+                // ── Secure Path: Route through main process
+                let fullContent = '';
+                let buffer = '';
+
+                await streamViaProxy({
+                    provider: 'gemini',
+                    model: config.model,
+                    body,
+                    abortSignal,
+                    onChunk: (raw) => {
+                        buffer += raw;
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+                        for (const line of lines) {
+                            const cleanLine = line.trim();
+                            if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
+                            try {
+                                const parsed = JSON.parse(cleanLine.slice(6));
+                                const parts = parsed.candidates?.[0]?.content?.parts;
+                                if (parts && Array.isArray(parts)) {
+                                    parts.forEach((part: any) => {
+                                        if (part.text) {
+                                            fullContent += part.text;
+                                        }
+                                    });
+                                    onStatus({ streamedText: fullContent, phase: 'streaming' });
+                                }
+                            } catch { }
+                        }
+                    }
+                });
+                return { content: fullContent, toolCalls: [] };
+            } else {
+                // ── Fallback: direct fetch (browser dev mode)
+                const response = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:streamGenerateContent?alt=sse&key=${config.apiKeys.gemini}`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body),
+                        signal: abortSignal,
+                    }
+                );
+
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.error?.message || `Gemini HTTP ${response.status}`);
                 }
-            );
 
-            if (!response.ok) {
-                const err = await response.json().catch(() => ({}));
-                throw new Error(err.error?.message || `Gemini HTTP ${response.status}`);
-            }
+                const reader = response.body?.getReader();
+                const decoder = new TextDecoder();
+                let fullContent = '';
+                let buffer = '';
 
-            const reader = response.body?.getReader();
-            const decoder = new TextDecoder();
-            let fullContent = '';
-            let buffer = '';
+                if (reader) {
+                    while (true) {
+                        if (abortSignal.aborted) throw new DOMException('Aborted', 'AbortError');
+                        const { done, value } = await reader.read();
+                        if (done) break;
 
-            if (reader) {
-                while (true) {
-                    if (abortSignal.aborted) throw new DOMException('Aborted', 'AbortError');
-                    const { done, value } = await reader.read();
-                    if (done) break;
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
 
-                    buffer += decoder.decode(value, { stream: true });
-                    const lines = buffer.split('\n');
-                    buffer = lines.pop() || '';
-
-                    for (const line of lines) {
-                        const cleanLine = line.trim();
-                        if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
-                        try {
-                            const parsed = JSON.parse(cleanLine.slice(6));
-                            const parts = parsed.candidates?.[0]?.content?.parts;
-                            if (parts && Array.isArray(parts)) {
-                                parts.forEach((part: any) => {
-                                    if (part.text) {
-                                        fullContent += part.text;
-                                    }
-                                });
-                                onStatus({ streamedText: fullContent, phase: 'streaming' });
-                            }
-                        } catch { }
+                        for (const line of lines) {
+                            const cleanLine = line.trim();
+                            if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
+                            try {
+                                const parsed = JSON.parse(cleanLine.slice(6));
+                                const parts = parsed.candidates?.[0]?.content?.parts;
+                                if (parts && Array.isArray(parts)) {
+                                    parts.forEach((part: any) => {
+                                        if (part.text) {
+                                            fullContent += part.text;
+                                        }
+                                    });
+                                    onStatus({ streamedText: fullContent, phase: 'streaming' });
+                                }
+                            } catch { }
+                        }
                     }
                 }
+                return { content: fullContent, toolCalls: [] };
             }
-            return { content: fullContent, toolCalls: [] };
         }
 
         throw new Error(`Unsupported provider for Agent Loop: ${provider}`);

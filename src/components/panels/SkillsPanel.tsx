@@ -59,9 +59,9 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
 
     useEffect(() => {
         const loadSkills = async () => {
-            if ((window as any).electron?.invoke && config.folderPaths?.tools) {
+            if ((window as any).electron?.listSkills && config.folderPaths?.tools) {
                 try {
-                    const res = await (window as any).electron.invoke('list-skills', { toolsPath: config.folderPaths.tools });
+                    const res = await (window as any).electron.listSkills({ toolsPath: config.folderPaths.tools });
                     if (res.ok && Array.isArray(res.skills)) {
                         setSkills(res.skills);
                     }

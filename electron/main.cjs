@@ -36,6 +36,110 @@ if (!fs.existsSync(SESSIONS_DIR)) {
     }
 }
 
+// ── Security: Read API keys from disk (main process only) ────────────
+function getApiKeys() {
+    try {
+        if (fs.existsSync(CONFIG_FILE)) {
+            const raw = fs.readFileSync(CONFIG_FILE, 'utf8');
+            const parsed = JSON.parse(raw);
+            return parsed.config?.apiKeys || {};
+        }
+    } catch (e) {
+        console.error('[Main Process] Failed to read API keys from config.json:', e.message);
+    }
+    return {};
+}
+
+// ── API Streaming Proxy ──────────────────────────────────────────────
+// All LLM API calls go through here. The renderer sends the request
+// body WITHOUT any API keys — keys are injected by the main process
+// from config.json. Streaming chunks are forwarded via webContents.send.
+ipcMain.handle('api-stream', async (event, { provider, model, body, ollamaUrl, streamId }) => {
+    const sender = event.sender;
+    const keys = getApiKeys();
+
+    try {
+        let url, headers;
+
+        if (provider === 'gemini') {
+            const geminiKey = keys.gemini;
+            if (!geminiKey) return { ok: false, error: 'Gemini API key not configured.' };
+            url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${geminiKey}`;
+            headers = { 'Content-Type': 'application/json' };
+        } else if (provider === 'groq') {
+            const groqKey = keys.groq;
+            if (!groqKey) return { ok: false, error: 'Groq API key not configured.' };
+            url = 'https://api.groq.com/openai/v1/chat/completions';
+            headers = {
+                'Authorization': `Bearer ${groqKey}`,
+                'Content-Type': 'application/json',
+            };
+        } else if (provider === 'ollama') {
+            url = `${ollamaUrl || 'http://localhost:11434'}/api/chat`;
+            headers = { 'Content-Type': 'application/json' };
+        } else {
+            return { ok: false, error: `Unknown provider: ${provider}` };
+        }
+
+        console.log(`[Main Process] API Stream (${provider}/${model}) -> ${url.split('?')[0]}`);
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 120000); // 2 min timeout for streaming
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(body),
+                signal: controller.signal,
+            });
+
+            if (!response.ok) {
+                let errData = '';
+                try { errData = await response.text(); } catch { }
+                return { ok: false, error: `HTTP ${response.status}: ${errData}` };
+            }
+
+            // Stream chunks to renderer
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                // Send to renderer (check if sender is not destroyed)
+                if (!sender.isDestroyed()) {
+                    sender.send('api-stream-chunk', { streamId, chunk });
+                } else {
+                    reader.cancel();
+                    break;
+                }
+            }
+
+            // Signal completion
+            if (!sender.isDestroyed()) {
+                sender.send('api-stream-chunk', { streamId, chunk: null, done: true });
+            }
+            return { ok: true };
+        } finally {
+            clearTimeout(timeout);
+        }
+    } catch (error) {
+        const isTimeout = error.name === 'AbortError';
+        console.error(`[Main Process] API Stream Error (${provider}):`, isTimeout ? 'Timed out' : error.message);
+        // Signal error to renderer
+        if (!sender.isDestroyed()) {
+            sender.send('api-stream-chunk', { streamId, chunk: null, done: true, error: error.message });
+        }
+        return {
+            ok: false,
+            error: isTimeout ? 'Stream timed out (120s).' : error.message,
+        };
+    }
+});
+
 // ── IPC Handlers ─────────────────────────────────────────────────────
 
 // Fetch Proxy (Improved for Localhost/Ollama)

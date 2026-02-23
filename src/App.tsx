@@ -363,7 +363,7 @@ export const App = () => {
         setSyncing(true);
         try {
             let newFiles: Record<string, string> = {};
-            const isElectron = !!(window as any).electron?.invoke;
+            const isElectron = !!(window as any).electron?.readFolder;
 
             if (isElectron && staticPath) {
                 if (!staticPath.trim()) {
@@ -371,7 +371,7 @@ export const App = () => {
                     return {};
                 }
                 console.log(`[IPC] Syncing ${target} via static path: ${staticPath}`);
-                const res = await (window as any).electron.invoke('fs-read-folder', staticPath);
+                const res = await (window as any).electron.readFolder(staticPath);
                 if (res.ok) {
                     newFiles = res.files;
                 } else {
@@ -515,10 +515,10 @@ export const App = () => {
             }
 
             const staticPath = state.config.folderPaths?.[target];
-            const isElectron = !!(window as any).electron?.invoke;
+            const isElectron = !!(window as any).electron?.writeFile;
 
             if (isElectron && staticPath) {
-                const res = await (window as any).electron.invoke('fs-write-file', { folderPath: staticPath, filename: name, content });
+                const res = await (window as any).electron.writeFile({ folderPath: staticPath, filename: name, content });
                 if (!res.ok) throw new Error(res.error);
             } else if (handle) {
                 if ((handle as any).queryPermission) {
@@ -578,10 +578,10 @@ export const App = () => {
             else if (target === 'tools') handle = toolsHandle;
 
             const staticPath = state.config.folderPaths?.[target];
-            const isElectron = !!(window as any).electron?.invoke;
+            const isElectron = !!(window as any).electron?.deleteFile;
 
             if (isElectron && staticPath) {
-                const res = await (window as any).electron.invoke('fs-delete-file', { folderPath: staticPath, filename: name });
+                const res = await (window as any).electron.deleteFile({ folderPath: staticPath, filename: name });
                 if (!res.ok) throw new Error(res.error);
             } else if (handle) {
                 const parts = name.split('/').filter(p => p && p !== '.');
@@ -638,9 +638,9 @@ export const App = () => {
             let folderName = '';
             let handle: FileSystemDirectoryHandle | null = null;
 
-            if (isElectron && (window as any).electron.invoke) {
+            if (isElectron && (window as any).electron.selectFolder) {
                 // Native Desktop Selection
-                const res = await (window as any).electron.invoke('fs-select-folder');
+                const res = await (window as any).electron.selectFolder();
                 if (!res.ok) return;
                 folderPath = res.path;
                 folderName = res.name;
@@ -682,7 +682,7 @@ export const App = () => {
         try {
             const hasAnyHandle = coreHandle || extraHandle || workSpaceHandle || toolsHandle;
             const staticPaths = state.config.folderPaths;
-            const isElectron = !!(window as any).electron?.invoke;
+            const isElectron = !!(window as any).electron?.readFolder;
 
             if (isElectron && staticPaths && staticPaths.core) {
                 // IPC Fast Path
@@ -1158,10 +1158,10 @@ NO simules resultados de herramientas ni inventes datos; si necesitas informaci√
 
             // Fetch Neural Skills (Dynamic Tools) - FECHING EARLY FOR PROMPT INJECTION
             let dynamicSkills: any[] = [];
-            const isElectron = !!(window as any).electron?.invoke;
+            const isElectron = !!(window as any).electron?.listSkills;
             if (isElectron && currentState.config.folderPaths?.tools) {
                 try {
-                    const res = await (window as any).electron.invoke('list-skills', { toolsPath: currentState.config.folderPaths.tools });
+                    const res = await (window as any).electron.listSkills({ toolsPath: currentState.config.folderPaths.tools });
                     if (res.ok && Array.isArray(res.skills)) {
                         const disabledList = currentState.config.disabledSkills || [];
                         dynamicSkills = res.skills

@@ -2,11 +2,11 @@ import { ToolCall, ToolDefinition, AgentStatus } from '../../types';
 import { AGENT_TOOLS } from '../../constants';
 
 export async function safeFetch(url: string, options: any = {}) {
-    const isElectron = !!(window as any).electron?.invoke;
+    const isElectron = !!(window as any).electron?.fetchProxy;
     console.log(`[mikuBot] safeFetch: ${url} (Mode: ${isElectron ? 'Electron Proxy' : 'Browser Direct'})`);
 
     if (isElectron) {
-        const result = await (window as any).electron.invoke('fetch-proxy', { url, options });
+        const result = await (window as any).electron.fetchProxy({ url, options });
         if (!result.ok) {
             const errorDetails = result.data ? JSON.stringify(result.data) : '';
             throw new Error(`${result.error || `HTTP ${result.status}`} ${errorDetails}`);
@@ -95,7 +95,21 @@ export const toHtml = (md: string): string => {
     html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="text-blue-200">$1</strong>');
     html = html.replace(/\*(.+?)\*/g, '<em class="text-slate-400">$1</em>');
 
-    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" class="text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors">$1</a>');
+    // Security: Sanitize URLs — only allow safe protocols (http, https, mailto)
+    const sanitizeUrl = (url: string): string => {
+        const decoded = url.replace(/&amp;/g, '&');
+        const trimmed = decoded.trim().toLowerCase();
+        if (trimmed.startsWith('http:') || trimmed.startsWith('https:') || trimmed.startsWith('mailto:')) {
+            return url;
+        }
+        return ''; // Block javascript:, data:, vbscript:, etc.
+    };
+
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => {
+        const safe = sanitizeUrl(url);
+        if (!safe) return text; // Render as plain text if URL is dangerous
+        return `<a href="${safe}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors">${text}</a>`;
+    });
     html = html.replace(/^&gt; (.+)$/gm, '<blockquote class="border-l-4 border-blue-500/30 pl-4 italic text-slate-400 my-2 bg-blue-500/5 py-2 pr-2 rounded-r">$1</blockquote>');
 
     // Lists with proper indentation
