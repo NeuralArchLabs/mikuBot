@@ -77,33 +77,43 @@ export const SettingsPanel = ({
 
             <div className="max-w-4xl mx-auto space-y-10 relative z-10">
 
-
-                {/* ── Scheduler Tab ───────────────────────────────────── */}
-                {settingsTab === 'scheduler' && (
-                    <div className="animate-panel-in">
-                        <SchedulerTab onBack={() => setSettingsTab('core')} />
-                    </div>
-                )}
-
-                {/* ── Core System Tab ─────────────────────────────────── */}
-                {settingsTab === 'core' && (<div className="animate-panel-in space-y-10">
-                    {/* Header Premium Section */}
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-white/5">
-                        <div>
-                            <h2 className="text-3xl md:text-4xl font-black text-white tracking-tighter mb-1 select-none text-shadow-premium">
+                {/* ── Shared Macro-Tab Header ─────────────────────────── */}
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-white/5">
+                    <div className="flex items-baseline gap-6">
+                        {/* Core System Tab Title */}
+                        <button
+                            onClick={() => setSettingsTab('core')}
+                            className={`text-left transition-all duration-300 group ${settingsTab === 'core' ? '' : 'opacity-35 hover:opacity-60'}`}
+                        >
+                            <h2 className={`text-2xl md:text-3xl font-black tracking-tighter select-none transition-all duration-300 ${settingsTab === 'core' ? 'text-white text-shadow-premium' : 'text-slate-400 group-hover:text-slate-200'}`}>
                                 Core System
                             </h2>
-                            <p className="text-blue-400 text-[10px] md:text-xs font-bold tracking-widest uppercase select-none opacity-80">Platform Configuration & Runtime Keys</p>
-                        </div>
+                            {settingsTab === 'core' && (
+                                <p className="text-blue-400 text-[10px] md:text-xs font-bold tracking-widest uppercase select-none opacity-80 mt-0.5">Platform Configuration & Runtime Keys</p>
+                            )}
+                        </button>
 
+                        {/* Separator */}
+                        <div className="hidden md:block w-px h-12 flex-shrink-0 self-center rounded-full bg-gradient-to-b from-transparent via-cyan-400/30 to-transparent" />
+
+                        {/* Neural Scheduler Tab Title */}
+                        <button
+                            onClick={() => setSettingsTab('scheduler')}
+                            className={`text-left transition-all duration-300 group ${settingsTab === 'scheduler' ? '' : 'opacity-35 hover:opacity-60'}`}
+                        >
+                            <h2 className={`text-2xl md:text-3xl font-black tracking-tighter select-none transition-all duration-300 flex items-center gap-2 ${settingsTab === 'scheduler' ? 'text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-teal-400 text-shadow-premium' : 'text-slate-400 group-hover:text-slate-200'}`}>
+                                <Icon name="clock" className={`text-lg ${settingsTab === 'scheduler' ? 'text-cyan-400 animate-clock-neural' : 'text-slate-500 group-hover:text-slate-300'}`} />
+                                Scheduler
+                            </h2>
+                            {settingsTab === 'scheduler' && (
+                                <p className="text-cyan-500/60 text-[10px] md:text-xs font-bold tracking-widest uppercase select-none mt-0.5">Autonomous Task Management</p>
+                            )}
+                        </button>
+                    </div>
+
+                    {/* Action Buttons — contextual */}
+                    {settingsTab === 'core' && (
                         <div className="grid grid-cols-2 lg:flex lg:flex-row lg:items-center gap-2 md:gap-3 bg-slate-900/40 p-2 md:p-3 rounded-2xl border border-white/5 backdrop-blur-sm shadow-xl flex-shrink-0 w-full lg:w-auto">
-                            <button
-                                onClick={() => setSettingsTab('scheduler')}
-                                className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-gradient-to-br from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-cyan-900/20 transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-cyan-500/30 whitespace-nowrap group"
-                                title="Open Neural Scheduler"
-                            >
-                                <Icon name="clock" className="text-sm xl:text-base flex-shrink-0 group-hover:animate-clock-neural" /> <span className="inline lg:hidden min-[1150px]:inline">Scheduler</span>
-                            </button>
                             <button
                                 onClick={onLoadConfig}
                                 className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-gradient-to-br from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-emerald-900/20 transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-emerald-500/30 whitespace-nowrap"
@@ -131,7 +141,18 @@ export const SettingsPanel = ({
                                 <Icon name="save" className="text-sm xl:text-base flex-shrink-0" /> <span className="inline lg:hidden min-[1150px]:inline">Save</span>
                             </button>
                         </div>
+                    )}
+                </div>
+
+                {/* ── Scheduler Tab ───────────────────────────────────── */}
+                {settingsTab === 'scheduler' && (
+                    <div className="animate-panel-in">
+                        <SchedulerTab />
                     </div>
+                )}
+
+                {/* ── Core System Tab ─────────────────────────────────── */}
+                {settingsTab === 'core' && (<div className="animate-panel-in space-y-10">
 
                     {/* Knowledge Base Section */}
                     <div className="space-y-5">
