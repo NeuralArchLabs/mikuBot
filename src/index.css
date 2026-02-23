@@ -1268,14 +1268,14 @@
 }
 
 .btn-send-morph.is-agent {
-  border: 1px solid rgba(168, 85, 247, 0.4);
-  box-shadow: 0 4px 15px -3px rgba(147, 51, 234, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.5);
+  box-shadow: 0 4px 15px -3px rgba(37, 99, 235, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.1);
 }
 
 .btn-send-morph.is-agent:hover:not(:disabled) {
   transform: translateY(-2px);
   z-index: 10;
-  box-shadow: 0 12px 25px -5px rgba(147, 51, 234, 0.5), 0 0 20px rgba(168, 85, 247, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  box-shadow: 0 12px 25px -5px rgba(37, 99, 235, 0.6), 0 0 20px rgba(59, 130, 246, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.2);
 }
 
 /* Background isolation layer */
@@ -1331,7 +1331,7 @@
   }
 
   100% {
-    transform: translate(-50%, -50%) scale(3.5);
+    transform: translate(-50%, -50%) scale(2.2);
     opacity: 0;
   }
 }
@@ -1362,16 +1362,14 @@
   /* True rainbow ring with transparency for wave effect */
   background: radial-gradient(circle,
       transparent 30%,
-      rgba(255, 77, 77, 0.5) 35%,
-      rgba(249, 203, 40, 0.5) 40%,
-      rgba(50, 255, 126, 0.5) 45%,
-      rgba(24, 220, 255, 0.5) 50%,
-      rgba(125, 95, 255, 0.5) 55%,
-      transparent 60%);
+      rgba(24, 220, 255, 0.6) 35%,
+      rgba(29, 78, 216, 0.7) 45%,
+      rgba(125, 95, 255, 0.6) 55%,
+      transparent 65%);
   border-radius: 50%;
   z-index: -3;
   pointer-events: none;
-  filter: blur(45px);
+  filter: blur(25px);
   /* Highly diffuse as requested */
   animation: rainbow-aura-wave-kf 2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

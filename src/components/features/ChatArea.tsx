@@ -479,7 +479,9 @@ export const ChatArea = ({
 
             <div className="p-4 bg-slate-900/40 border-t border-slate-800/50">
                 <div className="max-w-5xl mx-auto flex items-center gap-2 mb-2 flex-wrap">
-                    <label className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Mode:</label>
+                    <div className="px-2 py-0.5 bg-slate-800/50 border border-slate-700/50 rounded-md flex items-center justify-center">
+                        <label className="text-[9px] font-mono text-slate-500 uppercase tracking-[0.2em] leading-none">Mode:</label>
+                    </div>
                     <select
                         value={agentMode}
                         onChange={(e) => onAgentModeChange(e.target.value as AgentMode)}
@@ -532,7 +534,7 @@ export const ChatArea = ({
                     <span className="text-[10px] text-slate-600 font-mono hidden sm:inline-block ml-2">
                         {agentMode === 'chat'
                             ? 'Conversación libre'
-                            : `${approvalMode === 'manual' ? '🔒 Manual' : '⚡ Auto'} · ${safeMode ? '🛡️ Safe' : '📦 Batch'}`
+                            : `${approvalMode === 'manual' ? '🔒 Manual' : '⚡ Auto'} · ${safeMode ? '💠 Safe' : '📦 Batch'}`
                         }
                     </span>
 
@@ -634,7 +636,7 @@ export const ChatArea = ({
                                         className="btn-send-morph-purple"
                                         style={{
                                             animationName: agentMode === 'agent' ? 'color-morph-ripple' : 'color-morph-ripple-reverse',
-                                            animationDuration: agentMode === 'agent' ? '2.5s' : '0.6s'
+                                            animationDuration: agentMode === 'agent' ? '1.2s' : '0.6s'
                                         }}
                                     />
                                 </div>
@@ -643,7 +645,10 @@ export const ChatArea = ({
                                 <div
                                     key={`aura-${agentMode}`}
                                     className={`btn-morph-aura ${agentMode !== 'agent' ? 'reverse' : ''}`}
-                                    style={{ animationDuration: '2.5s' }}
+                                    style={{
+                                        animationDuration: agentMode === 'agent' ? '1.2s' : '2.5s',
+                                        filter: agentMode === 'agent' ? 'blur(25px)' : 'blur(45px)'
+                                    }}
                                 />
 
                                 <Icon name="arrow-right" className={`${isSent ? 'send-icon-fly' : ''} ${agentMode === 'agent' ? 'rainbow-icon' : ''}`} />
