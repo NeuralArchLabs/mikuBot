@@ -276,7 +276,7 @@ electron/
 ### v1.8 — 23 Feb 2026 (Mechanical UX & Infrastructure Multi-App)
 | Archivo | Cambio |
 |---------|--------|
-| `package.json` / `vite.config.ts` | **Port Migration**: Movido de puerto `3000` a `5173` para evitar conflictos con servidores Next.js y otros frameworks. |
+| `package.json` / `vite.config.ts` | **Port Migration**: Movido de puerto `3000` a `3001` para evitar conflictos con servidores Next.js y otros frameworks. |
 | `src/index.css` | **Mechanical Spin**: Refinamiento estético del botón de stop (2.2s, `cubic-bezier(0.85, 0, 0.15, 1)`) para un visual de aceleración/frenado suave. |
 | `src/components/features/ChatArea.tsx` | **Animation Refresh**: Uso de `key={isLoading}` en el icono de stop para forzar el reinicio de la animación y evitar glitches visuales. |
 | `src/types/global.ts` | **isInstructionMode**: Nuevo campo en `AgentStatus` para sincronización precisa del efecto "Halo" durante ejecuciones de herramientas. |

@@ -2,7 +2,7 @@
 
 ## [1.8.0] - 2026-02-23
 ### Added
-- **Dynamic Port Migration**: Project moved from port `3000` to `5173` to prevent conflicts with other development servers (specifically **Next.js**), enabling multi-app development workflows.
+- **Dynamic Port Migration**: Project moved from port `3000` to `3001` to prevent conflicts with other development servers (specifically **Next.js**), enabling multi-app development workflows.
 - **Instruction Mode State**: Introduced `isInstructionMode` in `AgentStatus` for granular UI control over the "Halo" (rainbow aura) effect on the stop button.
 
 ### Changed
