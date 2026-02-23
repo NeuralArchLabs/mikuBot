@@ -343,6 +343,21 @@
   }
 }
 
+.typewriter-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  margin-left: 1px;
+  margin-bottom: -1px;
+  background-color: rgba(59, 130, 246, 0.35);
+  animation: blink 1.06s step-end infinite;
+}
+
+.typewriter-cursor.no-blink {
+  animation: none;
+  opacity: 0;
+}
+
 /* Glassmorphic Tool Approval Panel */
 .approval-panel-glass {
   background: rgba(15, 23, 42, 0.6);
@@ -567,13 +582,11 @@
 @keyframes control-room-enter {
   0% {
     opacity: 0;
-    filter: brightness(0.3);
     transform: scale(0.99);
   }
 
   100% {
     opacity: 1;
-    filter: brightness(1);
     transform: scale(1);
   }
 }
@@ -600,16 +613,24 @@
 
 @keyframes chat-reveal-kf {
   0% {
+    transform: scaleX(0) scaleY(0.01);
     opacity: 0;
   }
 
+  35% {
+    transform: scaleX(1) scaleY(0.01);
+    opacity: 1;
+  }
+
   100% {
+    transform: scaleX(1) scaleY(1);
     opacity: 1;
   }
 }
 
 .animate-chat {
-  animation: chat-reveal-kf 0.5s ease-out forwards;
+  animation: chat-reveal-kf 0.7s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+  transform-origin: center;
 }
 
 /* Layout Isolation */
@@ -816,22 +837,76 @@
   z-index: 10;
 }
 
-/* Halo Effect for Active Process */
+/* Halo Effect for Active Process — Two-layer technique */
 .btn-halo {
   position: relative;
+  background: transparent !important;
 }
 
+/* Layer 1 (bottom): Rainbow glow — extends beyond button edges */
+.btn-halo::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  background: linear-gradient(90deg, #ff4d4d, #f9cb28, #32ff7e, #18dcff, #7d5fff, #ff4d4d);
+  background-size: 200% auto;
+  border-radius: 16px;
+  z-index: 0;
+  animation: shine 2s linear infinite;
+  opacity: 0;
+  filter: blur(3px);
+  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Layer 2 (middle): Solid cover — masks rainbow inside button area */
 .btn-halo::after {
   content: '';
   position: absolute;
-  inset: -3px;
-  background: linear-gradient(90deg, #ff4d4d, #f9cb28, #32ff7e, #18dcff, #7d5fff, #ff4d4d);
+  inset: 0;
+  background-color: rgb(8, 145, 178);
+  /* cyan-600 */
+  border-radius: inherit;
+  z-index: 1;
+  transition: background-color 0.2s ease;
+}
+
+/* Ensure button text/icons sit above both layers */
+.btn-halo>* {
+  position: relative;
+  z-index: 2;
+}
+
+.btn-halo:hover::before {
+  opacity: 1;
+}
+
+.btn-halo:hover::after {
+  background-color: rgb(6, 182, 212);
+  /* cyan-500 on hover */
+}
+
+.btn-cyan-glow {
+  position: relative;
+}
+
+.btn-cyan-glow::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(90deg, #06b6d4, #3b82f6, #06b6d4);
   background-size: 200% auto;
   border-radius: 14px;
   z-index: -1;
-  animation: shine 2s linear infinite;
-  opacity: 0.8;
-  filter: blur(4px);
+  animation: shine 3s linear infinite;
+  opacity: 0.4;
+  filter: blur(8px);
+  transition: all 0.3s ease;
+}
+
+.btn-cyan-glow:hover::after {
+  opacity: 0.9;
+  inset: -4px;
+  filter: blur(12px);
 }
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -1097,4 +1172,18 @@
 
 .pulse-glow {
   animation: pulse-glow-kf 2s infinite ease-in-out;
+}
+
+/* Premium Chat Fade Mask */
+.chat-fade-mask {
+  -webkit-mask-image: linear-gradient(to bottom,
+      transparent 0%,
+      black 5%,
+      black 95%,
+      transparent 100%);
+  mask-image: linear-gradient(to bottom,
+      transparent 0%,
+      black 5%,
+      black 95%,
+      transparent 100%);
 }

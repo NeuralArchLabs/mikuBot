@@ -1,6 +1,6 @@
-# 🌐 mikuCentral v1.6.0 — Neural AI Interface & Agent OS
+# 🌐 mikuCentral v1.7.0 — Neural AI Interface & Agent OS
 
-![Version](https://img.shields.io/badge/version-1.6.0-blue.svg?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-1.7.0-blue.svg?style=for-the-badge)
 ![Status](https://img.shields.io/badge/status-stable-green.svg?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-private-red.svg?style=for-the-badge)
 
@@ -33,6 +33,14 @@
 - **Glassmorphism UI**: Interfaz diseñada con capas de profundidad, desenfoques dinámicos y micro-animaciones fluidas.
 - **Neural Sidebar**: Navegación rápida con animación de firma neural sofisticada al interactuar con el logo del sistema.
 - **Onboarding Wizard**: Asistente de configuración inicial para una puesta en marcha automatizada en menos de 60 segundos.
+- **Cinematic Session Transitions**: Efecto "TV On" al cambiar entre sesiones — una animación de encendido cinemático que se reproduce en el historial de mensajes al seleccionar una rama neural diferente.
+- **Bottom-Aligned Chat**: Los mensajes crecen de abajo hacia arriba, manteniendo la atención del usuario cerca de la barra de escritura.
+
+### 🔌 Neural Skills (Plugin System)
+- **Selective Skill Toggles**: Cada skill cuenta con un switch inline para activar/desactivar su inyección al agente en tiempo real.
+- **Dynamic Tool Injection**: Solo las skills activas se envían al modelo, optimizando consumo de tokens y evitando confusión.
+- **Blueprints de Creación**: Plantillas pre-construidas (Python, Node.js) para crear nuevas skills en segundos.
+- **Visual Balance**: Tipografía refinada con pesos ligeros para una lectura cómoda y profesional.
 
 ---
 
@@ -97,9 +105,9 @@ Optimiza tu flujo de trabajo neural con estos atajos:
 ## 📂 Estructura de la Arquitectura Neural
 
 - `electron/`: Proceso principal nativo (main process). Handlers de persistencia y sistema de archivos.
-- `src/components/`: Interfaz modular (Chat, Settings, Sidebar, Onboarding).
+- `src/components/`: Interfaz modular (Chat, Settings, Skills, Sidebar, Onboarding).
 - `src/services/`: Capa lógica de core (Persistencia, AI Providers, Telegram Sync).
-- `engine/`: Modelos de agentes y configuraciones de identidad.
+- `core/`: Archivos de identidad, herramientas y skills del agente.
 - `config.json`: (Generado automáticamente) El ADN de tu configuración local.
 
 ---

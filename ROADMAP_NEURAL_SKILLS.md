@@ -9,11 +9,11 @@ El proceso principal de Electron debe ser capaz de gestionar las habilidades fí
 - [x] **IPC: `execute-skill`**: Handler genérico que recibe el nombre de la skill y los argumentos, identifica el punto de entrada (`main.py` o `logic.js`) y lo ejecuta devolviendo el resultado en JSON.
 - [x] **Carpeta de Habilidades**: Creación de la estructura base en el sistema de archivos.
 
-## 2. Fase de Integración (Agent Logic) 🧠
-El `agent.ts` debe transformarse de un sistema estático a uno dinámico.
+## 2. Fase de Integración (Agent Logic) 🧠 ✅
+El `agent.ts` se ha transformado de un sistema estático a uno dinámico.
 
-- [ ] **Dynamic Tool Injection**: En lugar de usar la constante `AGENT_TOOLS`, el loop del agente llamará a `window.electron.invoke('list-skills')` al inicio de cada sesión o ráfaga.
-- [ ] **Genereic Tool Executor**: Refactorizar el switch-case de herramientas en `agent.ts` para que, si una herramienta no es "core" (como `read_file`), intente ejecutarla como una "Skill" a través del IPC genérico.
+- [x] **Dynamic Tool Injection**: El loop del agente llama a `window.electron.invoke('list-skills')` al inicio de cada sesión, filtrando las skills desactivadas por el usuario.
+- [x] **Generic Tool Executor**: El switch-case de herramientas en `agent.ts` ejecuta skills no-core a través del IPC genérico `execute-skill`.
 
 ## 3. Fase de Estandarización 📋
 Definir el formato de una "Skill" para que Armando pueda crear las suyas.
@@ -41,6 +41,13 @@ Definir el formato de una "Skill" para que Armando pueda crear las suyas.
 Una vez que el sistema sea estable, las siguientes skills serán:
 1. **RAG Skill**: Búsqueda en memoria semántica local.
 2. **Surfing Skill**: Navegación autónoma con Playwright.
+
+## 6. Fase de Control de Usuario (v1.7.0) 🎛️ ✅
+- [x] **Selective Skill Toggles**: Switch inline por cada skill para activar/desactivar su inyección al agente.
+- [x] **Filtrado en System Prompt**: Skills desactivadas se excluyen tanto de las herramientas dinámicas como del bloque de configuración del prompt.
+- [x] **Persistencia**: El estado de activación se persiste en `config.disabledSkills[]`.
+- [x] **Visual Balance**: Tipografía refinada en todo el panel (tarjetas, labels, tabs, botones) para una lectura más cómoda.
+- [x] **No Auto-Select**: Al entrar a Neural Skills, ninguna skill está seleccionada por defecto — se muestra el estado "Neural Standby".
 
 ---
 **Objetivo Final**: Que MikuBot sea un orquestador que solo "pida las herramientas que necesita" de su biblioteca personal.

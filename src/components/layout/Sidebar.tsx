@@ -151,8 +151,8 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
 
     return (
         <>
-            <div className="bg-slate-900 border-r border-slate-700 flex flex-col h-full shadow-xl z-30 w-[72px] lg:w-64 flex-shrink-0 transition-all duration-300 overflow-y-auto overflow-x-hidden custom-scrollbar miku-sidebar-isolate">
-                <div className="p-4 lg:p-6">
+            <div className="bg-slate-900 border-r border-slate-700 flex flex-col h-full shadow-xl z-30 w-16 lg:w-64 flex-shrink-0 transition-all duration-300 overflow-y-auto overflow-x-hidden custom-scrollbar miku-sidebar-isolate">
+                <div className="p-3 lg:p-6">
                     <div className="flex items-center justify-center lg:justify-start gap-3 mb-8 group cursor-default h-10 overflow-hidden w-full px-1">
                         <div
                             className="w-10 h-10 rounded-xl bg-slate-800 flex flex-shrink-0 items-center justify-center shadow-md group-hover:scale-110 active:scale-95 transition-all duration-300 overflow-hidden border border-slate-700/50 cursor-pointer"

@@ -876,10 +876,12 @@ export const App = () => {
 
         const buildSkillsConfigBlock = () => {
             const configMap = currentState.config.skillsConfig || {};
-            if (Object.keys(configMap).length === 0) return "";
+            const disabledList = currentState.config.disabledSkills || [];
+            const activeEntries = Object.entries(configMap).filter(([skill]) => !disabledList.includes(skill));
+            if (activeEntries.length === 0) return "";
 
             let block = "\n\n[NEURAL SKILLS CONFIGURATION (DO NOT DISCLOSE)]\n";
-            for (const [skill, data] of Object.entries(configMap)) {
+            for (const [skill, data] of activeEntries) {
                 block += `--- Skill: ${skill} ---\n`;
                 for (const [key, val] of Object.entries(data as Record<string, any>)) {
                     block += `${key}: ${val}\n`;
@@ -1161,14 +1163,17 @@ NO simules resultados de herramientas ni inventes datos; si necesitas informaci�
                 try {
                     const res = await (window as any).electron.invoke('list-skills', { toolsPath: currentState.config.folderPaths.tools });
                     if (res.ok && Array.isArray(res.skills)) {
-                        dynamicSkills = res.skills.map(s => ({
-                            type: 'function',
-                            function: {
-                                name: s.name,
-                                description: s.description,
-                                parameters: s.parameters
-                            }
-                        }));
+                        const disabledList = currentState.config.disabledSkills || [];
+                        dynamicSkills = res.skills
+                            .filter(s => !disabledList.includes(s.name))
+                            .map(s => ({
+                                type: 'function',
+                                function: {
+                                    name: s.name,
+                                    description: s.description,
+                                    parameters: s.parameters
+                                }
+                            }));
                     }
                 } catch (e) {
                     console.error("Failed to load skills:", e);
@@ -1422,89 +1427,96 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                 onClear={handleClear}
             />
 
-            {state.activeTab === 'chat' && (
-                <div className="flex-1 flex flex-col h-full animate-chat">
-                    <ChatArea
-                        messages={messages} isLoading={isLoading} input={input} setInput={setInput}
-                        onSend={() => processMessage(input)} onSendAsInstruction={() => processMessage(input, true)}
-                        onAbort={handleAbortAgent} onReprompt={handleReprompt} onRewind={onRewind} scrollRef={scrollRef}
-                        agentStatus={agentStatus} pendingApproval={pendingToolApproval}
-                        onApproveToolCall={handleApproveToolCall} onRejectToolCall={handleRejectToolCall}
-                        agentMode={state.agentMode} onAgentModeChange={(m) => setState(p => ({ ...p, agentMode: m, safeMode: m === 'agent' ? true : p.safeMode }))}
-                        safeMode={state.safeMode} onSafeModeChange={(s) => setState(p => ({ ...p, safeMode: s }))}
-                        approvalMode={state.approvalMode} onApprovalModeChange={(a) => setState(p => ({ ...p, approvalMode: a }))}
-                        debugMode={state.debugMode} onDebugModeChange={(d) => setState(p => ({ ...p, debugMode: d }))}
-                        folderPermissions={state.folderPermissions}
-                        onRequestPermission={requestFolderPermission}
-                        onWakeUpAll={wakeUpAllFolders}
-                        askAlert={askAlert}
-                    />
-                </div>
-            )}
+            {/* Persistent UI Shell Container to prevent flashes on tab swap */}
+            <div className="flex-1 flex flex-col h-full bg-slate-950/40 backdrop-blur-md overflow-hidden relative">
+                {state.activeTab === 'chat' && (
+                    <div className="flex-1 flex flex-col h-full">
+                        <ChatArea
+                            sessionId={state.sessionId || 'empty'}
+                            messages={messages} isLoading={isLoading} input={input} setInput={setInput}
+                            onSend={() => processMessage(input)} onSendAsInstruction={() => processMessage(input, true)}
+                            onAbort={handleAbortAgent} onReprompt={handleReprompt} onRewind={onRewind} scrollRef={scrollRef}
+                            agentStatus={agentStatus} pendingApproval={pendingToolApproval}
+                            onApproveToolCall={handleApproveToolCall} onRejectToolCall={handleRejectToolCall}
+                            agentMode={state.agentMode} onAgentModeChange={(m) => setState(p => ({ ...p, agentMode: m, safeMode: m === 'agent' ? true : p.safeMode }))}
+                            safeMode={state.safeMode} onSafeModeChange={(s) => setState(p => ({ ...p, safeMode: s }))}
+                            approvalMode={state.approvalMode} onApprovalModeChange={(a) => setState(p => ({ ...p, approvalMode: a }))}
+                            debugMode={state.debugMode} onDebugModeChange={(d) => setState(p => ({ ...p, debugMode: d }))}
+                            folderPermissions={state.folderPermissions}
+                            onRequestPermission={requestFolderPermission}
+                            onWakeUpAll={wakeUpAllFolders}
+                            askAlert={askAlert}
+                        />
+                    </div>
+                )}
 
-            {state.activeTab === 'cortex' && (
-                <div className="flex-1 flex flex-col h-full animate-slide-left-right">
-                    <FileEditor
-                        files={state.files} selectedFile={state.selectedFile}
-                        setSelectedFile={(f) => setState(p => ({ ...p, selectedFile: f }))}
-                        onSave={(n, c) => saveFile(n, c, 'core')} unsavedChanges={state.unsavedChanges}
-                        setUnsavedChanges={(u) => setState(p => ({ ...p, unsavedChanges: typeof u === 'function' ? u(p.unsavedChanges) : u }))}
-                        onAddFile={() => createFile(`New_Core_${Date.now()}`, 'core')}
-                        onDelete={(n) => deleteFile(n, 'core')}
-                        askConfirm={askConfirm}
-                    />
-                </div>
-            )}
+                {state.activeTab === 'cortex' && (
+                    <div className="flex-1 flex flex-col h-full animate-slide-left-right">
+                        <FileEditor
+                            files={state.files} selectedFile={state.selectedFile}
+                            setSelectedFile={(f) => setState(p => ({ ...p, selectedFile: f }))}
+                            onSave={(n, c) => saveFile(n, c, 'core')} unsavedChanges={state.unsavedChanges}
+                            setUnsavedChanges={(u) => setState(p => ({ ...p, unsavedChanges: typeof u === 'function' ? u(p.unsavedChanges) : u }))}
+                            onAddFile={() => createFile(`New_Core_${Date.now()}`, 'core')}
+                            onDelete={(n) => deleteFile(n, 'core')}
+                            askConfirm={askConfirm}
+                        />
+                    </div>
+                )}
 
-            {state.activeTab === 'commands' && (
-                <div className="flex-1 flex flex-col h-full animate-slide-left-right">
-                    <FileEditor
-                        files={state.toolsFiles} selectedFile={state.selectedFile}
-                        setSelectedFile={(f) => setState(p => ({ ...p, selectedFile: f }))}
-                        onSave={(n, c) => saveFile(n, c, 'tools')} unsavedChanges={state.unsavedChanges}
-                        setUnsavedChanges={(u) => setState(p => ({ ...p, unsavedChanges: typeof u === 'function' ? u(p.unsavedChanges) : u }))}
-                        onAddFile={() => createFile(`Cmd_${Date.now()}`, 'tools')}
-                        onDelete={(n) => deleteFile(n, 'tools')}
-                        askConfirm={askConfirm}
-                    />
-                </div>
-            )}
+                {state.activeTab === 'commands' && (
+                    <div className="flex-1 flex flex-col h-full animate-slide-left-right">
+                        <FileEditor
+                            files={Object.fromEntries(Object.entries(state.toolsFiles).filter(([n]) => !n.startsWith('skills/'))) as Record<string, string>}
+                            selectedFile={state.selectedFile}
+                            setSelectedFile={(f) => setState(p => ({ ...p, selectedFile: f }))}
+                            onSave={(n, c) => saveFile(n, c, 'tools')} unsavedChanges={state.unsavedChanges}
+                            setUnsavedChanges={(u) => setState(p => ({ ...p, unsavedChanges: typeof u === 'function' ? u(p.unsavedChanges) : u }))}
+                            onAddFile={() => createFile(`Cmd_${Date.now()}`, 'tools')}
+                            onDelete={(n) => deleteFile(n, 'tools')}
+                            askConfirm={askConfirm}
+                        />
+                    </div>
+                )}
 
-            <LibraryManager
-                isOpen={state.isLibraryExpanded} onClose={() => setState(p => ({ ...p, isLibraryExpanded: false }))}
-                files={state.additionalFiles} selectedFiles={state.selectedLibraryFiles}
-                onToggleSelect={(n) => setState(p => ({ ...p, selectedLibraryFiles: p.selectedLibraryFiles.includes(n) ? p.selectedLibraryFiles.filter(f => f !== n) : [...p.selectedLibraryFiles, n] }))}
-                onSave={(n, c) => saveFile(n, c, 'extra')} onAdd={() => createFile(`Library_${Date.now()}`, 'extra')}
-                onDelete={(n) => deleteFile(n, 'extra')}
-                askConfirm={askConfirm}
-            />
+                {state.activeTab === 'settings' && (
+                    <div className="flex-1 flex flex-col h-full animate-control-room">
+                        <SettingsPanel
+                            config={state.config} updateConfig={updateConfig} models={models} loadingModels={loadingModels}
+                            connectionStatus={connectionStatus} onTestConnection={handleTestConnection}
+                            onCoreSelect={() => handleSelectFolder('core')} onExtraSelect={() => handleSelectFolder('extra')} onWorkSpaceSelect={() => handleSelectFolder('workSpace')} onToolsSelect={() => handleSelectFolder('tools')}
+                            onSaveGlobal={onSaveGlobal} onResetGlobal={onResetGlobal}
+                            onLoadConfig={onLoadConfig} onExportConfig={onExportConfig}
+                            corePathName={coreHandle?.name || state.config.folderPaths?.core || ''}
+                            extraPathName={extraHandle?.name || state.config.folderPaths?.extra || ''}
+                            workSpacePathName={workSpaceHandle?.name || state.config.folderPaths?.workSpace || ''}
+                            toolsPathName={toolsHandle?.name || state.config.folderPaths?.tools || ''}
+                            syncing={syncing}
+                        />
+                    </div>
+                )}
 
-            {state.activeTab === 'settings' && (
-                <div className="flex-1 flex flex-col h-full animate-control-room">
-                    <SettingsPanel
-                        config={state.config} updateConfig={updateConfig} models={models} loadingModels={loadingModels}
-                        connectionStatus={connectionStatus} onTestConnection={handleTestConnection}
-                        onCoreSelect={() => handleSelectFolder('core')} onExtraSelect={() => handleSelectFolder('extra')} onWorkSpaceSelect={() => handleSelectFolder('workSpace')} onToolsSelect={() => handleSelectFolder('tools')}
-                        onSaveGlobal={onSaveGlobal} onResetGlobal={onResetGlobal}
-                        onLoadConfig={onLoadConfig} onExportConfig={onExportConfig}
-                        corePathName={coreHandle?.name || state.config.folderPaths?.core || ''}
-                        extraPathName={extraHandle?.name || state.config.folderPaths?.extra || ''}
-                        workSpacePathName={workSpaceHandle?.name || state.config.folderPaths?.workSpace || ''}
-                        toolsPathName={toolsHandle?.name || state.config.folderPaths?.tools || ''}
-                        syncing={syncing}
-                    />
-                </div>
-            )}
+                {state.activeTab === 'skills' && (
+                    <div className="flex-1 flex flex-col h-full animate-control-room">
+                        <SkillsPanel
+                            config={state.config}
+                            toolsFiles={state.toolsFiles}
+                            onSaveTools={(n, c) => saveFile(n, c, 'tools')}
+                            updateConfig={(updates) => setState(p => ({ ...p, config: { ...p.config, ...updates } }))}
+                            onSaveGlobal={onSaveGlobal}
+                        />
+                    </div>
+                )}
 
-            {state.activeTab === 'skills' && (
-                <div className="flex-1 flex flex-col h-full animate-control-room">
-                    <SkillsPanel
-                        config={state.config}
-                        updateConfig={(updates) => setState(p => ({ ...p, config: { ...p.config, ...updates } }))}
-                        onSaveGlobal={onSaveGlobal}
-                    />
-                </div>
-            )}
+                <LibraryManager
+                    isOpen={state.isLibraryExpanded} onClose={() => setState(p => ({ ...p, isLibraryExpanded: false }))}
+                    files={state.additionalFiles} selectedFiles={state.selectedLibraryFiles}
+                    onToggleSelect={(n) => setState(p => ({ ...p, selectedLibraryFiles: p.selectedLibraryFiles.includes(n) ? p.selectedLibraryFiles.filter(f => f !== n) : [...p.selectedLibraryFiles, n] }))}
+                    onSave={(n, c) => saveFile(n, c, 'extra')} onAdd={() => createFile(`Library_${Date.now()}`, 'extra')}
+                    onDelete={(n) => deleteFile(n, 'extra')}
+                    askConfirm={askConfirm}
+                />
+            </div>
         </div>
     );
 };

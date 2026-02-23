@@ -1,4 +1,4 @@
-# Project Status: MikuCentral v1.6.0 🚀
+# Project Status: MikuCentral v1.7.0 🚀
 
 > **Última actualización**: 22 de febrero de 2026
 > **Autor del análisis**: Antigravity AI Engine
@@ -141,9 +141,8 @@ electron/
 - **Solución propuesta**: Implementar "Dynamic Task Anchoring" en `TASKS.md` y una auditoría pre-final obligatoria.
 
 **C2. Sistema de Skills Modular**
-- **Problema**: Añadir nuevas capacidades requiere tocar el código fuente de la app.
-- **Riesgo**: Estancamiento del potencial de Miku y dificultad para la comunidad/usuario de expandirla.
-- **Solución propuesta**: Arquitectura de "Neural Skills" basada en carpetas con manifiestos auto-indexables.
+- **Estado**: ✅ Done (v1.7.0)
+- **Solución implementada**: Arquitectura completa de Neural Skills con manifiestos auto-indexables, editor integrado, blueprints de creación (Python/Node.js), y **toggles selectivos** para activar/desactivar skills individualmente. Las skills desactivadas no se inyectan al agente ni en herramientas ni en el system prompt.
 
 **C3. API Keys expuestas en el Frontend**
 
@@ -274,6 +273,16 @@ electron/
 
 ## 7. Log de Cambios 📋
 
+### v1.7 — 22 Feb 2026 (Cinematic UX, Selective Skills & Visual Balance)
+| Archivo | Cambio |
+|---------|--------|
+| `src/components/panels/SkillsPanel.tsx` | **Selective Skill Toggles**: Switch inline por skill para activar/desactivar inyección al agente. **Visual Balance**: Reducción de peso tipográfico (`font-black` → `font-semibold/bold`) en tarjetas, header, tabs, labels y botones. No auto-selecciona skill al entrar. |
+| `src/components/features/ChatArea.tsx` | **Bottom-Aligned Chat**: Mensajes crecen de abajo hacia arriba con flex spacer. **Cinematic Session Transitions**: Efecto "TV On" se re-ejecuta al cambiar de sesión usando `sessionId` como React key. Animación aislada al área de mensajes (prompt bar estable). |
+| `src/App.tsx` | **Skill Filtering**: Skills desactivadas se filtran tanto de las herramientas dinámicas como del bloque de configuración del system prompt. `sessionId` pasado como prop a ChatArea. |
+| `src/types/global.ts` | **disabledSkills**: Nuevo campo `string[]` en `AppConfig` para persistir skills desactivadas. |
+| `src/constants/core.ts` | **Default**: Añadido `disabledSkills: []` en configuración por defecto. |
+| `src/index.css` | **Animation Cleanup**: Eliminados `filter: brightness()` de `chat-reveal-kf` y `control-room-enter` para evitar flashes. |
+
 ### v1.6 — 22 Feb 2026 (Cinematic Dynamics & Session Context)
 | Archivo | Cambio |
 |---------|--------|
@@ -351,8 +360,8 @@ electron/
 
 **Prioridades inmediatas**:
 1.  **Agent Loop Repair**: Implementación de protocolo de persistencia de objetivos en `TASKS.md`.
-2.  **Neural Skills System**: Diseño e implementación del motor de carga de habilidades externas.
-3.  **Neural Engines Phase 1**: Memoria Semántica (RAG) en Python.
+2.  **Neural Engines Phase 1**: Memoria Semántica (RAG) en Python.
+3.  **Security Sprint**: Enrutar API keys por Electron proxy y cerrar canal IPC genérico.
 
 ---
 

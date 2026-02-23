@@ -68,7 +68,7 @@ export const SettingsPanel = ({
     const currentProvider = PROVIDERS[config.provider];
 
     return (
-        <div className="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar bg-[#050810] relative" onScroll={handleScroll}>
+        <div className="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar relative" onScroll={handleScroll}>
             {/* Subdued ambient glow background */}
             <div className="absolute top-0 left-1/4 w-1/2 h-96 bg-blue-600/10 blur-[120px] pointer-events-none rounded-full" />
             <div className="absolute bottom-0 right-1/4 w-1/3 h-64 bg-purple-600/10 blur-[100px] pointer-events-none rounded-full" />
@@ -365,6 +365,7 @@ export const SettingsPanel = ({
                                         <select
                                             value={config.chatModel}
                                             onChange={(e) => updateConfig('chatModel', e.target.value)}
+                                            title="Active Model for Chat"
                                             className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-4 py-3.5 text-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50 appearance-none shadow-inner"
                                         >
                                             <option value="">Select Target Architecture...</option>
@@ -455,6 +456,7 @@ export const SettingsPanel = ({
                                         <select
                                             value={config.agentModel}
                                             onChange={(e) => updateConfig('agentModel', e.target.value)}
+                                            title="Active Model for Agent Actions"
                                             className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-4 py-3.5 text-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/50 appearance-none shadow-inner"
                                         >
                                             <option value="">Select Target Architecture...</option>
@@ -512,6 +514,7 @@ export const SettingsPanel = ({
                                             <select
                                                 value={config.provider}
                                                 onChange={(e) => updateConfig('provider', e.target.value as Provider)}
+                                                title="Master Fallback Provider"
                                                 className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-slate-300 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-slate-500"
                                             >
                                                 {(Object.keys(PROVIDERS) as Provider[]).map(pId => (
@@ -523,6 +526,7 @@ export const SettingsPanel = ({
                                             <select
                                                 value={config.model}
                                                 onChange={(e) => updateConfig('model', e.target.value)}
+                                                title="Master Fallback Model"
                                                 className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-slate-300 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-slate-500 appearance-none"
                                             >
                                                 <option value="">Master Model Fallback...</option>
@@ -587,6 +591,7 @@ export const SettingsPanel = ({
                                                     type="button"
                                                     onClick={() => setShowApiKey(!showApiKey)}
                                                     className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-slate-300 bg-slate-800 rounded-lg transition-colors border border-transparent hover:border-slate-600"
+                                                    title={showApiKey ? "Hide key" : "Show key"}
                                                 >
                                                     <Icon name={showApiKey ? "eye-slash" : "eye"} />
                                                 </button>
@@ -610,6 +615,7 @@ export const SettingsPanel = ({
                                             step="0.1"
                                             value={config.temperature}
                                             onChange={(e) => updateConfig('temperature', parseFloat(e.target.value))}
+                                            title="Adjust Inference Temperature"
                                             className="w-full h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer accent-blue-500"
                                         />
                                         <div className="flex justify-between text-[9px] text-slate-600 font-bold uppercase tracking-wider px-1">

@@ -44,11 +44,11 @@ export const FileEditor = ({
     };
 
     return (
-        <div className="flex-1 flex h-full overflow-hidden bg-slate-900 text-slate-200">
-            <div className="w-auto min-w-[120px] max-w-[160px] md:min-w-[160px] md:max-w-56 lg:min-w-[200px] lg:max-w-72 xl:min-w-[240px] xl:max-w-[320px] bg-slate-900/50 border-r border-slate-700 flex flex-col flex-shrink-0 overflow-hidden">
-                <div className="p-3 flex items-center justify-between border-b border-slate-800">
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Storage Explorer</span>
-                    <button onClick={onAddFile} className="text-slate-500 hover:text-white transition-colors">
+        <div className="flex-1 flex h-full overflow-hidden text-slate-200">
+            <div className="w-auto min-w-[120px] max-w-[160px] md:min-w-[160px] md:max-w-56 lg:min-w-[200px] lg:max-w-72 xl:min-w-[240px] xl:max-w-[320px] bg-slate-900/30 border-r border-slate-800/50 flex flex-col flex-shrink-0 overflow-hidden">
+                <div className="p-3 flex items-center justify-between border-b border-slate-800/50">
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Storage Explorer</span>
+                    <button onClick={onAddFile} className="text-slate-500 hover:text-cyan-400 transition-colors" title="Add new file">
                         <Icon name="plus" />
                     </button>
                 </div>
@@ -57,14 +57,15 @@ export const FileEditor = ({
                         <div key={filename} className="group relative">
                             <button
                                 onClick={() => setSelectedFile(filename)}
-                                className={`w-full text-left px-3 py-3 text-xs font-mono border-l-2 transition-all flex items-center justify-between overflow-hidden ${selectedFile === filename
-                                    ? 'bg-indigo-900/20 border-indigo-500 text-indigo-300'
-                                    : 'border-transparent text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
+                                className={`w-full text-left px-3 py-3 text-xs font-mono border-l-2 transition-all duration-300 flex items-center justify-between overflow-hidden ${selectedFile === filename
+                                    ? 'bg-slate-800 border-cyan-500 text-cyan-400'
+                                    : 'border-transparent text-slate-500 hover:bg-slate-800/30 hover:text-slate-300'
                                     }`}
+                                title={`Edit file: ${filename}`}
                             >
-                                <span className="truncate pr-8">{filename}</span>
-                                {filename in unsavedChanges && (
-                                    <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" title="Unsaved changes" />
+                                <span className="truncate flex-1">{filename}</span>
+                                {unsavedChanges[filename] !== undefined && (
+                                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.8)] flex-shrink-0 ml-2" />
                                 )}
                             </button>
                             <button
@@ -72,26 +73,27 @@ export const FileEditor = ({
                                     e.stopPropagation();
                                     handleDelete(filename);
                                 }}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all rounded-md hover:bg-red-500/10"
-                                title="Delete file"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all rounded"
+                                title={`Delete ${filename}`}
                             >
-                                <Icon name="times" className="text-[10px]" />
+                                <Icon name="times" />
                             </button>
                         </div>
                     ))}
                 </div>
             </div>
 
-            <div className="flex-1 flex flex-col min-w-0">
+            <div className="flex-1 flex flex-col min-w-0 bg-transparent">
                 {selectedFile ? (
                     <>
-                        <div className="h-12 bg-slate-800/30 border-b border-slate-700 flex items-center justify-between px-4">
-                            <div className="flex items-center gap-2 text-sm font-mono text-slate-300">
-                                <Icon name="file-alt" className="text-slate-500" />
-                                {selectedFile}
-                                {isDirty && <span className="text-[10px] text-amber-500 font-bold bg-amber-900/20 px-1.5 rounded">UNSAVED</span>}
+                        <div className="px-4 py-2 bg-slate-900/40 border-b border-slate-800/50 flex items-center justify-between min-h-[45px]">
+                            <div className="flex items-center gap-3 overflow-hidden">
+                                <Icon name="file-alt" className="text-cyan-500 flex-shrink-0" />
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest truncate">{selectedFile}</span>
+                                {unsavedChanges[selectedFile] !== undefined && (
+                                    <span className="text-[8px] px-1.5 py-0.5 bg-cyan-500/10 text-cyan-500 border border-cyan-500/20 rounded font-black uppercase">Unsaved</span>
+                                )}
                             </div>
-
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => handleDelete(selectedFile)}
@@ -101,7 +103,7 @@ export const FileEditor = ({
                                     <Icon name="trash" />
                                 </button>
                                 <div className="w-px h-4 bg-slate-700 mx-1" />
-                                {isDirty && (
+                                {unsavedChanges[selectedFile] !== undefined && (
                                     <>
                                         <button
                                             onClick={() => {
@@ -110,12 +112,14 @@ export const FileEditor = ({
                                                 setUnsavedChanges(next);
                                             }}
                                             className="px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-white transition-colors"
+                                            title="Discard changes"
                                         >
                                             Discard
                                         </button>
                                         <button
                                             onClick={() => onSave(selectedFile, content)}
-                                            className="px-3 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white rounded transition-colors flex items-center gap-1"
+                                            className="px-3 py-1.5 text-xs font-black uppercase tracking-wider bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition-all flex items-center gap-1"
+                                            title="Save changes"
                                         >
                                             <Icon name="save" /> Save
                                         </button>
@@ -128,14 +132,17 @@ export const FileEditor = ({
                             onChange={(e) => {
                                 setUnsavedChanges(prev => ({ ...prev, [selectedFile]: e.target.value }));
                             }}
-                            className="flex-1 bg-slate-900 text-slate-300 font-mono text-xs p-4 focus:outline-none resize-none custom-scrollbar"
+                            title={`Edit content of ${selectedFile}`}
+                            placeholder="Type neural logic here..."
+                            className="flex-1 bg-slate-950/60 text-slate-300 font-mono text-xs p-4 focus:outline-none resize-none custom-scrollbar"
                             spellCheck={false}
                         />
                     </>
                 ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-slate-500 opacity-30 p-10 sm:p-16 text-center">
-                        <Icon name="file-contract" className="text-4xl sm:text-6xl mb-5 sm:mb-6" />
-                        <p className="text-[12px] sm:text-sm max-w-[240px] sm:max-w-xs leading-relaxed font-medium">Select a file to begin editing the mikuCentral Cortex</p>
+                    <div className="flex-1 flex flex-col items-center justify-center text-slate-600 opacity-40 p-10 sm:p-16 text-center">
+                        <Icon name="file-contract" className="text-5xl sm:text-7xl mb-5 sm:mb-8 animate-pulse" />
+                        <h3 className="text-sm sm:text-base font-black uppercase tracking-[0.3em] text-slate-400 mb-2">Neural Standby</h3>
+                        <p className="text-[10px] sm:text-xs max-w-[240px] sm:max-w-xs leading-relaxed font-bold uppercase tracking-widest">Select a file to begin editing</p>
                     </div>
                 )}
             </div>

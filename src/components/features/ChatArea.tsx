@@ -6,8 +6,10 @@ import { AgentStatusPanel } from '../panels/AgentStatusPanel';
 import { ToolBlock } from '../common/ToolBlock';
 import { CollapsibleTextBlock } from '../common/CollapsibleTextBlock';
 import { CollapsibleMessage } from '../common/CollapsibleMessage';
+import { TypewriterIdle } from '../common/TypewriterIdle';
 
 interface ChatAreaProps {
+    sessionId: string;
     messages: Message[];
     isLoading: boolean;
     input: string;
@@ -37,6 +39,7 @@ interface ChatAreaProps {
 }
 
 export const ChatArea = ({
+    sessionId,
     messages,
     isLoading,
     input,
@@ -155,7 +158,7 @@ export const ChatArea = ({
     }, [agentStatus.phase, pendingApproval]);
 
     return (
-        <div className="flex-1 flex flex-col h-full relative bg-slate-900">
+        <div className="flex-1 flex flex-col h-full relative">
             {/* Connection Banner (Persistent Neural Link) */}
             {Object.entries(folderPermissions).some(([_, status]) => status !== 'granted') && (
                 <div className="bg-amber-900/40 border-b border-amber-500/20 p-2 sm:p-3 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 animate-in slide-in-from-top duration-500 z-[110] w-full max-w-full shadow-lg">
@@ -248,160 +251,167 @@ export const ChatArea = ({
                 </div>
             )}
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar chat-area-scroll" ref={scrollRef}>
-                {messages.length === 0 && (
-                    <div className="h-full flex flex-col items-center justify-center text-slate-500 opacity-40">
-                        <div className="w-20 h-20 rounded-full border-2 border-slate-700 flex items-center justify-center mb-4 text-3xl">
-                            <Icon name="terminal" />
+            <div
+                key={sessionId}
+                className="flex-1 overflow-y-auto p-4 custom-scrollbar chat-area-scroll chat-fade-mask relative animate-chat flex flex-col"
+                ref={scrollRef}
+            >
+                <div className="flex-1" />
+                <div className="space-y-6 w-full">
+                    {messages.length === 0 && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-20">
+                            <div className="w-20 h-20 rounded-full border-2 border-blue-500/15 flex items-center justify-center mb-6 text-3xl text-blue-500/20">
+                                <Icon name="terminal" />
+                            </div>
+                            <TypewriterIdle />
                         </div>
-                        <p className="font-mono text-sm">System Ready. Context Loaded.</p>
-                    </div>
-                )}
+                    )}
 
-                {messages.map((msg, index) => {
-                    const isLast = msg.id === messages[messages.length - 1]?.id;
-                    const isOld = index < messages.length - 3;
-                    const hasToolCall = msg.blocks?.some(b => b.type === 'tool_call');
-                    const isAgentResponse = msg.role === 'assistant' && (agentMode === 'agent' || msg.text === '');
+                    {messages.map((msg, index) => {
+                        const isLast = msg.id === messages[messages.length - 1]?.id;
+                        const isOld = index < messages.length - 3;
+                        const hasToolCall = msg.blocks?.some(b => b.type === 'tool_call');
+                        const isAgentResponse = msg.role === 'assistant' && (agentMode === 'agent' || msg.text === '');
 
-                    // [FIX] Detect success flag in blocks to avoid coloring failures as green
-                    const hasFailedTool = msg.blocks?.some(b => b.type === 'tool_call' && b.result && b.result.success === false);
+                        // [FIX] Detect success flag in blocks to avoid coloring failures as green
+                        const hasFailedTool = msg.blocks?.some(b => b.type === 'tool_call' && b.result && b.result.success === false);
 
-                    // Show placeholder only for the last loading assistant message
-                    const showPlaceholder = isLast && isLoading && isAgentResponse && !hasToolCall;
+                        // Show placeholder only for the last loading assistant message
+                        const showPlaceholder = isLast && isLoading && isAgentResponse && !hasToolCall;
 
-                    const MessageContent = (
-                        <div key={msg.id} className={`flex group relative ${msg.role === 'user' ? 'justify-end'
-                            : msg.role === 'system' ? 'justify-center'
-                                : 'justify-start'
-                            }`}>
-                            {msg.role === 'system' ? (
-                                <div className="max-w-[70%] rounded-md px-3 py-2 bg-amber-900/20 border border-amber-800/30 text-amber-300/80 text-[11px] font-mono">
-                                    <MarkdownRenderer content={msg.text} />
-                                </div>
-                            ) : (
-                                <div className={`relative w-auto max-w-[95%] sm:max-w-[85%] lg:max-w-[75%] rounded-2xl p-4 sm:px-5 sm:py-4 shadow-xl transition-all duration-300 break-words message-pop-in ${msg.role === 'user'
-                                    ? 'bg-blue-600/20 border border-blue-500/30 text-blue-50'
-                                    : 'bg-slate-800 border border-slate-700 text-slate-200'
-                                    }`}>
-
-                                    {/* --- Action Bar --- */}
-                                    <div className={`absolute -top-3 ${msg.role === 'user' ? 'right-4' : 'left-4'} flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10`}>
-                                        {msg.role === 'user' && (
-                                            <button
-                                                onClick={() => onRewind(index)}
-                                                className="bg-slate-800 border border-slate-700 text-amber-400 hover:text-amber-300 px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-2xl"
-                                                title="Editar y reiniciar chat desde este punto"
-                                            >
-                                                <Icon name="history" /> Edit & Rewind
-                                            </button>
-                                        )}
-                                        {msg.role === 'assistant' && (
-                                            <button
-                                                onClick={() => {
-                                                    navigator.clipboard.writeText(msg.text);
-                                                    const btn = document.activeElement as HTMLButtonElement;
-                                                    const origText = btn.innerHTML;
-                                                    btn.innerHTML = 'Copied!';
-                                                    setTimeout(() => btn.innerHTML = origText, 2000);
-                                                }}
-                                                className="bg-slate-800 border border-slate-700 text-blue-400 hover:text-blue-300 px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-2xl"
-                                            >
-                                                <Icon name="copy" /> Copy
-                                            </button>
-                                        )}
+                        const MessageContent = (
+                            <div key={msg.id} className={`flex group relative ${msg.role === 'user' ? 'justify-end'
+                                : msg.role === 'system' ? 'justify-center'
+                                    : 'justify-start'
+                                }`}>
+                                {msg.role === 'system' ? (
+                                    <div className="max-w-[70%] rounded-md px-3 py-2 bg-amber-900/20 border border-amber-800/30 text-amber-300/80 text-[11px] font-mono">
+                                        <MarkdownRenderer content={msg.text} />
                                     </div>
+                                ) : (
+                                    <div className={`relative w-auto max-w-[95%] sm:max-w-[85%] lg:max-w-[75%] rounded-2xl p-4 sm:px-5 sm:py-4 shadow-xl transition-all duration-300 break-words message-pop-in ${msg.role === 'user'
+                                        ? 'bg-blue-600/20 border border-blue-500/30 text-blue-50'
+                                        : 'bg-slate-800 border border-slate-700 text-slate-200'
+                                        }`}>
 
-                                    <div className="text-[10px] font-bold opacity-30 mb-3 flex items-center justify-between uppercase tracking-[0.2em]">
-                                        <div className="flex items-center gap-2">
-                                            {msg.role === 'user' ? (
-                                                <Icon name="user-circle" />
-                                            ) : (
-                                                <img src="./mikuBotICON.png" alt="Miku Core Icon" className="w-3 h-3 rounded-sm object-cover brightness-110" />
+                                        {/* --- Action Bar --- */}
+                                        <div className={`absolute -top-3 ${msg.role === 'user' ? 'right-4' : 'left-4'} flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10`}>
+                                            {msg.role === 'user' && (
+                                                <button
+                                                    onClick={() => onRewind(index)}
+                                                    className="bg-slate-800 border border-slate-700 text-amber-400 hover:text-amber-300 px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-2xl"
+                                                    title="Editar y reiniciar chat desde este punto"
+                                                >
+                                                    <Icon name="history" /> Edit & Rewind
+                                                </button>
                                             )}
-                                            {msg.role === 'user' ? 'Transmisor' : 'Neural Core'}
+                                            {msg.role === 'assistant' && (
+                                                <button
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(msg.text);
+                                                        const btn = document.activeElement as HTMLButtonElement;
+                                                        const origText = btn.innerHTML;
+                                                        btn.innerHTML = 'Copied!';
+                                                        setTimeout(() => btn.innerHTML = origText, 2000);
+                                                    }}
+                                                    className="bg-slate-800 border border-slate-700 text-blue-400 hover:text-blue-300 px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-2xl"
+                                                >
+                                                    <Icon name="copy" /> Copy
+                                                </button>
+                                            )}
                                         </div>
-                                        {msg.source === 'telegram' && (
-                                            <div className="flex items-center gap-1 text-[#0088cc] font-black lowercase tracking-tighter">
-                                                <Icon name="paper-plane" /> telegram
-                                            </div>
-                                        )}
-                                    </div>
 
-                                    {showPlaceholder ? (
-                                        <div className="flex items-center gap-3 py-2 text-blue-400">
-                                            <div className="w-5 h-5 rounded-full border-2 border-blue-400/20 border-t-blue-400 animate-spin" />
-                                            <span className="font-mono text-xs tracking-wider animate-pulse uppercase">Analizando Parámetros...</span>
-                                        </div>
-                                    ) : (
-                                        <div className="text-[12px] sm:text-[13px] leading-relaxed space-y-4 overflow-hidden break-words max-w-full w-full">
-                                            {msg.blocks && msg.blocks.length > 0 ? (
-                                                <div className="space-y-4">
-                                                    {msg.blocks.map((block, idx) => {
-                                                        if (block.type === 'answer') {
-                                                            return <MarkdownRenderer key={idx} content={block.content} />;
-                                                        } else if (block.type === 'thought' || block.type === 'text') {
-                                                            const hasTools = msg.blocks.some(b => b.type === 'tool_call');
-                                                            // Force collapse by default if it's an interleaved thought in a tool session
-                                                            const forceCollapse = isOld || (hasTools && !debugMode);
-                                                            return <CollapsibleTextBlock key={idx} content={block.content} forceCollapsed={forceCollapse} isThought={block.type === 'thought'} />;
-                                                        } else if (block.type === 'tool_call') {
-                                                            return <ToolBlock key={idx} block={block} isOld={isOld} />;
-                                                        }
-                                                        return null;
-                                                    })}
+                                        <div className="text-[10px] font-bold opacity-30 mb-3 flex items-center justify-between uppercase tracking-[0.2em]">
+                                            <div className="flex items-center gap-2">
+                                                {msg.role === 'user' ? (
+                                                    <Icon name="user-circle" />
+                                                ) : (
+                                                    <img src="./mikuBotICON.png" alt="Miku Core Icon" className="w-3 h-3 rounded-sm object-cover brightness-110" />
+                                                )}
+                                                {msg.role === 'user' ? 'Transmisor' : 'Neural Core'}
+                                            </div>
+                                            {msg.source === 'telegram' && (
+                                                <div className="flex items-center gap-1 text-[#0088cc] font-black lowercase tracking-tighter">
+                                                    <Icon name="paper-plane" /> telegram
                                                 </div>
-                                            ) : (
-                                                msg.text && <MarkdownRenderer content={msg.text} />
                                             )}
                                         </div>
-                                    )}
 
-                                    {msg.isStreaming && !msg.text && !showPlaceholder && (
-                                        <div className="flex items-center gap-2 mt-4">
-                                            {[0, 200, 400].map(ms => (
-                                                <div key={ms} className={`w-1.5 h-1.5 rounded-full bg-blue-500/50 animate-bounce delay-[${ms}ms]`} />
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    {/* Operative Reality Metadata */}
-                                    {msg.role === 'assistant' && msg.provider && (
-                                        <div className="mt-4 pt-3 border-t border-slate-700/50 flex items-center justify-between">
-                                            <div className="flex items-center gap-2 text-[9px] font-mono text-slate-500">
-                                                <span className="bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700/50 text-blue-400 font-bold uppercase">
-                                                    {msg.provider}
-                                                </span>
-                                                <span className="opacity-60">{msg.model || 'Default Model'}</span>
+                                        {showPlaceholder ? (
+                                            <div className="flex items-center gap-3 py-2 text-blue-400">
+                                                <div className="w-5 h-5 rounded-full border-2 border-blue-400/20 border-t-blue-400 animate-spin" />
+                                                <span className="font-mono text-xs tracking-wider animate-pulse uppercase">Analizando Parámetros...</span>
                                             </div>
-                                            {!msg.isStreaming && (
-                                                <span className="text-[9px] font-mono text-slate-600">
-                                                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                </span>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    );
+                                        ) : (
+                                            <div className="text-[12px] sm:text-[13px] leading-relaxed space-y-4 overflow-hidden break-words max-w-full w-full">
+                                                {msg.blocks && msg.blocks.length > 0 ? (
+                                                    <div className="space-y-4">
+                                                        {msg.blocks.map((block, idx) => {
+                                                            if (block.type === 'answer') {
+                                                                return <MarkdownRenderer key={idx} content={block.content} />;
+                                                            } else if (block.type === 'thought' || block.type === 'text') {
+                                                                const hasTools = msg.blocks.some(b => b.type === 'tool_call');
+                                                                // Force collapse by default if it's an interleaved thought in a tool session
+                                                                const forceCollapse = isOld || (hasTools && !debugMode);
+                                                                return <CollapsibleTextBlock key={idx} content={block.content} forceCollapsed={forceCollapse} isThought={block.type === 'thought'} />;
+                                                            } else if (block.type === 'tool_call') {
+                                                                return <ToolBlock key={idx} block={block} isOld={isOld} />;
+                                                            }
+                                                            return null;
+                                                        })}
+                                                    </div>
+                                                ) : (
+                                                    msg.text && <MarkdownRenderer content={msg.text} />
+                                                )}
+                                            </div>
+                                        )}
 
-                    // Wrap all user/assistant messages in a collapsible container to allow manual hiding + auto-collapse
-                    if (msg.role !== 'system') {
-                        return (
-                            <CollapsibleMessage
-                                key={msg.id}
-                                message={msg}
-                                initiallyCollapsed={isOld}
-                            >
-                                {MessageContent}
-                            </CollapsibleMessage>
+                                        {msg.isStreaming && !msg.text && !showPlaceholder && (
+                                            <div className="flex items-center gap-2 mt-4">
+                                                {[0, 200, 400].map(ms => (
+                                                    <div key={ms} className={`w-1.5 h-1.5 rounded-full bg-blue-500/50 animate-bounce delay-[${ms}ms]`} />
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* Operative Reality Metadata */}
+                                        {msg.role === 'assistant' && msg.provider && (
+                                            <div className="mt-4 pt-3 border-t border-slate-700/50 flex items-center justify-between">
+                                                <div className="flex items-center gap-2 text-[9px] font-mono text-slate-500">
+                                                    <span className="bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700/50 text-blue-400 font-bold uppercase">
+                                                        {msg.provider}
+                                                    </span>
+                                                    <span className="opacity-60">{msg.model || 'Default Model'}</span>
+                                                </div>
+                                                {!msg.isStreaming && (
+                                                    <span className="text-[9px] font-mono text-slate-600">
+                                                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         );
-                    }
 
-                    return MessageContent;
-                })}
-                <div className="h-4" /> {/* Bottom breathing room */}
+                        // Wrap all user/assistant messages in a collapsible container to allow manual hiding + auto-collapse
+                        if (msg.role !== 'system') {
+                            return (
+                                <CollapsibleMessage
+                                    key={msg.id}
+                                    message={msg}
+                                    initiallyCollapsed={isOld}
+                                >
+                                    {MessageContent}
+                                </CollapsibleMessage>
+                            );
+                        }
+
+                        return MessageContent;
+                    })}
+                    <div className="h-4" /> {/* Bottom breathing room */}
+                </div>
             </div>
 
             {pendingApproval && (
@@ -420,7 +430,7 @@ export const ChatArea = ({
                 />
             </div>
 
-            <div className="p-4 bg-slate-900 border-t border-slate-800">
+            <div className="p-4 bg-slate-900/40 border-t border-slate-800/50">
                 <div className="max-w-5xl mx-auto flex items-center gap-2 mb-2 flex-wrap">
                     <label className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Mode:</label>
                     <select
@@ -500,7 +510,7 @@ export const ChatArea = ({
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder={agentMode === 'agent' ? 'Instrucción para el agente...' : 'Escribe un mensaje...'}
-                        className="flex-1 bg-slate-800/50 border border-slate-700 rounded-lg py-3 px-4 text-slate-200 font-mono text-sm placeholder-slate-600 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none min-h-[50px]"
+                        className="flex-1 bg-slate-900/50 border border-slate-800/60 rounded-xl py-3 px-4 text-slate-200 font-mono text-sm placeholder-slate-600 focus:ring-1 focus:ring-cyan-500/30 focus:border-cyan-500/40 outline-none resize-none min-h-[50px] transition-all"
                         rows={1}
                     />
                     {/* Abort Group (Active when Loading) */}

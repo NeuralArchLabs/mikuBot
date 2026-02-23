@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.7.0] - 2026-02-22
+### Added
+- **Selective Skill Toggles**: Each Neural Skill now has an inline switch to enable/disable its injection into the agent's toolset. Disabled skills are excluded from both tool definitions and system prompt configuration blocks.
+- **Cinematic Session Transitions**: The "TV On" entrance animation now re-triggers when switching between sessions, creating an immersive channel-switching experience.
+- **Bottom-Aligned Chat**: Messages now grow from bottom to top using a flex spacer, keeping user attention near the input area (modern messaging app pattern).
+- **`disabledSkills`**: New persistent config field (`string[]`) to store which skills the user has toggled off.
+
+### Changed
+- **Visual Typography Balance (Skills Panel)**: Reduced font weight across the entire Neural Skills panel — headers, cards, tabs, labels, and buttons — from `font-black` to `font-semibold`/`font-bold` for a cleaner, more balanced visual hierarchy.
+- **Chat Animation Isolation**: The "TV On" effect now only applies to the message history area; the prompt bar remains static and immediately usable.
+- **Animation Cleanup**: Removed `filter: brightness()` from `chat-reveal-kf` and `control-room-enter` keyframes to eliminate visual flashes during transitions.
+- **No Auto-Select in Skills**: Neural Skills panel no longer auto-selects the first skill on load — shows "Neural Standby" by default.
+
+### Fixed
+- **System Prompt Leak**: Disabled skill configurations were still being injected into the system prompt. Now `buildSkillsConfigBlock` filters out disabled skills.
+- **Tab Transition Flash**: Eliminated the visual "flash" caused by background/blur styles being re-applied during tab transitions via a persistent UI shell.
+
 ## [1.5.1] - 2026-02-21
 ### Added
 - **Native Explorer Integration**: Añadidos iconos de acceso directo ("External Link") en las tarjetas de carpeta para apertura rápida.

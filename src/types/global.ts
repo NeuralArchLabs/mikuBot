@@ -89,6 +89,7 @@ export interface AppConfig {
         tools: string;
     };
     skillsConfig?: Record<string, Record<string, any>>;
+    disabledSkills?: string[];
 }
 
 export type ApprovalMode = 'auto' | 'manual';

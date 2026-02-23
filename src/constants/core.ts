@@ -44,7 +44,8 @@ export const DEFAULT_CONFIG: AppConfig = {
     telegramChatId: '',
     folderNames: { core: '', extra: '', workSpace: '', tools: '' },
     folderPaths: { core: '', extra: '', workSpace: '', tools: '' },
-    skillsConfig: {}
+    skillsConfig: {},
+    disabledSkills: []
 };
 
 export const AGENT_TOOLS: ToolDefinition[] = [

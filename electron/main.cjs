@@ -650,7 +650,7 @@ function createWindow() {
     const win = new BrowserWindow({
         width: 1200,
         height: 800,
-        minWidth: 640,
+        minWidth: 768,
         minHeight: 650,
         icon: (() => {
             const { nativeImage } = require('electron');
