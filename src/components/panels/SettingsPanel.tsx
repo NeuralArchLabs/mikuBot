@@ -129,7 +129,7 @@ export const SettingsPanel = ({
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         const path = config.folderPaths?.workSpace;
-                                        if (path) (window as any).electron?.invoke('fs-open-folder', path);
+                                        if (path) (window as any).electron?.openFolder(path);
                                     }}
                                     className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/30 text-emerald-400 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-50 border border-emerald-500/20 hover:scale-110 active:scale-95 shadow-lg"
                                     title="Open WorkSpace in Explorer"
@@ -169,7 +169,7 @@ export const SettingsPanel = ({
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         const path = config.folderPaths?.core;
-                                        if (path) (window as any).electron?.invoke('fs-open-folder', path);
+                                        if (path) (window as any).electron?.openFolder(path);
                                     }}
                                     className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/30 text-indigo-400 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-50 border border-indigo-500/20 hover:scale-110 active:scale-95 shadow-lg"
                                     title="Open Core in Explorer"
@@ -209,7 +209,7 @@ export const SettingsPanel = ({
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         const path = config.folderPaths?.extra;
-                                        if (path) (window as any).electron?.invoke('fs-open-folder', path);
+                                        if (path) (window as any).electron?.openFolder(path);
                                     }}
                                     className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-pink-500/10 hover:bg-pink-500/30 text-pink-400 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-50 border border-pink-500/20 hover:scale-110 active:scale-95 shadow-lg"
                                     title="Open Library in Explorer"
@@ -249,7 +249,7 @@ export const SettingsPanel = ({
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         const path = config.folderPaths?.tools;
-                                        if (path) (window as any).electron?.invoke('fs-open-folder', path);
+                                        if (path) (window as any).electron?.openFolder(path);
                                     }}
                                     className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-amber-500/10 hover:bg-amber-500/30 text-amber-400 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-50 border border-amber-500/20 hover:scale-110 active:scale-95 shadow-lg"
                                     title="Open Commands in Explorer"
