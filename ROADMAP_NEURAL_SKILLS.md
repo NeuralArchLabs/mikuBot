@@ -49,5 +49,9 @@ Una vez que el sistema sea estable, las siguientes skills serán:
 - [x] **Visual Balance**: Tipografía refinada en todo el panel (tarjetas, labels, tabs, botones) para una lectura más cómoda.
 - [x] **No Auto-Select**: Al entrar a Neural Skills, ninguna skill está seleccionada por defecto — se muestra el estado "Neural Standby".
 
+## 7. Fase de Infraestructura de Ejecución (v1.8.0) ⚡ ✅
+- [x] **State Sychronization**: Introducción de `isInstructionMode` en el `AgentStatus` para mapear el estado de ejecución de herramientas con efectos visuales premium (Halo).
+- [x] **Dev Pipeline Compatibility**: Ajustes en el entorno de red (puerto 5173) para permitir el desarrollo paralelo de múltiples aplicaciones agénticas.
+
 ---
 **Objetivo Final**: Que MikuBot sea un orquestador que solo "pida las herramientas que necesita" de su biblioteca personal.

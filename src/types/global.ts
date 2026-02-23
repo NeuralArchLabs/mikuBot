@@ -25,6 +25,13 @@ export interface MessageBlock {
     result?: ToolResult;
 }
 
+export interface Attachment {
+    id: string;
+    name: string;
+    type: string;
+    data: string; // Base64 encoded data
+}
+
 export interface Message {
     id: string;
     role: 'user' | 'assistant' | 'tool' | 'system';
@@ -40,6 +47,7 @@ export interface Message {
     excludeFromContext?: boolean;
     provider?: string;
     model?: string;
+    attachments?: Attachment[];
 }
 
 export interface SessionMetadata {
@@ -172,6 +180,7 @@ export interface AgentStatus {
     rawMessages?: any[];
     currentSystemPrompt?: string;
     lastExecutionFeedback?: string;
+    isInstructionMode?: boolean;
 }
 
 export interface PendingToolApproval {

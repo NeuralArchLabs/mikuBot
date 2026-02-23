@@ -885,6 +885,41 @@
   /* cyan-500 on hover */
 }
 
+/* Base Halo effect for Abort buttons - Always ON rainbow, red background */
+.btn-halo-abort {
+  position: relative;
+  background: transparent !important;
+  z-index: 1;
+}
+
+.btn-halo-abort::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  background: linear-gradient(90deg, #ff4d4d, #f9cb28, #32ff7e, #18dcff, #7d5fff, #ff4d4d);
+  background-size: 200% auto;
+  border-radius: 16px;
+  z-index: -2;
+  animation: shine 2s linear infinite;
+  opacity: 1;
+  filter: blur(5px);
+}
+
+.btn-halo-abort::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.9) 0%, rgba(185, 28, 28, 1) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: inherit;
+  z-index: -1;
+  transition: all 0.3s ease;
+}
+
+.btn-halo-abort:hover::after {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 1) 0%, rgba(220, 38, 38, 1) 100%);
+}
+
 .btn-cyan-glow {
   position: relative;
 }
@@ -981,6 +1016,27 @@
 
 .icon-spin-reverse {
   animation: icon-spin-reverse-kf 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Continuous smooth spin for the stop button with gradual acceleration/braking */
+@keyframes icon-stop-spin-kf {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  50% {
+    transform: rotate(180deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.icon-stop-spin {
+  display: inline-block;
+  /* 2.2 seconds for a mechanical wheel-like rotation */
+  animation: icon-stop-spin-kf 2.2s cubic-bezier(0.85, 0, 0.15, 1) infinite;
 }
 
 /* Instruction Glow trigger */
@@ -1152,6 +1208,197 @@
     transform: translateY(10px) scale(0.9);
   }
 }
+
+@keyframes color-morph-ripple {
+  0% {
+    clip-path: circle(0% at 50% 50%);
+    opacity: 0;
+  }
+
+  20% {
+    opacity: 1;
+  }
+
+  100% {
+    clip-path: circle(150% at 50% 50%);
+    opacity: 1;
+  }
+}
+
+@keyframes color-morph-ripple-reverse {
+  0% {
+    clip-path: circle(150% at 50% 50%);
+    opacity: 1;
+  }
+
+  80% {
+    opacity: 1;
+  }
+
+  100% {
+    clip-path: circle(0% at 50% 50%);
+    opacity: 0;
+  }
+}
+
+
+
+/* ──────────────────────────────────────────────────────────────────────
+   MORPH SEND BUTTON (STANDALONE IMPLEMENTATION)
+   ────────────────────────────────────────────────────────────────────── */
+
+.btn-send-morph {
+  position: relative;
+  z-index: 1;
+  background: transparent !important;
+  transition: all 0.3s ease;
+  background-clip: padding-box;
+}
+
+/* Base borders and shadows on the container itself */
+.btn-send-morph.is-chat {
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  box-shadow: 0 4px 15px -3px rgba(37, 99, 235, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+}
+
+.btn-send-morph.is-chat:hover:not(:disabled) {
+  transform: translateY(-2px);
+  z-index: 10;
+  box-shadow: 0 12px 25px -5px rgba(37, 99, 235, 0.5), 0 0 20px rgba(59, 130, 246, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+}
+
+.btn-send-morph.is-agent {
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  box-shadow: 0 4px 15px -3px rgba(147, 51, 234, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+}
+
+.btn-send-morph.is-agent:hover:not(:disabled) {
+  transform: translateY(-2px);
+  z-index: 10;
+  box-shadow: 0 12px 25px -5px rgba(147, 51, 234, 0.5), 0 0 20px rgba(168, 85, 247, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+}
+
+/* Background isolation layer */
+.btn-send-morph-bg {
+  position: absolute;
+  inset: -1px;
+  /* Expands perfectly into the 1px semi-transparent border */
+  overflow: hidden;
+  border-radius: inherit;
+  z-index: -1;
+}
+
+/* Base color layers */
+.btn-send-morph-blue,
+.btn-send-morph-purple {
+  position: absolute;
+  inset: 0;
+  border: none;
+  box-shadow: none;
+  transform: none;
+  /* Prevents inheriting sub-transitions that cause pixel gaps */
+  transition: background 0.3s ease;
+}
+
+.btn-send-morph-blue {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.8) 0%, rgba(29, 78, 216, 0.9) 100%);
+  z-index: 1;
+}
+
+.btn-send-morph:hover:not(:disabled) .btn-send-morph-blue {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.9) 0%, rgba(37, 99, 235, 1) 100%);
+}
+
+.btn-send-morph-purple {
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.8) 0%, rgba(126, 34, 206, 0.9) 100%);
+  z-index: 2;
+  opacity: 0;
+  animation-fill-mode: forwards;
+}
+
+.btn-send-morph:hover:not(:disabled) .btn-send-morph-purple {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.9) 0%, rgba(147, 51, 234, 1) 100%);
+}
+
+@keyframes rainbow-aura-wave-kf {
+  0% {
+    transform: translate(-50%, -50%) scale(0.4);
+    opacity: 0;
+  }
+
+  30% {
+    opacity: 0.7;
+  }
+
+  100% {
+    transform: translate(-50%, -50%) scale(3.5);
+    opacity: 0;
+  }
+}
+
+@keyframes rainbow-aura-wave-reverse-kf {
+  0% {
+    transform: translate(-50%, -50%) scale(3.5);
+    opacity: 0;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: translate(-50%, -50%) scale(0.2);
+    opacity: 0;
+  }
+}
+
+
+.btn-morph-aura {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 150%;
+  height: 150%;
+  /* True rainbow ring with transparency for wave effect */
+  background: radial-gradient(circle,
+      transparent 30%,
+      rgba(255, 77, 77, 0.5) 35%,
+      rgba(249, 203, 40, 0.5) 40%,
+      rgba(50, 255, 126, 0.5) 45%,
+      rgba(24, 220, 255, 0.5) 50%,
+      rgba(125, 95, 255, 0.5) 55%,
+      transparent 60%);
+  border-radius: 50%;
+  z-index: -3;
+  pointer-events: none;
+  filter: blur(45px);
+  /* Highly diffuse as requested */
+  animation: rainbow-aura-wave-kf 2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.btn-morph-aura.reverse {
+  animation: rainbow-aura-wave-reverse-kf 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+
+
+
+@keyframes shine {
+  to {
+    background-position: 200% center;
+  }
+}
+
+.rainbow-icon {
+  background: linear-gradient(90deg, #ff4d4d, #f9cb28, #32ff7e, #18dcff, #7d5fff, #ff4d4d);
+  background-size: 200% auto;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  color: transparent !important;
+  display: inline-block;
+  animation: shine 2s linear infinite;
+}
+
 
 .action-exit {
   animation: action-exit-kf 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;

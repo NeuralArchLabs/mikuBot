@@ -1,6 +1,6 @@
-# Project Status: MikuCentral v1.7.0 🚀
+# Project Status: MikuCentral v1.8.0 🚀
 
-> **Última actualización**: 22 de febrero de 2026
+> **Última actualización**: 23 de febrero de 2026
 > **Autor del análisis**: Antigravity AI Engine
 
 Este documento detalla el análisis exhaustivo del proyecto **MikuCentral**, una interfaz de IA neural y asistente personal integral diseñada para la soberanía tecnológica local, la ejecución de agentes autónomos y la persistencia automodificable en todas las facetas de la vida del usuario (personal, profesional y financiera).
@@ -272,6 +272,14 @@ electron/
 ---
 
 ## 7. Log de Cambios 📋
+
+### v1.8 — 23 Feb 2026 (Mechanical UX & Infrastructure Multi-App)
+| Archivo | Cambio |
+|---------|--------|
+| `package.json` / `vite.config.ts` | **Port Migration**: Movido de puerto `3000` a `5173` para evitar conflictos con servidores Next.js y otros frameworks. |
+| `src/index.css` | **Mechanical Spin**: Refinamiento estético del botón de stop (2.2s, `cubic-bezier(0.85, 0, 0.15, 1)`) para un visual de aceleración/frenado suave. |
+| `src/components/features/ChatArea.tsx` | **Animation Refresh**: Uso de `key={isLoading}` en el icono de stop para forzar el reinicio de la animación y evitar glitches visuales. |
+| `src/types/global.ts` | **isInstructionMode**: Nuevo campo en `AgentStatus` para sincronización precisa del efecto "Halo" durante ejecuciones de herramientas. |
 
 ### v1.7 — 22 Feb 2026 (Cinematic UX, Selective Skills & Visual Balance)
 | Archivo | Cambio |

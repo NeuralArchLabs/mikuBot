@@ -1,5 +1,5 @@
 import React from 'react';
-import { Message, AgentStatus, PendingToolApproval, AgentMode, ApprovalMode } from '../../types';
+import { Message, AgentStatus, PendingToolApproval, AgentMode, ApprovalMode, Attachment } from '../../types';
 import { Icon, MarkdownRenderer } from '../common/Common';
 import { ToolApprovalPanel } from '../panels/ToolApprovalPanel';
 import { AgentStatusPanel } from '../panels/AgentStatusPanel';
@@ -14,8 +14,8 @@ interface ChatAreaProps {
     isLoading: boolean;
     input: string;
     setInput: (s: string) => void;
-    onSend: () => void;
-    onSendAsInstruction: () => void;
+    onSend: (attachments: Attachment[]) => void;
+    onSendAsInstruction: (attachments: Attachment[]) => void;
     onAbort: () => void;
     onReprompt: () => void;
     onRewind: (index: number) => void;
@@ -71,9 +71,14 @@ export const ChatArea = ({
     const [isSent, setIsSent] = React.useState(false);
     const [boltGlow, setBoltGlow] = React.useState(false);
 
+    const [attachments, setAttachments] = React.useState<Attachment[]>([]);
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+
     const handleSend = () => {
         setIsSent(true);
-        onSend();
+        onSend(attachments);
+        setAttachments([]);
         setTimeout(() => setIsSent(false), 700);
     };
 
@@ -82,10 +87,36 @@ export const ChatArea = ({
         setIsSent(true);
         // Delay slightly to show the glow before sending (and triggering isLoading)
         setTimeout(() => {
-            onSendAsInstruction();
+            onSendAsInstruction(attachments);
+            setAttachments([]);
             setBoltGlow(false);
             setTimeout(() => setIsSent(false), 700);
         }, 300);
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files) return;
+        const files = Array.from(e.target.files) as File[];
+        files.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const base64Content = event.target?.result as string;
+                // Remove data:image/png;base64, prefix if you want raw base64, but keeping it is fine for preview
+                setAttachments(prev => [...prev, {
+                    id: Date.now().toString() + Math.random().toString(),
+                    name: file.name,
+                    type: file.type,
+                    data: base64Content
+                }]);
+            };
+            // Read as data URL to easily preview and send
+            reader.readAsDataURL(file);
+        });
+        e.target.value = ''; // Reset input
+    };
+
+    const handleRemoveAttachment = (id: string) => {
+        setAttachments(prev => prev.filter(a => a.id !== id));
     };
 
     // Auto-focus input when agent finishes
@@ -112,16 +143,18 @@ export const ChatArea = ({
         if (e.key === 'Enter') {
             if (e.altKey) {
                 e.preventDefault();
-                handleSendAsInstruction();
+                if (input.trim() || attachments.length > 0) {
+                    handleSendAsInstruction();
+                }
             } else if (!e.shiftKey) {
                 e.preventDefault();
 
-                // Logic: If there's a pending task to resume and input is empty, Enter resumes it.
-                // Otherwise, it sends whatever is in the input field.
+                const hasContent = input.trim() || attachments.length > 0;
                 const canReprompt = !isLoading && agentStatus.iteration > 0 && agentStatus.phase !== 'idle';
-                if (canReprompt && !input.trim()) {
+
+                if (!hasContent && canReprompt) {
                     onReprompt();
-                } else {
+                } else if (hasContent) {
                     handleSend();
                 }
             }
@@ -344,6 +377,20 @@ export const ChatArea = ({
                                             </div>
                                         ) : (
                                             <div className="text-[12px] sm:text-[13px] leading-relaxed space-y-4 overflow-hidden break-words max-w-full w-full">
+                                                {msg.attachments && msg.attachments.length > 0 && (
+                                                    <div className="flex flex-wrap gap-2 mb-3">
+                                                        {msg.attachments.map(att => (
+                                                            <div key={att.id} className="relative group bg-slate-800 border border-slate-700 rounded-lg p-2 flex items-center gap-2 max-w-[200px]">
+                                                                {att.type.startsWith('image/') ? (
+                                                                    <img src={att.data} alt={att.name} className="h-16 w-auto object-contain rounded" />
+                                                                ) : (
+                                                                    <Icon name="file-alt" className="text-slate-400 text-lg" />
+                                                                )}
+                                                                <span className="text-xs text-slate-300 truncate flex-1">{att.name}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
                                                 {msg.blocks && msg.blocks.length > 0 ? (
                                                     <div className="space-y-4">
                                                         {msg.blocks.map((block, idx) => {
@@ -503,59 +550,127 @@ export const ChatArea = ({
                         </button>
                     </div>
                 </div>
-                <div className="relative max-w-5xl mx-auto flex gap-2">
-                    <textarea
-                        ref={inputRef}
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder={agentMode === 'agent' ? 'Instrucción para el agente...' : 'Escribe un mensaje...'}
-                        className="flex-1 bg-slate-900/50 border border-slate-800/60 rounded-xl py-3 px-4 text-slate-200 font-mono text-sm placeholder-slate-600 focus:ring-1 focus:ring-cyan-500/30 focus:border-cyan-500/40 outline-none resize-none min-h-[50px] transition-all"
-                        rows={1}
-                    />
-                    {/* Abort Group (Active when Loading) */}
-                    <div className={`mode-transition-wrap ${isLoading ? 'visible-mode action-enter' : 'hidden-mode action-exit'}`}>
-                        <button
-                            onClick={onAbort}
-                            className={`h-[50px] px-4 btn-abort-premium text-white rounded-xl flex items-center justify-center min-w-[50px] pulse-glow ${agentMode === 'agent' || agentStatus.lastExecutionFeedback?.includes('INSTRUCCIÓN') ? 'btn-halo' : ''}`}
-                            title="Abort Neural Process"
-                        >
-                            <Icon name="stop" className={isLoading ? 'icon-spin-once' : 'icon-spin-reverse'} />
-                        </button>
-                    </div>
+                <div className="relative max-w-5xl mx-auto flex flex-col gap-2">
+                    <div className="flex items-end gap-2">
+                        {/* Attachments Preview (Left) */}
+                        {attachments.length > 0 && (
+                            <div className="flex gap-2 pb-1">
+                                {attachments.map(att => (
+                                    <div key={att.id} className="relative group bg-slate-800 border border-slate-700 rounded-lg p-1 flex items-center justify-center w-10 h-10 shadow-sm">
+                                        {att.type.startsWith('image/') ? (
+                                            <img src={att.data} alt={att.name} className="w-full h-full object-cover rounded-md" />
+                                        ) : (
+                                            <Icon name="file-alt" className="text-slate-400 text-[16px]" />
+                                        )}
+                                        <button
+                                            onClick={() => handleRemoveAttachment(att.id)}
+                                            className="absolute -top-1.5 -right-1.5 bg-red-500/90 hover:bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center w-4 h-4 shadow-sm"
+                                        >
+                                            <Icon name="times" className="text-[8px]" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
 
-                    {/* Send/Instruction Group (Active when Idle) */}
-                    <div className={`flex items-center gap-2 mode-transition-wrap ${!isLoading ? 'visible-mode action-enter' : 'hidden-mode action-exit'}`}>
-                        <button
-                            onClick={handleSend}
-                            disabled={!input.trim()}
-                            className="h-[50px] px-4 btn-premium text-white rounded-xl flex items-center justify-center min-w-[50px] disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Send Signal"
-                        >
-                            <Icon name="arrow-right" className={isSent ? 'send-icon-fly' : ''} />
-                        </button>
-
-                        <div className={`mode-transition-wrap ${agentMode !== 'agent' ? 'visible-mode instruction-enter' : 'hidden-mode instruction-exit'}`}>
+                        {/* File Input (Hidden) & Trigger (Left of textarea) */}
+                        <div className={`mode-transition-wrap ${!isLoading ? 'visible-mode bg-slate-800/20 rounded-xl mb-0.5' : 'hidden-mode'}`}>
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleFileChange}
+                                className="hidden"
+                                multiple
+                                accept="image/png, image/jpeg, image/webp"
+                            />
                             <button
-                                onClick={handleSendAsInstruction}
-                                disabled={!input.trim()}
-                                className={`h-[50px] px-4 btn-instruction-premium text-white rounded-xl flex items-center justify-center min-w-[50px] disabled:opacity-50 disabled:cursor-not-allowed text-[10px] font-bold ${boltGlow ? 'pulse-glow' : ''}`}
-                                title="Send as Direct Instruction (Forces tool call)"
+                                onClick={() => fileInputRef.current?.click()}
+                                className="h-[46px] w-[46px] text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 rounded-xl flex items-center justify-center transition-colors shadow-sm"
+                                title="Adjuntar Archivo"
                             >
-                                <Icon name="bolt" className={boltGlow ? 'instruction-bolt-glow' : (isSent ? 'icon-pulse' : '')} />
+                                <Icon name="plus" />
                             </button>
                         </div>
-                    </div>
 
-                    {!isLoading && agentStatus.iteration > 0 && agentStatus.phase !== 'idle' && (
-                        <button
-                            onClick={onReprompt}
-                            className="h-[50px] px-4 btn-continue-premium text-white rounded-xl flex items-center justify-center min-w-[50px] pulse-glow"
-                            title="Resume Task"
-                        >
-                            <Icon name="redo" className="icon-spin-once" />
-                        </button>
-                    )}
+                        <textarea
+                            ref={inputRef}
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            placeholder={agentMode === 'agent' ? 'Instrucción para el agente...' : 'Escribe un mensaje...'}
+                            className="flex-1 bg-slate-900/50 border border-slate-800/60 rounded-xl py-3 px-4 text-slate-200 font-mono text-sm placeholder-slate-600 focus:ring-1 focus:ring-cyan-500/30 focus:border-cyan-500/40 outline-none resize-none min-h-[50px] transition-all"
+                            rows={1}
+                        />
+
+                        {/* Abort Group (Active when Loading) */}
+                        <div className={`mode-transition-wrap ${isLoading ? 'visible-mode action-enter' : 'hidden-mode action-exit'}`}>
+                            <button
+                                onClick={onAbort}
+                                className={`h-[50px] px-4 btn-abort-premium text-white rounded-xl flex items-center justify-center min-w-[50px] pulse-glow ${agentStatus.isInstructionMode ? 'btn-halo-abort' : ''}`}
+                                title="Abort Neural Process"
+                            >
+                                <span key={isLoading ? 'loading' : 'idle'} className="inline-block">
+                                    <Icon name="stop" className={isLoading ? 'icon-stop-spin' : 'icon-spin-reverse'} />
+                                </span>
+                            </button>
+                        </div>
+
+                        {/* Send/Instruction Group (Active when Idle) */}
+                        <div className={`flex items-center ${agentMode !== 'agent' ? 'gap-2' : ''} mode-transition-wrap ${!isLoading ? 'visible-mode action-enter' : 'hidden-mode action-exit'}`}>
+                            <button
+                                onClick={handleSend}
+                                disabled={!input.trim() && attachments.length === 0}
+                                className={`h-[50px] px-4 rounded-xl flex items-center justify-center min-w-[50px] disabled:opacity-50 disabled:cursor-not-allowed btn-send-morph ${agentMode === 'agent' ? 'is-agent' : 'is-chat'}`}
+                                title="Send Signal"
+                            >
+                                {/* Background Clipping Layer */}
+                                <div className="btn-send-morph-bg">
+                                    {/* Base Layer: Standard Chat Color (Blue) */}
+                                    <div className="btn-send-morph-blue" />
+
+                                    {/* Ripple Layer: Instruction Color (Purple) - Grows or Shrinks */}
+                                    <div
+                                        key={agentMode}
+                                        className="btn-send-morph-purple"
+                                        style={{
+                                            animationName: agentMode === 'agent' ? 'color-morph-ripple' : 'color-morph-ripple-reverse',
+                                            animationDuration: agentMode === 'agent' ? '2.5s' : '0.6s'
+                                        }}
+                                    />
+                                </div>
+
+                                {/* Rainbow Aura (Expanding wave) */}
+                                <div
+                                    key={`aura-${agentMode}`}
+                                    className={`btn-morph-aura ${agentMode !== 'agent' ? 'reverse' : ''}`}
+                                    style={{ animationDuration: '2.5s' }}
+                                />
+
+                                <Icon name="arrow-right" className={`${isSent ? 'send-icon-fly' : ''} ${agentMode === 'agent' ? 'rainbow-icon' : ''}`} />
+                            </button>
+
+                            <div className={`transition-all duration-300 ${agentMode !== 'agent' ? 'w-[50px] opacity-100' : 'w-0 opacity-0 overflow-hidden'} mode-transition-wrap ${agentMode !== 'agent' ? 'visible-mode instruction-enter' : 'hidden-mode instruction-exit'}`}>
+                                <button
+                                    onClick={handleSendAsInstruction}
+                                    disabled={!input.trim() && attachments.length === 0}
+                                    className={`h-[50px] px-4 w-full btn-instruction-premium text-white rounded-xl flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed text-[10px] font-bold ${boltGlow ? 'pulse-glow' : ''}`}
+                                    title="Send as Direct Instruction (Forces tool call)"
+                                >
+                                    <Icon name="bolt" className={boltGlow ? 'instruction-bolt-glow' : (isSent ? 'icon-pulse' : '')} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {!isLoading && agentStatus.iteration > 0 && agentStatus.phase !== 'idle' && (
+                            <button
+                                onClick={onReprompt}
+                                className="h-[50px] px-4 btn-continue-premium text-white rounded-xl flex items-center justify-center min-w-[50px] pulse-glow mb-0.5"
+                                title="Resume Task"
+                            >
+                                <Icon name="redo" className="icon-spin-once" />
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

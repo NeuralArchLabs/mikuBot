@@ -29,8 +29,12 @@ export const AgentStatusPanel = React.memo(({
     onAbort,
     onReprompt,
 }: AgentStatusPanelProps) => {
-    const logEndRef = useRef<HTMLDivElement>(null);
-    useEffect(() => { logEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [status.log]);
+    const logContainerRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (logContainerRef.current) {
+            logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+        }
+    }, [status.log]);
 
     // Live timer — ticks every second while agent is active
     const [liveElapsed, setLiveElapsed] = useState(status.elapsedMs);
@@ -129,7 +133,7 @@ export const AgentStatusPanel = React.memo(({
                 </div>
             </div>
 
-            <div className="max-h-32 overflow-y-auto custom-scrollbar p-2 space-y-1 bg-slate-900/40">
+            <div ref={logContainerRef} className="max-h-32 overflow-y-auto custom-scrollbar p-2 space-y-1 bg-slate-900/40">
                 {status.log.map((entry, i) => {
                     const isOptimization = entry.message.includes('optimizado para el llamado');
 
@@ -173,7 +177,6 @@ export const AgentStatusPanel = React.memo(({
                         </div>
                     );
                 })}
-                <div ref={logEndRef} />
             </div>
 
             {status.streamedText && (

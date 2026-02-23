@@ -1,4 +1,4 @@
-import { Provider, AppConfig, ModelInfo } from '../../types';
+import { Provider, AppConfig, ModelInfo, Attachment } from '../../types';
 import { safeFetch, streamViaProxy } from '../../utils';
 
 export async function fetchModels(provider: Provider, config: AppConfig): Promise<ModelInfo[]> {
@@ -41,7 +41,7 @@ export async function sendStreamingMessage(
     provider: Provider | undefined,
     config: AppConfig,
     systemPrompt: string,
-    messages: { role: string; content: string }[],
+    messages: { role: string; content: string; attachments?: Attachment[] }[],
     onChunk: (text: string) => void
 ): Promise<void> {
     const providerToUse = provider || config.provider;
@@ -51,7 +51,14 @@ export async function sendStreamingMessage(
     if (providerToUse === 'ollama') {
         const ollamaBody = {
             model: config.model,
-            messages: [{ role: 'system', content: systemPrompt }, ...messages],
+            messages: [{ role: 'system', content: systemPrompt }, ...messages.map(m => {
+                const imageAttachments = m.attachments?.filter(a => a.type.startsWith('image/')) || [];
+                return {
+                    role: m.role,
+                    content: m.content,
+                    images: imageAttachments.length > 0 ? imageAttachments.map(img => img.data.split(',')[1]) : undefined
+                };
+            })],
             stream: true,
             options: { temperature: config.temperature }
         };
@@ -114,7 +121,20 @@ export async function sendStreamingMessage(
     if (providerToUse === 'groq') {
         const groqBody = {
             model: config.model,
-            messages: [{ role: 'system', content: systemPrompt }, ...messages],
+            messages: [{ role: 'system', content: systemPrompt }, ...messages.map(m => {
+                const imageAttachments = m.attachments?.filter(a => a.type.startsWith('image/')) || [];
+                if (imageAttachments.length > 0) {
+                    const contentBlocks: any[] = [{ type: 'text', text: m.content || 'Attached images:' }];
+                    imageAttachments.forEach(img => {
+                        contentBlocks.push({
+                            type: 'image_url',
+                            image_url: { url: img.data }
+                        });
+                    });
+                    return { role: m.role, content: contentBlocks };
+                }
+                return { role: m.role, content: m.content };
+            })],
             stream: true,
             temperature: config.temperature,
         };
@@ -198,12 +218,24 @@ export async function sendStreamingMessage(
             const role = m.role === 'assistant' ? 'model' : (m.role === 'tool' ? 'user' : m.role);
             const content = m.content || '[Proceeding]';
 
+            const imageAttachments = m.attachments?.filter(a => a.type.startsWith('image/')) || [];
             if (consolidatedHistory.length > 0 && consolidatedHistory[consolidatedHistory.length - 1].role === role) {
                 consolidatedHistory[consolidatedHistory.length - 1].parts[0].text += `\n\n${content}`;
+                imageAttachments.forEach(img => {
+                    consolidatedHistory[consolidatedHistory.length - 1].parts.push({
+                        inlineData: { mimeType: img.type, data: img.data.split(',')[1] }
+                    });
+                });
             } else {
+                const parts: any[] = [{ text: content }];
+                imageAttachments.forEach(img => {
+                    parts.push({
+                        inlineData: { mimeType: img.type, data: img.data.split(',')[1] }
+                    });
+                });
                 consolidatedHistory.push({
                     role,
-                    parts: [{ text: content }]
+                    parts
                 });
             }
         }

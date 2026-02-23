@@ -523,7 +523,15 @@ export async function sendAgentMessage(
         if (provider === 'ollama') {
             const body: any = {
                 model: config.model,
-                messages: messages.filter(m => m.content || (m.tool_calls && m.tool_calls.length > 0)),
+                messages: messages.filter(m => m.content || (m.tool_calls && m.tool_calls.length > 0)).map(m => {
+                    const imageAttachments = m.attachments?.filter((a: any) => a.type.startsWith('image/')) || [];
+                    return {
+                        role: m.role,
+                        content: m.content,
+                        tool_calls: m.tool_calls,
+                        images: imageAttachments.length > 0 ? imageAttachments.map((img: any) => img.data.split(',')[1]) : undefined
+                    };
+                }),
                 stream: true,
                 options: { temperature: config.temperature },
             };
@@ -627,7 +635,20 @@ export async function sendAgentMessage(
         } else if (provider === 'groq') {
             const body: any = {
                 model: config.model,
-                messages: messages.map(m => ({ role: m.role, content: m.content || '' })),
+                messages: messages.map(m => {
+                    const imageAttachments = m.attachments?.filter((a: any) => a.type.startsWith('image/')) || [];
+                    if (imageAttachments.length > 0) {
+                        const contentBlocks: any[] = [{ type: 'text', text: m.content || '' }];
+                        imageAttachments.forEach((img: any) => {
+                            contentBlocks.push({
+                                type: 'image_url',
+                                image_url: { url: img.data }
+                            });
+                        });
+                        return { role: m.role, content: contentBlocks };
+                    }
+                    return { role: m.role, content: m.content || '' };
+                }),
                 stream: true,
                 temperature: config.temperature,
             };
@@ -724,12 +745,24 @@ export async function sendAgentMessage(
                     ? `[TOOL_RESULT: ${m.tool_call_id}]\n${m.content}`
                     : (m.content || '[Proceeding]');
 
+                const imageAttachments = m.attachments?.filter((a: any) => a.type.startsWith('image/')) || [];
                 if (consolidatedHistory.length > 0 && consolidatedHistory[consolidatedHistory.length - 1].role === role) {
                     consolidatedHistory[consolidatedHistory.length - 1].parts[0].text += `\n\n${content}`;
+                    imageAttachments.forEach((img: any) => {
+                        consolidatedHistory[consolidatedHistory.length - 1].parts.push({
+                            inlineData: { mimeType: img.type, data: img.data.split(',')[1] }
+                        });
+                    });
                 } else {
+                    const parts: any[] = [{ text: content }];
+                    imageAttachments.forEach((img: any) => {
+                        parts.push({
+                            inlineData: { mimeType: img.type, data: img.data.split(',')[1] }
+                        });
+                    });
                     consolidatedHistory.push({
                         role,
-                        parts: [{ text: content }]
+                        parts
                     });
                 }
             }

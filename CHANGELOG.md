@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.8.0] - 2026-02-23
+### Added
+- **Dynamic Port Migration**: Project moved from port `3000` to `5173` to prevent conflicts with other development servers (specifically **Next.js**), enabling multi-app development workflows.
+- **Instruction Mode State**: Introduced `isInstructionMode` in `AgentStatus` for granular UI control over the "Halo" (rainbow aura) effect on the stop button.
+
+### Changed
+- **Mechanical Stop Animation**: Refined the stop button spin to a manual/mechanical feel (2.2s duration, `cubic-bezier(0.85, 0, 0.15, 1)`), providing clear visual feedback of acceleration and braking.
+- **Animation Refresh Logic**: Added a keyed render pattern to the stop icon, forcing a complete animation restart on every process lifecycle change to avoid frame skips.
+
+### Fixed
+- **Halo Trigger Reliability**: Resolved an issue where the rainbow aura wouldn't reliably appear during certain agent executions by tying it directly to the new `isInstructionMode` state.
+
 ## [1.7.0] - 2026-02-22
 ### Added
 - **Selective Skill Toggles**: Each Neural Skill now has an inline switch to enable/disable its injection into the agent's toolset. Disabled skills are excluded from both tool definitions and system prompt configuration blocks.

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { AppState, AgentStatus, Message, PendingToolApproval, AgentMode, ModelInfo, FileSystemDirectoryHandle, FileSystemFileHandle, FileTarget, Session, ApprovalMode, SessionMetadata, PermissionStatus, Provider, AppConfig } from './types';
+import { AppState, AgentStatus, Message, PendingToolApproval, AgentMode, ModelInfo, FileSystemDirectoryHandle, FileSystemFileHandle, FileTarget, Session, ApprovalMode, SessionMetadata, PermissionStatus, Provider, AppConfig, Attachment } from './types';
 import { DEFAULT_CONFIG, DEFAULT_FILES, AGENT_TOOLS } from './constants';
 import { createDefaultAgentStatus } from './utils';
 import {
@@ -976,9 +976,9 @@ NO simules resultados de herramientas ni inventes datos; si necesitas informaci√
         }).catch(err => console.error("Remote response error:", err));
     }, [state.config.telegramBotToken, state.config.telegramChatId]);
 
-    const processMessage = useCallback(async (text: string, forceToolMode: boolean = false, isRemote: boolean = false) => {
+    const processMessage = useCallback(async (text: string, forceToolMode: boolean = false, isRemote: boolean = false, userAttachments: Attachment[] = []) => {
         const currentState = stateRef.current;
-        if (!text.trim() || isLoading) return;
+        if ((!text.trim() && userAttachments.length === 0) || isLoading) return;
 
         // [COMMAND INTERCEPTOR]
         console.log(`[ProcessMessage] Text: "${text}", isRemote: ${isRemote}`);
@@ -1106,12 +1106,13 @@ NO simules resultados de herramientas ni inventes datos; si necesitas informaci√
             role: 'user',
             text,
             timestamp: Date.now(),
-            source: isRemote ? 'telegram' : 'ui'
+            source: isRemote ? 'telegram' : 'ui',
+            attachments: userAttachments
         };
         setMessages(prev => [...prev, userMsg]);
         setInput('');
         setIsLoading(true);
-        setAgentStatus(createDefaultAgentStatus());
+        setAgentStatus({ ...createDefaultAgentStatus(), isInstructionMode: currentState.agentMode === 'agent' || forceToolMode });
 
         const modelMsgId = (Date.now() + 1).toString();
 
@@ -1144,14 +1145,14 @@ NO simules resultados de herramientas ni inventes datos; si necesitas informaci√
         abortControllerRef.current = ac;
 
         let finalAssistantText = '';
-        let chatHistoryLocal: { role: string; content: string }[] = [];
+        let chatHistoryLocal: { role: string; content: string; attachments?: Attachment[] }[] = [];
 
         try {
             const currentMessages = messagesRef.current;
             chatHistoryLocal = currentMessages
                 .filter(m => !m.excludeFromContext)
-                .map(m => ({ role: m.role, content: m.text }));
-            chatHistoryLocal.push({ role: 'user', content: text });
+                .map(m => ({ role: m.role, content: m.text, attachments: m.attachments }));
+            chatHistoryLocal.push({ role: 'user', content: text, attachments: userAttachments });
 
             const isAgentLoop = currentState.agentMode === 'agent' || forceToolMode;
             const isChatTools = currentState.agentMode === 'chat' && !forceToolMode;
@@ -1434,7 +1435,7 @@ Genera un T√çTULO corto (m√°ximo 6 palabras) para esta conversaci√≥n.
                         <ChatArea
                             sessionId={state.sessionId || 'empty'}
                             messages={messages} isLoading={isLoading} input={input} setInput={setInput}
-                            onSend={() => processMessage(input)} onSendAsInstruction={() => processMessage(input, true)}
+                            onSend={(atts) => processMessage(input, false, false, atts)} onSendAsInstruction={(atts) => processMessage(input, true, false, atts)}
                             onAbort={handleAbortAgent} onReprompt={handleReprompt} onRewind={onRewind} scrollRef={scrollRef}
                             agentStatus={agentStatus} pendingApproval={pendingToolApproval}
                             onApproveToolCall={handleApproveToolCall} onRejectToolCall={handleRejectToolCall}
