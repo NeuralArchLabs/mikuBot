@@ -188,6 +188,44 @@ export interface PendingToolApproval {
     resolve: (approved: boolean) => void;
 }
 
+// ── Neural Scheduler Types ───────────────────────────────────────────
+
+export type TaskScheduleType = 'interval' | 'cron' | 'once';
+export type TaskChannel = 'telegram' | 'ui' | 'both';
+export type TaskMode = 'chat' | 'agent';
+
+export interface ScheduledTask {
+    id: string;
+    name: string;
+    prompt: string;
+    scheduleType: TaskScheduleType;
+    /** For 'interval': minutes between executions. For 'cron': cron expression. For 'once': ISO timestamp. */
+    schedule: string;
+    channel: TaskChannel;
+    mode: TaskMode;
+    enabled: boolean;
+    /** Max executions per day (0 = unlimited) */
+    maxExecutionsPerDay: number;
+    /** Timestamps */
+    createdAt: number;
+    lastRunAt: number | null;
+    nextRunAt: number | null;
+    /** Execution counters */
+    totalExecutions: number;
+    executionsToday: number;
+    lastExecutionDay: string | null; // YYYY-MM-DD
+}
+
+export interface TaskExecutionLog {
+    taskId: string;
+    taskName: string;
+    timestamp: number;
+    status: 'success' | 'error' | 'skipped';
+    response?: string;
+    error?: string;
+    durationMs?: number;
+}
+
 export interface FileSystemHandle {
     kind: 'file' | 'directory';
     name: string;

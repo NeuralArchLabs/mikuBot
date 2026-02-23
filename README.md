@@ -1,6 +1,6 @@
-# 🌐 mikuCentral v1.8.0 — Neural AI Interface & Agent OS
+# 🌐 mikuCentral v1.9.0 — Neural AI Interface & Agent OS
 
-![Version](https://img.shields.io/badge/version-1.8.0-blue.svg?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-1.9.0-cyan.svg?style=for-the-badge)
 ![Status](https://img.shields.io/badge/status-stable-green.svg?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-private-red.svg?style=for-the-badge)
 
@@ -15,6 +15,12 @@
 - **Razonamiento Estructurado**: Un motor de extracción propietario permite que incluso modelos básicos sigan protocolos de herramientas (tool calling) mediante síntesis de texto.
 - **Neural Flow**: Interfaz que separa visualmente el pensamiento interno (*Internal Monologue*) de las acciones técnicas ejecutadas por el agente.
 
+### ⏰ Neural Scheduler (Autonomous Tasks)
+- **Automated Workflows**: Programación de tareas mediante intervalos, cron o ejecuciones únicas sin intervención humana.
+- **Task Presets**: Briefings matutinos, reportes de estado periódicos y diarios nocturnos automatizados.
+- **Activity Guard**: El scheduler detecta proactivamente la actividad del usuario para encolar ejecuciones y evitar colisiones de contexto en el chat.
+- **Native Logs**: Registro detallado de cada ejecución autónoma con tiempos de respuesta y outputs históricos.
+
 ### 🛡️ Persistencia y Soberanía (Session States)
 - **Session-Scoped Configuration**: Cada chat guarda su propio modo (Chat/Agent), estados de seguridad y borradores de texto inteligentes.
 - **Single Source of Truth**: Gestión de configuración centralizada en `config.json`. Sin dependencias de almacenamiento volátil del navegador.
@@ -28,13 +34,11 @@
 - **Native Explorer**: Integración directa con el explorador de Windows para abrir carpetas de proyecto con un solo click.
 
 ### 🎨 Estética Cinema-Dark Premium
-- **Premium VFX**: Botones con animaciones de "Halo" dinámico, efectos de glifo pulsante y transiciones de "vuelo" para el envío de datos.
+- **Cinematic Transitions**: Animaciones de entrada de panel con efectos de blur dinámico y escalado elástico.
+- **Micro-interacciones**: Iconos reactivos que pulsan y rotan orgánicamente durante estados de carga o interacciones.
 - **Visual Feedback Loop**: La interfaz reacciona físicamente al éxito o fallo de las tareas mediante sincronización visual con el motor neural.
 - **Glassmorphism UI**: Interfaz diseñada con capas de profundidad, desenfoques dinámicos y micro-animaciones fluidas.
 - **Neural Sidebar**: Navegación rápida con animación de firma neural sofisticada al interactuar con el logo del sistema.
-- **Onboarding Wizard**: Asistente de configuración inicial para una puesta en marcha automatizada en menos de 60 segundos.
-- **Cinematic Session Transitions**: Efecto "TV On" al cambiar entre sesiones — una animación de encendido cinemático que se reproduce en el historial de mensajes al seleccionar una rama neural diferente.
-- **Bottom-Aligned Chat**: Los mensajes crecen de abajo hacia arriba, manteniendo la atención del usuario cerca de la barra de escritura.
 
 ### 🔌 Neural Skills (Plugin System)
 - **Selective Skill Toggles**: Cada skill cuenta con un switch inline para activar/desactivar su inyección al agente en tiempo real.

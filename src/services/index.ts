@@ -1,6 +1,7 @@
 export * from './core/agent';
 export * from './core/fileSystem';
 export * from './core/persistence';
+export * from './core/scheduler';
 export * from './integrations/api';
 export * from './integrations/telegramService';
 export * from './formatters/answerFormatter';

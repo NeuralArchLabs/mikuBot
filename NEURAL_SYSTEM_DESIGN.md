@@ -65,6 +65,7 @@ Crearemos un servicio en el Backend (Electron/Python) que:
 2.  **Fase 2:** Crear la carpeta `engine/skills/` con la primera skill de prueba (`hello_skill`).
 3.  **Fase 3:** Modificar `src/services/agent.ts` para que lea y cargue herramientas dinámicamente desde el sistema de archivos local.
 4.  **Fase 4 (v1.8.0):** Sincronización de estado de instrucción (`isInstructionMode`) para una respuesta visual coherente del sistema.
+5.  **Fase 5 (v1.9.0):** Implementación del Neural Scheduler para autonomía proactiva y persistencia desacoplada.
 
 ---
-*Diseño Evolutivo mikuCentral v1.8.0*
+*Diseño Evolutivo mikuCentral v1.9.0*

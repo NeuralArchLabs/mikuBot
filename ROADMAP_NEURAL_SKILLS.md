@@ -53,5 +53,12 @@ Una vez que el sistema sea estable, las siguientes skills serán:
 - [x] **State Sychronization**: Introducción de `isInstructionMode` en el `AgentStatus` para mapear el estado de ejecución de herramientas con efectos visuales premium (Halo).
 - [x] **Dev Pipeline Compatibility**: Ajustes en el entorno de red (puerto 3001) para permitir el desarrollo paralelo de múltiples aplicaciones agénticas.
 
+## 8. Fase de Automatización Neural (v1.9.0) ⏰ ✅
+- [x] **Neural Scheduler Engine**: Motor de tareas autónomas (Interval/Cron/Once) integrado en el núcleo.
+- [x] **Scheduler Action UI**: Botón premium en el header con micro-animación de rotación.
+- [x] **Cinematic Viewport**: Transiciones `panel-fade-in` con blur cinemático para navegación interna del Control Room.
+- [x] **Decoupled Persistence**: Migración a persistencia 100% basada en archivos JSON en disco para evitar stale cache de localStorage en desktop.
+- [x] **Task Presets**: Implementación de Morning Briefing y Evening Journal automatizados.
+
 ---
 **Objetivo Final**: Que MikuBot sea un orquestador que solo "pida las herramientas que necesita" de su biblioteca personal.

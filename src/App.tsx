@@ -20,6 +20,7 @@ import {
     db,
     persistence,
     telegramService,
+    neuralScheduler,
     executeCommand,
     formatTelegramResponse
 } from './services';
@@ -85,6 +86,7 @@ export const App = () => {
     const messagesRef = useRef(messages);
     const namedSessionsTurnsRef = useRef<Map<string, number>>(new Map());
     const processMessageRef = useRef<(text: string, force: boolean, remote: boolean) => Promise<void>>(async () => { });
+    const sendToTelegramRef = useRef<(text: string) => void>(() => { });
 
     useEffect(() => {
         stateRef.current = state;
@@ -345,8 +347,18 @@ export const App = () => {
         if (state.config.telegramBotToken && state.config.telegramChatId) {
             telegramService.startPolling(state.config, async (msg) => {
                 if (msg && msg.text) {
-                    // Always use the latest processMessage closure via ref
-                    await processMessageRef.current(msg.text, false, true);
+                    // Start "typing..." indicator while processing
+                    telegramService.startTypingIndicator(
+                        state.config.telegramBotToken!,
+                        state.config.telegramChatId!
+                    );
+                    try {
+                        // Always use the latest processMessage closure via ref
+                        await processMessageRef.current(msg.text, false, true);
+                    } finally {
+                        // Always stop the typing indicator, even on error
+                        telegramService.stopTypingIndicator();
+                    }
                 }
             });
         }
@@ -976,6 +988,11 @@ NO simules resultados de herramientas ni inventes datos; si necesitas informaci�
         }).catch(err => console.error("Remote response error:", err));
     }, [state.config.telegramBotToken, state.config.telegramChatId]);
 
+    // Keep sendToTelegram ref up-to-date for scheduler
+    useEffect(() => {
+        sendToTelegramRef.current = sendToTelegramDirectly;
+    }, [sendToTelegramDirectly]);
+
     const processMessage = useCallback(async (text: string, forceToolMode: boolean = false, isRemote: boolean = false, userAttachments: Attachment[] = []) => {
         const currentState = stateRef.current;
         if ((!text.trim() && userAttachments.length === 0) || isLoading) return;
@@ -1326,6 +1343,52 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
     useEffect(() => {
         processMessageRef.current = processMessage;
     }, [processMessage]);
+
+    // ── Neural Scheduler Initialization ──────────────────────────────
+    useEffect(() => {
+        const executor = async (prompt: string, mode: 'chat' | 'agent', _isScheduled: boolean): Promise<string> => {
+            // Use processMessage via ref to always get the latest closure
+            const forceToolMode = mode === 'agent';
+            await processMessageRef.current(prompt, forceToolMode, false);
+            // Get the last assistant message as the response
+            const msgs = messagesRef.current;
+            const lastAssistant = [...msgs].reverse().find(m => m.role === 'assistant');
+            return lastAssistant?.text || 'Task completed (no response text).';
+        };
+
+        const telegramNotifier = (text: string) => {
+            sendToTelegramRef.current(text);
+        };
+
+        const uiMessageHandler = (taskName: string, response: string) => {
+            const schedulerMsg: Message = {
+                id: `sched_${Date.now()}`,
+                role: 'assistant',
+                text: `🔔 **[Scheduled: ${taskName}]**\n\n${response}`,
+                timestamp: Date.now(),
+                source: 'ui',
+                excludeFromContext: true,
+            };
+            setMessages(prev => [...prev, schedulerMsg]);
+        };
+
+        neuralScheduler.init(
+            executor,
+            telegramNotifier,
+            uiMessageHandler,
+            () => { }, // onTasksChanged — UI re-reads from scheduler directly
+            () => { }, // onLogsChanged — UI re-reads from scheduler directly
+        );
+
+        return () => neuralScheduler.destroy();
+        // Only init once on mount; executor always reads latest via refs
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Feed user-activity lock to scheduler
+    useEffect(() => {
+        neuralScheduler.setUserActive(isLoading);
+    }, [isLoading]);
 
     const handleReprompt = useCallback(() => {
         if (lastUserTextRef.current && !isLoading) {

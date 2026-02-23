@@ -18,6 +18,12 @@ contextBridge.exposeInMainWorld('electron', {
     saveSession: (session) => ipcRenderer.invoke('save-session', session),
     deleteSession: (id) => ipcRenderer.invoke('delete-session', id),
 
+    // Neural Scheduler
+    saveSchedulerTasks: (data) => ipcRenderer.invoke('save-scheduler-tasks', data),
+    loadSchedulerTasks: () => ipcRenderer.invoke('load-scheduler-tasks'),
+    saveSchedulerLogs: (data) => ipcRenderer.invoke('save-scheduler-logs', data),
+    loadSchedulerLogs: () => ipcRenderer.invoke('load-scheduler-logs'),
+
     // Native FS
     selectFolder: () => ipcRenderer.invoke('fs-select-folder'),
     openFolder: (path) => ipcRenderer.invoke('fs-open-folder', path),

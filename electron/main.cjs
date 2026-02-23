@@ -296,6 +296,52 @@ ipcMain.handle('delete-session', async (event, id) => {
     }
 });
 
+// ── Neural Scheduler Persistence ─────────────────────────────────────
+const SCHEDULER_TASKS_FILE = path.join(rootPath, 'scheduler-tasks.json');
+const SCHEDULER_LOGS_FILE = path.join(rootPath, 'scheduler-logs.json');
+
+ipcMain.handle('save-scheduler-tasks', async (event, data) => {
+    try {
+        fs.writeFileSync(SCHEDULER_TASKS_FILE, data, 'utf8');
+        return { ok: true };
+    } catch (error) {
+        return { ok: false, error: error.message };
+    }
+});
+
+ipcMain.handle('load-scheduler-tasks', async () => {
+    try {
+        if (fs.existsSync(SCHEDULER_TASKS_FILE)) {
+            const data = fs.readFileSync(SCHEDULER_TASKS_FILE, 'utf8');
+            return { ok: true, data };
+        }
+        return { ok: true, data: '[]' };
+    } catch (error) {
+        return { ok: false, error: error.message };
+    }
+});
+
+ipcMain.handle('save-scheduler-logs', async (event, data) => {
+    try {
+        fs.writeFileSync(SCHEDULER_LOGS_FILE, data, 'utf8');
+        return { ok: true };
+    } catch (error) {
+        return { ok: false, error: error.message };
+    }
+});
+
+ipcMain.handle('load-scheduler-logs', async () => {
+    try {
+        if (fs.existsSync(SCHEDULER_LOGS_FILE)) {
+            const data = fs.readFileSync(SCHEDULER_LOGS_FILE, 'utf8');
+            return { ok: true, data };
+        }
+        return { ok: true, data: '[]' };
+    } catch (error) {
+        return { ok: false, error: error.message };
+    }
+});
+
 // File System Native Handlers
 ipcMain.handle('fs-select-folder', async () => {
     const result = await dialog.showOpenDialog({

@@ -1,4 +1,4 @@
-# Project Status: MikuCentral v1.8.0 🚀
+# Project Status: MikuCentral v1.9.0 🚀
 
 > **Última actualización**: 23 de febrero de 2026
 > **Autor del análisis**: Antigravity AI Engine
@@ -272,6 +272,15 @@ electron/
 ---
 
 ## 7. Log de Cambios 📋
+
+### v1.9 — 23 Feb 2026 (Neural Scheduler & Autonomous Agency)
+| Archivo | Cambio |
+|---------|--------|
+| `src/services/core/scheduler.ts` | **Scheduler Core**: Motor de programación con soporte para Cron, Interval y Once. Gestión de cola de tareas diferida por actividad del usuario. |
+| `src/components/panels/SchedulerTab.tsx` | **Neural Tab**: Interfaz de gestión de tareas programadas con presets (Briefings, Journals), logs detallados y export/import. |
+| `src/components/panels/SettingsPanel.tsx` | **Header Integration**: Rediseño del header para integrar el acceso al scheduler como acción primaria y sistema de navegación animado. |
+| `src/index.css` | **Premium Transitions**: Implementación de `panel-fade-in` (slide + blur) y micro-animación `clock-pulse-spin` para el icono del scheduler. |
+| `src/App.tsx` | **Bridge Orchestration**: Conexión del scheduler con el agent loop y notificaciones remotas de Telegram. |
 
 ### v1.8 — 23 Feb 2026 (Mechanical UX & Infrastructure Multi-App)
 | Archivo | Cambio |

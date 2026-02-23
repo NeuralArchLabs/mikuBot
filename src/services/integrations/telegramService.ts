@@ -24,6 +24,7 @@ class TelegramService {
     private polling = false;
     private lastUpdateId = 0;
     private abortController: AbortController | null = null;
+    private typingInterval: ReturnType<typeof setInterval> | null = null;
 
     async getUpdates(config: AppConfig): Promise<TelegramUpdate[]> {
         if (!config.telegramBotToken) return [];
@@ -46,6 +47,48 @@ class TelegramService {
             console.error('[TelegramService] Polling error:', e);
         }
         return [];
+    }
+
+    /**
+     * Sends a chat action (e.g. "typing") to a Telegram chat.
+     * The action auto-expires after ~5 seconds on Telegram's side.
+     */
+    async sendChatAction(token: string, chatId: string, action: string = 'typing'): Promise<void> {
+        try {
+            await fetch(`https://api.telegram.org/bot${token}/sendChatAction`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: chatId, action })
+            });
+        } catch (e) {
+            console.warn('[TelegramService] sendChatAction failed:', e);
+        }
+    }
+
+    /**
+     * Starts sending the "typing..." indicator every 4 seconds.
+     * Telegram auto-cancels the indicator after 5s, so we refresh it before expiry.
+     */
+    startTypingIndicator(token: string, chatId: string): void {
+        this.stopTypingIndicator(); // Clear any previous interval
+        // Send immediately
+        this.sendChatAction(token, chatId, 'typing');
+        // Refresh every 4 seconds
+        this.typingInterval = setInterval(() => {
+            this.sendChatAction(token, chatId, 'typing');
+        }, 4000);
+        console.log('[TelegramService] Typing indicator started.');
+    }
+
+    /**
+     * Stops the "typing..." indicator loop.
+     */
+    stopTypingIndicator(): void {
+        if (this.typingInterval) {
+            clearInterval(this.typingInterval);
+            this.typingInterval = null;
+            console.log('[TelegramService] Typing indicator stopped.');
+        }
     }
 
     async startPolling(config: AppConfig, onMessage: (message: TelegramUpdate['message']) => Promise<void> | void) {
@@ -84,6 +127,7 @@ class TelegramService {
 
     stopPolling() {
         this.polling = false;
+        this.stopTypingIndicator();
         if (this.abortController) {
             this.abortController.abort();
             this.abortController = null;

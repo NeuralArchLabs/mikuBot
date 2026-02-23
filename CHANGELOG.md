@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.9.0] - 2026-02-23
+### Added
+- **Neural Scheduler (Core Engine)**: Introduced a robust scheduling system for automated agent tasks. Supports `interval`, `cron` (with custom parser), and `one-time` execution modes.
+- **Dynamic Task Queueing**: Implemented an intelligent task manager that executes scheduled prompts only when the user is inactive to avoid context interference.
+- **Premium Scheduler UI**: A dedicated management tab within the Control Room to create, edit, monitor, and debug scheduled tasks with real-time status updates.
+- **Scheduled Presets**: Added high-value templates like "Morning Briefing", "Periodic Check-in", and "Evening Journal" for instant automation.
+- **Execution History (Logs)**: Comprehensive logging system for scheduled tasks, recording status, response time, and detailed agent output.
+- **Cinematic Transitions**: Added `panel-fade-in` and `clock-pulse-spin` animations using CSS bezier curves and blur filters for a state-of-the- art visual experience.
+
+### Changed
+- **Header Redesign**: Merged the scheduler access into the primary action group (next to Load/Export) with a premium cyan-to-teal gradient button, maximizing space efficiency and visual balance.
+- **Decoupled Persistence**: Refactored the storage layer to strictly prioritize Electron JSON files (`scheduler-tasks.json`, `scheduler-logs.json`) over localStorage in desktop environments, ensuring zero "stale cache" issues.
+- **Integrated Navigation**: Replaced the separate tab bar with a sleek, context-aware "Back" system within the scheduler panel.
+
+### Fixed
+- **Input Accessibility**: Resolved lint warnings by adding proper `title` attributes to all form elements in the scheduler tab.
+- **Layout Collisions**: Fixed a "crowding" issue in the Settings panel by restoring proper vertical spacing (`space-y-10`) within the new animation wrappers.
+
 ## [1.8.0] - 2026-02-23
 ### Added
 - **Dynamic Port Migration**: Project moved from port `3000` to `3001` to prevent conflicts with other development servers (specifically **Next.js**), enabling multi-app development workflows.

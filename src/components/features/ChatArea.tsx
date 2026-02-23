@@ -567,6 +567,8 @@ export const ChatArea = ({
                                         <button
                                             onClick={() => handleRemoveAttachment(att.id)}
                                             className="absolute -top-1.5 -right-1.5 bg-red-500/90 hover:bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center w-4 h-4 shadow-sm"
+                                            title="Eliminar adjunto"
+                                            aria-label="Eliminar adjunto"
                                         >
                                             <Icon name="times" className="text-[8px]" />
                                         </button>
@@ -584,6 +586,7 @@ export const ChatArea = ({
                                 className="hidden"
                                 multiple
                                 accept="image/png, image/jpeg, image/webp"
+                                title="Seleccionar archivos"
                             />
                             <button
                                 onClick={() => fileInputRef.current?.click()}
@@ -634,10 +637,6 @@ export const ChatArea = ({
                                     <div
                                         key={agentMode}
                                         className="btn-send-morph-purple"
-                                        style={{
-                                            animationName: agentMode === 'agent' ? 'color-morph-ripple' : 'color-morph-ripple-reverse',
-                                            animationDuration: agentMode === 'agent' ? '1.2s' : '0.6s'
-                                        }}
                                     />
                                 </div>
 
@@ -645,10 +644,6 @@ export const ChatArea = ({
                                 <div
                                     key={`aura-${agentMode}`}
                                     className={`btn-morph-aura ${agentMode !== 'agent' ? 'reverse' : ''}`}
-                                    style={{
-                                        animationDuration: agentMode === 'agent' ? '1.2s' : '2.5s',
-                                        filter: agentMode === 'agent' ? 'blur(25px)' : 'blur(45px)'
-                                    }}
                                 />
 
                                 <Icon name="arrow-right" className={`${isSent ? 'send-icon-fly' : ''} ${agentMode === 'agent' ? 'rainbow-icon' : ''}`} />

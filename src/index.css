@@ -202,6 +202,51 @@
   animation-delay: 0.8s;
 }
 
+@keyframes panel-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(15px) scale(0.98);
+    filter: blur(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes clock-pulse-spin {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+
+  25% {
+    transform: rotate(8deg) scale(1.1);
+  }
+
+  50% {
+    transform: rotate(0deg) scale(1);
+  }
+
+  75% {
+    transform: rotate(-8deg) scale(1.1);
+  }
+
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+.animate-panel-in {
+  animation: panel-fade-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-clock-neural {
+  animation: clock-pulse-spin 2.5s ease-in-out infinite;
+}
+
+
 .optimization-badge {
   position: relative;
   background: linear-gradient(90deg, #ff4d4d, #f9cb28, #32ff7e, #18dcff, #7d5fff, #ff4d4d);
@@ -774,7 +819,8 @@
    ────────────────────────────────────────────────────────────────────── */
 
 .btn-premium {
-  @apply relative transition-all duration-300;
+  position: relative;
+  transition: all 300ms;
   background: linear-gradient(135deg, rgba(37, 99, 235, 0.8) 0%, rgba(29, 78, 216, 0.9) 100%);
   border: 1px solid rgba(59, 130, 246, 0.4);
   background-clip: padding-box;
@@ -782,18 +828,19 @@
 }
 
 .btn-premium:hover:not(:disabled) {
-  @apply -translate-y-0.5;
+  transform: translateY(-0.125rem);
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.9) 0%, rgba(37, 99, 235, 1) 100%);
   box-shadow: 0 12px 25px -5px rgba(37, 99, 235, 0.5), 0 0 20px rgba(59, 130, 246, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.2);
   z-index: 10;
 }
 
 .btn-premium:active:not(:disabled) {
-  @apply translate-y-0 scale-95;
+  transform: translateY(0) scale(0.95);
 }
 
 .btn-abort-premium {
-  @apply relative transition-all duration-300;
+  position: relative;
+  transition: all 300ms;
   background: linear-gradient(135deg, rgba(220, 38, 38, 0.8) 0%, rgba(185, 28, 28, 0.9) 100%);
   border: 1px solid rgba(239, 68, 68, 0.4);
   background-clip: padding-box;
@@ -801,14 +848,15 @@
 }
 
 .btn-abort-premium:hover {
-  @apply -translate-y-0.5;
+  transform: translateY(-0.125rem);
   background: linear-gradient(135deg, rgba(239, 68, 68, 0.9) 0%, rgba(220, 38, 38, 1) 100%);
   box-shadow: 0 12px 25px -5px rgba(220, 38, 38, 0.5), 0 0 20px rgba(239, 68, 68, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.2);
   z-index: 10;
 }
 
 .btn-instruction-premium {
-  @apply relative transition-all duration-300;
+  position: relative;
+  transition: all 300ms;
   background: linear-gradient(135deg, rgba(147, 51, 234, 0.8) 0%, rgba(126, 34, 206, 0.9) 100%);
   border: 1px solid rgba(168, 85, 247, 0.4);
   background-clip: padding-box;
@@ -816,14 +864,15 @@
 }
 
 .btn-instruction-premium:hover:not(:disabled) {
-  @apply -translate-y-0.5;
+  transform: translateY(-0.125rem);
   background: linear-gradient(135deg, rgba(168, 85, 247, 0.9) 0%, rgba(147, 51, 234, 1) 100%);
   box-shadow: 0 12px 25px -5px rgba(147, 51, 234, 0.5), 0 0 20px rgba(168, 85, 247, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.2);
   z-index: 10;
 }
 
 .btn-continue-premium {
-  @apply relative transition-all duration-300;
+  position: relative;
+  transition: all 300ms;
   background: linear-gradient(135deg, rgba(217, 119, 6, 0.8) 0%, rgba(180, 83, 9, 0.9) 100%);
   border: 1px solid rgba(245, 158, 11, 0.4);
   background-clip: padding-box;
@@ -831,10 +880,14 @@
 }
 
 .btn-continue-premium:hover {
-  @apply -translate-y-0.5;
+  transform: translateY(-0.125rem);
   background: linear-gradient(135deg, rgba(245, 158, 11, 0.9) 0%, rgba(217, 119, 6, 1) 100%);
   box-shadow: 0 12px 25px -5px rgba(217, 119, 6, 0.5), 0 0 20px rgba(245, 158, 11, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.2);
   z-index: 10;
+}
+
+.text-shadow-premium {
+  text-shadow: 0 4px 12px rgba(255, 255, 255, 0.15);
 }
 
 /* Halo Effect for Active Process — Two-layer technique */
@@ -1376,6 +1429,28 @@
 
 .btn-morph-aura.reverse {
   animation: rainbow-aura-wave-reverse-kf 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Morph Ripple Overrides */
+.btn-send-morph.is-agent .btn-send-morph-purple {
+  animation-name: color-morph-ripple;
+  animation-duration: 1.2s;
+}
+
+.btn-send-morph.is-chat .btn-send-morph-purple {
+  animation-name: color-morph-ripple-reverse;
+  animation-duration: 0.6s;
+}
+
+/* Morph Aura Overrides */
+.btn-send-morph.is-agent .btn-morph-aura {
+  animation-duration: 1.2s;
+  filter: blur(25px);
+}
+
+.btn-send-morph.is-chat .btn-morph-aura {
+  animation-duration: 2.5s;
+  filter: blur(45px);
 }
 
 
