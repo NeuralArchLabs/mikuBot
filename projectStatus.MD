@@ -278,6 +278,8 @@ electron/
 |---------|--------|
 | `package.json` / `vite.config.ts` | **Port Migration**: Movido de puerto `3000` a `3001` para evitar conflictos con servidores Next.js y otros frameworks. |
 | `src/index.css` | **Mechanical Spin**: Refinamiento estético del botón de stop (2.2s, `cubic-bezier(0.85, 0, 0.15, 1)`) para un visual de aceleración/frenado suave. |
+| `src/index.css` | **Cyan-to-Purple Aura**: Migración de aura arcoíris a un gradiente de tonos fríos (cian/azul/púrpura) más profesional. |
+| `src/components/features/ChatArea.tsx` | **UI Polish**: Recuadro delimitado para el label "Mode:" y cambio de icono Safe a 💠 para evitar redundancia visual con el botón de escudo. |
 | `src/components/features/ChatArea.tsx` | **Animation Refresh**: Uso de `key={isLoading}` en el icono de stop para forzar el reinicio de la animación y evitar glitches visuales. |
 | `src/types/global.ts` | **isInstructionMode**: Nuevo campo en `AgentStatus` para sincronización precisa del efecto "Halo" durante ejecuciones de herramientas. |
 

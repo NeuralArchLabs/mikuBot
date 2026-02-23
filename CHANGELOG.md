@@ -6,7 +6,14 @@
 - **Instruction Mode State**: Introduced `isInstructionMode` in `AgentStatus` for granular UI control over the "Halo" (rainbow aura) effect on the stop button.
 
 ### Changed
+- **Cyan-to-Purple Neural Aura**: Replaced the full rainbow aura with a cleaner, cooler-toned gradient (cyan/blue/purple) to align with the system's core identity.
+- **Selective UX Transitions**:
+    - **Fast Response**: Accelerated entry to agent mode (1.2s durations, tighter scale) for snappier feedback.
+    - **Legacy Expansive**: Maintained original dramatic expansion (2.5s duration, 3.5x scale) when returning to chat mode.
 - **Mechanical Stop Animation**: Refined the stop button spin to a manual/mechanical feel (2.2s duration, `cubic-bezier(0.85, 0, 0.15, 1)`), providing clear visual feedback of acceleration and braking.
+- **UI Architecture Polish**:
+    - **Delimited Labels**: Wrapped the "Mode:" indicator in a small aesthetic box to improve delimitation and visual structure.
+    - **Status Icon Deduplication**: Refined the summary displays — changed "Safe" emoji to `💠` to avoid redundancy with the primary intervention button's shield.
 - **Animation Refresh Logic**: Added a keyed render pattern to the stop icon, forcing a complete animation restart on every process lifecycle change to avoid frame skips.
 
 ### Fixed
