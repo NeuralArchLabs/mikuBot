@@ -64,3 +64,7 @@ Crearemos un servicio en el Backend (Electron/Python) que:
 1.  **Fase 1 (Inmediata):** Reforzar `AGENTS_MODES.MD` con el protocolo estricto de `TASKS.md`.
 2.  **Fase 2:** Crear la carpeta `engine/skills/` con la primera skill de prueba (`hello_skill`).
 3.  **Fase 3:** Modificar `src/services/agent.ts` para que lea y cargue herramientas dinámicamente desde el sistema de archivos local.
+4.  **Fase 4 (v1.8.0):** Sincronización de estado de instrucción (`isInstructionMode`) para una respuesta visual coherente del sistema.
+
+---
+*Diseño Evolutivo mikuCentral v1.8.0*
