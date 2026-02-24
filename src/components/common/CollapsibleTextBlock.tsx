@@ -46,7 +46,7 @@ export const CollapsibleTextBlock: React.FC<CollapsibleTextBlockProps> = ({ cont
                 /* COLLAPSED: Single integrated reasoning bar */
                 <div
                     onClick={handleToggle}
-                    className="cursor-pointer group/inner relative bg-slate-900/60 hover:bg-slate-800/80 border border-white/5 hover:border-blue-500/30 rounded-xl p-3 py-2 text-[11px] text-slate-400 transition-all flex items-center gap-4 backdrop-blur-md shadow-lg"
+                    className="cursor-pointer group/inner relative bg-slate-900/60 hover:bg-slate-800/80 border border-white/5 hover:border-blue-500/30 rounded-xl p-3 py-2 text-[11px] text-slate-400 transition-all flex items-center gap-4 shadow-lg"
                 >
                     <div className="flex-shrink-0 flex items-center gap-2">
                         <Icon name="brain" className={`text-[11px] ${isThought ? 'text-blue-400' : 'text-slate-500'}`} />

@@ -145,7 +145,7 @@ ipcMain.handle('api-stream', async (event, { provider, model, body, ollamaUrl, s
 // Fetch Proxy (Improved for Localhost/Ollama)
 ipcMain.handle('fetch-proxy', async (event, { url, options }) => {
     try {
-        console.log(`[Main Process] Proxying request to: ${url}`);
+        // console.log(`[Main Process] Proxying request to: ${url}`);
 
         // Anti-IPv6 lag: if localhost, we might want to ensure we hit 127.0.0.1
         let targetUrl = url;
@@ -175,7 +175,7 @@ ipcMain.handle('fetch-proxy', async (event, { url, options }) => {
                 // If localhost failed, try 127.0.0.1 immediately
                 if (url.includes('localhost')) {
                     const fallbackUrl = url.replace('localhost', '127.0.0.1');
-                    console.log(`[Main Process] Localhost failed, trying fallback: ${fallbackUrl}`);
+                    // console.log(`[Main Process] Localhost failed, trying fallback: ${fallbackUrl}`);
                     response = await fetch(fallbackUrl, fetchOptions);
                 } else {
                     throw e;
@@ -590,7 +590,7 @@ ipcMain.handle('execute-skill', async (event, { toolsPath, skillName, args }) =>
 });
 
 ipcMain.handle('fs-read-folder', async (event, folderPath) => {
-    console.log(`[Main] Request to read folder: "${folderPath}"`);
+    // console.log(`[Main] Request to read folder: "${folderPath}"`);
 
     if (!folderPath || typeof folderPath !== 'string') {
         console.error('[Main] Invalid folder path provided');
@@ -606,19 +606,26 @@ ipcMain.handle('fs-read-folder', async (event, folderPath) => {
             return { ok: false, error: 'Folder not found' };
         }
 
+        let fileCount = 0;
         const files = {};
+        const MAX_FILES = 5000;
+        const MAX_DEPTH = 15;
 
         // Recursive directory walker
-        const walk = (dir, rootDir) => {
+        const walk = (dir, rootDir, depth = 0) => {
+            if (depth > MAX_DEPTH || fileCount >= MAX_FILES) return;
+
             let list;
             try {
                 list = fs.readdirSync(dir);
             } catch (e) {
-                console.warn(`[Main] Skipping dir due to error: ${dir}`, e.message);
+                // Silently skip unreadable directories to avoid console log spam
                 return;
             }
 
             for (const item of list) {
+                if (fileCount >= MAX_FILES) break;
+
                 const fullPath = path.join(dir, item);
 
                 try {
@@ -626,7 +633,7 @@ ipcMain.handle('fs-read-folder', async (event, folderPath) => {
 
                     if (stat.isDirectory()) {
                         if (['node_modules', '.git', 'dist', 'build', '.next', '.vs', '.idea'].includes(item)) continue;
-                        walk(fullPath, rootDir);
+                        walk(fullPath, rootDir, depth + 1);
                     } else if (stat.isFile()) {
                         if (/\.(md|txt|json|js|jsx|ts|tsx|html|css|py|java|c|cpp|h|hpp|rs|go|rb|php)$/i.test(item)) {
                             // Calculate relative path from the root folder (e.g. "sub/file.md")
@@ -635,9 +642,13 @@ ipcMain.handle('fs-read-folder', async (event, folderPath) => {
 
                             try {
                                 const content = fs.readFileSync(fullPath, 'utf8');
-                                files[relPath] = content;
+                                // Only add strings under ~1MB to avoid OOM
+                                if (content.length < 1000000) {
+                                    files[relPath] = content;
+                                    fileCount++;
+                                }
                             } catch (readErr) {
-                                console.warn(`[Main] Failed to read file content: ${relPath}`, readErr.message);
+                                // Silent skip to avoid console log spam
                             }
                         }
                     }
@@ -650,7 +661,7 @@ ipcMain.handle('fs-read-folder', async (event, folderPath) => {
         walk(normalizedPath, normalizedPath);
 
         const count = Object.keys(files).length;
-        console.log(`[Main] Successfully read ${count} files from ${normalizedPath}`);
+        // console.log(`[Main] Successfully read ${count} files from ${normalizedPath}`);
 
         return { ok: true, files, count };
     } catch (error) {

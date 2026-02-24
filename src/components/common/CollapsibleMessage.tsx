@@ -22,16 +22,20 @@ export const CollapsibleMessage: React.FC<CollapsibleMessageProps> = ({ message,
     const isUser = message.role === 'user';
     const isSystem = message.role === 'system';
 
+    const isScheduler = (message as any).isScheduler;
+
+    const justifyClass = isUser ? 'justify-end' : (isSystem ? 'justify-center' : 'justify-start');
+
     // Determine button position based on role
     const buttonPositionClass = isUser
         ? 'right-2' // User: Right side
-        : isSystem
-            ? 'left-1/2 -translate-x-1/2' // System: Center
+        : (isSystem || isScheduler)
+            ? 'left-1/2 -translate-x-1/2' // System/Scheduler: Center
             : 'left-2'; // Assistant: Left side
 
     if (!isCollapsed) {
         return (
-            <div className="relative group">
+            <div className="relative group w-full">
                 {children}
                 <button
                     onClick={() => setIsCollapsed(true)}
@@ -45,7 +49,18 @@ export const CollapsibleMessage: React.FC<CollapsibleMessageProps> = ({ message,
     }
 
     // Role-specific styling for the collapsed state
-    // (isUser is hoisted)
+    const bgClass = isUser
+        ? 'bg-blue-900/10 border-blue-500/10 hover:bg-blue-900/20 hover:border-blue-500/30'
+        : isScheduler
+            ? (message as any).isScheduledResponse
+                ? 'bg-indigo-950/20 border-indigo-500/20 hover:bg-indigo-900/30 hover:border-indigo-500/40'
+                : 'bg-orange-950/20 border-orange-500/20 hover:bg-orange-900/30 hover:border-orange-500/40'
+            : isSystem
+                ? 'bg-amber-950/10 border-amber-500/10 hover:bg-amber-900/20 hover:border-amber-500/30'
+                : 'bg-slate-800/30 border-slate-700/30 hover:bg-slate-800/50 hover:border-slate-600/50';
+
+    const iconColorClass = isUser ? 'text-blue-400' : (isScheduler ? ((message as any).isScheduledResponse ? 'text-indigo-400' : 'text-orange-400') : (isSystem ? 'text-amber-500' : 'text-slate-500'));
+    const iconName = isUser ? 'user' : (isScheduler ? ((message as any).isScheduledResponse ? 'brain' : 'bell') : (isSystem ? 'shield-alt' : 'brain'));
 
     // Get a plain text summary
     const summary = message.text
@@ -53,21 +68,18 @@ export const CollapsibleMessage: React.FC<CollapsibleMessageProps> = ({ message,
         : message.blocks?.find(b => b.type === 'text' || b.type === 'thought')?.content.substring(0, 80).replace(/[\n\r]/g, ' ') || 'Process Executed...';
 
     return (
-        <div key={message.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'} my-2`}>
+        <div key={message.id} className={`flex ${justifyClass} my-2 w-full`}>
             <div
                 onClick={() => setIsCollapsed(false)}
-                className={`cursor-pointer group flex items-center justify-between gap-3 px-4 py-2 rounded-xl transition-all duration-300 border w-[350px] h-[40px] ${isUser
-                    ? 'bg-blue-900/10 border-blue-500/10 hover:bg-blue-900/20 hover:border-blue-500/30'
-                    : 'bg-slate-800/30 border-slate-700/30 hover:bg-slate-800/50 hover:border-slate-600/50'
-                    }`}
+                className={`cursor-pointer group flex items-center justify-between gap-3 px-4 py-2 rounded-xl transition-all duration-300 border w-full max-w-[350px] min-h-[40px] ${bgClass}`}
             >
                 <div className="flex items-center gap-3 overflow-hidden">
-                    <div className={`text-[10px] font-bold uppercase tracking-widest flex-shrink-0 ${isUser ? 'text-blue-400' : 'text-slate-500'}`}>
-                        <Icon name={isUser ? 'user' : 'brain'} />
+                    <div className={`text-[10px] font-bold uppercase tracking-widest flex-shrink-0 ${iconColorClass}`}>
+                        <Icon name={iconName} />
                     </div>
 
-                    <div className="text-[11px] font-mono text-slate-500 truncate opacity-60 group-hover:opacity-100 transition-opacity">
-                        {summary}
+                    <div className="text-[11px] font-mono text-slate-400 truncate opacity-60 group-hover:opacity-100 transition-opacity">
+                        {summary}...
                     </div>
                 </div>
 

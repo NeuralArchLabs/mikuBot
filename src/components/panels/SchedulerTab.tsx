@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ScheduledTask, TaskExecutionLog, TaskScheduleType, TaskChannel, TaskMode } from '../../types';
+import { AppConfig, ScheduledTask, TaskExecutionLog, TaskScheduleType, TaskChannel, TaskMode } from '../../types';
 import { neuralScheduler } from '../../services';
 import { Icon } from '../common/Common';
 
@@ -84,7 +84,12 @@ const PRESET_TASKS: { label: string; icon: string; data: Partial<TaskFormData> }
 
 // ── Main Component ───────────────────────────────────────────────────
 
-export const SchedulerTab = () => {
+interface SchedulerTabProps {
+    config: AppConfig;
+    askAlert: (message: string, position?: 'left' | 'right' | 'center') => Promise<void>;
+}
+
+export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
     const [tasks, setTasks] = useState<ScheduledTask[]>([]);
     const [logs, setLogs] = useState<TaskExecutionLog[]>([]);
     const [view, setView] = useState<'tasks' | 'logs' | 'create'>('tasks');
@@ -108,8 +113,21 @@ export const SchedulerTab = () => {
         refreshData();
     }, [refreshData, tickCounter]);
 
+    useEffect(() => {
+        const handler = () => refreshData();
+        window.addEventListener('scheduler-data-updated', handler);
+        return () => window.removeEventListener('scheduler-data-updated', handler);
+    }, [refreshData]);
+
     const handleCreate = () => {
         if (!form.name.trim() || !form.prompt.trim()) return;
+
+        if (form.channel === 'telegram' || form.channel === 'both') {
+            if (!config.telegramBotToken || !config.telegramChatId) {
+                askAlert("⚠️ [Telegram Incompleto]\n\nPara usar Telegram como canal de entrega en tus tareas programadas, debes configurar tu 'Bot Token' y 'Chat ID' en la pestaña Core System de los ajustes de MikuCentral.");
+                return;
+            }
+        }
 
         if (editingTask) {
             neuralScheduler.updateTask(editingTask.id, form);
@@ -183,20 +201,6 @@ export const SchedulerTab = () => {
                     {nextTask && ` · Next: ${formatRelativeTime(nextTask.nextRunAt)}`}
                 </p>
                 <div className="flex items-center gap-2">
-                    <button
-                        onClick={handleImport}
-                        className="h-9 px-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-2"
-                        title="Import tasks from JSON file"
-                    >
-                        <Icon name="download" /> Import
-                    </button>
-                    <button
-                        onClick={handleExport}
-                        className="h-9 px-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-2"
-                        title="Export all tasks as JSON file"
-                    >
-                        <Icon name="file-export" /> Export
-                    </button>
                 </div>
             </div>
 
@@ -258,7 +262,7 @@ export const SchedulerTab = () => {
                             tasks.map(task => (
                                 <div
                                     key={task.id}
-                                    className={`bg-slate-900/60 backdrop-blur-md rounded-2xl p-5 border transition-all relative overflow-hidden group ${task.enabled
+                                    className={`bg-slate-900/60 rounded-2xl p-5 border transition-all relative overflow-hidden group ${task.enabled
                                         ? 'border-cyan-500/20 hover:border-cyan-500/40'
                                         : 'border-white/5 opacity-60 hover:opacity-80'
                                         }`}

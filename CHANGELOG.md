@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.9.1] - 2026-02-23
+### Added
+- **Semantic Scheduler Messaging**: 
+    - Integrated "Orange" (prompt) and "Indigo" (response) visual cues for scheduled activities.
+    - Automated task messages are now centered and initially collapsed to maintain focus.
+    - Dynamic Error Reporting: Failures in background tasks are now explicitly notified in the UI.
+- **Neural Skills Caching**: Implemented a 30s hardware-aware cache for dynamic tool discovery in `App.tsx`, significantly reducing disk I/O latency.
+
+### Changed
+- **Agent Autonomy (Chat Mode)**: Refined `MODES.md` instructions to mandate tool usage over hallucinations for environmental queries.
+- **Streamlined UI Logic**: Removed redundant summary messages from the scheduler to ensure a snappy, lag-free experience after task execution.
+
+### Fixed
+- **Collapsible Button Alignment**: Corrected the positioning of collapse/expand buttons for system and centered messages.
+
 ## [1.9.0] - 2026-02-23
 ### Added
 - **Neural Scheduler (Core Engine)**: Introduced a robust scheduling system for automated agent tasks. Supports `interval`, `cron` (with custom parser), and `one-time` execution modes.

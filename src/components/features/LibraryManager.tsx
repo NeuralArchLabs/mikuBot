@@ -106,8 +106,9 @@ export const LibraryManager = ({
     if (!isOpen) return null;
 
     return (
-        <div className={`absolute inset-0 z-[120] bg-slate-900/95 backdrop-blur-sm flex items-center justify-center p-8 transition-opacity duration-300 border-none ${isClosing ? 'opacity-0' : 'opacity-100'}`}>
-            <div className={`bg-slate-950 border border-slate-700 w-full max-w-6xl h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden ${isClosing ? 'animate-macos-shrink-bottom' : 'animate-macos-expand-bottom'}`}>
+        <div className={`fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-8 transition-opacity duration-300 border-none ${isClosing ? 'opacity-0' : 'opacity-100'}`}>
+            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onClick={handleClose} />
+            <div className={`relative bg-slate-950 border border-slate-700 w-full max-w-6xl h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden ${isClosing ? 'animate-macos-shrink-bottom' : 'animate-macos-expand-bottom'}`}>
 
                 {/* ── Header ─────────────────────────────────────────── */}
                 <div className="h-16 border-b border-slate-800 flex items-center justify-between px-6 bg-slate-900">

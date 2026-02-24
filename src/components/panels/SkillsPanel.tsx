@@ -254,15 +254,17 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
     return (
         <div className="flex-1 overflow-hidden flex flex-col">
             {/* Header */}
-            <div className="py-5 lg:py-8 border-b border-slate-800/50 bg-slate-900/40 shrink-0 px-4 lg:px-8">
+            <div className="py-5 lg:py-8 border-b border-slate-800/50 bg-slate-900/40 shrink-0 px-4 lg:px-8 transform-gpu" style={{ contain: 'paint' }}>
                 <div className="flex flex-wrap items-center gap-4 w-full">
-                    <div className="flex items-center gap-3 min-w-0 mr-auto">
-                        <div className="text-cyan-400 text-xl lg:text-3xl shrink-0 drop-shadow-[0_0_10px_rgba(6,182,212,0.4)]">
+                    <div className="flex items-center gap-3 min-w-0 mr-auto group">
+                        <div className="text-cyan-400 text-xl lg:text-3xl shrink-0 drop-shadow-[0_0_15px_rgba(6,182,212,0.4)] animate-title-slide">
                             <Icon name="puzzle-piece" />
                         </div>
                         <div className="min-w-0">
-                            <h2 className="text-xl lg:text-3xl font-bold text-white tracking-tight uppercase">Neural Skills</h2>
-                            <p className="text-slate-500 text-[10px] lg:text-xs font-medium tracking-[0.3em] uppercase hidden lg:block mt-1">Synaptic Core Architecture</p>
+                            <h2 className="text-xl lg:text-3xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-teal-400 text-shadow-premium select-none animate-title-slide">
+                                Neural Skills
+                            </h2>
+                            <p className="text-cyan-500/60 text-[10px] lg:text-xs font-bold tracking-widest uppercase select-none mt-0.5 animate-title-slide hidden lg:block">Synaptic Core Architecture</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -381,7 +383,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
 
                                     {/* Inline Editor with Premium Animation */}
                                     {activeSkill === skill.name && (
-                                        <div className="lg:hidden bg-slate-900/40 border border-slate-800/50 rounded-3xl overflow-hidden animate-in fade-in zoom-in-95 slide-in-from-top-4 duration-500 shadow-2xl backdrop-blur-md mb-4">
+                                        <div className="lg:hidden bg-slate-900/40 border border-slate-800/50 rounded-3xl overflow-hidden animate-in fade-in zoom-in-95 slide-in-from-top-4 duration-500 shadow-2xl mb-4">
                                             {renderEditorContent()}
                                         </div>
                                     )}
@@ -392,17 +394,17 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                 </div>
 
                 {/* Standalone Editor for Desktop View */}
-                <div className="hidden lg:flex flex-1 bg-slate-900/40 rounded-[2.5rem] border border-slate-800/50 flex-col overflow-hidden min-w-0 shadow-2xl backdrop-blur-sm">
+                <div className="hidden lg:flex flex-1 bg-slate-900/40 rounded-[2.5rem] border border-slate-800/50 flex-col overflow-hidden min-w-0 shadow-2xl">
                     {currentSkill ? (
                         renderEditorContent()
                     ) : (
-                        <div className="h-full flex flex-col items-center justify-center text-center opacity-40 p-12">
-                            <div className="relative mb-10">
-                                <div className="absolute inset-0 bg-cyan-500/20 blur-[100px] rounded-full animate-pulse" />
-                                <Icon name="puzzle-piece" className="relative text-8xl text-slate-700 animate-pulse" />
+                        <div className="h-full flex flex-col items-center justify-center text-slate-600 opacity-40 p-10 sm:p-16 text-center">
+                            <div className="relative mb-6 sm:mb-8">
+                                <div className="absolute inset-0 bg-cyan-500/10 blur-[80px] rounded-full animate-pulse" />
+                                <Icon name="puzzle-piece" className="relative text-5xl sm:text-7xl text-slate-700 animate-pulse" />
                             </div>
-                            <h3 className="text-lg font-semibold text-slate-400 uppercase tracking-[0.3em]">Neural Standby</h3>
-                            <p className="text-xs text-slate-600 mt-4 max-w-sm leading-relaxed font-normal uppercase tracking-widest italic">Awaiting selection to initialize neural Pathways</p>
+                            <h3 className="text-sm sm:text-base font-black uppercase tracking-[0.3em] text-slate-400 mb-2">Neural Standby</h3>
+                            <p className="text-[10px] sm:text-xs max-w-[240px] sm:max-w-xs leading-relaxed font-bold uppercase tracking-widest">Awaiting selection to initialize neural Pathways</p>
                         </div>
                     )}
                 </div>

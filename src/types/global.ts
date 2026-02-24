@@ -48,6 +48,9 @@ export interface Message {
     provider?: string;
     model?: string;
     attachments?: Attachment[];
+    isScheduler?: boolean;
+    isScheduledResponse?: boolean;
+    isInitiallyCollapsed?: boolean;
 }
 
 export interface SessionMetadata {

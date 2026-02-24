@@ -1,0 +1,18 @@
+{
+    "name": "instruction_booklet",
+    "description": "Consulta el manual de uso de una herramienta o skill específica. Úsala cuando no estés seguro de cómo llamar a una función o qué parámetros requiere.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "tool_name": {
+                "type": "string",
+                "description": "El nombre de la herramienta o skill de la cual deseas ver el ejemplo de uso (ej: patch_file, miku_clock)."
+            }
+        },
+        "required": [
+            "tool_name"
+        ]
+    },
+    "runtime": "python",
+    "entry": "main.py"
+}

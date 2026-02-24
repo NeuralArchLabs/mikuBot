@@ -1,0 +1,11 @@
+{
+    "name": "list_available_skills",
+    "description": "Lista todas las Neural Skills (herramientas dinámicas) instaladas y habilitadas en el sistema. Úsala para saber qué habilidades extra tienes.",
+    "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+    },
+    "runtime": "python",
+    "entry": "main.py"
+}

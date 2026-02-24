@@ -213,7 +213,7 @@ export const ChatArea = ({
 
             {/* Neural Raw Viewer (Debug Overlay) */}
             {debugMode && (
-                <div className="absolute inset-0 z-[90] bg-slate-950/95 backdrop-blur-xl flex flex-col p-6 animate-in fade-in zoom-in-95 duration-300">
+                <div className="absolute inset-0 z-[90] bg-slate-950/95 backdrop-blur-md flex flex-col p-6 animate-in fade-in zoom-in-95 duration-300 transform-gpu">
                     <div className="flex items-center justify-between mb-4 border-b border-purple-500/20 pb-4">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl bg-purple-600/20 flex items-center justify-center text-purple-400 border border-purple-500/30">
@@ -286,7 +286,7 @@ export const ChatArea = ({
 
             <div
                 key={sessionId}
-                className="flex-1 overflow-y-auto p-4 custom-scrollbar chat-area-scroll chat-fade-mask relative animate-chat flex flex-col"
+                className="flex-1 overflow-y-auto p-4 custom-scrollbar chat-area-scroll chat-fade-mask relative animate-chat flex flex-col transform-gpu"
                 ref={scrollRef}
             >
                 <div className="flex-1" />
@@ -318,11 +318,16 @@ export const ChatArea = ({
                                     : 'justify-start'
                                 }`}>
                                 {msg.role === 'system' ? (
-                                    <div className="max-w-[70%] rounded-md px-3 py-2 bg-amber-900/20 border border-amber-800/30 text-amber-300/80 text-[11px] font-mono">
+                                    <div className={`max-w-[70%] rounded-md px-3 py-2 text-[11px] font-mono border ${msg.isScheduler
+                                        ? (msg.isScheduledResponse
+                                            ? 'bg-indigo-900/20 border-indigo-500/30 text-indigo-300'
+                                            : 'bg-orange-900/20 border-orange-500/30 text-orange-300')
+                                        : 'bg-amber-900/20 border-amber-800/30 text-amber-300/80'
+                                        }`}>
                                         <MarkdownRenderer content={msg.text} />
                                     </div>
                                 ) : (
-                                    <div className={`relative w-auto max-w-[95%] sm:max-w-[85%] lg:max-w-[75%] rounded-2xl p-4 sm:px-5 sm:py-4 shadow-xl transition-all duration-300 break-words message-pop-in ${msg.role === 'user'
+                                    <div className={`relative w-auto max-w-[95%] sm:max-w-[85%] lg:max-w-[75%] rounded-2xl p-4 sm:px-5 sm:py-4 shadow-xl transition-[opacity,transform,background-color] duration-300 break-words message-pop-in transform-gpu ${msg.role === 'user'
                                         ? 'bg-blue-600/20 border border-blue-500/30 text-blue-50'
                                         : 'bg-slate-800 border border-slate-700 text-slate-200'
                                         }`}>
@@ -391,14 +396,13 @@ export const ChatArea = ({
                                                         ))}
                                                     </div>
                                                 )}
-                                                {msg.blocks && msg.blocks.length > 0 ? (
-                                                    <div className="space-y-4">
+                                                {msg.blocks && msg.blocks.length > 0 && (
+                                                    <div className="space-y-4 mb-4">
                                                         {msg.blocks.map((block, idx) => {
                                                             if (block.type === 'answer') {
                                                                 return <MarkdownRenderer key={idx} content={block.content} />;
                                                             } else if (block.type === 'thought' || block.type === 'text') {
-                                                                const hasTools = msg.blocks.some(b => b.type === 'tool_call');
-                                                                // Force collapse by default if it's an interleaved thought in a tool session
+                                                                const hasTools = msg.blocks!.some(b => b.type === 'tool_call');
                                                                 const forceCollapse = isOld || (hasTools && !debugMode);
                                                                 return <CollapsibleTextBlock key={idx} content={block.content} forceCollapsed={forceCollapse} isThought={block.type === 'thought'} />;
                                                             } else if (block.type === 'tool_call') {
@@ -407,8 +411,9 @@ export const ChatArea = ({
                                                             return null;
                                                         })}
                                                     </div>
-                                                ) : (
-                                                    msg.text && <MarkdownRenderer content={msg.text} />
+                                                )}
+                                                {msg.text && (msg.blocks?.length === 0 || !msg.blocks || msg.text.includes('⚠️ Error:')) && (
+                                                    <MarkdownRenderer content={msg.text} />
                                                 )}
                                             </div>
                                         )}
@@ -442,13 +447,13 @@ export const ChatArea = ({
                             </div>
                         );
 
-                        // Wrap all user/assistant messages in a collapsible container to allow manual hiding + auto-collapse
-                        if (msg.role !== 'system') {
+                        // Wrap all user/assistant/scheduler messages in a collapsible container
+                        if (msg.role !== 'system' || msg.isScheduler) {
                             return (
                                 <CollapsibleMessage
                                     key={msg.id}
                                     message={msg}
-                                    initiallyCollapsed={isOld}
+                                    initiallyCollapsed={msg.isInitiallyCollapsed ?? isOld}
                                 >
                                     {MessageContent}
                                 </CollapsibleMessage>

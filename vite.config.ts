@@ -9,6 +9,9 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 3001,
       host: '0.0.0.0',
+      watch: {
+        ignored: ['**/scheduler-tasks.json', '**/scheduler-logs.json', '**/config.json', '**/sessions/**']
+      }
     },
     base: './',
     plugins: [

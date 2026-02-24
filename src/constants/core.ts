@@ -219,7 +219,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
     }
 ];
 
-export const PROTECTED_CORE_FILES = ['SOUL.md', 'USER.md', 'TOOLS.md', 'AGENT_MODES.md', 'AGENTS_MODES.md'];
+export const PROTECTED_CORE_FILES = ['SOUL.md', 'USER.md', 'TOOLS.md', 'AGENT_MODES.md', 'MODES.md'];
 
 /**
  * Whitelist of allowed console binaries.

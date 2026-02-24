@@ -205,14 +205,12 @@
 @keyframes panel-fade-in {
   from {
     opacity: 0;
-    transform: translateY(15px) scale(0.98);
-    filter: blur(8px);
+    transform: translateY(15px) scale(0.98) translateZ(0);
   }
 
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
-    filter: blur(0);
+    transform: translateY(0) scale(1) translateZ(0);
   }
 }
 
@@ -256,6 +254,8 @@
   margin: 16px 0;
   animation: shine 3s linear infinite;
   display: block;
+  transform: translateZ(0);
+  will-change: background-position;
 }
 
 .optimization-inner {
@@ -278,6 +278,8 @@
   animation: shine 3s linear infinite;
   font-weight: 800;
   letter-spacing: 0.1em;
+  transform: translateZ(0);
+  will-change: background-position;
 }
 
 .optimization-scan-line {
@@ -415,6 +417,7 @@
   margin-bottom: 1rem;
   overflow: hidden;
   animation: slide-up-fade 0.3s ease-out forwards;
+  transform: translateZ(0);
 }
 
 @keyframes slide-up-fade {
@@ -462,6 +465,8 @@
   pointer-events: none;
   transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
   z-index: 50;
+  will-change: max-height, opacity;
+  transform: translateZ(0);
 }
 
 .chat-area-scroll {
@@ -638,6 +643,7 @@
 
 .animate-control-room {
   animation: control-room-enter 0.5s ease-out forwards;
+  will-change: transform, opacity;
 }
 
 @keyframes fade-in-scale {
@@ -654,6 +660,7 @@
 
 .animate-fade-scale {
   animation: fade-in-scale 0.3s ease-out forwards;
+  will-change: transform, opacity;
 }
 
 @keyframes chat-reveal-kf {
@@ -676,6 +683,28 @@
 .animate-chat {
   animation: chat-reveal-kf 0.7s cubic-bezier(0.19, 1, 0.22, 1) forwards;
   transform-origin: center;
+  will-change: transform, opacity;
+}
+
+@keyframes title-slide-premium {
+  0% {
+    transform: translateX(20px) translateZ(0);
+    opacity: 0;
+    filter: blur(3px);
+  }
+
+  100% {
+    transform: translateX(0) translateZ(0);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+.animate-title-slide {
+  animation: title-slide-premium 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  transform: translateZ(0);
 }
 
 /* Layout Isolation */
@@ -909,6 +938,7 @@
   opacity: 0;
   filter: blur(3px);
   transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateZ(0);
 }
 
 /* Layer 2 (middle): Solid cover — masks rainbow inside button area */
@@ -956,6 +986,7 @@
   animation: shine 2s linear infinite;
   opacity: 1;
   filter: blur(5px);
+  transform: translateZ(0);
 }
 
 .btn-halo-abort::after {
@@ -1425,10 +1456,12 @@
   filter: blur(25px);
   /* Highly diffuse as requested */
   animation: rainbow-aura-wave-kf 2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
 }
 
 .btn-morph-aura.reverse {
   animation: rainbow-aura-wave-reverse-kf 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
 }
 
 /* Morph Ripple Overrides */

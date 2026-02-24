@@ -30,13 +30,15 @@ export function validateToolArgs(toolCall: ToolCall, tools: ToolDefinition[]): {
         return { valid: false, error: `Unknown tool "${name}". Available: ${tools.map(t => t.function.name).join(', ')}` };
     }
     const params = toolDef.function.parameters;
-    for (const field of params.required) {
+    const requiredFields = params?.required || [];
+    const properties = params?.properties || {};
+    for (const field of requiredFields) {
         if (args[field] === undefined || args[field] === null) {
-            return { valid: false, error: `Missing required field "${field}" for tool "${name}". Expected: ${params.properties[field]?.description || field}` };
+            return { valid: false, error: `Missing required field "${field}" for tool "${name}". Expected: ${properties[field]?.description || field}` };
         }
     }
     for (const [key, value] of Object.entries(args)) {
-        const paramDef = params.properties[key];
+        const paramDef = properties[key];
         if (paramDef?.enum && !paramDef.enum.includes(value as string)) {
             return { valid: false, error: `Invalid value "${value}" for "${key}". Must be one of: ${paramDef.enum.join(', ')}` };
         }

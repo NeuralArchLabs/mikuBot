@@ -226,6 +226,28 @@ export const TOOL_NAME_ALIASES: Record<string, string> = {
     'notify_telegram': 'send_telegram_message',
     'telegram_notify': 'send_telegram_message',
     'msg_telegram': 'send_telegram_message',
+
+    // ── instruction_booklet variants ────────────────────────────────
+    'instructionbooklet': 'instruction_booklet',
+    'instruction_book': 'instruction_booklet',
+    'instructionbook': 'instruction_booklet',
+    'manual': 'instruction_booklet',
+    'tool_manual': 'instruction_booklet',
+    'skill_manual': 'instruction_booklet',
+    'read_manual': 'instruction_booklet',
+    'how_to_use': 'instruction_booklet',
+    'usage_guide': 'instruction_booklet',
+    'get_help': 'instruction_booklet',
+    'guia_uso': 'instruction_booklet',
+    'manual_herramienta': 'instruction_booklet',
+
+    // ── list_available_skills variants ──────────────────────────────
+    'listskills': 'list_available_skills',
+    'list_skills': 'list_available_skills',
+    'get_skills': 'list_available_skills',
+    'show_skills': 'list_available_skills',
+    'habilidades': 'list_available_skills',
+    'listar_skills': 'list_available_skills',
 };
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -519,6 +541,14 @@ export const ARG_KEY_ALIASES: Record<string, Record<string, string>> = {
         'vs': 'vs_currency',
         'target': 'vs_currency',
         'divisa': 'vs_currency',
+    },
+    instruction_booklet: {
+        'tool': 'tool_name',
+        'skill': 'tool_name',
+        'name': 'tool_name',
+        'toolname': 'tool_name',
+        'target': 'tool_name',
+        'herramienta': 'tool_name',
     },
 };
 

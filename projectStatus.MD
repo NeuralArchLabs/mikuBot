@@ -1,4 +1,4 @@
-# Project Status: MikuCentral v1.9.0 🚀
+# Project Status: MikuCentral v1.9.1 🚀
 
 > **Última actualización**: 23 de febrero de 2026
 > **Autor del análisis**: Antigravity AI Engine
@@ -124,6 +124,8 @@ electron/
 | 15 | **Confusión entre Sesiones** | ✅ Done | v1.6.0: Implementada persistencia de modo (Agent/Chat), safeMode y borradores por sesión única. |
 | 16 | **Falta de Feedback Visual** | ✅ Done | v1.6.0: Animaciones de Halo, spin-reverse y bolt-glow sincronizadas con el `AgentStatus`. |
 | 17 | **Clipping en UI Premium** | ✅ Done | Ajustado `overflow` y `background-clip` en botones para permitir efectos de resplandor externos. |
+| 18 | **Lantencia en Tool Discovery** | ✅ Done | v1.9.1: Implementado caché de 30s para Neural Skills en `App.tsx`. |
+| 19 | **Ruido en Scheduler Messaging** | ✅ Done | v1.9.1: Mensajes centrados, colapsados y con código de colores (Naranja/Índigo). |
 
 ### 3.2 Pendientes (Originales) ⏳
 | # | Problema | Severidad | Detalle |
@@ -272,6 +274,14 @@ electron/
 ---
 
 ## 7. Log de Cambios 📋
+
+### v1.9.1 — 23 Feb 2026 (UI Refinement & Performance)
+| Archivo | Cambio |
+|---------|--------|
+| `src/App.tsx` | **Skills Caching**: Caché de 30s para descubrimiento de herramientas. **Redundancy Cleanup**: Eliminados mensajes de resumen duplicados. |
+| `src/components/common/CollapsibleMessage.tsx` | **Centered Layout**: Soporte para centrado dinámico de botones en mensajes de sistema. |
+| `src/components/features/ChatArea.tsx` | **Semantic Colors**: Código de colores para scheduler (Naranja trigger / Índigo respuesta). |
+| `core/base/MODES.md` | **Agent Autonomy**: Instrucciones reforzadas para uso de herramientas sobre alucinaciones en modo chat. |
 
 ### v1.9 — 23 Feb 2026 (Neural Scheduler & Autonomous Agency)
 | Archivo | Cambio |

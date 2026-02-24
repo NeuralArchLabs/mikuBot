@@ -28,10 +28,10 @@ export const SessionList = React.memo(({ sessions, loading, currentSessionId, on
                         {onExpand ? (
                             <button
                                 onClick={onExpand}
-                                className="text-[10px] font-bold text-slate-500 hover:text-blue-400 uppercase tracking-widest flex items-center gap-1 transition-colors group"
+                                className="text-[10px] font-bold text-slate-500 hover:text-blue-400 uppercase tracking-widest flex items-center gap-1 transition-colors group p-2 -ml-2 -my-2 cursor-pointer"
                                 title="Expand Sessions Viewer"
                             >
-                                <Icon name="expand-arrows-alt" className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <Icon name="expand-arrows-alt" className="opacity-0 group-hover:opacity-100 transition-all group-hover:scale-110" />
                                 Neural Sessions
                             </button>
                         ) : (

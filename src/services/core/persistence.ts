@@ -89,7 +89,7 @@ export const persistence = {
                         resolve({
                             config: parsed.config,
                             agentMode: parsed.agentMode || 'chat',
-                            safeMode: parsed.safeMode || false,
+                            safeMode: parsed.safeMode !== undefined ? parsed.safeMode : true,
                             approvalMode: parsed.approvalMode || 'auto'
                         });
                     } else {

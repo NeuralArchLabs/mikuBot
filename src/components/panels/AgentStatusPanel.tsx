@@ -140,7 +140,7 @@ export const AgentStatusPanel = React.memo(({
                     if (isOptimization) {
                         return (
                             <div key={i} className="optimization-badge">
-                                <div className="optimization-inner">
+                                <div className="optimization-inner transform-gpu">
                                     <div className="flex items-center gap-3">
                                         <div className="w-4 h-4 rounded-full border border-white/10 flex items-center justify-center">
                                             <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />

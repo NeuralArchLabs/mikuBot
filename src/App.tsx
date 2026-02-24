@@ -85,6 +85,8 @@ export const App = () => {
     const stateRef = useRef(state);
     const messagesRef = useRef(messages);
     const namedSessionsTurnsRef = useRef<Map<string, number>>(new Map());
+    const skillsCacheRef = useRef<any[]>([]);
+    const lastSkillsFetchRef = useRef<number>(0);
     const processMessageRef = useRef<(text: string, force: boolean, remote: boolean) => Promise<void>>(async () => { });
     const sendToTelegramRef = useRef<(text: string) => void>(() => { });
 
@@ -873,17 +875,15 @@ export const App = () => {
 
         const buildSkillsBlock = () => {
             if (!dynamicSkills || dynamicSkills.length === 0) return "";
-            const list = dynamicSkills.map(s => {
-                const required = s.function.parameters?.required || [];
-                const properties = s.function.parameters?.properties || {};
-                const allParams = Object.keys(properties).map((p: string) => {
-                    const pDef = properties[p];
-                    const isReq = required.includes(p);
-                    return `${p}${isReq ? ' (Obligatorio)' : ''}: ${pDef?.description || p}`;
-                }).join(' | ');
-                return `- **${s.function.name}**: ${s.function.description}\n  ↳ [${allParams || 'Sin parámetros'}]`;
-            }).join('\n');
-            return `\n\n[NEURAL SKILLS DISPONIBLES]\n${list}\n[/NEURAL SKILLS DISPONIBLES]`;
+
+            // Only show names of the first 3 skills to keep context clean
+            const top3 = dynamicSkills.slice(0, 3);
+            const names = top3.map(s => s.function.name).join(', ');
+
+            return `\n\n[NEURAL SKILLS DISPONIBLES (Context Lite)]
+Habilidades destacadas: ${names}
+Para ver todas tus habilidades adicionales habilitadas y sus parámetros técnicos completos, DEBES usar la herramienta: list_available_skills()
+[/NEURAL SKILLS DISPONIBLES]`;
         };
 
         const buildSkillsConfigBlock = () => {
@@ -908,21 +908,24 @@ export const App = () => {
             const tasksContent = getFileDeep('TASKS.md') || getFileDeep('TASKS.MD');
             const workingMemory = `\n[PLAN_DE_TRABAJO_ACTUAL]\n${tasksContent || 'No hay tareas activas.'}\n[/PLAN_DE_TRABAJO_ACTUAL]\n`;
 
-            const modesContent = getFileDeep('AGENTS_MODES.md') || getFileDeep('AGENTS_MODES.MD') ||
+            const modesContent = getFileDeep('MODES.md') || getFileDeep('MODES.MD') ||
+                getFileDeep('AGENTS_MODES.md') || getFileDeep('AGENTS_MODES.MD') ||
                 getFileDeep('AGENT_MODES.md') || getFileDeep('AGENT_MODES.MD');
 
             let prompt = "";
             if (modesContent) {
                 const match = modesContent.match(/## \[INSTRUCTION MODE.*?\]\r?\n([\s\S]*?)(?=\n##|$)/);
                 const content = (match ? match[1].trim() : modesContent.trim());
-                prompt = `${identity}\n${workingMemory}\n${content}`.replace(/{{CURRENT_TIME}}/g, timeStr);
+                prompt = `${identity}\n${workingMemory}\n${content}`;
             } else {
                 const fallback = getFileDeep('AGENT_PROTOCOL.md') || getFileDeep('AGENT_PROTOCOL.MD') ||
                     getFileDeep('COMMANDS.md') || getFileDeep('COMMANDS.MD') ||
                     'Agent Protocol missing.';
-                prompt = `${identity}\n${workingMemory}\n${fallback}`.replace(/{{CURRENT_TIME}}/g, timeStr);
+                prompt = `${identity}\n${workingMemory}\n${fallback}`;
             }
-            return prompt + buildSkillsBlock() + buildSkillsConfigBlock();
+            // In Instruction/Agent mode, we still inject time and skills for context
+            const fullPrompt = `[SYSTEM TIME]\n${timeStr}\n\n${prompt}`;
+            return (fullPrompt + buildSkillsBlock() + buildSkillsConfigBlock()).replace(/{{CURRENT_TIME}}/g, timeStr);
         }
 
         const segments: string[] = [];
@@ -943,15 +946,20 @@ export const App = () => {
         let finalPrompt = prompt || getFileDeep('IDENTITY.md') || getFileDeep('IDENTITY.MD') || 'System Identity missing.';
 
         if (!isAgentOrInstruction) {
-            finalPrompt += `\n\n[AVISO DE SISTEMA: MODO CHAT ACTIVO]
-Te encuentras en una conversación casual. Tu prioridad es tu identidad (SOUL). 
-Tienes acceso limitado a herramientas de investigación bibliográfica (lectura) y la capacidad de actualizar tu memoria de trabajo únicamente en el archivo 'ACTIVE_CONTEXT.md' del core. 
-NO tienes permitido realizar cambios en otros archivos (código, documentos de desarrollo) ni ejecutar comandos de consola.
-Si el usuario te pide una tarea técnica compleja o de programación, invítalo a cambiar al "Modo Agente" en el selector de abajo.
-NO simules resultados de herramientas ni inventes datos; si necesitas información, usa las herramientas de lectura permitidas o sé honesto si no puedes realizar la acción.`;
+            const modesContent = getFileDeep('MODES.md') || getFileDeep('MODES.MD') ||
+                getFileDeep('AGENTS_MODES.md') || getFileDeep('AGENTS_MODES.MD');
+
+            if (modesContent) {
+                const match = modesContent.match(/## \[CHAT MODE.*?\]\r?\n([\s\S]*?)(?=\n##|$)/);
+                if (match) {
+                    finalPrompt += `\n\n${match[1].trim()}`;
+                }
+            }
         }
 
-        return (finalPrompt + buildSkillsBlock() + buildSkillsConfigBlock()).replace(/{{CURRENT_TIME}}/g, timeStr);
+        // In Chat Mode, we NO LONGER inject buildSkillsBlock() to keep it clean.
+        // Miku must use list_available_skills to discover them.
+        return (finalPrompt + buildSkillsConfigBlock()).replace(/{{CURRENT_TIME}}/g, timeStr);
     };
 
     const handleAbortAgent = useCallback(() => {
@@ -976,7 +984,11 @@ NO simules resultados de herramientas ni inventes datos; si necesitas informaci�
     }, [pendingToolApproval]);
 
     const sendToTelegramDirectly = useCallback((text: string) => {
-        if (!state.config.telegramBotToken || !state.config.telegramChatId) return;
+        if (!state.config.telegramBotToken || !state.config.telegramChatId) {
+            console.warn("[Telegram Notifier] Missing Telegram configuration (Bot Token or Chat ID). Skipping notification.");
+            askAlert("⚠️ [Acción Cancelada]\n\nSe intentó enviar un mensaje a Telegram (ej. Tarea Programada), pero faltan las credenciales. Configura el 'Bot Token' y el 'Chat ID' en los ajustes.");
+            return;
+        }
         fetch(`https://api.telegram.org/bot${state.config.telegramBotToken}/sendMessage`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -985,20 +997,29 @@ NO simules resultados de herramientas ni inventes datos; si necesitas informaci�
                 text: formatTelegramResponse(text),
                 parse_mode: 'HTML'
             })
-        }).catch(err => console.error("Remote response error:", err));
-    }, [state.config.telegramBotToken, state.config.telegramChatId]);
+        })
+            .then(async (res) => {
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    console.error("Telegram API Error:", errData);
+                    askAlert(`⚠️ [Error de Telegram]\n\nFallo al enviar mensaje: ${errData.description || res.statusText}\nVerifica que tu Bot Token y Chat ID sean correctos.`);
+                }
+            })
+            .catch(err => console.error("Remote response error:", err));
+    }, [state.config.telegramBotToken, state.config.telegramChatId, askAlert]);
 
     // Keep sendToTelegram ref up-to-date for scheduler
     useEffect(() => {
         sendToTelegramRef.current = sendToTelegramDirectly;
     }, [sendToTelegramDirectly]);
 
-    const processMessage = useCallback(async (text: string, forceToolMode: boolean = false, isRemote: boolean = false, userAttachments: Attachment[] = []) => {
+    const processMessage = useCallback(async (text: string, forceToolMode: boolean = false, isRemote: boolean = false, isScheduled: boolean = false, userAttachments: Attachment[] = []): Promise<string | undefined> => {
         const currentState = stateRef.current;
-        if ((!text.trim() && userAttachments.length === 0) || isLoading) return;
+        // Allow scheduled background tasks to bypass the isLoading guard
+        if ((!text.trim() && userAttachments.length === 0) || (isLoading && !isScheduled)) return;
 
         // [COMMAND INTERCEPTOR]
-        console.log(`[ProcessMessage] Text: "${text}", isRemote: ${isRemote}`);
+        console.log(`[ProcessMessage] Text: "${text}", isRemote: ${isRemote}, isScheduled: ${isScheduled}`);
         if (text.startsWith('/')) {
             console.log("[ProcessMessage] Command detected:", text);
             const result = await executeCommand(text, {
@@ -1120,14 +1141,18 @@ NO simules resultados de herramientas ni inventes datos; si necesitas informaci�
         const userMsgId = Date.now().toString();
         const userMsg: Message = {
             id: userMsgId,
-            role: 'user',
-            text,
+            role: isScheduled ? 'system' : 'user',
+            text: isScheduled ? `**[Scheduled Task]**\n\n${text}` : text,
             timestamp: Date.now(),
             source: isRemote ? 'telegram' : 'ui',
-            attachments: userAttachments
+            attachments: userAttachments,
+            excludeFromContext: isScheduled,
+            isScheduler: isScheduled,
+            isInitiallyCollapsed: isScheduled
         };
         setMessages(prev => [...prev, userMsg]);
         setInput('');
+
         setIsLoading(true);
         setAgentStatus({ ...createDefaultAgentStatus(), isInstructionMode: currentState.agentMode === 'agent' || forceToolMode });
 
@@ -1148,15 +1173,20 @@ NO simules resultados de herramientas ni inventes datos; si necesitas informaci�
             ? (agentOverride ? currentState.config.agentModel : currentState.config.model)
             : (chatOverride ? currentState.config.chatModel : currentState.config.model);
 
-        setMessages(prev => [...prev, {
+        const modelMsg: Message = {
             id: modelMsgId,
-            role: 'assistant',
+            role: isScheduled ? 'system' : 'assistant',
             text: '',
             timestamp: Date.now() + 1,
             isStreaming: true,
             provider: effectiveProvider,
-            model: effectiveModel
-        }]);
+            model: effectiveModel,
+            excludeFromContext: isScheduled,
+            isScheduler: isScheduled,
+            isScheduledResponse: isScheduled,
+            isInitiallyCollapsed: isScheduled
+        };
+        setMessages(prev => [...prev, modelMsg]);
 
         const ac = new AbortController();
         abortControllerRef.current = ac;
@@ -1174,27 +1204,36 @@ NO simules resultados de herramientas ni inventes datos; si necesitas informaci�
             const isAgentLoop = currentState.agentMode === 'agent' || forceToolMode;
             const isChatTools = currentState.agentMode === 'chat' && !forceToolMode;
 
-            // Fetch Neural Skills (Dynamic Tools) - FECHING EARLY FOR PROMPT INJECTION
+            // Fetch Neural Skills (Dynamic Tools) - WITH CACHING
             let dynamicSkills: any[] = [];
             const isElectron = !!(window as any).electron?.listSkills;
+            const now = Date.now();
+
+            // Cache skills for 30 seconds to avoid disk thrashing
             if (isElectron && currentState.config.folderPaths?.tools) {
-                try {
-                    const res = await (window as any).electron.listSkills({ toolsPath: currentState.config.folderPaths.tools });
-                    if (res.ok && Array.isArray(res.skills)) {
-                        const disabledList = currentState.config.disabledSkills || [];
-                        dynamicSkills = res.skills
-                            .filter(s => !disabledList.includes(s.name))
-                            .map(s => ({
-                                type: 'function',
-                                function: {
-                                    name: s.name,
-                                    description: s.description,
-                                    parameters: s.parameters
-                                }
-                            }));
+                if (now - lastSkillsFetchRef.current < 30000 && skillsCacheRef.current.length > 0) {
+                    dynamicSkills = skillsCacheRef.current;
+                } else {
+                    try {
+                        const res = await (window as any).electron.listSkills({ toolsPath: currentState.config.folderPaths.tools });
+                        if (res.ok && Array.isArray(res.skills)) {
+                            const disabledList = currentState.config.disabledSkills || [];
+                            dynamicSkills = res.skills
+                                .filter(s => !disabledList.includes(s.name))
+                                .map(s => ({
+                                    type: 'function',
+                                    function: {
+                                        name: s.name,
+                                        description: s.description,
+                                        parameters: s.parameters
+                                    }
+                                }));
+                            skillsCacheRef.current = dynamicSkills;
+                            lastSkillsFetchRef.current = now;
+                        }
+                    } catch (e) {
+                        console.error("Failed to load skills:", e);
                     }
-                } catch (e) {
-                    console.error("Failed to load skills:", e);
                 }
             }
 
@@ -1231,9 +1270,10 @@ NO simules resultados de herramientas ni inventes datos; si necesitas informaci�
                 (history) => setMessages(prev => prev.map(m => m.id === modelMsgId ? { ...m, rawHistory: history } : m)),
                 true, // useTextExtraction (siempre encendido si hay herramientas)
                 useAgentEngine,
-                currentState.safeMode,
+                (currentState.safeMode || forceToolMode) && !isScheduled,
                 currentState.approvalMode,
-                effectiveToolMode // isInstructionMode (botón del rayo)
+                effectiveToolMode, // isInstructionMode (botón del rayo)
+                isScheduled
             );
 
             if (isRemote && finalAssistantText) {
@@ -1245,7 +1285,7 @@ NO simules resultados de herramientas ni inventes datos; si necesitas informaci�
                 if (!wasSentByTool) sendToTelegramDirectly(finalAssistantText);
             }
         } catch (error) {
-            if (error instanceof DOMException && error.name === 'AbortError') return;
+            if (error instanceof DOMException && error.name === 'AbortError') return undefined;
             setMessages(prev => prev.map(m => m.id === modelMsgId ? { ...m, text: `⚠️ Error: ${error instanceof Error ? error.message : 'Unknown'}` } : m));
         } finally {
             setIsLoading(false);
@@ -1256,7 +1296,7 @@ NO simules resultados de herramientas ni inventes datos; si necesitas informaci�
             // [AUTO-NAME]
             setTimeout(async () => {
                 const sid = stateRef.current.sessionId;
-                if (!sid) return;
+                if (!sid || isScheduled) return;
 
                 const currentSession = sessions.find(s => s.id === sid);
 
@@ -1336,6 +1376,8 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                     }
                 }
             }, 1000);
+
+            return finalAssistantText;
         }
     }, [isLoading, sessions, agentStatus.rawMessages, sendToTelegramDirectly, constructSystemInstruction, saveFile, requestFolderPermission, coreHandle, extraHandle, workSpaceHandle, toolsHandle, syncFiles]);
 
@@ -1346,14 +1388,11 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
 
     // ── Neural Scheduler Initialization ──────────────────────────────
     useEffect(() => {
-        const executor = async (prompt: string, mode: 'chat' | 'agent', _isScheduled: boolean): Promise<string> => {
+        const executor = async (prompt: string, mode: 'chat' | 'agent', isScheduled: boolean): Promise<string> => {
             // Use processMessage via ref to always get the latest closure
             const forceToolMode = mode === 'agent';
-            await processMessageRef.current(prompt, forceToolMode, false);
-            // Get the last assistant message as the response
-            const msgs = messagesRef.current;
-            const lastAssistant = [...msgs].reverse().find(m => m.role === 'assistant');
-            return lastAssistant?.text || 'Task completed (no response text).';
+            const responseText = await processMessageRef.current(prompt, forceToolMode, false, isScheduled);
+            return responseText || 'La tarea finalizó pero no generó texto.';
         };
 
         const telegramNotifier = (text: string) => {
@@ -1361,13 +1400,22 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
         };
 
         const uiMessageHandler = (taskName: string, response: string) => {
+            // If the message is an error, we show it anyway
+            const isError = response.includes('Neural Error');
+
+            // Now that processMessage handles UI for scheduled tasks, this summary is redundant 
+            // unless it's an error notification.
+            if (!isError) return;
+
             const schedulerMsg: Message = {
-                id: `sched_${Date.now()}`,
-                role: 'assistant',
-                text: `🔔 **[Scheduled: ${taskName}]**\n\n${response}`,
+                id: `sched_err_${Date.now()}`,
+                role: 'system',
+                text: response,
                 timestamp: Date.now(),
                 source: 'ui',
                 excludeFromContext: true,
+                isScheduler: true,
+                isInitiallyCollapsed: false, // Show errors!
             };
             setMessages(prev => [...prev, schedulerMsg]);
         };
@@ -1392,7 +1440,7 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
 
     const handleReprompt = useCallback(() => {
         if (lastUserTextRef.current && !isLoading) {
-            processMessage('Continue from where you stopped.', lastForceToolModeRef.current);
+            processMessage('Continue from where you stopped.', lastForceToolModeRef.current, false, false);
         }
     }, [isLoading, processMessage]);
 
@@ -1483,6 +1531,14 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                 <OnboardingWizard onComplete={handleOnboardingComplete} />
             )}
             <SystemDialog config={dialogConfig} />
+            <LibraryManager
+                isOpen={state.isLibraryExpanded} onClose={() => setState(p => ({ ...p, isLibraryExpanded: false }))}
+                files={state.additionalFiles} selectedFiles={state.selectedLibraryFiles}
+                onToggleSelect={(n) => setState(p => ({ ...p, selectedLibraryFiles: p.selectedLibraryFiles.includes(n) ? p.selectedLibraryFiles.filter(f => f !== n) : [...p.selectedLibraryFiles, n] }))}
+                onSave={(n, c) => saveFile(n, c, 'extra')} onAdd={() => createFile(`Library_${Date.now()}`, 'extra')}
+                onDelete={(n) => deleteFile(n, 'extra')}
+                askConfirm={askConfirm}
+            />
             <Sidebar
                 state={{ ...state, askConfirm, onSelectSession, onDeleteSession, onNewSession, onExportSession, onImportSession, onDeleteFile: (n: string, t: FileTarget) => deleteFile(n, t) } as any}
                 sessions={sessions}
@@ -1492,13 +1548,13 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
             />
 
             {/* Persistent UI Shell Container to prevent flashes on tab swap */}
-            <div className="flex-1 flex flex-col h-full bg-slate-950/40 backdrop-blur-md overflow-hidden relative">
+            <div className="flex-1 flex flex-col h-full bg-slate-950/40 overflow-hidden relative">
                 {state.activeTab === 'chat' && (
                     <div className="flex-1 flex flex-col h-full">
                         <ChatArea
                             sessionId={state.sessionId || 'empty'}
                             messages={messages} isLoading={isLoading} input={input} setInput={setInput}
-                            onSend={(atts) => processMessage(input, false, false, atts)} onSendAsInstruction={(atts) => processMessage(input, true, false, atts)}
+                            onSend={(atts) => processMessage(input, false, false, false, atts)} onSendAsInstruction={(atts) => processMessage(input, true, false, false, atts)}
                             onAbort={handleAbortAgent} onReprompt={handleReprompt} onRewind={onRewind} scrollRef={scrollRef}
                             agentStatus={agentStatus} pendingApproval={pendingToolApproval}
                             onApproveToolCall={handleApproveToolCall} onRejectToolCall={handleRejectToolCall}
@@ -1556,6 +1612,7 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                             workSpacePathName={workSpaceHandle?.name || state.config.folderPaths?.workSpace || ''}
                             toolsPathName={toolsHandle?.name || state.config.folderPaths?.tools || ''}
                             syncing={syncing}
+                            askAlert={askAlert}
                         />
                     </div>
                 )}
@@ -1571,15 +1628,6 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                         />
                     </div>
                 )}
-
-                <LibraryManager
-                    isOpen={state.isLibraryExpanded} onClose={() => setState(p => ({ ...p, isLibraryExpanded: false }))}
-                    files={state.additionalFiles} selectedFiles={state.selectedLibraryFiles}
-                    onToggleSelect={(n) => setState(p => ({ ...p, selectedLibraryFiles: p.selectedLibraryFiles.includes(n) ? p.selectedLibraryFiles.filter(f => f !== n) : [...p.selectedLibraryFiles, n] }))}
-                    onSave={(n, c) => saveFile(n, c, 'extra')} onAdd={() => createFile(`Library_${Date.now()}`, 'extra')}
-                    onDelete={(n) => deleteFile(n, 'extra')}
-                    askConfirm={askConfirm}
-                />
             </div>
         </div>
     );

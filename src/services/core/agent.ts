@@ -503,8 +503,11 @@ export async function sendAgentMessage(
     isAgentMode: boolean = false,
     safeMode: boolean = false,
     approvalMode: ApprovalMode = 'auto',
-    isInstructionMode: boolean = false
+    isInstructionMode: boolean = false,
+    isScheduled: boolean = false
 ): Promise<void> {
+
+    console.log(`[Agent] sendAgentMessage called: isScheduled=${isScheduled}, isAgentMode=${isAgentMode}, safeMode=${safeMode}, approvalMode=${approvalMode}, isInstructionMode=${isInstructionMode}`);
 
     const log = (type: AgentLogEntry['type'], message: string, details?: any) => {
         onStatus({ log: [{ timestamp: Date.now(), type, message, details }] });
@@ -1073,22 +1076,29 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
                 iterationBlocks.push({ type: 'thought', content: internalThought.trim() });
             }
 
-            // C. The tool block (excluding duplicates and final_answer)
+            // C. The tool block (excluding duplicates)
             const fp = getActionFingerprint(rc.toolCall.function.name, rc.toolCall.function.arguments);
-            if (!seenFpForInterleaving.has(fp) && rc.toolCall.function.name !== 'final_answer') {
+            if (!seenFpForInterleaving.has(fp)) {
                 seenFpForInterleaving.add(fp);
-                iterationBlocks.push({
-                    type: 'tool_call',
-                    content: `Modo: ${rc.toolCall.function.name}`,
-                    toolCall: {
-                        ...rc.toolCall,
-                        // Mask the thought in the display version to avoid DUPLICATES
-                        function: {
-                            ...rc.toolCall.function,
-                            arguments: thoughtKey ? Object.fromEntries(Object.entries(args).filter(([k]) => k !== thoughtKey)) : args
-                        }
+                if (rc.toolCall.function.name === 'final_answer') {
+                    const finalTxt = args.text || args.respuesta || args.answer || args.content || '';
+                    if (finalTxt) {
+                        iterationBlocks.push({ type: 'answer', content: finalTxt });
                     }
-                });
+                } else {
+                    iterationBlocks.push({
+                        type: 'tool_call',
+                        content: `Modo: ${rc.toolCall.function.name}`,
+                        toolCall: {
+                            ...rc.toolCall,
+                            // Mask the thought in the display version to avoid DUPLICATES
+                            function: {
+                                ...rc.toolCall.function,
+                                arguments: thoughtKey ? Object.fromEntries(Object.entries(args).filter(([k]) => k !== thoughtKey)) : args
+                            }
+                        }
+                    });
+                }
             }
             curIdx = rc.end;
         }
@@ -1116,7 +1126,7 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
 
         agentMessages.push({
             role: 'assistant',
-            content: content || '[Calling Tools...]',
+            content: content || '',
             tool_calls: uniqueToolCalls.length > 0 ? uniqueToolCalls : undefined,
         });
 
@@ -1215,9 +1225,12 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
 
         // --- Execute tool calls ---
         localOnStatus({ phase: 'tool_calling' });
-        const READ_ONLY_TOOLS = new Set(['read_file', 'list_files', 'search_files', 'web_search', 'read_url']);
+        const READ_ONLY_TOOLS = new Set(['read_file', 'list_files', 'search_files', 'web_search', 'read_url', 'list_available_skills']);
 
         function isAutoApproved(tc: ToolCall): boolean {
+            // 0. Auto-Scheduled Background Tasks (Unsupervised Full autonomy)
+            if (isScheduled) return true;
+
             const tn = tc.function.name;
             const args = tc.function.arguments;
             const { target, cleanFilename } = resolvePathAndSource(args.filename || '', args.source);
@@ -1251,11 +1264,15 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
                 return true;
             }
 
-            // Chat Mode u otros: No auto-aprobar nada más (las de lectura ya pasaron en el punto 1)
-            return false;
+            // Chat Mode u otros: Auto-aprobar todo lo que no sea consola o archivos protegidos
+            // (Ya que el usuario es consciente de los riesgos y las herramientas son seguras)
+            return true;
         }
 
         function needsApproval(tc: ToolCall): boolean {
+            // NEVER block if this is an unsupervised background scheduled task
+            if (isScheduled) return false;
+
             return approvalMode === 'manual' || !isAutoApproved(tc);
         }
 
@@ -1294,10 +1311,7 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
                 const snippet = extractToolSnippet(toolCall.function.name);
                 if (snippet) {
                     const snippetBlock = `\n\nEJEMPLO DE USO CORRECTO:\n${snippet}`;
-                    agentMessages.push({
-                        role: 'user',
-                        content: `⚠️ INSTRUCCIÓN DE RECUPERACIÓN: Se detectó un fallo en "${toolCall.function.name}". Utiliza este formato exacto para corregirlo:${snippetBlock}`
-                    });
+                    unifiedUserFeedback.push(`⚠️ INSTRUCCIÓN DE RECUPERACIÓN: Se detectó un fallo en "${toolCall.function.name}". Utiliza este formato exacto para corregirlo:${snippetBlock}`);
                     localOnStatus({ rawMessages: [...agentMessages] });
                 }
             } else {
@@ -1310,11 +1324,8 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
                 actionHistory.push(desc);
                 agentMessages.push({ role: 'tool', content: JSON.stringify(result), tool_call_id: toolCall.id });
 
-                // [CONTEXT ANCHOR]: Provide the data but encourage critical thinking and technical honesty
-                agentMessages.push({
-                    role: 'user',
-                    content: `📌 DATOS OBTENIDOS: La herramienta "${toolCall.function.name}" devolvió:\n${summary}\n\nREGLA: Usa esta información como base para tu respuesta, pero mantén siempre tu sentido común técnico. Si los resultados parecen irrelevantes para la intención del usuario (ej: resultados de moda cuando se busca tecnología), admítelo honestamente y no intentes forzar una conexión falsa. Prioriza la precisión y la utilidad sobre la obediencia ciega a los datos de la herramienta.`
-                });
+                // Add to unified feedback array
+                unifiedUserFeedback.push(`📌 DATOS OBTENIDOS: La herramienta "${toolCall.function.name}" devolvió:\n${summary}`);
 
                 onStatus({ rawMessages: [...agentMessages] });
 
@@ -1422,11 +1433,8 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
                 // Content for the tool response
                 agentMessages.push({ role: 'tool', content: `ERROR DE VALIDACIÓN: ${v.error}${snippetBlock}`, tool_call_id: tc.id });
 
-                // ALSO inject a user message as a "correction force" for small models
-                agentMessages.push({
-                    role: 'user',
-                    content: `⚠️ ERROR TÉCNICO: Intentaste usar la herramienta "${tc.function.name}" pero los parámetros son incorrectos.\n\nDETALLE: ${v.error}${snippetBlock}\n\nPOR FAVOR, CORRIGE TU LLAMADA EN LA SIGUIENTE ITERACIÓN. No inventes datos.`
-                });
+                // Add to unified feedback
+                unifiedUserFeedback.push(`⚠️ ERROR TÉCNICO: Intentaste usar la herramienta "${tc.function.name}" pero los parámetros son incorrectos.\n\nDETALLE: ${v.error}${snippetBlock}\n\nPOR FAVOR, CORRIGE TU LLAMADA EN LA SIGUIENTE ITERACIÓN. No inventes datos.`);
 
                 onStatus({ rawMessages: [...agentMessages] });
                 // Update UI with the failure result in the block
@@ -1436,69 +1444,88 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
             return true;
         }
 
-        // Sequential execution
+        // Tool Execution: Batch (Paralelo) vs Seguro (Secuencial)
         let hasFinalAnswer = false;
-        for (const tc of activeToolCalls) {
+        const unifiedUserFeedback: string[] = [];
+
+        const processTool = async (tc: ToolCall) => {
             if (abortSignal.aborted) return;
-
-            if (tc.function.name === 'final_answer') {
-                hasFinalAnswer = true;
-                const args = tc.function.arguments;
-                // Canonical keys handled by normalizeArgKeys in toolCallNormalizer
-                const textRaw = args.text || 'Tarea completada exitosamente.';
-                const reasoning = args.reasoning || '';
-
-                // REDUNDANCY CHECK: If we have a thought block exactly matches textRaw, remove it
-                const redundantIdx = mergedIterationBlocks.findIndex(b =>
-                    b.type === 'thought' &&
-                    (b.content.trim() === textRaw.trim() || textRaw.trim().includes(b.content.trim()))
-                );
-                if (redundantIdx !== -1 && textRaw.length > 20) {
-                    mergedIterationBlocks.splice(redundantIdx, 1);
-                }
-
-                const text = formatFinalResponse(textRaw);
-                let sources = args.sources || [];
-
-                // AUTO-SYNERGY: If the model didn't provide sources, we find them
-                if (sources.length === 0) {
-                    sources = autoExtractSources(actionHistory, agentMessages);
-                }
-
-                let finalContent = text;
-
-                // Add reasoning if provided as a discrete parameter
-                if (reasoning) {
-                    finalContent = `> **Conclusión:** ${reasoning}\n\n${finalContent}`;
-                }
-
-                if (sources.length > 0) {
-                    finalContent += '\n\n---\n**🧠 Bibliografía y Contexto:**\n' + sources.map((s: string) => `· ${s}`).join('\n');
-                }
-
-                // RENDERING: Update blocks for immediate UI display
-                allBlocks.push({ type: 'answer', content: finalContent });
-
-                // PERSISTENCE: Overwrite content in the message history so it's not "empty" or just "[Calling Tools...]"
-                const lastAssistant = [...agentMessages].reverse().find(m => m.role === 'assistant');
-                if (lastAssistant) {
-                    lastAssistant.content = finalContent;
-                }
-
-                onChunk(finalContent, true, allBlocks);
-                break;
-            }
-
-            if (!validateAndReport(tc)) continue;
-            if (needsApproval(tc)) {
-                if (!await requestApproval(tc, tc.function.name)) continue;
+            if (!validateAndReport(tc)) return;
+            const approval = needsApproval(tc);
+            console.log(`[Agent] Tool "${tc.function.name}": needsApproval=${approval}, isScheduled=${isScheduled}, isAgentMode=${isAgentMode}`);
+            if (approval) {
+                if (!await requestApproval(tc, tc.function.name)) return;
             }
             await executeAndProcess(tc, tc.function.name);
+        };
 
-            if (safeMode) {
-                log('info', 'Safe Mode: Deteniendo ejecución tras un paso para revisión.');
-                break;
+        const operativeCalls = activeToolCalls.filter(tc => tc.function.name !== 'final_answer');
+        const finalCallToProcess = activeToolCalls.find(tc => tc.function.name === 'final_answer');
+
+        if (!safeMode) {
+            // Batch Mode (Paralelo)
+            await Promise.all(operativeCalls.map(processTool));
+        } else {
+            // Safe Mode (Secuencial)
+            for (const tc of operativeCalls) {
+                await processTool(tc);
             }
+        }
+
+        if (finalCallToProcess && !abortSignal.aborted) {
+            hasFinalAnswer = true;
+            const args = finalCallToProcess.function.arguments;
+            // Canonical keys handled by normalizeArgKeys in toolCallNormalizer
+            const textRaw = args.text || 'Tarea completada exitosamente.';
+            const reasoning = args.reasoning || '';
+
+            // REDUNDANCY CHECK: If we have a thought block exactly matches textRaw, remove it
+            const redundantIdx = mergedIterationBlocks.findIndex(b =>
+                b.type === 'thought' &&
+                (b.content.trim() === textRaw.trim() || textRaw.trim().includes(b.content.trim()))
+            );
+            if (redundantIdx !== -1 && textRaw.length > 20) {
+                mergedIterationBlocks.splice(redundantIdx, 1);
+            }
+
+            const text = formatFinalResponse(textRaw);
+            let sources = args.sources || [];
+
+            // AUTO-SYNERGY: If the model didn't provide sources, we find them
+            if (sources.length === 0) {
+                sources = autoExtractSources(actionHistory, agentMessages);
+            }
+
+            let finalContent = text;
+
+            // Add reasoning if provided as a discrete parameter
+            if (reasoning) {
+                finalContent = `> **Conclusión:** ${reasoning}\n\n${finalContent}`;
+            }
+
+            if (sources.length > 0) {
+                finalContent += '\n\n---\n**🧠 Bibliografía y Contexto:**\n' + sources.map((s: string) => `· ${s}`).join('\n');
+            }
+
+            // RENDERING: Update blocks for immediate UI display
+            allBlocks.push({ type: 'answer', content: finalContent });
+
+            // PERSISTENCE: Overwrite content in the message history so it's not "empty"
+            const lastAssistant = [...agentMessages].reverse().find(m => m.role === 'assistant');
+            if (lastAssistant) {
+                lastAssistant.content = finalContent;
+            }
+
+            onChunk(finalContent, true, allBlocks);
+        }
+
+        // Apply unified feedback AFTER all tool responses to keep tool messages contiguous
+        if (unifiedUserFeedback.length > 0 && !hasFinalAnswer) {
+            agentMessages.push({
+                role: 'user',
+                content: unifiedUserFeedback.join('\n\n---\n\n') + '\n\nREGLA: Usa esta información como base para tu respuesta, pero mantén siempre tu sentido común técnico. Si los resultados parecen irrelevantes, admítelo honestamente y no intentes forzar una conexión falsa. Prioriza la precisión.'
+            });
+            onStatus({ rawMessages: [...agentMessages] });
         }
 
         if (hasFinalAnswer) {

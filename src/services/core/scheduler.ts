@@ -150,12 +150,16 @@ class NeuralScheduler {
 
         // Recalculate all nextRunAt on startup
         const now = Date.now();
+        let hasChanges = false;
         for (const task of this.tasks) {
             if (task.enabled && (task.nextRunAt === null || task.nextRunAt < now)) {
                 task.nextRunAt = calculateNextRun(task, now);
+                hasChanges = true;
             }
         }
-        await this.saveTasks();
+        if (hasChanges) {
+            await this.saveTasks();
+        }
 
         this.startTickLoop();
         console.log(`[NeuralScheduler] Initialized with ${this.tasks.length} tasks.`);
@@ -254,16 +258,21 @@ class NeuralScheduler {
 
             // Route to configured channel
             if (task.channel === 'telegram' || task.channel === 'both') {
-                this.telegramNotifier?.(`🔔 [${task.name}]\n\n${response}`);
+                this.telegramNotifier?.(response);
             }
             if (task.channel === 'ui' || task.channel === 'both') {
                 this.onUiMessage?.(task.name, response);
             }
         } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
             log.status = 'error';
-            log.error = error instanceof Error ? error.message : String(error);
+            log.error = errorMsg;
             log.durationMs = Date.now() - startTime;
             console.error(`[NeuralScheduler] Task "${task.name}" failed:`, error);
+
+            if (task.channel === 'ui' || task.channel === 'both') {
+                this.onUiMessage?.(task.name, `⚠️ **Neural Error:** ${errorMsg}`);
+            }
         }
 
         // Update task stats

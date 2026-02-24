@@ -164,7 +164,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                             <h1 className={`font-bold text-lg text-white tracking-tight leading-tight whitespace-nowrap overflow-hidden text-ellipsis transition-all duration-300 ${isAnimatingEgg ? 'text-blue-400 font-mono text-sm' : ''}`}>
                                 {displayName}
                             </h1>
-                            <div className="text-[11px] text-slate-500/80 font-bold uppercase tracking-[0.2em] leading-tight mt-0.5">v1.6.0</div>
+                            <div className="text-[11px] text-slate-500/80 font-bold uppercase tracking-[0.2em] leading-tight mt-0.5">v1.9.1</div>
                         </div>
                     </div>
 
@@ -193,23 +193,31 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                 )}
                             </button>
                         ))}
+                    </nav>
 
+                    {/* Collapsed Sidebar Separator */}
+                    <div className="lg:hidden h-px bg-gradient-to-r from-transparent via-white/10 to-transparent my-4" />
+
+                    <nav className="space-y-1">
                         {/* Mobile Sessions Button */}
                         <button
                             onClick={() => setSessionModalOpen(true)}
-                            className={`w-full flex items-center justify-center lg:hidden gap-3 px-0 py-3.5 mt-4 rounded-xl transition-all duration-200 group border border-transparent active:scale-95 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50`}
+                            className={`w-10 h-10 mx-auto flex items-center justify-center lg:hidden rounded-full transition-all duration-300 group bg-slate-800/40 border border-slate-700/50 active:scale-90 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 hover:border-blue-500/30 hover:shadow-[0_0_15px_rgba(59,130,246,0.2)] cursor-pointer mt-2`}
                             title="Neural Sessions"
                         >
-                            <Icon name="history" className={`text-2xl flex-shrink-0 group-hover:text-slate-300 transition-colors`} />
+                            <Icon name="history" className={`text-xl flex-shrink-0 transition-colors pointer-events-none`} />
                         </button>
+
+                        {/* Mobile Library Separator */}
+                        <div className="lg:hidden h-px bg-gradient-to-r from-transparent via-white/5 to-transparent my-3" />
 
                         {/* Mobile Context Library Button */}
                         <button
                             onClick={() => setState(prev => ({ ...prev, isLibraryExpanded: true }))}
-                            className={`w-full flex items-center justify-center lg:hidden gap-3 px-0 py-3.5 mt-2 rounded-xl transition-all duration-200 group border border-transparent active:scale-95 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50`}
+                            className={`w-10 h-10 mx-auto flex items-center justify-center lg:hidden rounded-full transition-all duration-300 group bg-slate-800/40 border border-slate-700/50 active:scale-90 text-slate-400 hover:text-pink-400 hover:bg-pink-500/10 hover:border-pink-500/30 hover:shadow-[0_0_15px_rgba(236,72,153,0.2)] cursor-pointer`}
                             title="Context Library"
                         >
-                            <Icon name="book" className={`text-2xl flex-shrink-0 group-hover:text-pink-400 transition-colors`} />
+                            <Icon name="book" className={`text-xl flex-shrink-0 transition-colors pointer-events-none`} />
                         </button>
                     </nav>
                 </div>
@@ -237,9 +245,9 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Context Library</label>
                             <button
                                 onClick={() => setState(prev => ({ ...prev, isLibraryExpanded: true }))}
-                                className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors"
+                                className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors -mr-2 -my-2 p-2 px-3 cursor-pointer group"
                             >
-                                <Icon name="expand-alt" /> Manage
+                                <Icon name="expand-alt" className="group-hover:scale-110 transition-transform" /> Manage
                             </button>
                         </div>
 
