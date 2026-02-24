@@ -17,8 +17,9 @@ interface SidebarProps {
     loadingSessions: boolean;
     setState: React.Dispatch<React.SetStateAction<AppState>>;
     onClear: () => void;
+    triggerNeuralEgg?: number;
 }
-export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState, onClear }: SidebarProps) => {
+export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState, onClear, triggerNeuralEgg }: SidebarProps) => {
     const [sessionModalOpen, setSessionModalOpen] = useState(false);
     const [isClosing, setIsClosing] = useState(false);
 
@@ -32,6 +33,13 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
 
     const [displayName, setDisplayName] = useState('mikuCentral');
     const [isAnimatingEgg, setIsAnimatingEgg] = useState(false);
+
+    // Auto-trigger egg on scheduled tasks
+    React.useEffect(() => {
+        if (triggerNeuralEgg && triggerNeuralEgg > 0 && !isAnimatingEgg) {
+            triggerEasterEgg();
+        }
+    }, [triggerNeuralEgg]);
 
     const triggerEasterEgg = () => {
         if (isAnimatingEgg) return;

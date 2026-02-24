@@ -1,0 +1,21 @@
+{
+    "id": "python_basic",
+    "name": "Python Logic",
+    "icon": "python",
+    "category": "skills",
+    "manifest": {
+        "name": "new_python_skill",
+        "description": "A logic skill using Python.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string"
+                }
+            }
+        },
+        "runtime": "python",
+        "entry": "main.py"
+    },
+    "entryContent": "import sys\nimport json\n\ndef main():\n    args = json.loads(sys.argv[1]) if len(sys.argv) > 1 else {}\n    print(json.dumps({\"success\": True, \"message\": \"Python skill executed!\", \"echo\": args}))\n\nif __name__ == \"__main__\":\n    main()"
+}

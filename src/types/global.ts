@@ -131,6 +131,7 @@ export interface ToolParameter {
     type: string;
     description: string;
     enum?: string[];
+    default?: any;
     items?: ToolParameter; // For recursive array definitions
 }
 

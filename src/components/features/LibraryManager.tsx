@@ -1,6 +1,14 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Icon, MarkdownRenderer } from '../common/Common';
-import { BLUEPRINT_TEMPLATES } from '../../constants';
+import { AppConfig } from '../../types';
+
+interface Blueprint {
+    id: string;
+    title: string;
+    icon: string;
+    category: string;
+    content: string;
+}
 
 interface LibraryManagerProps {
     isOpen: boolean;
@@ -12,6 +20,7 @@ interface LibraryManagerProps {
     onAdd: () => void;
     onDelete: (name: string) => Promise<boolean>;
     askConfirm: (msg: string, position?: 'left' | 'right' | 'center') => Promise<boolean>;
+    config: AppConfig;
 }
 
 export const LibraryManager = ({
@@ -23,7 +32,8 @@ export const LibraryManager = ({
     onSave,
     onAdd,
     onDelete,
-    askConfirm
+    askConfirm,
+    config
 }: LibraryManagerProps) => {
     const [isClosing, setIsClosing] = useState(false);
     const [viewFile, setViewFile] = useState<string | null>(null);
@@ -32,6 +42,20 @@ export const LibraryManager = ({
     const [searchQuery, setSearchQuery] = useState('');
     const [saving, setSaving] = useState(false);
     const [showBlueprints, setShowBlueprints] = useState(false);
+    const [blueprints, setBlueprints] = useState<Blueprint[]>([]);
+
+    useEffect(() => {
+        const loadBlueprints = async () => {
+            const isElectron = typeof window !== 'undefined' && (window as any).electron?.listBlueprints;
+            if (isElectron && config.folderPaths?.core) {
+                const response = await (window as any).electron.listBlueprints({ corePath: config.folderPaths.core });
+                if (response.ok) {
+                    setBlueprints(response.blueprints.filter((b: any) => b.category === 'library'));
+                }
+            }
+        };
+        if (showBlueprints) loadBlueprints();
+    }, [showBlueprints, config.folderPaths?.core]);
 
     const filteredFiles = useMemo(() => {
         const entries = Object.keys(files).sort();
@@ -66,16 +90,13 @@ export const LibraryManager = ({
         setEditContent('');
     }, []);
 
-    const handleCreateBlueprint = useCallback(async (key: string) => {
-        const template = BLUEPRINT_TEMPLATES[key];
-        if (!template) return;
-
+    const handleCreateBlueprint = useCallback(async (blueprint: Blueprint) => {
         const timestamp = new Date().toISOString().split('T')[0];
-        const filename = `${template.title.replace(/\s+/g, '_')}_${timestamp}.md`;
+        const filename = `${blueprint.title.replace(/\s+/g, '_')}_${timestamp}.md`;
 
         setSaving(true);
         try {
-            const ok = await onSave(filename, template.content);
+            const ok = await onSave(filename, blueprint.content);
             if (ok) {
                 setShowBlueprints(false);
                 setViewFile(filename);
@@ -150,21 +171,21 @@ export const LibraryManager = ({
                             <span className="text-xs font-bold text-violet-300 uppercase tracking-wider">Assistant Blueprints</span>
                             <span className="text-[10px] text-slate-600 ml-2">Pre-built templates for common use cases</span>
                         </div>
-                        <div className="grid grid-cols-4 gap-3">
-                            {Object.entries(BLUEPRINT_TEMPLATES).map(([key, tmpl]) => (
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                            {blueprints.map((bp) => (
                                 <button
-                                    key={key}
-                                    onClick={() => handleCreateBlueprint(key)}
+                                    key={bp.id}
+                                    onClick={() => handleCreateBlueprint(bp)}
                                     disabled={saving}
                                     className="group relative p-4 rounded-xl border border-slate-700/50 bg-slate-800/30 hover:bg-slate-800/60 hover:border-violet-500/30 transition-all text-left overflow-hidden"
                                 >
                                     <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                                     <div className="relative z-10">
                                         <div className="w-8 h-8 rounded-lg bg-violet-500/10 text-violet-400 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                                            <Icon name={tmpl.icon} />
+                                            <Icon name={bp.icon} />
                                         </div>
-                                        <div className="text-sm font-semibold text-slate-200 group-hover:text-violet-200 transition-colors">{tmpl.title}</div>
-                                        <div className="text-[10px] text-slate-500 mt-1">Click to create</div>
+                                        <div className="font-bold text-slate-200 text-sm mb-1">{bp.title}</div>
+                                        <div className="text-[10px] text-slate-500 leading-tight">Create a new {bp.title.toLowerCase()} document</div>
                                     </div>
                                 </button>
                             ))}

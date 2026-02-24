@@ -46,6 +46,7 @@ contextBridge.exposeInMainWorld('electron', {
 
     // Skills
     listSkills: (data) => ipcRenderer.invoke('list-skills', data),
+    listBlueprints: (data) => ipcRenderer.invoke('list-blueprints', data),
     executeSkill: (data) => ipcRenderer.invoke('execute-skill', data),
 
     // API streaming: listen for chunks from main process proxy

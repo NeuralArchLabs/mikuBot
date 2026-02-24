@@ -56,6 +56,7 @@ export const App = () => {
     const [pendingToolApproval, setPendingToolApproval] = useState<PendingToolApproval | null>(null);
     const [sessions, setSessions] = useState<SessionMetadata[]>([]);
     const [loadingSessions, setLoadingSessions] = useState(true);
+    const [lastNeuralTrigger, setLastNeuralTrigger] = useState<number>(0);
     const abortControllerRef = useRef<AbortController | null>(null);
     const lastUserTextRef = useRef<string>('');
     const lastForceToolModeRef = useRef<boolean>(false);
@@ -1266,6 +1267,10 @@ Para ver todas tus habilidades adicionales habilitadas y sus parámetros técnic
                 },
                 (p) => setAgentStatus(prev => ({ ...prev, ...p })),
                 (toolCall) => new Promise(resolve => setPendingToolApproval({ toolCall, resolve })),
+                async (task: any) => {
+                    const newTask = neuralScheduler.addTask(task);
+                    return newTask.id;
+                },
                 ac.signal,
                 (history) => setMessages(prev => prev.map(m => m.id === modelMsgId ? { ...m, rawHistory: history } : m)),
                 true, // useTextExtraction (siempre encendido si hay herramientas)
@@ -1390,6 +1395,7 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
     useEffect(() => {
         const executor = async (prompt: string, mode: 'chat' | 'agent', isScheduled: boolean): Promise<string> => {
             // Use processMessage via ref to always get the latest closure
+            if (isScheduled) setLastNeuralTrigger(Date.now());
             const forceToolMode = mode === 'agent';
             const responseText = await processMessageRef.current(prompt, forceToolMode, false, isScheduled);
             return responseText || 'La tarea finalizó pero no generó texto.';
@@ -1538,6 +1544,7 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                 onSave={(n, c) => saveFile(n, c, 'extra')} onAdd={() => createFile(`Library_${Date.now()}`, 'extra')}
                 onDelete={(n) => deleteFile(n, 'extra')}
                 askConfirm={askConfirm}
+                config={state.config}
             />
             <Sidebar
                 state={{ ...state, askConfirm, onSelectSession, onDeleteSession, onNewSession, onExportSession, onImportSession, onDeleteFile: (n: string, t: FileTarget) => deleteFile(n, t) } as any}
@@ -1545,6 +1552,7 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                 loadingSessions={loadingSessions}
                 setState={setState}
                 onClear={handleClear}
+                triggerNeuralEgg={lastNeuralTrigger}
             />
 
             {/* Persistent UI Shell Container to prevent flashes on tab swap */}

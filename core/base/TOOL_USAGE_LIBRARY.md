@@ -126,6 +126,21 @@ Este archivo contiene fragmentos de código JSON válidos para cada herramienta.
 }
 ```
 
+## [add_scheduled_task]
+```json
+{
+  "name": "add_scheduled_task",
+  "arguments": {
+    "name": "Check Bitcoin Price",
+    "prompt": "Usa get_crypto_price para bitcoin y dime si subió de 90k.",
+    "scheduleType": "interval",
+    "schedule": "60",
+    "channel": "both",
+    "mode": "agent"
+  }
+}
+```
+
 ## [miku_clock]
 ```json
 {

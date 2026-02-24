@@ -92,6 +92,23 @@ Search for a text pattern in all files.
 Search the internet via Tavily/Brave.
 - **Param:** `query`, `search_depth` (basic/advanced)
 
+### `read_url`
+Fetch and convert content from a URL to Markdown.
+- **Param:** `url` (The target address)
+
+## ⏳ Neural Scheduling (`add_scheduled_task`)
+
+### `add_scheduled_task`
+Program a proactive task for the agent to execute in the future.
+- **Param:** `name` (Short task identifier)
+- **Param:** `prompt` (Detailed instruction for the agent)
+- **Param:** `scheduleType` (once, interval, cron)
+- **Param:** `schedule` (ISO date for 'once', minutes for 'interval', cron for 'cron')
+- **Param:** `channel` (telegram, ui, both)
+- **Param:** `mode` (chat, agent)
+
+## 🏁 Conclusion (`final_answer`)
+
 ### `final_answer`
 Conclude the task with a synthesis.
 - **Param:** `text` (The answer)

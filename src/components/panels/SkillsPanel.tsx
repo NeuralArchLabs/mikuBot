@@ -18,34 +18,20 @@ interface Skill {
     __folderName: string;
 }
 
-const BLUEPRINTS = [
-    {
-        id: 'python_basic',
-        name: 'Python Logic',
-        icon: 'python',
-        manifest: {
-            name: "new_python_skill",
-            description: "A logic skill using Python.",
-            parameters: { type: "object", properties: { query: { type: "string" } } },
-            runtime: "python",
-            entry: "main.py"
-        },
-        entryContent: `import sys\nimport json\n\ndef main():\n    args = json.loads(sys.argv[1]) if len(sys.argv) > 1 else {}\n    print(json.dumps({"success": True, "message": "Python skill executed!", "echo": args}))\n\nif __name__ == "__main__":\n    main()`
-    },
-    {
-        id: 'node_basic',
-        name: 'Node.js Logic',
-        icon: 'node-js',
-        manifest: {
-            name: "new_node_skill",
-            description: "A logic skill using Node.js.",
-            parameters: { type: "object", properties: { query: { type: "string" } } },
-            runtime: "node",
-            entry: "index.js"
-        },
-        entryContent: `const args = JSON.parse(process.argv[2] || '{}');\nconsole.log(JSON.stringify({ success: true, message: 'Node.js skill executed!', echo: args }));`
-    }
-];
+interface SkillBlueprint {
+    id: string;
+    name: string;
+    icon: string;
+    category: string;
+    manifest: {
+        name: string;
+        description: string;
+        parameters: any;
+        runtime: "python" | "node";
+        entry: string;
+    };
+    entryContent: string;
+}
 
 export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, onSaveTools, updateConfig, onSaveGlobal }) => {
     const [skills, setSkills] = useState<Skill[]>([]);
@@ -56,6 +42,20 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
     const [editorContent, setEditorContent] = useState<string>('');
     const [showBlueprints, setShowBlueprints] = useState(false);
     const [isSavingCode, setIsSavingCode] = useState(false);
+    const [blueprints, setBlueprints] = useState<SkillBlueprint[]>([]);
+
+    useEffect(() => {
+        const loadBlueprints = async () => {
+            const isElectron = typeof window !== 'undefined' && (window as any).electron?.listBlueprints;
+            if (isElectron && config.folderPaths?.core) {
+                const response = await (window as any).electron.listBlueprints({ corePath: config.folderPaths.core });
+                if (response.ok) {
+                    setBlueprints(response.blueprints.filter((b: any) => b.category === 'skills'));
+                }
+            }
+        };
+        if (showBlueprints) loadBlueprints();
+    }, [showBlueprints, config.folderPaths?.core]);
 
     useEffect(() => {
         const loadSkills = async () => {
@@ -107,7 +107,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
         setIsSavingCode(false);
     };
 
-    const handleCreateFromBlueprint = async (blueprint: typeof BLUEPRINTS[0]) => {
+    const handleCreateFromBlueprint = async (blueprint: SkillBlueprint) => {
         const name = prompt("Skill folder name:", blueprint.manifest.name);
         if (!name) return;
 
@@ -307,7 +307,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                 </button>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                {BLUEPRINTS.map(bp => (
+                                {blueprints.map(bp => (
                                     <button
                                         key={bp.id}
                                         onClick={() => handleCreateFromBlueprint(bp)}

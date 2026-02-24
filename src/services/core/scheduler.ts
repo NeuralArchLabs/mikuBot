@@ -412,7 +412,7 @@ class NeuralScheduler {
         }
     }
 
-    private async loadTasks(): Promise<void> {
+    public async loadTasks(): Promise<void> {
         if (electron?.loadSchedulerTasks) {
             try {
                 const result = await electron.loadSchedulerTasks();
@@ -588,6 +588,10 @@ class NeuralScheduler {
             .filter(t => t.enabled && t.nextRunAt !== null)
             .sort((a, b) => (a.nextRunAt || Infinity) - (b.nextRunAt || Infinity));
         return enabled[0] || null;
+    }
+
+    calculateNextRun(task: ScheduledTask, fromTime: number = Date.now()): number | null {
+        return calculateNextRun(task, fromTime);
     }
 }
 

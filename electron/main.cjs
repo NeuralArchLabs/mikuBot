@@ -505,6 +505,42 @@ ipcMain.handle('list-skills', async (event, { toolsPath }) => {
     }
 });
 
+ipcMain.handle('list-blueprints', async (event, { corePath }) => {
+    try {
+        if (!corePath) return { ok: false, error: 'Core path not provided' };
+        const blueprintsRoot = path.join(corePath, 'base', 'blueprints');
+        console.log(`[Main Process] Listing blueprints from: ${blueprintsRoot}`);
+
+        if (!fs.existsSync(blueprintsRoot)) {
+            return { ok: true, blueprints: [] };
+        }
+
+        const blueprints = [];
+        const categories = fs.readdirSync(blueprintsRoot);
+
+        for (const cat of categories) {
+            const catDir = path.join(blueprintsRoot, cat);
+            if (fs.statSync(catDir).isDirectory()) {
+                const files = fs.readdirSync(catDir).filter(f => f.endsWith('.json'));
+                for (const file of files) {
+                    try {
+                        const content = JSON.parse(fs.readFileSync(path.join(catDir, file), 'utf8'));
+                        if (!content.category) content.category = cat;
+                        blueprints.push(content);
+                    } catch (e) {
+                        console.warn(`[Main Process] Failed to parse blueprint ${file} in ${cat}:`, e.message);
+                    }
+                }
+            }
+        }
+
+        return { ok: true, blueprints };
+    } catch (error) {
+        console.error('[Main Process] list-blueprints error:', error);
+        return { ok: false, error: error.message };
+    }
+});
+
 ipcMain.handle('execute-skill', async (event, { toolsPath, skillName, args }) => {
     try {
         if (!toolsPath || !skillName) return { ok: false, error: 'Missing parameters' };

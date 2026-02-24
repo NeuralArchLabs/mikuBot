@@ -91,7 +91,8 @@ export async function executeToolCall(
     toolsFiles: Record<string, string>,
     saveFileFn: (name: string, content: string, target: FileTarget) => Promise<boolean>,
     deleteFileFn: (name: string, target: FileTarget) => Promise<boolean>,
-    config: AppConfig
+    config: AppConfig,
+    onAddTask?: (task: any) => Promise<string>
 ): Promise<ToolResult> {
     const { name, arguments: args } = toolCall.function;
 
@@ -394,6 +395,25 @@ export async function executeToolCall(
                 return { success: false, error: `Failed to delete "${cleanFilename}" from ${target}.` };
             }
 
+            case 'add_scheduled_task': {
+                if (!onAddTask) return { success: false, error: 'Agent Scheduler service not available in this context.' };
+                try {
+                    const taskId = await onAddTask({
+                        name: args.name,
+                        prompt: args.prompt,
+                        scheduleType: args.scheduleType,
+                        schedule: args.schedule,
+                        channel: args.channel || 'both',
+                        mode: args.mode || 'agent',
+                        enabled: args.enabled !== undefined ? args.enabled : true,
+                        maxExecutionsPerDay: args.maxExecutionsPerDay || 0
+                    });
+                    return { success: true, data: { taskId, message: `Task "${args.name}" scheduled successfully with ID: ${taskId}` } };
+                } catch (err: any) {
+                    return { success: false, error: `Failed to schedule task: ${err.message}` };
+                }
+            }
+
             case 'final_answer': {
                 return {
                     success: true,
@@ -497,6 +517,7 @@ export async function sendAgentMessage(
     onChunk: (text: string, replace?: boolean, blocks?: any[]) => void,
     onStatus: (status: Partial<AgentStatus>) => void,
     onToolApproval: (toolCall: ToolCall) => Promise<boolean>,
+    onAddTask: (task: any) => Promise<string>,
     abortSignal: AbortSignal,
     onFinalRawHistory?: (history: any[]) => void,
     useTextExtraction: boolean = true,
@@ -1291,7 +1312,7 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
 
         async function executeAndProcess(toolCall: ToolCall, label: string): Promise<void> {
             localOnStatus({ phase: 'tool_executing', currentTool: label });
-            const result = await executeToolCall(toolCall, currentFiles, currentAdditional, currentWorkSpace, currentTools, saveFileFn, deleteFileFn, config);
+            const result = await executeToolCall(toolCall, currentFiles, currentAdditional, currentWorkSpace, currentTools, saveFileFn, deleteFileFn, config, onAddTask);
             const b = allBlocks.find(x => x.toolCall?.id === toolCall.id);
             if (b) b.result = result;
 

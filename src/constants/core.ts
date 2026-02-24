@@ -216,6 +216,27 @@ export const AGENT_TOOLS: ToolDefinition[] = [
                 required: ['text']
             }
         }
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'add_scheduled_task',
+            description: 'Programar una nueva tarea autónoma para que Miku la ejecute proactivamente en el futuro.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    name: { type: 'string', description: 'Nombre de la tarea' },
+                    prompt: { type: 'string', description: 'Instrucción detallada para el agente' },
+                    scheduleType: { type: 'string', enum: ['once', 'interval', 'cron'], description: 'Tipo de programación' },
+                    schedule: { type: 'string', description: 'Valor (ISO date, minutos, o cron expression)' },
+                    channel: { type: 'string', enum: ['telegram', 'ui', 'both'], default: 'both', description: 'Canal de salida para la respuesta del agente' },
+                    mode: { type: 'string', enum: ['chat', 'agent'], default: 'agent', description: 'El modo en que el agente debe procesar la tarea' },
+                    enabled: { type: 'boolean', default: true, description: 'Si la tarea debe estar activa inmediatamente' },
+                    maxExecutionsPerDay: { type: 'number', default: 0, description: 'Límite opcional de ejecuciones por día (0 = ilimitado)' }
+                },
+                required: ['name', 'prompt', 'scheduleType', 'schedule']
+            }
+        }
     }
 ];
 
@@ -254,176 +275,4 @@ export const STORE_NAME = 'handles';
 
 export const MAX_TOOL_ITERATIONS = 10;
 
-// ── Blueprint Templates for Library Manager ─────────────────────────
-export const BLUEPRINT_TEMPLATES: Record<string, { title: string; icon: string; content: string }> = {
-    budget: {
-        title: 'Presupuesto Mensual',
-        icon: 'dollar-sign',
-        content: `# 💰 Presupuesto Mensual — [MES/AÑO]
-
-## Ingresos
-| Concepto | Monto |
-|----------|-------|
-| Salario principal | $0.00 |
-| Freelance / Extras | $0.00 |
-| **Total Ingresos** | **$0.00** |
-
-## Gastos Fijos
-| Concepto | Monto | Fecha Pago |
-|----------|-------|------------|
-| Renta / Hipoteca | $0.00 | — |
-| Servicios (Luz, Agua, Gas) | $0.00 | — |
-| Internet / Teléfono | $0.00 | — |
-| Seguros | $0.00 | — |
-| Transporte | $0.00 | — |
-| **Total Fijos** | **$0.00** | |
-
-## Gastos Variables
-| Concepto | Presupuesto | Real | Diferencia |
-|----------|-------------|------|------------|
-| Alimentación | $0.00 | $0.00 | — |
-| Entretenimiento | $0.00 | $0.00 | — |
-| Ropa / Personal | $0.00 | $0.00 | — |
-| **Total Variables** | **$0.00** | **$0.00** | |
-
-## Ahorro & Inversión
-| Destino | Meta | Depositado |
-|---------|------|------------|
-| Fondo de emergencia | $0.00 | $0.00 |
-| Inversiones | $0.00 | $0.00 |
-
-## Balance Final
-- **Ingresos**: $0.00
-- **Egresos**: $0.00
-- **Ahorro**: $0.00
-- **Balance**: $0.00
-`
-    },
-    project: {
-        title: 'Plan Rector de Proyecto',
-        icon: 'project-diagram',
-        content: `# 🎯 Plan Rector — [Nombre del Proyecto]
-
-## Visión
-> Describe en 1-2 oraciones qué problema resuelve y para quién.
-
-## Objetivos SMART
-1. **Específico**: —
-2. **Medible**: —
-3. **Alcanzable**: —
-4. **Relevante**: —
-5. **Temporal**: Fecha límite: [DD/MM/AAAA]
-
-## Fases y Entregables
-| Fase | Descripción | Entregable | Fecha Límite | Estado |
-|------|-------------|------------|--------------|--------|
-| 1. Investigación | — | Documento de hallazgos | — | ⬜ |
-| 2. Diseño | — | Wireframes / Mockups | — | ⬜ |
-| 3. Desarrollo | — | MVP funcional | — | ⬜ |
-| 4. Testing | — | Reporte de QA | — | ⬜ |
-| 5. Lanzamiento | — | Versión 1.0 | — | ⬜ |
-
-## Stack Tecnológico
-- **Frontend**: —
-- **Backend**: —
-- **Base de Datos**: —
-- **Deployment**: —
-
-## Riesgos Identificados
-| Riesgo | Probabilidad | Impacto | Mitigación |
-|--------|-------------|---------|------------|
-| — | Baja/Media/Alta | — | — |
-
-## Notas y Decisiones
-- [Fecha]: —
-`
-    },
-    routine: {
-        title: 'Rutina Diaria',
-        icon: 'clock',
-        content: `# 🕐 Rutina Diaria — [Nombre / Contexto]
-
-## Bloque Matutino (6:00 – 12:00)
-| Hora | Actividad | Duración | Prioridad |
-|------|-----------|----------|-----------|
-| 06:00 | Despertar + Hidratación | 15 min | 🔴 Alta |
-| 06:15 | Ejercicio / Estiramiento | 30 min | 🔴 Alta |
-| 06:45 | Ducha + Preparación | 30 min | 🟡 Media |
-| 07:15 | Desayuno | 20 min | 🔴 Alta |
-| 07:35 | Revisión de Agenda | 10 min | 🔴 Alta |
-| 08:00 | Bloque de Trabajo Profundo #1 | 2 hrs | 🔴 Alta |
-| 10:00 | Pausa activa | 15 min | 🟡 Media |
-| 10:15 | Bloque de Trabajo Profundo #2 | 1.5 hrs | 🔴 Alta |
-
-## Bloque Vespertino (12:00 – 18:00)
-| Hora | Actividad | Duración | Prioridad |
-|------|-----------|----------|-----------|
-| 12:00 | Almuerzo | 45 min | 🔴 Alta |
-| 12:45 | Caminata / Descanso | 15 min | 🟢 Baja |
-| 13:00 | Reuniones / Colaboración | 2 hrs | 🟡 Media |
-| 15:00 | Bloque de Aprendizaje | 1 hr | 🟡 Media |
-| 16:00 | Tareas administrativas | 1 hr | 🟢 Baja |
-| 17:00 | Cierre del día laboral | 30 min | 🔴 Alta |
-
-## Bloque Nocturno (18:00 – 22:00)
-| Hora | Actividad | Duración | Prioridad |
-|------|-----------|----------|-----------|
-| 18:00 | Ejercicio / Hobby | 1 hr | 🟡 Media |
-| 19:00 | Cena | 30 min | 🔴 Alta |
-| 19:30 | Tiempo personal / Familia | 1.5 hrs | 🔴 Alta |
-| 21:00 | Lectura / Reflexión | 30 min | 🟡 Media |
-| 21:30 | Preparación para dormir | 30 min | 🔴 Alta |
-
-## Reglas de la Rutina
-- ⏰ Sin pantallas después de las 21:30
-- 💧 Mínimo 2L de agua al día
-- 🎯 Completar al menos 1 tarea de alta prioridad antes del mediodía
-`
-    },
-    learning: {
-        title: 'Bitácora de Aprendizaje',
-        icon: 'graduation-cap',
-        content: `# 📓 Bitácora de Aprendizaje — [Tema / Curso]
-
-## Meta de Aprendizaje
-> ¿Qué quiero dominar y para cuándo?
-
-**Tema**: —
-**Nivel actual**: Principiante / Intermedio / Avanzado
-**Nivel objetivo**: —
-**Fecha límite**: [DD/MM/AAAA]
-
-## Recursos
-| Recurso | Tipo | URL / Ubicación | Completado |
-|---------|------|-----------------|------------|
-| — | Libro / Curso / Video | — | ⬜ |
-| — | Documentación | — | ⬜ |
-| — | Proyecto práctico | — | ⬜ |
-
-## Registro de Sesiones
-### Sesión 1 — [Fecha]
-**Duración**: — min
-**Tema cubierto**: —
-**Conceptos clave aprendidos**:
-- —
-- —
-
-**Preguntas pendientes**:
-- —
-
-**Próximos pasos**:
-- —
-
-## Hitos
-| Hito | Descripción | Estado | Fecha |
-|------|-------------|--------|-------|
-| 1 | Fundamentos | ⬜ | — |
-| 2 | Primer proyecto | ⬜ | — |
-| 3 | Proyecto intermedio | ⬜ | — |
-| 4 | Dominio | ⬜ | — |
-
-## Reflexiones
-- [Fecha]: —
-`
-    }
-};
+// Blueprints are now loaded dynamically from core/base/blueprints/ via listBlueprints IPC
