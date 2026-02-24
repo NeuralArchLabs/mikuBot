@@ -60,5 +60,12 @@ Una vez que el sistema sea estable, las siguientes skills serán:
 - [x] **Decoupled Persistence**: Migración a persistencia 100% basada en archivos JSON en disco para evitar stale cache de localStorage en desktop.
 - [x] **Task Presets**: Implementación de Morning Briefing y Evening Journal automatizados.
 
+## 9. Fase de Refinamiento & Autonomía (v1.9.1) 🚀 ✅
+- [x] **Agent Autonomy Mandate**: Instrucciones reforzadas en `MODES.md` para priorizar el uso de herramientas sobre alucinaciones en consultas críticas.
+- [x] **Skills Caching**: Implementación de un caché de 30s para el descubrimiento de herramientas dinámicas, reduciendo la latencia de disco.
+- [x] **Semantic UI Refinement**: Integración de códigos de color (Naranja/Índigo) y centrado dinámico para mensajes del sistema y scheduler.
+- [x] **Fail-Safe reporting**: Notificación de errores de tareas en segundo plano directamente en la interfaz de chat.
+
+
 ---
 **Objetivo Final**: Que MikuBot sea un orquestador que solo "pida las herramientas que necesita" de su biblioteca personal.
