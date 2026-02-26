@@ -159,7 +159,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
 
     return (
         <>
-            <div className="bg-slate-900 border-r border-slate-700 flex flex-col h-full shadow-xl z-30 w-16 lg:w-64 flex-shrink-0 transition-all duration-300 overflow-y-auto overflow-x-hidden custom-scrollbar miku-sidebar-isolate">
+            <div className="bg-slate-900 border-r border-slate-700 flex flex-col h-full shadow-xl z-30 w-16 lg:w-68 flex-shrink-0 transition-all duration-300 overflow-y-auto overflow-x-hidden custom-scrollbar miku-sidebar-isolate">
                 <div className="p-3 lg:p-6">
                     <div className="flex items-center justify-center lg:justify-start gap-3 mb-8 group cursor-default h-10 overflow-visible w-full px-1">
                         <div
@@ -195,7 +195,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                     }`}
                             >
                                 <Icon name={tab.icon} className={`text-2xl lg:text-lg flex-shrink-0 ${state.activeTab === tab.id ? tab.color : 'group-hover:text-slate-300'} transition-colors`} />
-                                <span className="hidden lg:inline text-base font-bold tracking-wide truncate">{tab.label}</span>
+                                <span className="hidden lg:inline text-base font-bold tracking-tight whitespace-nowrap">{tab.label}</span>
                                 {state.activeTab === tab.id && (
                                     <div className={`hidden lg:block ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0 ${tab.color.replace('text', 'bg')} shadow-glow`} />
                                 )}

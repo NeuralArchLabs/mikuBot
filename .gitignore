@@ -18,6 +18,8 @@ sandBox/
 # User configuration and sessions
 config.json
 sessions/
+scheduler-tasks.json
+scheduler-logs.json
 .vscode/*
 !.vscode/extensions.json
 .idea

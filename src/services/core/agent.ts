@@ -481,7 +481,7 @@ function cleanThoughtContent(text: string, signatureRegex: RegExp): string {
 
     // Standard headers/shards (including UI-like headers the model might hallucinate)
     if (!signatureRegex.test(s.slice(0, 100))) {
-        s = s.replace(/^(?:I apologize|My apologies|...|You are right|You are correct|My core programming|I will now proceed|¡Disculpa!|Disculpa|Tienes razón|He cometido un error|Aquí está|Perdón|Thinking Process|Neural Flow|Neural Core|Proceso de Razonamiento|Active Reasoning|Razonamiento Activo|Flujo Neural|Core de Miku)[\s\S]*?(?={|\[)/i, '');
+        s = s.replace(/^(?:I apologize|My apologies|...|You are right|You are correct|My core programming|I will now proceed|¡Disculpa!|Disculpa|Tienes razón|He cometido un error|Aquí está|Perdón|Entendido|Claro|Perfecto|Vale|Ah, entonces tengo que|Voy a|Déjame|Thinking Process|Neural Flow|Neural Core|Proceso de Razonamiento|Active Reasoning|Razonamiento Activo|Flujo Neural|Core de Miku)[\s\S]*?(?={|\[)/i, '');
         s = s.replace(/^(?:functionality of the|I have successfully|Now I will|Checking files|I will now)[\s\S]*?$/im, '');
         s = s.replace(/\[[x\s]\]\s*@?CORE\/[^\s]*/gi, '');
         // Strip the repetitive "Active Reasoning" / "Razonamiento" if it appears as a standalone line
@@ -930,7 +930,7 @@ export async function sendAgentMessage(
     let actionHistory: string[] = [];
 
     // Capture original trigger request for Mission Anchoring
-    const missionTrigger = historicalContext.filter(m => m.role === 'user').slice(-1)[0]?.content || 'Sin objetivo definido.';
+    const missionTrigger = historicalContext.filter(m => m.role === 'user' || m.role === 'system').slice(-1)[0]?.content || 'Sin objetivo definido.';
     let lastExecutionFeedback = 'Inicio de misión.';
 
     // Proxy onStatus to always include feedback for visual synchronization

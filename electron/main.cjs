@@ -505,13 +505,43 @@ ipcMain.handle('list-skills', async (event, { toolsPath }) => {
     }
 });
 
-ipcMain.handle('list-blueprints', async (event, { corePath }) => {
+ipcMain.handle('list-blueprints', async (event, { toolsPath, corePath }) => {
     try {
-        if (!corePath) return { ok: false, error: 'Core path not provided' };
-        const blueprintsRoot = path.join(corePath, 'base', 'blueprints');
-        console.log(`[Main Process] Listing blueprints from: ${blueprintsRoot}`);
+        let blueprintsRoot = '';
 
-        if (!fs.existsSync(blueprintsRoot)) {
+        // 1. Check toolsPath (User-selected commands folder)
+        if (toolsPath) {
+            const testPath = path.join(toolsPath, 'blueprints');
+            if (fs.existsSync(testPath)) blueprintsRoot = testPath;
+        }
+
+        // 2. Check corePath (User-selected core folder)
+        if (!blueprintsRoot && corePath) {
+            const testPath = path.join(corePath, 'blueprints');
+            if (fs.existsSync(testPath)) blueprintsRoot = testPath;
+        }
+
+        // 3. Check App Resources (Packaged external folder)
+        if (!blueprintsRoot) {
+            const externalPath = path.join(resourcesPath, 'core', 'base', 'blueprints');
+            if (fs.existsSync(externalPath)) blueprintsRoot = externalPath;
+        }
+
+        // 4. Check Internal App Data (Inside ASAR if files were included)
+        if (!blueprintsRoot) {
+            const internalPath = path.join(app.getAppPath(), 'core', 'base', 'blueprints');
+            if (fs.existsSync(internalPath)) blueprintsRoot = internalPath;
+        }
+
+        // 5. Check Root Path (Next to Exe)
+        if (!blueprintsRoot) {
+            const rootStatic = path.join(rootPath, 'core', 'base', 'blueprints');
+            if (fs.existsSync(rootStatic)) blueprintsRoot = rootStatic;
+        }
+
+        console.log(`[Main Process] Blueprint discovery root: ${blueprintsRoot || 'FAILED'}`);
+
+        if (!blueprintsRoot || !fs.existsSync(blueprintsRoot)) {
             return { ok: true, blueprints: [] };
         }
 
@@ -528,7 +558,7 @@ ipcMain.handle('list-blueprints', async (event, { corePath }) => {
                         if (!content.category) content.category = cat;
                         blueprints.push(content);
                     } catch (e) {
-                        console.warn(`[Main Process] Failed to parse blueprint ${file} in ${cat}:`, e.message);
+                        console.warn(`[Main Process] Failed to parse blueprint ${file}:`, e.message);
                     }
                 }
             }
@@ -625,29 +655,30 @@ ipcMain.handle('execute-skill', async (event, { toolsPath, skillName, args }) =>
     }
 });
 
-ipcMain.handle('fs-read-folder', async (event, folderPath) => {
-    // console.log(`[Main] Request to read folder: "${folderPath}"`);
+ipcMain.handle('fs-read-folder', async (event, folderPathOrObj) => {
+    let folderPath = '';
+    let recursive = true;
+
+    if (typeof folderPathOrObj === 'object' && folderPathOrObj !== null) {
+        folderPath = folderPathOrObj.folderPath;
+        recursive = folderPathOrObj.recursive !== false;
+    } else {
+        folderPath = folderPathOrObj;
+    }
 
     if (!folderPath || typeof folderPath !== 'string') {
-        console.error('[Main] Invalid folder path provided');
         return { ok: false, error: 'Invalid folder path' };
     }
 
     try {
-        // Normalize path for Windows
         const normalizedPath = path.normalize(folderPath);
-
-        if (!fs.existsSync(normalizedPath)) {
-            console.error(`[Main] Folder does not exist: ${normalizedPath}`);
-            return { ok: false, error: 'Folder not found' };
-        }
+        if (!fs.existsSync(normalizedPath)) return { ok: false, error: 'Folder not found' };
 
         let fileCount = 0;
         const files = {};
         const MAX_FILES = 5000;
         const MAX_DEPTH = 15;
 
-        // Recursive directory walker
         const walk = (dir, rootDir, depth = 0) => {
             if (depth > MAX_DEPTH || fileCount >= MAX_FILES) return;
 
@@ -655,53 +686,38 @@ ipcMain.handle('fs-read-folder', async (event, folderPath) => {
             try {
                 list = fs.readdirSync(dir);
             } catch (e) {
-                // Silently skip unreadable directories to avoid console log spam
                 return;
             }
 
             for (const item of list) {
                 if (fileCount >= MAX_FILES) break;
-
                 const fullPath = path.join(dir, item);
-
                 try {
                     const stat = fs.statSync(fullPath);
-
                     if (stat.isDirectory()) {
-                        if (['node_modules', '.git', 'dist', 'build', '.next', '.vs', '.idea'].includes(item)) continue;
-                        walk(fullPath, rootDir, depth + 1);
+                        if (recursive) {
+                            if (['node_modules', '.git', 'dist', 'build', '.next', '.vs', '.idea'].includes(item)) continue;
+                            walk(fullPath, rootDir, depth + 1);
+                        }
                     } else if (stat.isFile()) {
                         if (/\.(md|txt|json|js|jsx|ts|tsx|html|css|py|java|c|cpp|h|hpp|rs|go|rb|php)$/i.test(item)) {
-                            // Calculate relative path from the root folder (e.g. "sub/file.md")
-                            // We use forward slashes for consistency in the frontend
                             const relPath = path.relative(rootDir, fullPath).replace(/\\/g, '/');
-
                             try {
                                 const content = fs.readFileSync(fullPath, 'utf8');
-                                // Only add strings under ~1MB to avoid OOM
                                 if (content.length < 1000000) {
                                     files[relPath] = content;
                                     fileCount++;
                                 }
-                            } catch (readErr) {
-                                // Silent skip to avoid console log spam
-                            }
+                            } catch (readErr) { }
                         }
                     }
-                } catch (statErr) {
-                    // Ignore stat errors (e.g. permission denied)
-                }
+                } catch (statErr) { }
             }
         };
 
-        walk(normalizedPath, normalizedPath);
-
-        const count = Object.keys(files).length;
-        // console.log(`[Main] Successfully read ${count} files from ${normalizedPath}`);
-
-        return { ok: true, files, count };
+        walk(normalizedPath, normalizedPath, 0);
+        return { ok: true, files };
     } catch (error) {
-        console.error(`[Main] Fatal error reading folder:`, error);
         return { ok: false, error: error.message };
     }
 });

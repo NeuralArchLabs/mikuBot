@@ -47,15 +47,18 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
     useEffect(() => {
         const loadBlueprints = async () => {
             const isElectron = typeof window !== 'undefined' && (window as any).electron?.listBlueprints;
-            if (isElectron && config.folderPaths?.core) {
-                const response = await (window as any).electron.listBlueprints({ corePath: config.folderPaths.core });
+            if (isElectron && config.folderPaths?.tools) {
+                const response = await (window as any).electron.listBlueprints({
+                    toolsPath: config.folderPaths.tools,
+                    corePath: config.folderPaths.core
+                });
                 if (response.ok) {
                     setBlueprints(response.blueprints.filter((b: any) => b.category === 'skills'));
                 }
             }
         };
         if (showBlueprints) loadBlueprints();
-    }, [showBlueprints, config.folderPaths?.core]);
+    }, [showBlueprints, config.folderPaths?.tools]);
 
     useEffect(() => {
         const loadSkills = async () => {
