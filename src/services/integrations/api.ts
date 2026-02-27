@@ -2,7 +2,17 @@ import { Provider, AppConfig, ModelInfo, Attachment } from '../../types';
 import { safeFetch, streamViaProxy } from '../../utils';
 
 export async function fetchModels(provider: Provider, config: AppConfig): Promise<ModelInfo[]> {
+    const isElectron = !!(window as any).electron?.getModels;
+
     try {
+        if (isElectron && (provider === 'groq' || provider === 'gemini')) {
+            const result = await (window as any).electron.getModels(provider);
+            if (result.ok) {
+                return result.models;
+            }
+            throw new Error(result.error || 'Failed to fetch models via Electron');
+        }
+
         switch (provider) {
             case 'groq': {
                 const data = await safeFetch('https://api.groq.com/openai/v1/models', {

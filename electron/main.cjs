@@ -172,6 +172,39 @@ ipcMain.handle('api-stream', async (event, { provider, model, body, ollamaUrl, s
     }
 });
 
+ipcMain.handle('api-get-models', async (event, provider) => {
+    const keys = getApiKeys();
+    try {
+        if (provider === 'groq') {
+            const key = keys.groq;
+            if (!key) return { ok: false, error: 'Groq API key not configured.' };
+            const response = await fetch('https://api.groq.com/openai/v1/models', {
+                headers: { 'Authorization': `Bearer ${key}` }
+            });
+            if (!response.ok) return { ok: false, error: `Groq HTTP ${response.status}` };
+            const data = await response.json();
+            return { ok: true, models: data.data.map(m => ({ id: m.id, name: m.id, provider: 'groq' })) };
+        } else if (provider === 'gemini') {
+            const key = keys.gemini;
+            if (!key) return { ok: false, error: 'Gemini API key not configured.' };
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+            if (!response.ok) return { ok: false, error: `Gemini HTTP ${response.status}` };
+            const data = await response.json();
+            const models = data.models
+                .filter(m => m.supportedGenerationMethods?.includes('generateContent'))
+                .map(m => ({
+                    id: m.name.replace('models/', ''),
+                    name: m.displayName,
+                    provider: 'gemini'
+                }));
+            return { ok: true, models };
+        }
+        return { ok: false, error: `Provider ${provider} not supported for server-side fetching` };
+    } catch (error) {
+        return { ok: false, error: error.message };
+    }
+});
+
 // ── IPC Handlers ─────────────────────────────────────────────────────
 
 // Fetch Proxy (Improved for Localhost/Ollama)

@@ -89,6 +89,14 @@ export const toHtml = (md: string): string => {
     html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre class="bg-black/30 p-3 rounded-lg my-2 overflow-x-auto border border-white/10"><code class="text-sm shadow-none">$2</code></pre>');
     html = html.replace(/`([^`\n]+)`/g, '<code class="bg-black/30 px-1.5 py-0.5 rounded text-amber-300 font-mono text-xs border border-white/10">$1</code>');
 
+    // Images: ![alt](url) -> <img src="url" alt="alt" ... />
+    // MUST be processed before links to avoid collision
+    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, url) => {
+        const safe = sanitizeUrl(url);
+        if (!safe) return `![${alt}](blocked)`;
+        return `<img src="${safe}" alt="${alt}" class="max-w-full h-auto rounded-lg my-3 border border-white/10 shadow-md" />`;
+    });
+
     html = html.replace(/^### (.+)$/gm, '<h3 class="text-md font-bold text-slate-300 mt-4 mb-2">$1</h3>');
     html = html.replace(/^## (.+)$/gm, '<h2 class="text-lg font-bold text-slate-200 mt-6 mb-3 border-b border-white/5 pb-1">$1</h2>');
     html = html.replace(/^# (.+)$/gm, '<h1 class="text-xl font-extrabold text-white mt-8 mb-4 border-b border-white/10 pb-2">$1</h1>');
@@ -119,4 +127,4 @@ export const toHtml = (md: string): string => {
     html = html.replace(/^(\d+)\. (.+)$/gm, '<li class="ml-5 list-decimal list-outside marker:text-slate-500 pl-1">$2</li>');
 
     return html;
-};
+}

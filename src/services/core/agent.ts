@@ -522,6 +522,16 @@ function cleanThoughtContent(text: string, signatureRegex: RegExp): string {
     return s.trim();
 }
 
+function mapToolsToGemini(tools: ToolDefinition[]): any[] {
+    return [{
+        function_declarations: tools.map(t => ({
+            name: t.function.name,
+            description: t.function.description,
+            parameters: t.function.parameters
+        }))
+    }];
+}
+
 export async function sendAgentMessage(
     config: AppConfig,
     systemPrompt: string,
@@ -623,57 +633,77 @@ export async function sendAgentMessage(
                 return { content: fullContent, toolCalls };
             } else {
                 // Direct fetch fallback (browser dev & local Ollama)
-                const response = await fetch(`${config.ollamaUrl}/api/chat`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body),
-                    signal: abortSignal,
-                });
+                // Add explicit timeout to prevent hanging indefinitely
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
-                if (response.status === 400 && useTools && modelSupportsNativeTools) {
-                    log('warn', 'Este modelo está siendo optimizado para el llamado y uso de herramientas');
-                    modelSupportsNativeTools = false;
-                    return streamModelRequest(messages, false);
-                }
+                // Allow user abort to also cancel this fetch
+                abortSignal.addEventListener('abort', () => controller.abort());
 
-                if (!response.ok) {
-                    const errBody = await response.text().catch(() => '');
-                    throw new Error(`Ollama HTTP ${response.status}: ${errBody}`);
-                }
+                try {
+                    const response = await fetch(`${config.ollamaUrl}/api/chat`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body),
+                        signal: controller.signal,
+                    });
 
-                const reader = response.body?.getReader();
-                const decoder = new TextDecoder();
-                let fullContent = '';
-                let toolCalls: any[] = [];
-                let buffer = '';
+                    clearTimeout(timeoutId);
 
-                if (reader) {
-                    while (true) {
-                        if (abortSignal.aborted) throw new DOMException('Aborted', 'AbortError');
-                        const { done, value } = await reader.read();
-                        if (done) break;
+                    if (response.status === 400 && useTools && modelSupportsNativeTools) {
+                        log('warn', 'Este modelo está siendo optimizado para el llamado y uso de herramientas');
+                        modelSupportsNativeTools = false;
+                        return streamModelRequest(messages, false);
+                    }
 
-                        buffer += decoder.decode(value, { stream: true });
-                        const lines = buffer.split('\n');
-                        buffer = lines.pop() || '';
+                    if (!response.ok) {
+                        const errBody = await response.text().catch(() => '');
+                        throw new Error(`Ollama HTTP ${response.status}: ${errBody}`);
+                    }
 
-                        for (const line of lines) {
-                            const cleanLine = line.trim();
-                            if (!cleanLine) continue;
-                            try {
-                                const parsed = JSON.parse(cleanLine);
-                                if (parsed.message?.content) {
-                                    fullContent += parsed.message.content;
-                                    onStatus({ streamedText: fullContent, phase: 'streaming' });
-                                }
-                                if (parsed.message?.tool_calls) {
-                                    toolCalls = [...toolCalls, ...parsed.message.tool_calls];
-                                }
-                            } catch { }
+                    const reader = response.body?.getReader();
+                    const decoder = new TextDecoder();
+                    let fullContent = '';
+                    let toolCalls: any[] = [];
+                    let buffer = '';
+
+                    if (reader) {
+                        while (true) {
+                            if (abortSignal.aborted) throw new DOMException('Aborted', 'AbortError');
+                            const { done, value } = await reader.read();
+                            if (done) break;
+
+                            buffer += decoder.decode(value, { stream: true });
+                            const lines = buffer.split('\n');
+                            buffer = lines.pop() || '';
+
+                            for (const line of lines) {
+                                const cleanLine = line.trim();
+                                if (!cleanLine) continue;
+                                try {
+                                    const parsed = JSON.parse(cleanLine);
+                                    if (parsed.message?.content) {
+                                        fullContent += parsed.message.content;
+                                        onStatus({ streamedText: fullContent, phase: 'streaming' });
+                                    }
+                                    if (parsed.message?.tool_calls) {
+                                        toolCalls = [...toolCalls, ...parsed.message.tool_calls];
+                                    }
+                                } catch { }
+                            }
                         }
                     }
+                    return { content: fullContent, toolCalls };
+                } catch (error: any) {
+                    clearTimeout(timeoutId);
+                    if (error.name === 'AbortError') {
+                        // Check if it was our timeout or user abort
+                        if (!abortSignal.aborted) {
+                            throw new Error("Ollama request timed out after 30s");
+                        }
+                    }
+                    throw error;
                 }
-                return { content: fullContent, toolCalls };
             }
         } else if (provider === 'groq') {
             const body: any = {
@@ -696,9 +726,44 @@ export async function sendAgentMessage(
                 temperature: config.temperature,
             };
 
+            if (useTools && modelSupportsNativeTools) {
+                body.tools = tools;
+                body.tool_choice = 'auto';
+            }
+
+            // Accumulate tool calls for Groq (OpenAI style)
+            const toolCallsMap = new Map<number, any>();
+            const processGroqChunk = (data: string, fullContentRef: { val: string }) => {
+                try {
+                    const parsed = JSON.parse(data);
+                    const delta = parsed.choices?.[0]?.delta;
+
+                    if (delta?.content) {
+                        fullContentRef.val += delta.content;
+                        onStatus({ streamedText: fullContentRef.val, phase: 'streaming' });
+                    }
+
+                    if (delta?.tool_calls) {
+                        for (const tc of delta.tool_calls) {
+                            if (!toolCallsMap.has(tc.index)) {
+                                toolCallsMap.set(tc.index, {
+                                    id: tc.id,
+                                    function: { name: '', arguments: '' },
+                                    type: 'function'
+                                });
+                            }
+                            const current = toolCallsMap.get(tc.index);
+                            if (tc.id) current.id = tc.id;
+                            if (tc.function?.name) current.function.name += tc.function.name;
+                            if (tc.function?.arguments) current.function.arguments += tc.function.arguments;
+                        }
+                    }
+                } catch { }
+            };
+
             if (isElectronProxy) {
-                // ── Secure Path: Route through main process (API key injected server-side)
-                let fullContent = '';
+                // ── Secure Path: Route through main process
+                let fullContentVal = { val: '' };
                 let buffer = '';
 
                 await streamViaProxy({
@@ -715,18 +780,11 @@ export async function sendAgentMessage(
                             if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
                             const data = cleanLine.slice(6);
                             if (data === '[DONE]') continue;
-                            try {
-                                const parsed = JSON.parse(data);
-                                const content = parsed.choices?.[0]?.delta?.content;
-                                if (content) {
-                                    fullContent += content;
-                                    onStatus({ streamedText: fullContent, phase: 'streaming' });
-                                }
-                            } catch { }
+                            processGroqChunk(data, fullContentVal);
                         }
                     }
                 });
-                return { content: fullContent, toolCalls: [] };
+                return { content: fullContentVal.val, toolCalls: Array.from(toolCallsMap.values()) };
             } else {
                 // ── Fallback: direct fetch (browser dev mode only)
                 const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -746,7 +804,7 @@ export async function sendAgentMessage(
 
                 const reader = response.body?.getReader();
                 const decoder = new TextDecoder();
-                let fullContent = '';
+                let fullContentVal = { val: '' };
                 let buffer = '';
 
                 if (reader) {
@@ -764,18 +822,11 @@ export async function sendAgentMessage(
                             if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
                             const data = cleanLine.slice(6);
                             if (data === '[DONE]') continue;
-                            try {
-                                const parsed = JSON.parse(data);
-                                const content = parsed.choices?.[0]?.delta?.content;
-                                if (content) {
-                                    fullContent += content;
-                                    onStatus({ streamedText: fullContent, phase: 'streaming' });
-                                }
-                            } catch { }
+                            processGroqChunk(data, fullContentVal);
                         }
                     }
                 }
-                return { content: fullContent, toolCalls: [] };
+                return { content: fullContentVal.val, toolCalls: Array.from(toolCallsMap.values()) };
             }
         } else if (provider === 'gemini') {
             const isGemma = config.model.toLowerCase().includes('gemma');
@@ -784,11 +835,24 @@ export async function sendAgentMessage(
             const consolidatedHistory: any[] = [];
             for (const m of messages.filter(msg => msg.role !== 'system')) {
                 const role = m.role === 'assistant' ? 'model' : (m.role === 'tool' ? 'user' : m.role);
-                const content = m.role === 'tool'
-                    ? `[TOOL_RESULT: ${m.tool_call_id}]\n${m.content}`
-                    : (m.content || '[Proceeding]');
 
+                // Gemini tool results structure
+                if (m.role === 'tool') {
+                    consolidatedHistory.push({
+                        role: 'function',
+                        parts: [{
+                            functionResponse: {
+                                name: m.name || m.toolName || m.tool_call_id,
+                                response: { content: m.content }
+                            }
+                        }]
+                    });
+                    continue;
+                }
+
+                const content = m.content || '[Proceeding]';
                 const imageAttachments = m.attachments?.filter((a: any) => a.type.startsWith('image/')) || [];
+
                 if (consolidatedHistory.length > 0 && consolidatedHistory[consolidatedHistory.length - 1].role === role) {
                     consolidatedHistory[consolidatedHistory.length - 1].parts[0].text += `\n\n${content}`;
                     imageAttachments.forEach((img: any) => {
@@ -803,10 +867,7 @@ export async function sendAgentMessage(
                             inlineData: { mimeType: img.type, data: img.data.split(',')[1] }
                         });
                     });
-                    consolidatedHistory.push({
-                        role,
-                        parts
-                    });
+                    consolidatedHistory.push({ role, parts });
                 }
             }
 
@@ -820,13 +881,44 @@ export async function sendAgentMessage(
                 generationConfig: { temperature: config.temperature }
             };
 
+            if (useTools && modelSupportsNativeTools) {
+                body.tools = mapToolsToGemini(tools);
+                body.toolConfig = { functionCallingConfig: { mode: "AUTO" } };
+            }
+
             if (!isGemma) {
                 body.systemInstruction = { parts: [{ text: systemPromptContent }] };
             }
 
+            let toolCalls: any[] = [];
+            const processGeminiChunk = (data: string, fullContentRef: { val: string }) => {
+                try {
+                    const parsed = JSON.parse(data.slice(6));
+                    const parts = parsed.candidates?.[0]?.content?.parts;
+                    if (parts && Array.isArray(parts)) {
+                        parts.forEach((part: any) => {
+                            if (part.text) {
+                                fullContentRef.val += part.text;
+                                onStatus({ streamedText: fullContentRef.val, phase: 'streaming' });
+                            }
+                            if (part.functionCall) {
+                                toolCalls.push({
+                                    id: `call_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+                                    type: 'function',
+                                    function: {
+                                        name: part.functionCall.name,
+                                        arguments: JSON.stringify(part.functionCall.args)
+                                    }
+                                });
+                            }
+                        });
+                    }
+                } catch { }
+            };
+
             if (isElectronProxy) {
                 // ── Secure Path: Route through main process
-                let fullContent = '';
+                let fullContentVal = { val: '' };
                 let buffer = '';
 
                 await streamViaProxy({
@@ -841,22 +933,11 @@ export async function sendAgentMessage(
                         for (const line of lines) {
                             const cleanLine = line.trim();
                             if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
-                            try {
-                                const parsed = JSON.parse(cleanLine.slice(6));
-                                const parts = parsed.candidates?.[0]?.content?.parts;
-                                if (parts && Array.isArray(parts)) {
-                                    parts.forEach((part: any) => {
-                                        if (part.text) {
-                                            fullContent += part.text;
-                                        }
-                                    });
-                                    onStatus({ streamedText: fullContent, phase: 'streaming' });
-                                }
-                            } catch { }
+                            processGeminiChunk(cleanLine, fullContentVal);
                         }
                     }
                 });
-                return { content: fullContent, toolCalls: [] };
+                return { content: fullContentVal.val, toolCalls };
             } else {
                 // ── Fallback: direct fetch (browser dev mode)
                 const response = await fetch(
@@ -876,7 +957,7 @@ export async function sendAgentMessage(
 
                 const reader = response.body?.getReader();
                 const decoder = new TextDecoder();
-                let fullContent = '';
+                let fullContentVal = { val: '' };
                 let buffer = '';
 
                 if (reader) {
@@ -892,22 +973,11 @@ export async function sendAgentMessage(
                         for (const line of lines) {
                             const cleanLine = line.trim();
                             if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
-                            try {
-                                const parsed = JSON.parse(cleanLine.slice(6));
-                                const parts = parsed.candidates?.[0]?.content?.parts;
-                                if (parts && Array.isArray(parts)) {
-                                    parts.forEach((part: any) => {
-                                        if (part.text) {
-                                            fullContent += part.text;
-                                        }
-                                    });
-                                    onStatus({ streamedText: fullContent, phase: 'streaming' });
-                                }
-                            } catch { }
+                            processGeminiChunk(cleanLine, fullContentVal);
                         }
                     }
                 }
-                return { content: fullContent, toolCalls: [] };
+                return { content: fullContentVal.val, toolCalls };
             }
         }
 
@@ -1362,7 +1432,7 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
 
                 const desc = `${toolCall.function.name}(${JSON.stringify(toolCall.function.arguments)})`;
                 actionHistory.push(desc);
-                agentMessages.push({ role: 'tool', content: JSON.stringify(result), tool_call_id: toolCall.id });
+                agentMessages.push({ role: 'tool', content: JSON.stringify(result), tool_call_id: toolCall.id, name: toolCall.function.name });
 
                 // Add to unified feedback array
                 unifiedUserFeedback.push(`📌 DATOS OBTENIDOS: La herramienta "${toolCall.function.name}" devolvió:\n${summary}`);
