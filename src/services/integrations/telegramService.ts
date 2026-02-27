@@ -17,6 +17,12 @@ export interface TelegramUpdate {
         };
         date: number;
         text?: string;
+        voice?: {
+            file_id: string;
+            duration: number;
+            mime_type?: string;
+            file_size?: number;
+        };
     };
 }
 
@@ -116,9 +122,37 @@ class TelegramService {
             if (!this.polling) break; // Check again after await
 
             for (const update of updates) {
-                if (update.message && update.message.text) {
+                if (update.message) {
                     if (config.telegramChatId && update.message.chat.id.toString() !== config.telegramChatId) continue;
-                    await onMessage(update.message);
+
+                    // Handle Text Messages
+                    if (update.message.text) {
+                        await onMessage(update.message);
+                    }
+                    // Handle Voice Messages
+                    else if (update.message.voice && (window as any).electron) {
+                        console.log('[TelegramService] Received voice message. Processing...');
+                        try {
+                            const res = await (window as any).electron.processTelegramVoice(update.message.voice.file_id);
+                            if (res.ok && res.text) {
+                                console.log('[TelegramService] Voice transcribed:', res.text);
+                                const voiceMsg = {
+                                    ...update.message,
+                                    text: `[Mensaje de Voz] ${res.text}`
+                                };
+                                await onMessage(voiceMsg);
+                            } else {
+                                console.warn('[TelegramService] Voice transcription failed:', res.error);
+                                const errorMsg = {
+                                    ...update.message,
+                                    text: `[Sistema] No pude transcribir el mensaje de voz. Error: ${res.error || 'Desconocido'}`
+                                };
+                                await onMessage(errorMsg);
+                            }
+                        } catch (err) {
+                            console.error('[TelegramService] Voice processing error:', err);
+                        }
+                    }
                 }
             }
             if (this.polling) await new Promise(r => setTimeout(r, 1000));
