@@ -81,7 +81,7 @@ export const SettingsPanel = ({
             <div className="max-w-4xl mx-auto space-y-10 relative z-10">
 
                 {/* ── Shared Macro-Tab Header ─────────────────────────── */}
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-8 border-b border-slate-800/50 relative transform-gpu" style={{ contain: 'paint' }}>
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-8 border-b border-slate-800/50 relative transform-gpu contain-paint">
                     <div className="grid grid-cols-2 items-start lg:flex lg:items-baseline gap-2 md:gap-3 lg:gap-6 w-full lg:w-auto">
                         {/* Core System Tab Title */}
                         <button
