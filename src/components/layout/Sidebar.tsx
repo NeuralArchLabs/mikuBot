@@ -184,7 +184,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                             { id: 'cortex', label: 'Cortex Editor', icon: 'project-diagram', color: 'text-indigo-400' },
                             { id: 'commands', label: 'Command Editor', icon: 'bolt', color: 'text-amber-400' },
                             { id: 'skills', label: 'Neural Skills', icon: 'puzzle-piece', color: 'text-cyan-400' },
-                            { id: 'settings', label: 'Control Room', icon: 'cog', color: 'text-slate-400' }
+                            { id: 'settings', label: 'Control Room', icon: 'cog', color: 'text-purple-400' }
                         ].map(tab => (
                             <button
                                 key={tab.id}

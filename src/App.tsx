@@ -187,6 +187,7 @@ export const App = () => {
         setState(prev => ({
             ...prev,
             sessionId: id,
+            activeTab: 'chat',
             agentMode: 'chat',
             safeMode: true,
             approvalMode: 'auto',
@@ -197,8 +198,7 @@ export const App = () => {
     }, []);
 
     const onSelectSession = useCallback(async (id: string) => {
-        if (state.sessionId === id) return;
-
+        // Prepare UI state regardless of if session is the same
         setAgentStatus(createDefaultAgentStatus());
         setPendingToolApproval(null);
         if (abortControllerRef.current) {
@@ -213,17 +213,24 @@ export const App = () => {
             setState(prev => ({
                 ...prev,
                 sessionId: id,
+                activeTab: 'chat',
                 agentMode: session.agentMode || 'chat',
                 safeMode: session.safeMode !== undefined ? session.safeMode : true,
                 approvalMode: session.approvalMode || 'auto',
-                debugMode: session.debugMode || false
+                debugMode: false // Always close debug mode on selection
             }));
         } else {
             setMessages([]);
             setInput('');
-            setState(prev => ({ ...prev, sessionId: id, agentMode: 'chat' }));
+            setState(prev => ({
+                ...prev,
+                sessionId: id,
+                activeTab: 'chat',
+                agentMode: 'chat',
+                debugMode: false
+            }));
         }
-    }, [state.sessionId]);
+    }, []);
 
     const onDeleteSession = useCallback(async (id: string) => {
         const remainingSessions = sessions.filter(s => s.id !== id);
@@ -350,18 +357,8 @@ export const App = () => {
         if (state.config.telegramBotToken && state.config.telegramChatId) {
             telegramService.startPolling(state.config, async (msg) => {
                 if (msg && msg.text) {
-                    // Start "typing..." indicator while processing
-                    telegramService.startTypingIndicator(
-                        state.config.telegramBotToken!,
-                        state.config.telegramChatId!
-                    );
-                    try {
-                        // Always use the latest processMessage closure via ref
-                        await processMessageRef.current(msg.text, false, true);
-                    } finally {
-                        // Always stop the typing indicator, even on error
-                        telegramService.stopTypingIndicator();
-                    }
+                    // Always use the latest processMessage closure via ref
+                    await processMessageRef.current(msg.text, false, true);
                 }
             });
         }

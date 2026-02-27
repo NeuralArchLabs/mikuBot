@@ -613,9 +613,14 @@ export const ChatArea = ({
 
             <div className="p-4 bg-slate-900/40 border-t border-slate-800/50">
                 <div className="max-w-5xl mx-auto flex items-center gap-2 mb-2 flex-wrap">
-                    <div className="px-2 py-0.5 bg-slate-800/50 border border-slate-700/50 rounded-md flex items-center justify-center">
-                        <label className="text-[9px] font-mono text-slate-500 uppercase tracking-[0.2em] leading-none">Mode:</label>
-                    </div>
+                    <button
+                        onClick={() => onAgentModeChange(agentMode === 'chat' ? 'agent' : 'chat')}
+                        className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-200 bg-slate-800/50 border-slate-700/50 text-slate-500 hover:text-slate-300 hover:border-slate-600 active:scale-95"
+                        title="Pulse para alternar modo"
+                    >
+                        <Icon name="sliders-h" />
+                        MODE:
+                    </button>
                     <select
                         value={agentMode}
                         onChange={(e) => onAgentModeChange(e.target.value as AgentMode)}

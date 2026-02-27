@@ -2,9 +2,13 @@ const { app, BrowserWindow, ipcMain, dialog, Menu, shell, Tray, nativeImage } = 
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const { Readable } = require('stream');
+
 const https = require('https');
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('ffmpeg-static');
+const readline = require('readline');
+
 
 // Configure ffmpeg
 if (ffmpegPath) {
@@ -553,22 +557,24 @@ ipcMain.handle('voice:start-recognition', async (event, { modelName }) => {
         const { spawn } = require('child_process');
         voicePythonProcess = spawn(pythonExe, [engineScript, fullPath]);
 
-        voicePythonProcess.stdout.on('data', (data) => {
+        const rl = readline.createInterface({ input: voicePythonProcess.stdout });
+        rl.on('line', (line) => {
+            if (!line.trim()) return;
             try {
-                const lines = data.toString().split('\n').filter(l => l.trim());
-                for (const line of lines) {
-                    const msg = JSON.parse(line);
-                    if (msg.status === 'ready') {
-                        console.log('[Voice] Python Engine Ready. Waiting for renderer audio.');
-                        sender.send('voice:engine-ready');
-                    } else if (msg.text) {
-                        sender.send('voice:recognition-result', { text: msg.text, final: msg.final });
-                    } else if (msg.error) {
-                        sender.send('voice:recognition-error', { error: msg.error });
-                    }
+                const msg = JSON.parse(line);
+                if (msg.status === 'ready') {
+                    console.log('[Voice] Python Engine Ready. Waiting for renderer audio.');
+                    sender.send('voice:engine-ready');
+                } else if (msg.text) {
+                    sender.send('voice:recognition-result', { text: msg.text, final: msg.final });
+                } else if (msg.error) {
+                    sender.send('voice:recognition-error', { error: msg.error });
                 }
-            } catch (e) { }
+            } catch (e) {
+                console.error('[Voice] JSON Parse Error:', e, 'Line:', line);
+            }
         });
+
 
         voicePythonProcess.stderr.on('data', (data) => {
             console.error('[Voice Engine Error]:', data.toString());
@@ -620,94 +626,104 @@ ipcMain.handle('telegram:process-voice', async (event, fileId) => {
     if (!fs.existsSync(pythonExe)) return { ok: false, error: 'Bundled Python not found.' };
     if (!fs.existsSync(engineScript)) return { ok: false, error: 'Voice engine script missing.' };
 
-    // Resolve model path
     let modelPath = path.join(VOSK_MODELS_ROOT, voskModelName);
     if (!fs.existsSync(modelPath)) modelPath = path.join(VOSK_BUNDLED_ROOT, voskModelName);
     if (!fs.existsSync(modelPath)) return { ok: false, error: `Model not found: ${voskModelName}` };
 
     const tempDir = path.join(app.getPath('temp'), 'miku_voice_temp');
     if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
-
     const oggPath = path.join(tempDir, `${fileId}.ogg`);
-    // NOTE: ffmpeg might require .wav extension for automatic format detection if output options aren't explicit enough,
-    // but we will stream it. However, let's write to a temp wav file first to ensure clean conversion, then pipe that file.
-    // Actually, voice_engine.py expects raw PCM 16-bit 16000Hz mono via stdin.
 
     try {
-        // 1. Get File Path from Telegram
         const fileRes = await fetch(`https://api.telegram.org/bot${token}/getFile?file_id=${fileId}`);
         const fileData = await fileRes.json();
         if (!fileData.ok) throw new Error(fileData.description || 'Failed to get file path');
 
-        const filePath = fileData.result.file_path;
-        const downloadUrl = `https://api.telegram.org/file/bot${token}/${filePath}`;
-
-        // 2. Download File
-        const downloadRes = await fetch(downloadUrl);
+        const downloadRes = await fetch(`https://api.telegram.org/file/bot${token}/${fileData.result.file_path}`);
         if (!downloadRes.ok) throw new Error('Failed to download voice file');
 
         const arrayBuffer = await downloadRes.arrayBuffer();
         fs.writeFileSync(oggPath, Buffer.from(arrayBuffer));
 
-        console.log(`[Telegram Voice] Downloaded to ${oggPath}`);
-
-        // 3. Convert OGG to PCM stream and Pipe to Python Engine
-        return new Promise((resolve, reject) => {
-            let transcription = "";
-            let errorMsg = "";
-
-            // Spawn python process dedicated for this file
-            // Note: We use the same script but spawn a new ephemeral process
+        return new Promise((resolve) => {
             const pyProc = spawn(pythonExe, [engineScript, modelPath]);
+            let transcriptionParts = [];
+            let lastPartial = "";
+            let isEngineReady = false;
 
-            pyProc.stdout.on('data', (data) => {
-                const lines = data.toString().split('\n').filter(l => l.trim());
-                for (const line of lines) {
-                    try {
-                        const msg = JSON.parse(line);
-                        if (msg.text) {
-                            transcription += msg.text + " ";
+            const rl = readline.createInterface({ input: pyProc.stdout });
+
+            rl.on('line', (line) => {
+                if (!line.trim()) return;
+                try {
+                    const msg = JSON.parse(line);
+                    if (msg.status === 'ready') {
+                        isEngineReady = true;
+                        ffmpeg(oggPath)
+                            .inputOptions(['-analyzeduration 1M', '-probesize 1M'])
+                            .toFormat('s16le')
+                            .audioFrequency(16000)
+                            .audioChannels(1)
+                            .on('error', (err) => {
+                                console.error('[Telegram Voice] FFmpeg Error:', err);
+                                pyProc.kill();
+                            })
+                            .on('end', () => {
+                                // Pequeña espera para asegurar que el "silencio de cierre" se procese
+                                setTimeout(() => {
+                                    if (pyProc.stdin.writable) pyProc.stdin.end();
+                                }, 300);
+                            })
+                            .pipe(pyProc.stdin);
+                    } else if (msg.text) {
+                        if (msg.final) {
+                            transcriptionParts.push(msg.text);
+                            lastPartial = ""; // Limpiar parcial si se consolidó
+                        } else {
+                            lastPartial = msg.text; // Guardar último parcial por si acaso
                         }
-                    } catch (e) {}
+                    }
+                } catch (e) {
+                    console.warn('[Telegram Voice] JSON Parse error on line:', line);
                 }
             });
 
-            pyProc.stderr.on('data', (data) => {
-                console.error('[Voice Engine Stderr]:', data.toString());
+            // Usamos rl.on('close') en lugar de pyProc.on('close') para asegurar el vaciado del pipe
+            rl.on('close', () => {
+                if (fs.existsSync(oggPath)) fs.unlinkSync(oggPath);
+
+                // Si el motor terminó y nos quedó un parcial sin consolidar, lo añadimos
+                if (lastPartial) transcriptionParts.push(lastPartial);
+
+                const finalResult = transcriptionParts.join(" ").trim();
+                console.log(`[Telegram Voice] Transcription completed. Words: ${transcriptionParts.length}`);
+                resolve({ ok: true, text: finalResult });
             });
 
-            pyProc.on('close', (code) => {
-                fs.unlinkSync(oggPath); // Clean up OGG
-                if (code !== 0 && !transcription) {
-                    resolve({ ok: false, error: 'Voice engine failed or produced no output.' });
-                } else {
-                    resolve({ ok: true, text: transcription.trim() });
-                }
+            pyProc.on('error', (err) => {
+                if (fs.existsSync(oggPath)) fs.unlinkSync(oggPath);
+                resolve({ ok: false, error: 'Engine process error: ' + err.message });
             });
 
-            // Start conversion and pipe to pyProc.stdin
-            ffmpeg(oggPath)
-                .toFormat('s16le')   // Raw PCM signed 16-bit little-endian
-                .audioFrequency(16000)
-                .audioChannels(1)
-                .on('error', (err) => {
-                    console.error('[FFmpeg Error]', err);
+            setTimeout(() => {
+                if (!isEngineReady) {
                     pyProc.kill();
-                    resolve({ ok: false, error: 'Audio conversion failed: ' + err.message });
-                })
-                .on('end', () => {
-                    console.log('[FFmpeg] Conversion finished, closing python stdin');
-                    pyProc.stdin.end();
-                })
-                .pipe(pyProc.stdin);
+                    if (fs.existsSync(oggPath)) fs.unlinkSync(oggPath);
+                    resolve({ ok: false, error: 'Voice engine timed out during start.' });
+                }
+            }, 15000);
         });
 
     } catch (e) {
-        console.error('[Telegram Voice] Error:', e);
+        console.error('[Telegram Voice] Critical:', e);
         if (fs.existsSync(oggPath)) fs.unlinkSync(oggPath);
         return { ok: false, error: e.message };
     }
 });
+
+
+
+
 
 
 // File System Native Handlers

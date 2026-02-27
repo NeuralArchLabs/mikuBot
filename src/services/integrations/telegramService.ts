@@ -119,20 +119,25 @@ class TelegramService {
 
         while (this.polling) {
             const updates = await this.getUpdates(config);
-            if (!this.polling) break; // Check again after await
+            if (!this.polling) break;
 
             for (const update of updates) {
                 if (update.message) {
                     if (config.telegramChatId && update.message.chat.id.toString() !== config.telegramChatId) continue;
 
-                    // Handle Text Messages
-                    if (update.message.text) {
-                        await onMessage(update.message);
-                    }
-                    // Handle Voice Messages
-                    else if (update.message.voice && (window as any).electron) {
-                        console.log('[TelegramService] Received voice message. Processing...');
-                        try {
+                    // Start typing indicator immediately
+                    const token = config.telegramBotToken;
+                    const chatId = update.message.chat.id.toString();
+                    if (token) this.startTypingIndicator(token, chatId);
+
+                    try {
+                        // Handle Text Messages
+                        if (update.message.text) {
+                            await onMessage(update.message);
+                        }
+                        // Handle Voice Messages
+                        else if (update.message.voice && (window as any).electron) {
+                            console.log('[TelegramService] Received voice message. Processing...');
                             const res = await (window as any).electron.processTelegramVoice(update.message.voice.file_id);
                             if (res.ok && res.text) {
                                 console.log('[TelegramService] Voice transcribed:', res.text);
@@ -149,9 +154,11 @@ class TelegramService {
                                 };
                                 await onMessage(errorMsg);
                             }
-                        } catch (err) {
-                            console.error('[TelegramService] Voice processing error:', err);
                         }
+                    } catch (err) {
+                        console.error('[TelegramService] Processing error:', err);
+                    } finally {
+                        this.stopTypingIndicator();
                     }
                 }
             }

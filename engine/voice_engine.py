@@ -48,6 +48,11 @@ def main():
                 if partial.get("partial"):
                     print(json.dumps({"text": partial["partial"], "final": False}), flush=True)
 
+        # ── FLUSH LOGIC ──
+        # Inject virtual silence to push the decoder to a final state
+        # (16000 samples/sec * 2 bytes/sample * 0.5 sec = 16000 bytes)
+        rec.AcceptWaveform(b'\x00' * 16000)
+
         # Print final result when stdin closes
         final = json.loads(rec.FinalResult())
         if final.get("text"):

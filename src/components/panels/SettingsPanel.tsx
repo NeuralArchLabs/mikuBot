@@ -57,6 +57,7 @@ export const SettingsPanel = ({
     const [editingProvider, setEditingProvider] = useState<Provider>(config.provider);
     const [localApiKey, setLocalApiKey] = useState('');
     const [showFloatingSave, setShowFloatingSave] = useState(false);
+    const [isAtBottom, setIsAtBottom] = useState(false);
     const [settingsTab, setSettingsTab] = useState<'core' | 'scheduler'>('core');
     const [localModels, setLocalModels] = useState<string[]>([]);
     const [downloading, setDownloading] = useState<Record<string, number>>({});
@@ -64,6 +65,10 @@ export const SettingsPanel = ({
     const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
         // Toggle the floating button when having scrolled past the top header
         setShowFloatingSave(e.currentTarget.scrollTop > 120);
+
+        // Detect if user is at the bottom (with a small 10px buffer)
+        const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+        setIsAtBottom(scrollTop + clientHeight >= scrollHeight - 10);
     };
 
     useEffect(() => {
@@ -593,8 +598,8 @@ export const SettingsPanel = ({
 
                         <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
-                        {/* Secure Credential Vault Section */}
-                        <div className="space-y-6">
+                        {/* Secure Credential Vault Section - Balanced Spacing */}
+                        <div className="space-y-6 pt-8 md:pt-14">
                             <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
                                 <Icon name="shield-alt" className="text-amber-500" /> Neural Security & Main Engine Settings
                             </label>
@@ -613,12 +618,13 @@ export const SettingsPanel = ({
                                             <p className="text-xs text-amber-500/60 font-medium">Manage master logic fallbacks and encrypted API keys</p>
                                         </div>
                                     </div>
-                                    <button
+                                    {/* Obsolete static save button - replaced by floating one */}
+                                    {/* <button
                                         onClick={onSaveGlobal}
                                         className="hidden md:flex h-10 px-4 bg-gradient-to-br from-blue-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-blue-900/30 transition-all items-center justify-center gap-2 border border-blue-500/30 whitespace-nowrap"
                                     >
                                         <Icon name="save" className="text-sm flex-shrink-0" /> Save Global
-                                    </button>
+                                    </button> */}
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-12 gap-6 relative z-10">
@@ -792,7 +798,7 @@ export const SettingsPanel = ({
                             <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
                             {/* Vosk Recognition Engine Section */}
-                            <div className="space-y-6">
+                            <div className="space-y-6 pt-6 md:pt-8">
                                 <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
                                     <Icon name="microphone" className="text-emerald-400" /> Vosk Recognition Engine
                                 </label>
@@ -861,7 +867,7 @@ export const SettingsPanel = ({
                             <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
                             {/* System Behavior & Integration */}
-                            <div className="space-y-6">
+                            <div className="space-y-6 pt-4 md:pt-6">
                                 <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
                                     <Icon name="cog" className="text-slate-400" /> System Behavior & OS Integration
                                 </label>
@@ -912,8 +918,10 @@ export const SettingsPanel = ({
                                 </div>
                             </div>
 
+                            <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+
                             {/* Neural Maintenance & Backup Section */}
-                            <div className="space-y-6">
+                            <div className="space-y-6 pt-4 md:pt-6">
                                 <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
                                     <Icon name="tools" className="text-cyan-400" /> Neural Maintenance & Backup
                                 </label>
@@ -981,6 +989,33 @@ export const SettingsPanel = ({
                             >
                                 <Icon name="save" className="text-sm flex-shrink-0" /> Save Config
                             </button>
+                        </div>
+
+                        {/* Floating Save Button - Desktop (Organic & Liquid Design) */}
+                        <div className={`hidden md:flex pt-2 pb-10 justify-center sticky bottom-0 z-30 pointer-events-none transition-all duration-1000 ${showFloatingSave ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+                            <div className="relative group">
+                                {/* Ambient Soft Glow */}
+                                <div className="absolute -inset-4 bg-blue-500/5 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition duration-1000" />
+
+                                <button
+                                    onClick={onSaveGlobal}
+                                    className={`pointer-events-auto h-12 bg-slate-950/20 hover:bg-slate-900/40 border border-white/5 hover:border-blue-500/20 text-slate-500 hover:text-blue-200 rounded-full transition-all duration-700 ease-in-out flex items-center justify-center shadow-[0_10px_40px_rgba(0,0,0,0.3)] backdrop-blur-2xl group relative overflow-hidden active:scale-95 px-0 ${isAtBottom ? 'w-36 px-6' : 'w-12 group-hover:w-36 group-hover:px-6'}`}
+                                    title="Save All Global Settings"
+                                >
+                                    {/* Liquid Shine Effect */}
+                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.03] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
+
+                                    <div className="flex items-center gap-0 group-hover:gap-2.5 transition-all duration-500">
+                                        <Icon name="save" className={`text-lg relative z-10 transition-all duration-500 ${isAtBottom ? 'text-blue-400/80' : ''}`} />
+                                        <span className={`max-w-0 opacity-0 overflow-hidden transition-all duration-500 font-medium uppercase tracking-[0.2em] text-[10px] whitespace-nowrap relative z-10 ${isAtBottom ? 'max-w-[80px] opacity-100 ml-2.5' : 'group-hover:max-w-[80px] group-hover:opacity-100'}`}>
+                                            Save
+                                        </span>
+                                    </div>
+
+                                    {/* Organic Highlight (Soft Gradient, not a sharp line) */}
+                                    <div className={`absolute bottom-0 inset-x-8 h-px bg-gradient-to-r from-transparent via-blue-500/20 to-transparent transition-opacity duration-700 ${isAtBottom ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
+                                </button>
+                            </div>
                         </div>
 
                         {/* System Alerts */}
