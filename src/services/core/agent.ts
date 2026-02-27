@@ -766,24 +766,33 @@ export async function sendAgentMessage(
                 let fullContentVal = { val: '' };
                 let buffer = '';
 
-                await streamViaProxy({
-                    provider: 'groq',
-                    model: config.model,
-                    body,
-                    abortSignal,
-                    onChunk: (raw) => {
-                        buffer += raw;
-                        const lines = buffer.split('\n');
-                        buffer = lines.pop() || '';
-                        for (const line of lines) {
-                            const cleanLine = line.trim();
-                            if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
-                            const data = cleanLine.slice(6);
-                            if (data === '[DONE]') continue;
-                            processGroqChunk(data, fullContentVal);
+                try {
+                    await streamViaProxy({
+                        provider: 'groq',
+                        model: config.model,
+                        body,
+                        abortSignal,
+                        onChunk: (raw) => {
+                            buffer += raw;
+                            const lines = buffer.split('\n');
+                            buffer = lines.pop() || '';
+                            for (const line of lines) {
+                                const cleanLine = line.trim();
+                                if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
+                                const data = cleanLine.slice(6);
+                                if (data === '[DONE]') continue;
+                                processGroqChunk(data, fullContentVal);
+                            }
                         }
+                    });
+                } catch (err: any) {
+                    if (err.message?.includes('HTTP 400') && useTools && modelSupportsNativeTools) {
+                        log('warn', 'Este modelo está siendo optimizado para el llamado y uso de herramientas');
+                        modelSupportsNativeTools = false;
+                        return streamModelRequest(messages, false);
                     }
-                });
+                    throw err;
+                }
                 return { content: fullContentVal.val, toolCalls: Array.from(toolCallsMap.values()) };
             } else {
                 // ── Fallback: direct fetch (browser dev mode only)
@@ -796,6 +805,12 @@ export async function sendAgentMessage(
                     body: JSON.stringify(body),
                     signal: abortSignal,
                 });
+
+                if (response.status === 400 && useTools && modelSupportsNativeTools) {
+                    log('warn', 'Este modelo está siendo optimizado para el llamado y uso de herramientas');
+                    modelSupportsNativeTools = false;
+                    return streamModelRequest(messages, false);
+                }
 
                 if (!response.ok) {
                     const err = await response.json().catch(() => ({}));
@@ -921,22 +936,31 @@ export async function sendAgentMessage(
                 let fullContentVal = { val: '' };
                 let buffer = '';
 
-                await streamViaProxy({
-                    provider: 'gemini',
-                    model: config.model,
-                    body,
-                    abortSignal,
-                    onChunk: (raw) => {
-                        buffer += raw;
-                        const lines = buffer.split('\n');
-                        buffer = lines.pop() || '';
-                        for (const line of lines) {
-                            const cleanLine = line.trim();
-                            if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
-                            processGeminiChunk(cleanLine, fullContentVal);
+                try {
+                    await streamViaProxy({
+                        provider: 'gemini',
+                        model: config.model,
+                        body,
+                        abortSignal,
+                        onChunk: (raw) => {
+                            buffer += raw;
+                            const lines = buffer.split('\n');
+                            buffer = lines.pop() || '';
+                            for (const line of lines) {
+                                const cleanLine = line.trim();
+                                if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
+                                processGeminiChunk(cleanLine, fullContentVal);
+                            }
                         }
+                    });
+                } catch (err: any) {
+                    if (err.message?.includes('HTTP 400') && useTools && modelSupportsNativeTools) {
+                        log('warn', 'Este modelo está siendo optimizado para el llamado y uso de herramientas');
+                        modelSupportsNativeTools = false;
+                        return streamModelRequest(messages, false);
                     }
-                });
+                    throw err;
+                }
                 return { content: fullContentVal.val, toolCalls };
             } else {
                 // ── Fallback: direct fetch (browser dev mode)
@@ -949,6 +973,12 @@ export async function sendAgentMessage(
                         signal: abortSignal,
                     }
                 );
+
+                if (response.status === 400 && useTools && modelSupportsNativeTools) {
+                    log('warn', 'Este modelo está siendo optimizado para el llamado y uso de herramientas');
+                    modelSupportsNativeTools = false;
+                    return streamModelRequest(messages, false);
+                }
 
                 if (!response.ok) {
                     const err = await response.json().catch(() => ({}));
