@@ -1,6 +1,11 @@
-const { app, BrowserWindow, ipcMain, dialog, Menu, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu, shell, Tray, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
+
+// Global state for window and system tray
+let mainWin = null;
+let tray = null;
+let isQuitting = false;
 
 // Global Error Handler for Production Debugging
 process.on('uncaughtException', (error) => {
@@ -11,41 +16,68 @@ process.on('uncaughtException', (error) => {
     }
 });
 
-// ── Paths ────────────────────────────────────────────────────────────
-// Use app.getAppPath() which is more reliable than process.cwd() in Electron
-const rootPath = app.isPackaged
-    ? path.dirname(app.getPath('exe'))
-    : process.cwd();
+// ── Paths & Persistence Manager ──────────────────────────────────────
+const POINTER_FILE = path.join(app.getPath('userData'), 'workspace_pointer.json');
 
-const resourcesPath = app.isPackaged
-    ? process.resourcesPath
-    : process.cwd();
-
-const CONFIG_FILE = path.join(rootPath, 'config.json');
-const SESSIONS_DIR = path.join(rootPath, 'sessions');
-
-console.log('Main Process: Root path (persistence):', rootPath);
-console.log('Main Process: Resources path (engine):', resourcesPath);
-
-// Ensure sessions directory exists
-if (!fs.existsSync(SESSIONS_DIR)) {
+function getStoredWorkspacePath() {
     try {
-        fs.mkdirSync(SESSIONS_DIR, { recursive: true });
+        if (fs.existsSync(POINTER_FILE)) {
+            const data = JSON.parse(fs.readFileSync(POINTER_FILE, 'utf8'));
+            if (data.workspacePath && fs.existsSync(data.workspacePath)) {
+                return data.workspacePath;
+            }
+        }
     } catch (e) {
-        console.error('Failed to create sessions directory:', e);
+        console.error('Error reading workspace pointer:', e);
+    }
+    return null;
+}
+
+function saveWorkspacePath(folderPath) {
+    try {
+        fs.writeFileSync(POINTER_FILE, JSON.stringify({ workspacePath: folderPath }), 'utf8');
+        currentWorkspacePath = folderPath;
+    } catch (e) {
+        console.error('Error saving workspace pointer:', e);
     }
 }
 
-// ── Security: Read API keys from disk (main process only) ────────────
+// Global path state
+let currentWorkspacePath = getStoredWorkspacePath() || (app.isPackaged ? path.dirname(app.getPath('exe')) : process.cwd());
+
+const getEffectivePaths = () => {
+    return {
+        config: path.join(currentWorkspacePath, 'config.json'),
+        sessions: path.join(currentWorkspacePath, 'sessions'),
+        tasks: path.join(currentWorkspacePath, 'scheduler-tasks.json'),
+        logs: path.join(currentWorkspacePath, 'scheduler-logs.json')
+    };
+};
+
+const resourcesPath = app.isPackaged ? process.resourcesPath : process.cwd();
+
+console.log('Main Process: Active Workspace Path:', currentWorkspacePath);
+
+// Ensure essential workspace folders exist if path is set
+function ensureWorkspaceStructure(targetPath) {
+    const paths = getEffectivePaths();
+    if (!fs.existsSync(paths.sessions)) fs.mkdirSync(paths.sessions, { recursive: true });
+}
+
+if (getStoredWorkspacePath()) {
+    ensureWorkspaceStructure(currentWorkspacePath);
+}
+
 function getApiKeys() {
     try {
-        if (fs.existsSync(CONFIG_FILE)) {
-            const raw = fs.readFileSync(CONFIG_FILE, 'utf8');
+        const configPath = getEffectivePaths().config;
+        if (fs.existsSync(configPath)) {
+            const raw = fs.readFileSync(configPath, 'utf8');
             const parsed = JSON.parse(raw);
             return parsed.config?.apiKeys || {};
         }
     } catch (e) {
-        console.error('[Main Process] Failed to read API keys from config.json:', e.message);
+        console.error('[Main Process] Failed to read API keys:', e.message);
     }
     return {};
 }
@@ -212,8 +244,22 @@ ipcMain.handle('fetch-proxy', async (event, { url, options }) => {
 // Settings Handlers
 ipcMain.handle('save-settings', async (event, settings) => {
     try {
-        console.log('Saving settings to:', CONFIG_FILE);
-        fs.writeFileSync(CONFIG_FILE, JSON.stringify(settings, null, 4), 'utf8');
+        const configPath = getEffectivePaths().config;
+        console.log('Saving settings to:', configPath);
+        fs.writeFileSync(configPath, JSON.stringify(settings, null, 4), 'utf8');
+
+        // React to system settings immediately
+        if (settings.config) {
+            if (settings.config.autoLaunch !== undefined) {
+                updateAutoLaunch(settings.config.autoLaunch);
+            }
+            if (settings.config.minimizeToTray) {
+                createTray();
+            } else {
+                destroyTray();
+            }
+        }
+
         return { ok: true };
     } catch (error) {
         console.error('Failed to save settings:', error);
@@ -223,14 +269,13 @@ ipcMain.handle('save-settings', async (event, settings) => {
 
 ipcMain.handle('load-settings', async () => {
     try {
-        console.log('Loading settings from:', CONFIG_FILE);
-        if (fs.existsSync(CONFIG_FILE)) {
-            const data = fs.readFileSync(CONFIG_FILE, 'utf8');
+        const configPath = getEffectivePaths().config;
+        console.log('Loading settings from:', configPath);
+        if (fs.existsSync(configPath)) {
+            const data = fs.readFileSync(configPath, 'utf8');
             const settings = JSON.parse(data);
-            console.log('Settings loaded successfully');
             return { ok: true, settings };
         }
-        console.log('No config file found, using defaults');
         return { ok: true, settings: null };
     } catch (error) {
         console.error('Failed to load settings:', error);
@@ -241,16 +286,20 @@ ipcMain.handle('load-settings', async () => {
 // Sessions Handlers
 ipcMain.handle('get-sessions', async () => {
     try {
-        const files = fs.readdirSync(SESSIONS_DIR);
+        const sessionsDir = getEffectivePaths().sessions;
+        if (!fs.existsSync(sessionsDir)) return { ok: true, sessions: [] };
+
+        const files = fs.readdirSync(sessionsDir);
         const sessions = files
             .filter(f => f.endsWith('.json'))
             .map(f => {
-                const content = fs.readFileSync(path.join(SESSIONS_DIR, f), 'utf8');
+                const filePath = path.join(sessionsDir, f);
+                const content = fs.readFileSync(filePath, 'utf8');
                 const session = JSON.parse(content);
                 return {
                     id: session.id,
                     title: session.title,
-                    lastModified: fs.statSync(path.join(SESSIONS_DIR, f)).mtimeMs,
+                    lastModified: fs.statSync(filePath).mtimeMs,
                     messageCount: session.messages.length
                 };
             })
@@ -263,7 +312,7 @@ ipcMain.handle('get-sessions', async () => {
 
 ipcMain.handle('load-session', async (event, id) => {
     try {
-        const filePath = path.join(SESSIONS_DIR, `${id}.json`);
+        const filePath = path.join(getEffectivePaths().sessions, `${id}.json`);
         if (fs.existsSync(filePath)) {
             const data = fs.readFileSync(filePath, 'utf8');
             return { ok: true, session: JSON.parse(data) };
@@ -276,7 +325,9 @@ ipcMain.handle('load-session', async (event, id) => {
 
 ipcMain.handle('save-session', async (event, session) => {
     try {
-        const filePath = path.join(SESSIONS_DIR, `${session.id}.json`);
+        const sessionsDir = getEffectivePaths().sessions;
+        if (!fs.existsSync(sessionsDir)) fs.mkdirSync(sessionsDir, { recursive: true });
+        const filePath = path.join(sessionsDir, `${session.id}.json`);
         fs.writeFileSync(filePath, JSON.stringify(session, null, 4), 'utf8');
         return { ok: true };
     } catch (error) {
@@ -286,7 +337,7 @@ ipcMain.handle('save-session', async (event, session) => {
 
 ipcMain.handle('delete-session', async (event, id) => {
     try {
-        const filePath = path.join(SESSIONS_DIR, `${id}.json`);
+        const filePath = path.join(getEffectivePaths().sessions, `${id}.json`);
         if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
         }
@@ -297,12 +348,9 @@ ipcMain.handle('delete-session', async (event, id) => {
 });
 
 // ── Neural Scheduler Persistence ─────────────────────────────────────
-const SCHEDULER_TASKS_FILE = path.join(rootPath, 'scheduler-tasks.json');
-const SCHEDULER_LOGS_FILE = path.join(rootPath, 'scheduler-logs.json');
-
 ipcMain.handle('save-scheduler-tasks', async (event, data) => {
     try {
-        fs.writeFileSync(SCHEDULER_TASKS_FILE, data, 'utf8');
+        fs.writeFileSync(getEffectivePaths().tasks, data, 'utf8');
         return { ok: true };
     } catch (error) {
         return { ok: false, error: error.message };
@@ -311,8 +359,9 @@ ipcMain.handle('save-scheduler-tasks', async (event, data) => {
 
 ipcMain.handle('load-scheduler-tasks', async () => {
     try {
-        if (fs.existsSync(SCHEDULER_TASKS_FILE)) {
-            const data = fs.readFileSync(SCHEDULER_TASKS_FILE, 'utf8');
+        const taskPath = getEffectivePaths().tasks;
+        if (fs.existsSync(taskPath)) {
+            const data = fs.readFileSync(taskPath, 'utf8');
             return { ok: true, data };
         }
         return { ok: true, data: '[]' };
@@ -323,7 +372,7 @@ ipcMain.handle('load-scheduler-tasks', async () => {
 
 ipcMain.handle('save-scheduler-logs', async (event, data) => {
     try {
-        fs.writeFileSync(SCHEDULER_LOGS_FILE, data, 'utf8');
+        fs.writeFileSync(getEffectivePaths().logs, data, 'utf8');
         return { ok: true };
     } catch (error) {
         return { ok: false, error: error.message };
@@ -332,8 +381,9 @@ ipcMain.handle('save-scheduler-logs', async (event, data) => {
 
 ipcMain.handle('load-scheduler-logs', async () => {
     try {
-        if (fs.existsSync(SCHEDULER_LOGS_FILE)) {
-            const data = fs.readFileSync(SCHEDULER_LOGS_FILE, 'utf8');
+        const logPath = getEffectivePaths().logs;
+        if (fs.existsSync(logPath)) {
+            const data = fs.readFileSync(logPath, 'utf8');
             return { ok: true, data };
         }
         return { ok: true, data: '[]' };
@@ -368,9 +418,34 @@ ipcMain.handle('get-default-path', () => {
     return { ok: true, path: path.join(app.getPath('home'), 'mikuCentral') };
 });
 
-ipcMain.handle('setup-onboarding', async (event, { targetPath }) => {
+ipcMain.handle('fs-check-existing', async (event, targetPath) => {
     try {
-        const folders = ['core', 'commands', 'workspace', 'library'];
+        if (!fs.existsSync(targetPath)) return { exists: false };
+        const keyFiles = ['config.json', 'sessions', 'core', 'commands'];
+        const found = keyFiles.filter(f => fs.existsSync(path.join(targetPath, f)));
+        return { exists: found.length > 0, found };
+    } catch (e) {
+        return { ok: false, error: e.message };
+    }
+});
+
+ipcMain.handle('setup-onboarding', async (event, { targetPath, cleanInstall }) => {
+    try {
+        if (cleanInstall && fs.existsSync(targetPath)) {
+            // Backup before wipe? For now just wipe essential folders if user said clean
+            const foldersToWipe = ['core', 'commands', 'workspace', 'library', 'sessions'];
+            for (const f of foldersToWipe) {
+                const fp = path.join(targetPath, f);
+                if (fs.existsSync(fp)) fs.rmSync(fp, { recursive: true, force: true });
+            }
+            const filesToWipe = ['config.json', 'scheduler-tasks.json', 'scheduler-logs.json'];
+            for (const f of filesToWipe) {
+                const fp = path.join(targetPath, f);
+                if (fs.existsSync(fp)) fs.unlinkSync(fp);
+            }
+        }
+
+        const folders = ['core', 'commands', 'workspace', 'library', 'sessions'];
         if (!fs.existsSync(targetPath)) {
             fs.mkdirSync(targetPath, { recursive: true });
         }
@@ -382,18 +457,67 @@ ipcMain.handle('setup-onboarding', async (event, { targetPath }) => {
             }
         }
 
-        // Copy core/base to commands
+        // Save selection as the permanent workspace
+        saveWorkspacePath(targetPath);
+
+        // Copy core/base to commands (only if not already there or if clean install)
         const coreBasePath = path.join(resourcesPath, 'core', 'base');
         const commandsPath = path.join(targetPath, 'commands');
 
         if (fs.existsSync(coreBasePath)) {
-            fs.cpSync(coreBasePath, commandsPath, { recursive: true });
+            fs.cpSync(coreBasePath, commandsPath, { recursive: true, overwrite: cleanInstall });
         }
 
         return { ok: true };
     } catch (e) {
         return { ok: false, error: e.message };
     }
+});
+
+// ── Backup System ──────────────────────────────────────────────────
+ipcMain.handle('export-backup', async () => {
+    const { filePath } = await dialog.showSaveDialog({
+        title: 'Exportar Copia de Seguridad',
+        defaultPath: path.join(app.getPath('downloads'), `MikuCentral_Backup_${new Date().toISOString().split('T')[0]}.zip`),
+        filters: [{ name: 'Zip Archive', extensions: ['zip'] }]
+    });
+
+    if (!filePath) return { canceled: true };
+
+    return new Promise((resolve) => {
+        const { exec } = require('child_process');
+        // Usar PowerShell nativo para comprimir
+        const cmd = `powershell -Command "Compress-Archive -Path '${currentWorkspacePath}\\*' -DestinationPath '${filePath}' -Force"`;
+
+        exec(cmd, (error, stdout, stderr) => {
+            if (error) resolve({ ok: false, error: error.message });
+            else resolve({ ok: true, path: filePath });
+        });
+    });
+});
+
+ipcMain.handle('import-backup', async () => {
+    const { filePaths } = await dialog.showOpenDialog({
+        title: 'Importar Copia de Seguridad',
+        filters: [{ name: 'Zip Archive', extensions: ['zip'] }],
+        properties: ['openFile']
+    });
+
+    if (!filePaths || filePaths.length === 0) return { canceled: true };
+
+    const zipPath = filePaths[0];
+
+    return new Promise((resolve) => {
+        const { exec } = require('child_process');
+        // Limpiar destino (excepto el archivo zip si estuviera dentro, aunque no debería)
+        // Expandir archivo a la carpeta workspace actual
+        const cmd = `powershell -Command "Expand-Archive -Path '${zipPath}' -DestinationPath '${currentWorkspacePath}' -Force"`;
+
+        exec(cmd, (error, stdout, stderr) => {
+            if (error) resolve({ ok: false, error: error.message });
+            else resolve({ ok: true });
+        });
+    });
 });
 
 ipcMain.handle('run-console', async (event, { command, args, cwd }) => {
@@ -858,9 +982,82 @@ function setupAppMenu(win) {
     Menu.setApplicationMenu(menu);
 }
 
+// ── System Behavior Handlers ─────────────────────────────────────────
+
+function updateAutoLaunch(enabled) {
+    try {
+        console.log(`[Main Process] Auto-launch: ${enabled ? 'ENABLED' : 'DISABLED'}`);
+        app.setLoginItemSettings({
+            openAtLogin: enabled,
+            path: app.getPath('exe'),
+        });
+        return { ok: true };
+    } catch (e) {
+        console.error('Failed to update login settings:', e);
+        return { ok: false, error: e.message };
+    }
+}
+
+function createTray() {
+    if (tray) return;
+
+    const iconPath = app.isPackaged
+        ? path.join(__dirname, '../dist/mikuBotICON.png')
+        : path.join(__dirname, '../public/mikuBotICON.png');
+
+    const icon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
+    tray = new Tray(icon);
+
+    const contextMenu = Menu.buildFromTemplate([
+        { label: 'MikuCentral', enabled: false },
+        { type: 'separator' },
+        {
+            label: 'Mostrar Interfaz',
+            click: () => {
+                if (mainWin) {
+                    mainWin.show();
+                    mainWin.focus();
+                }
+            }
+        },
+        { type: 'separator' },
+        {
+            label: 'Salir Completamente',
+            click: () => {
+                isQuitting = true;
+                app.quit();
+            }
+        }
+    ]);
+
+    tray.setToolTip('MikuCentral');
+    tray.setContextMenu(contextMenu);
+
+    tray.on('double-click', () => {
+        if (mainWin) {
+            mainWin.show();
+            mainWin.focus();
+        }
+    });
+}
+
+function destroyTray() {
+    if (tray) {
+        tray.destroy();
+        tray = null;
+    }
+}
+
+ipcMain.handle('set-auto-launch', async (event, enabled) => {
+    return updateAutoLaunch(enabled);
+});
+
+// Note: Settings are also checked during 'save-settings'
+// ...
+
 // ── Window Management ────────────────────────────────────────────────
 function createWindow() {
-    const win = new BrowserWindow({
+    mainWin = new BrowserWindow({
         width: 1200,
         height: 800,
         minWidth: 768,
@@ -886,29 +1083,60 @@ function createWindow() {
 
     const isDev = !app.isPackaged;
     if (isDev) {
-        win.loadURL('http://localhost:3001');
+        mainWin.loadURL('http://localhost:3001');
     } else {
-        win.loadFile(path.join(__dirname, '../dist/index.html'));
+        mainWin.loadFile(path.join(__dirname, '../dist/index.html'));
     }
 
-    setupAppMenu(win);
+    setupAppMenu(mainWin);
 
-    win.once('ready-to-show', () => {
-        win.show();
+    mainWin.once('ready-to-show', () => {
+        mainWin.show();
         // Fix: Force focus on both the window and webContents to prevent
-        // the "click on external app first" bug. Without this, show:false
-        // windows may render but not receive keyboard/mouse input until
-        // the user manually blurs and refocuses the window.
-        win.focus();
-        win.webContents.focus();
+        // the "click on external app first" bug. 
+        mainWin.focus();
+        mainWin.webContents.focus();
+
+        // Check current settings for Tray requirement on startup
+        try {
+            const configPath = getEffectivePaths().config;
+            if (fs.existsSync(configPath)) {
+                const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+                if (config.config?.minimizeToTray) {
+                    createTray();
+                }
+            }
+        } catch (e) {
+            console.error('Error checking tray settings on startup:', e);
+        }
     });
 
-    win.webContents.on('crashed', (e) => {
+    mainWin.on('close', (event) => {
+        if (isQuitting) {
+            mainWin = null;
+        } else {
+            // Check if minimize to tray is enabled
+            try {
+                const configPath = getEffectivePaths().config;
+                if (fs.existsSync(configPath)) {
+                    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+                    if (config.config?.minimizeToTray) {
+                        event.preventDefault();
+                        mainWin.hide();
+                    }
+                }
+            } catch (e) {
+                console.error('Error during window close check:', e);
+            }
+        }
+    });
+
+    mainWin.webContents.on('crashed', (e) => {
         console.error('Renderer Process Crashed:', e);
         dialog.showErrorBox('Renderer Crash', 'The application renderer process has crashed.');
     });
 
-    win.webContents.on('did-fail-load', (e, code, desc) => {
+    mainWin.webContents.on('did-fail-load', (e, code, desc) => {
         console.error('Failed to load:', desc);
     });
 }
@@ -918,8 +1146,14 @@ app.whenReady().then(() => {
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
             createWindow();
+        } else if (mainWin) {
+            mainWin.show();
         }
     });
+});
+
+app.on('before-quit', () => {
+    isQuitting = true;
 });
 
 app.on('window-all-closed', () => {

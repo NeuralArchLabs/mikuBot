@@ -740,6 +740,121 @@ export const SettingsPanel = ({
                                     </div>
                                 </div>
                             </div>
+
+                            <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+
+                            {/* System Behavior & Integration */}
+                            <div className="space-y-6">
+                                <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
+                                    <Icon name="cog" className="text-slate-400" /> System Behavior & OS Integration
+                                </label>
+                                <div className="bg-slate-900/60 rounded-3xl p-8 border border-white/5 shadow-xl relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-slate-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-slate-500/10 transition-colors" />
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
+                                        {/* Auto Launch */}
+                                        <div className="flex items-center justify-between p-4 bg-black/20 rounded-2xl border border-white/5 hover:border-blue-500/20 transition-all">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center">
+                                                    <Icon name="rocket" />
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm font-bold text-white">Iniciar con Windows</div>
+                                                    <div className="text-[10px] text-slate-500 font-medium">Arrancar Miku al iniciar el sistema</div>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => updateConfig('autoLaunch', !config.autoLaunch)}
+                                                className={`w-12 h-6 rounded-full transition-all relative ${config.autoLaunch ? 'bg-blue-600' : 'bg-slate-700'}`}
+                                                title={config.autoLaunch ? "Desactivar inicio con Windows" : "Activar inicio con Windows"}
+                                            >
+                                                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-md transition-all ${config.autoLaunch ? 'left-7' : 'left-1'}`} />
+                                            </button>
+                                        </div>
+
+                                        {/* Minimize to Tray */}
+                                        <div className="flex items-center justify-between p-4 bg-black/20 rounded-2xl border border-white/5 hover:border-indigo-500/20 transition-all">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center">
+                                                    <Icon name="window-minimize" />
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm font-bold text-white">Minimizar a la bandeja</div>
+                                                    <div className="text-[10px] text-slate-500 font-medium">Cerrar oculta la app en la bandeja</div>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => updateConfig('minimizeToTray', !config.minimizeToTray)}
+                                                className={`w-12 h-6 rounded-full transition-all relative ${config.minimizeToTray ? 'bg-indigo-600' : 'bg-slate-700'}`}
+                                                title={config.minimizeToTray ? "Desactivar minimizado a bandeja" : "Activar minimizado a bandeja"}
+                                            >
+                                                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-md transition-all ${config.minimizeToTray ? 'left-7' : 'left-1'}`} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Neural Maintenance & Backup Section */}
+                            <div className="space-y-6">
+                                <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
+                                    <Icon name="tools" className="text-cyan-400" /> Neural Maintenance & Backup
+                                </label>
+
+                                <div className="bg-slate-900/60 rounded-3xl p-8 border border-cyan-700/30 shadow-xl space-y-6 relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-cyan-500/10 transition-colors" />
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                                        <div>
+                                            <h3 className="text-lg font-black text-white tracking-tight mb-2">Neural Workspace Backup</h3>
+                                            <p className="text-xs text-slate-400 leading-relaxed">
+                                                Exporta una copia completa de tu entorno (configuraciones, sesiones, tareas programadas, comandos y habilidades) en un solo archivo comprimido. Ideal para migraciones o seguridad adicional.
+                                            </p>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <button
+                                                onClick={async () => {
+                                                    if (!(window as any).electron) return;
+                                                    const res = await (window as any).electron.exportBackup();
+                                                    if (res.ok) await askAlert(`✅ Respaldo Creado\n\nEl archivo se ha guardado en:\n${res.path}`);
+                                                    else if (!res.canceled) await askAlert(`❌ Error al crear respaldo: ${res.error}`);
+                                                }}
+                                                className="py-4 bg-cyan-600/10 hover:bg-cyan-600/20 text-cyan-400 rounded-2xl text-xs font-black uppercase tracking-widest transition-all flex flex-col items-center justify-center gap-2 border border-cyan-500/30 shadow-lg group/btn"
+                                            >
+                                                <Icon name="archive" className="text-xl group-hover/btn:scale-110 transition-transform" />
+                                                <span>Exportar Backup</span>
+                                            </button>
+                                            <button
+                                                onClick={async () => {
+                                                    if (!(window as any).electron) return;
+                                                    const confirm = window.confirm("⚠️ ¡ATENCIÓN!\n\nImportar un respaldo sobreescribirá todos tus archivos actuales en el Workspace. Esta acción no se puede deshacer.\n\n¿Deseas continuar?");
+
+                                                    if (!confirm) return;
+
+                                                    const res = await (window as any).electron.importBackup();
+                                                    if (res.ok) {
+                                                        await askAlert("✅ Restauración Completada\n\nTu sistema ha sido restaurado con éxito. Se recomienda reiniciar la aplicación para aplicar todos los cambios.");
+                                                        window.location.reload();
+                                                    } else if (!res.canceled) {
+                                                        await askAlert(`❌ Error al importar respaldo: ${res.error}`);
+                                                    }
+                                                }}
+                                                className="py-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-2xl text-xs font-black uppercase tracking-widest transition-all flex flex-col items-center justify-center gap-2 border border-white/5 shadow-lg group/btn"
+                                            >
+                                                <Icon name="cloud-upload-alt" className="text-xl group-hover/btn:scale-110 transition-transform" />
+                                                <span>Restaurar Copia</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-4 p-4 bg-blue-950/20 border border-blue-500/20 rounded-2xl flex items-start gap-4">
+                                        <Icon name="info-circle" className="text-blue-400 mt-1" />
+                                        <div className="text-[10px] text-blue-200/60 leading-normal">
+                                            <b className="text-blue-300">Nota de Seguridad:</b> El archivo de respaldo contiene tus <b className="text-blue-300">API Keys</b> y sesiones privadas. No compartas los archivos `.zip` generados con personas en las que no confíes.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <div className={`md:hidden pt-2 pb-6 flex justify-center sticky bottom-0 z-20 pointer-events-none transition-all duration-300 ${showFloatingSave ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>

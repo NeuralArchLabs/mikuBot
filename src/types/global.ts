@@ -101,6 +101,8 @@ export interface AppConfig {
     };
     skillsConfig?: Record<string, Record<string, any>>;
     disabledSkills?: string[];
+    autoLaunch?: boolean;
+    minimizeToTray?: boolean;
 }
 
 export type ApprovalMode = 'auto' | 'manual';

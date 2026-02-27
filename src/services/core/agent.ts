@@ -479,24 +479,43 @@ function cleanThoughtContent(text: string, signatureRegex: RegExp): string {
     let s = (text || '').trim();
     if (!s) return '';
 
-    // Standard headers/shards (including UI-like headers the model might hallucinate)
-    if (!signatureRegex.test(s.slice(0, 100))) {
-        s = s.replace(/^(?:I apologize|My apologies|...|You are right|You are correct|My core programming|I will now proceed|¡Disculpa!|Disculpa|Tienes razón|He cometido un error|Aquí está|Perdón|Entendido|Claro|Perfecto|Vale|Ah, entonces tengo que|Voy a|Déjame|Thinking Process|Neural Flow|Neural Core|Proceso de Razonamiento|Active Reasoning|Razonamiento Activo|Flujo Neural|Core de Miku)[\s\S]*?(?={|\[)/i, '');
-        s = s.replace(/^(?:functionality of the|I have successfully|Now I will|Checking files|I will now)[\s\S]*?$/im, '');
-        s = s.replace(/\[[x\s]\]\s*@?CORE\/[^\s]*/gi, '');
-        // Strip the repetitive "Active Reasoning" / "Razonamiento" if it appears as a standalone line
-        s = s.replace(/^\s*(?:Active Reasoning|Razonamiento Activo|Razonamiento|Neural Core|Miku Core)\s*$/gim, '');
-    }
+    // 1. PRESERVAR FIRMA DEL BOT (El usuario prefiere que aparezca si el modelo la genera)
+    // No aplicamos replace al signatureRegex.
 
-    // JSON & Code blocks
+    // 2. ELIMINAR ETIQUETAS XML (Think/Tool Call de modelos como R1 o Gemma)
+    s = s.replace(/<think>[\s\S]*?<\/think>/gi, '');
+    s = s.replace(/<\|?tool_call\|?>[\s\S]*?<\|?\/?tool_call\|?>/gi, '');
+
+    // 3. ELIMINAR BLOQUES JSON COMPLETOS Y FRAGMENTADOS
     s = s.replace(/```(?:json|JSON)?\s*\{[\s\S]*?\}\s*```/gi, '');
+
+    // Objetos JSON técnicos por marcadores
     s = s.replace(/\{[\s\S]*?\}/g, (match) => {
         const lowerMatch = match.toLowerCase();
-        const toolMarkers = ['"name":', '"action":', '"function":', '"filename":', '"content":', '"url":', '"query":', '"coin_id":', '"text":'];
+        const toolMarkers = [
+            '"name":', '"action":', '"function":', '"filename":',
+            '"content":', '"url":', '"query":', '"coin_id":',
+            '"text":', '"args":', '"arguments":'
+        ];
         return toolMarkers.some(m => lowerMatch.includes(m.toLowerCase())) ? '' : match;
     });
 
-    // Cleanup stray markdown markers that didn't get caught
+    // Limpieza de basura técnica residual (braces o inicios de objetos)
+    s = s.replace(/\{\s*"(?:name|action|function|tool_call|arguments|args)"\s*:.*$/gim, '');
+    s = s.replace(/^\s*[\}\],]+\s*$/gm, '');
+    s = s.replace(/[\}\],]+\s*$/g, '');
+
+    // 4. ELIMINAR ECOS DEL PROTOCOLO Y LOGS TÉCNICOS
+    const noisePatterns = [
+        /^(?:I apologize|My apologies|You are right|You are correct)[\s\S]*?(?={|\[|{{)/i,
+        /^(?:Thinking Process|Neural Flow|Neural Core|Proceso de Razonamiento|Active Reasoning|Razonamiento Activo|Flujo Neural|Core de Miku|Razonamiento)[\s\S]*?(?={|\[|{{)/i,
+        /^\s*(?:Active Reasoning|Razonamiento Activo|Razonamiento|Neural Core|Miku Core|READY|SUCCESS|ERROR|FAILURE|WEB_SEARCH|SEARCHING|ANALYZING|DONE|COMPLETED)\s*$/gim,
+        /\[[x\s]\]\s*@?(?:CORE|EXTRA|WORKSPACE|TOOLS|LIBRARY)\/[^\s]*/gi,
+        /^(?:tool_call|web_search|read_file|update_file|patch_file|delete_file|run_console|add_scheduled_task|final_answer|list_files|search_files|read_url)[:\s]*/gim
+    ];
+    noisePatterns.forEach(p => s = s.replace(p, ''));
+
+    // 5. LIMPIEZA DE CERCAS Y ESPACIOS SOBRANTES
     s = s.replace(/```(?:json|JSON)?/gi, '');
     s = s.replace(/```/g, '');
 

@@ -15,6 +15,9 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
     const [config, setConfig] = useState<AppConfig>({ ...DEFAULT_CONFIG });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [existingData, setExistingData] = useState<{ exists: boolean; found: string[] }>({ exists: false, found: [] });
+    const [cleanInstall, setCleanInstall] = useState(false);
+    const [showingWarning, setShowingWarning] = useState(false);
 
     useEffect(() => {
         const fetchDefault = async () => {
@@ -33,6 +36,23 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
 
     const selectedPath = pathMode === 'default' ? defaultPath : customPath;
 
+    useEffect(() => {
+        const checkExisting = async () => {
+            if ((window as any).electron && selectedPath) {
+                const res = await (window as any).electron.fsCheckExisting(selectedPath);
+                if (res.exists) {
+                    setExistingData(res);
+                    setShowingWarning(true);
+                } else {
+                    setExistingData({ exists: false, found: [] });
+                    setShowingWarning(false);
+                    setCleanInstall(true); // Default to clean if nothing exists
+                }
+            }
+        };
+        checkExisting();
+    }, [selectedPath]);
+
     const handleNext = () => setStep(prev => prev + 1);
     const handlePrev = () => setStep(prev => prev - 1);
 
@@ -41,7 +61,10 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
         setError('');
         try {
             if ((window as any).electron) {
-                const setupRes = await (window as any).electron.setupOnboarding({ targetPath: selectedPath });
+                const setupRes = await (window as any).electron.setupOnboarding({
+                    targetPath: selectedPath,
+                    cleanInstall: cleanInstall
+                });
                 if (!setupRes.ok) {
                     throw new Error("Failed to create folders: " + setupRes.error);
                 }
@@ -154,6 +177,47 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                                     The core system files (base personality and instructions) will be automatically extracted and copied into the <code className="bg-amber-500/20 px-1 rounded">commands</code> folder for you.
                                 </div>
                             </div>
+
+                            {showingWarning && (
+                                <div className="animate-macos-expand bg-slate-950 border border-blue-500/30 p-5 rounded-xl mt-6 space-y-4 shadow-2xl">
+                                    <div className="flex items-center gap-3 text-blue-400">
+                                        <Icon name="exclamation-triangle" className="text-xl" />
+                                        <h3 className="font-bold">¡Instalación Previa Detectada!</h3>
+                                    </div>
+                                    <p className="text-xs text-slate-400 leading-relaxed">
+                                        Se han encontrado archivos de MikuCentral en esta carpeta. ¿Cómo deseas proceder?
+                                    </p>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button
+                                            onClick={() => { setCleanInstall(false); setShowingWarning(false); }}
+                                            className={`p-3 rounded-lg border text-xs font-bold transition-all ${!cleanInstall ? 'bg-blue-600 border-blue-400 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}
+                                        >
+                                            <Icon name="history" className="mb-1 block text-sm" />
+                                            Mantener Archivos
+                                        </button>
+                                        <button
+                                            onClick={() => { setCleanInstall(true); setShowingWarning(false); }}
+                                            className={`p-3 rounded-lg border text-xs font-bold transition-all ${cleanInstall ? 'bg-red-600 border-red-400 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}
+                                        >
+                                            <Icon name="trash-alt" className="mb-1 block text-sm" />
+                                            Limpiar Todo
+                                        </button>
+                                    </div>
+                                    {!showingWarning && (
+                                        <div className="text-[10px] text-center text-slate-500 italic">
+                                            {cleanInstall ? "Se borrarán los datos anteriores para una instalación limpia." : "Se vincularán tus sesiones y configuraciones existentes."}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {!showingWarning && existingData.exists && (
+                                <div className="text-[10px] text-center text-slate-500 mt-2">
+                                    <Icon name="check-circle" className="text-emerald-500 mr-1" />
+                                    {cleanInstall ? "Instalación limpia seleccionada." : "Archivos previos vinculados con éxito."}
+                                    <button onClick={() => setShowingWarning(true)} className="ml-2 text-blue-400 hover:underline">Cambiar</button>
+                                </div>
+                            )}
                         </div>
                     )}
 

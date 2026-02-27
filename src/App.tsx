@@ -442,7 +442,8 @@ export const App = () => {
                 for (const t of targets) {
                     const path = staticPaths[t];
                     if (path) {
-                        const isRecursive = !(t === 'core' || t === 'tools');
+                        // 'tools' must be recursive to load skill logic (skills/ folder)
+                        const isRecursive = t !== 'core';
                         await syncFiles(t, null, path, isRecursive);
                         results[t] = 'granted';
                     }
@@ -461,7 +462,7 @@ export const App = () => {
                         const perm = await (h as any).queryPermission({ mode: 'read' }) as PermissionStatus;
                         results[t] = perm;
                         if (perm === 'granted') {
-                            const isRecursive = !(t === 'core' || t === 'tools');
+                            const isRecursive = t !== 'core';
                             await syncFiles(t, h, undefined, isRecursive);
                         }
                     }

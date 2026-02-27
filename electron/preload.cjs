@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('electron', {
     // Settings
     saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
     loadSettings: () => ipcRenderer.invoke('load-settings'),
+    setAutoLaunch: (enabled) => ipcRenderer.invoke('set-auto-launch', enabled),
 
     // Sessions
     getSessions: () => ipcRenderer.invoke('get-sessions'),
@@ -32,6 +33,9 @@ contextBridge.exposeInMainWorld('electron', {
     deleteFile: (data) => ipcRenderer.invoke('fs-delete-file', data),
     getDefaultPath: () => ipcRenderer.invoke('get-default-path'),
     setupOnboarding: (data) => ipcRenderer.invoke('setup-onboarding', data),
+    fsCheckExisting: (targetPath) => ipcRenderer.invoke('fs-check-existing', targetPath),
+    exportBackup: () => ipcRenderer.invoke('export-backup'),
+    importBackup: () => ipcRenderer.invoke('import-backup'),
 
     // Console & Python engine
     runConsole: (data) => ipcRenderer.invoke('run-console', data),
