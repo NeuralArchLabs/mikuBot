@@ -36,6 +36,7 @@ interface ChatAreaProps {
     onRequestPermission: (target: any) => void;
     onWakeUpAll: () => void;
     askAlert: (message: string, position?: 'left' | 'right' | 'center') => Promise<void>;
+    voskModelPath?: string;
 }
 
 export const ChatArea = ({
@@ -65,17 +66,27 @@ export const ChatArea = ({
     folderPermissions,
     onRequestPermission,
     onWakeUpAll,
-    askAlert
+    askAlert,
+    voskModelPath
 }: ChatAreaProps) => {
     const inputRef = React.useRef<HTMLTextAreaElement>(null);
     const [isSent, setIsSent] = React.useState(false);
     const [boltGlow, setBoltGlow] = React.useState(false);
+    const [isRecording, setIsRecording] = React.useState(false);
+    const [partialText, setPartialText] = React.useState('');
 
     const [attachments, setAttachments] = React.useState<Attachment[]>([]);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+    const audioCtxRef = React.useRef<AudioContext | null>(null);
+    const streamRef = React.useRef<MediaStream | null>(null);
+    const processorRef = React.useRef<ScriptProcessorNode | null>(null);
+
 
     const handleSend = () => {
+        if (isRecording) {
+            toggleRecording(); // Detener grabación al enviar
+        }
         setIsSent(true);
         onSend(attachments);
         setAttachments([]);
@@ -83,6 +94,9 @@ export const ChatArea = ({
     };
 
     const handleSendAsInstruction = () => {
+        if (isRecording) {
+            toggleRecording(); // Detener grabación al enviar
+        }
         setBoltGlow(true);
         setIsSent(true);
         // Delay slightly to show the glow before sending (and triggering isLoading)
@@ -138,6 +152,121 @@ export const ChatArea = ({
         window.addEventListener('keydown', handleGlobalKeyDown);
         return () => window.removeEventListener('keydown', handleGlobalKeyDown);
     }, [isLoading, onAbort]);
+
+    React.useEffect(() => {
+        if (!(window as any).electron) return;
+
+        const cleanupResult = (window as any).electron.onVoiceRecognitionResult((data: any) => {
+            if (data.final) {
+                // Correctly update with functional or simple string depending on support,
+                // but since setInput is (s: string) => void, we use our own buffer or state.
+                // Wait, setInput is passed as (s: string) => void from App.tsx. 
+                // In App.tsx: const [input, setInput] = useState('');
+                // Let's assume React's setInput from useState is available.
+                const currentInput = (inputRef.current as any)?.value || "";
+                const separator = currentInput.trim() ? ' ' : '';
+                setInput(currentInput.trim() + separator + data.text);
+                setPartialText('');
+            } else {
+                setPartialText(data.text);
+            }
+        });
+
+        const cleanupError = (window as any).electron.onVoiceRecognitionError((data: any) => {
+            askAlert(`❌ Error de Voz: ${data.error}`);
+            setIsRecording(false);
+            setPartialText('');
+            stopCapture();
+        });
+
+        const cleanupReady = (window as any).electron.onVoiceEngineReady(() => {
+            console.log('[Voice] Engine ready event received. Starting capture.');
+            startCapture();
+        });
+
+        return () => {
+            cleanupResult();
+            cleanupError();
+            cleanupReady();
+            stopCapture();
+        };
+    }, []);
+
+    const stopCapture = () => {
+        if (processorRef.current) {
+            processorRef.current.disconnect();
+            processorRef.current = null;
+        }
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(t => t.stop());
+            streamRef.current = null;
+        }
+        if (audioCtxRef.current) {
+            audioCtxRef.current.close().catch(() => { });
+            audioCtxRef.current = null;
+        }
+    };
+
+    const startCapture = async () => {
+        try {
+            stopCapture();
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true
+                }
+            });
+            streamRef.current = stream;
+
+            // Vosk espera 16000Hz PCM 16bit mono
+            const context = new AudioContext({ sampleRate: 16000 });
+            audioCtxRef.current = context;
+
+            const source = context.createMediaStreamSource(stream);
+            // ScriptProcessor es más compatible que AudioWorklet para un fix rápido
+            const processor = context.createScriptProcessor(4096, 1, 1);
+            processorRef.current = processor;
+
+            processor.onaudioprocess = (e) => {
+                const input = e.inputBuffer.getChannelData(0);
+                const pcm16 = new Int16Array(input.length);
+                for (let i = 0; i < input.length; i++) {
+                    pcm16[i] = Math.max(-1, Math.min(1, input[i])) * 0x7FFF;
+                }
+                (window as any).electron.sendAudioChunk(pcm16.buffer);
+            };
+
+            source.connect(processor);
+            processor.connect(context.destination);
+        } catch (err: any) {
+            console.error('[Voice] Capture Error:', err);
+            askAlert(`❌ No se pudo acceder al micrófono: ${err.message}`);
+            setIsRecording(false);
+        }
+    };
+
+    const toggleRecording = async () => {
+        if (!(window as any).electron) return;
+
+        if (isRecording) {
+            await (window as any).electron.stopVoiceRecognition();
+            setIsRecording(false);
+            setPartialText('');
+            stopCapture();
+        } else {
+            if (!voskModelPath) {
+                await askAlert("⚠️ No hay un modelo de voz seleccionado. Configúralo en los ajustes de Core System.");
+                return;
+            }
+            const res = await (window as any).electron.startVoiceRecognition({ modelName: voskModelPath });
+            if (res.ok) {
+                setIsRecording(true);
+            } else {
+                await askAlert(`❌ Error al iniciar grabación: ${res.error}`);
+            }
+        }
+    };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
@@ -558,7 +687,7 @@ export const ChatArea = ({
                     </div>
                 </div>
                 <div className="relative max-w-5xl mx-auto flex flex-col gap-2">
-                    <div className="flex items-end gap-2">
+                    <div className="flex items-center gap-2"> {/* Cambiado items-end por items-center para centrar botones */}
                         {/* Attachments Preview (Left) */}
                         {attachments.length > 0 && (
                             <div className="flex gap-2 pb-1">
@@ -583,7 +712,7 @@ export const ChatArea = ({
                         )}
 
                         {/* File Input (Hidden) & Trigger (Left of textarea) */}
-                        <div className={`mode-transition-wrap ${!isLoading ? 'visible-mode bg-slate-800/20 rounded-xl mb-0.5' : 'hidden-mode'}`}>
+                        <div className={`mode-transition-wrap ${!isLoading ? 'visible-mode' : 'hidden-mode'}`}>
                             <input
                                 type="file"
                                 ref={fileInputRef}
@@ -595,28 +724,51 @@ export const ChatArea = ({
                             />
                             <button
                                 onClick={() => fileInputRef.current?.click()}
-                                className="h-[46px] w-[46px] text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 rounded-xl flex items-center justify-center transition-colors shadow-sm"
+                                className="h-[50px] w-[50px] bg-slate-800/40 border border-slate-700/50 text-slate-400 hover:text-slate-200 hover:bg-slate-700/60 rounded-xl flex items-center justify-center transition-all duration-300 shadow-lg shadow-black/20"
                                 title="Adjuntar Archivo"
                             >
-                                <Icon name="plus" />
+                                <Icon name="plus" className="text-lg" />
                             </button>
                         </div>
 
-                        <textarea
-                            ref={inputRef}
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            placeholder={agentMode === 'agent' ? 'Instrucción para el agente...' : 'Escribe un mensaje...'}
-                            className="flex-1 bg-slate-900/50 border border-slate-800/60 rounded-xl py-3 px-4 text-slate-200 font-mono text-sm placeholder-slate-600 focus:ring-1 focus:ring-cyan-500/30 focus:border-cyan-500/40 outline-none resize-none min-h-[50px] transition-all"
-                            rows={1}
-                        />
+                        <div className="relative flex-1 group/input flex items-center">
+                            <textarea
+                                ref={inputRef}
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                placeholder={isRecording ? (partialText || 'Escuchando...') : (agentMode === 'agent' ? 'Instrucción para el agente...' : 'Escribe un mensaje...')}
+                                className={`w-full bg-slate-900/60 backdrop-blur-sm border rounded-xl py-3.5 px-4 text-slate-200 font-mono text-sm placeholder-slate-600 focus:ring-1 outline-none resize-none min-h-[50px] transition-all duration-300 ${isRecording
+                                    ? 'border-emerald-500/50 ring-1 ring-emerald-500/20 pr-32'
+                                    : 'border-slate-800/60 focus:ring-cyan-500/30 focus:border-cyan-500/40 pr-16'
+                                    }`}
+                                rows={1}
+                            />
+                            {isRecording && (
+                                <div className="absolute right-12 flex items-center gap-2 px-2.5 py-1 bg-slate-950/80 backdrop-blur-md rounded-full border border-emerald-500/30 animate-pulse pointer-events-none shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                                    <span className="text-[8px] font-black text-emerald-400 uppercase tracking-[0.15em]">Live Rec</span>
+                                </div>
+                            )}
+
+                            {/* Voice Button Overlay (Right side of textarea) */}
+                            <button
+                                onClick={toggleRecording}
+                                className={`absolute right-2 w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300 ${isRecording
+                                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/40'
+                                    : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                                    }`}
+                                title={isRecording ? "Detener Grabación" : "Grabar con Voz"}
+                            >
+                                <Icon name={isRecording ? "stop" : "microphone"} className={isRecording ? 'text-[10px]' : 'text-lg'} />
+                            </button>
+                        </div>
 
                         {/* Abort Group (Active when Loading) */}
                         <div className={`mode-transition-wrap ${isLoading ? 'visible-mode action-enter' : 'hidden-mode action-exit'}`}>
                             <button
                                 onClick={onAbort}
-                                className={`h-[50px] px-4 btn-abort-premium text-white rounded-xl flex items-center justify-center min-w-[50px] pulse-glow ${agentStatus.isInstructionMode ? 'btn-halo-abort' : ''}`}
+                                className={`h-[50px] px-4 btn-abort-premium text-white rounded-xl flex items-center justify-center min-w-[50px] shadow-lg shadow-red-900/20 ${agentStatus.isInstructionMode ? 'btn-halo-abort' : ''}`}
                                 title="Abort Neural Process"
                             >
                                 <span key={isLoading ? 'loading' : 'idle'} className="inline-block">
@@ -630,7 +782,7 @@ export const ChatArea = ({
                             <button
                                 onClick={handleSend}
                                 disabled={!input.trim() && attachments.length === 0}
-                                className={`h-[50px] px-4 rounded-xl flex items-center justify-center min-w-[50px] disabled:opacity-50 disabled:cursor-not-allowed btn-send-morph ${agentMode === 'agent' ? 'is-agent' : 'is-chat'}`}
+                                className={`h-[50px] px-4 rounded-xl flex items-center justify-center min-w-[50px] disabled:opacity-30 disabled:cursor-not-allowed btn-send-morph shadow-lg ${agentMode === 'agent' ? 'is-agent shadow-purple-900/20' : 'is-chat shadow-blue-900/20'}`}
                                 title="Send Signal"
                             >
                                 {/* Background Clipping Layer */}
@@ -651,17 +803,17 @@ export const ChatArea = ({
                                     className={`btn-morph-aura ${agentMode !== 'agent' ? 'reverse' : ''}`}
                                 />
 
-                                <Icon name="arrow-right" className={`${isSent ? 'send-icon-fly' : ''} ${agentMode === 'agent' ? 'rainbow-icon' : ''}`} />
+                                <Icon name="arrow-right" className={`text-lg ${isSent ? 'send-icon-fly' : ''} ${agentMode === 'agent' ? 'rainbow-icon' : ''}`} />
                             </button>
 
-                            <div className={`transition-all duration-300 ${agentMode !== 'agent' ? 'w-[50px] opacity-100' : 'w-0 opacity-0 overflow-hidden'} mode-transition-wrap ${agentMode !== 'agent' ? 'visible-mode instruction-enter' : 'hidden-mode instruction-exit'}`}>
+                            <div className={`transition-all duration-500 ${agentMode !== 'agent' ? 'w-[50px] opacity-100' : 'w-0 opacity-0 overflow-hidden'} mode-transition-wrap ${agentMode !== 'agent' ? 'visible-mode instruction-enter' : 'hidden-mode instruction-exit'}`}>
                                 <button
                                     onClick={handleSendAsInstruction}
                                     disabled={!input.trim() && attachments.length === 0}
-                                    className={`h-[50px] px-4 w-full btn-instruction-premium text-white rounded-xl flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed text-[10px] font-bold ${boltGlow ? 'pulse-glow' : ''}`}
+                                    className={`h-[50px] px-4 w-full btn-instruction-premium text-white rounded-xl flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed text-[10px] font-bold shadow-lg shadow-purple-900/20 ${boltGlow ? 'pulse-glow' : ''}`}
                                     title="Send as Direct Instruction (Forces tool call)"
                                 >
-                                    <Icon name="bolt" className={boltGlow ? 'instruction-bolt-glow' : (isSent ? 'icon-pulse' : '')} />
+                                    <Icon name="bolt" className={`text-lg ${boltGlow ? 'instruction-bolt-glow' : (isSent ? 'icon-pulse' : '')}`} />
                                 </button>
                             </div>
                         </div>
@@ -669,10 +821,10 @@ export const ChatArea = ({
                         {!isLoading && agentStatus.iteration > 0 && agentStatus.phase !== 'idle' && (
                             <button
                                 onClick={onReprompt}
-                                className="h-[50px] px-4 btn-continue-premium text-white rounded-xl flex items-center justify-center min-w-[50px] pulse-glow mb-0.5"
+                                className="h-[50px] px-4 btn-continue-premium text-white rounded-xl flex items-center justify-center min-w-[50px] shadow-lg shadow-orange-900/20"
                                 title="Resume Task"
                             >
-                                <Icon name="redo" className="icon-spin-once" />
+                                <Icon name="redo" className="icon-spin-once text-lg" />
                             </button>
                         )}
                     </div>

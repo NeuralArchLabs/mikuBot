@@ -26,6 +26,7 @@ interface SettingsPanelProps {
     toolsPathName: string;
     syncing: boolean;
     askAlert: (message: string, position?: 'left' | 'right' | 'center') => Promise<void>;
+    askConfirm: (message: string) => Promise<boolean>;
 }
 
 export const SettingsPanel = ({
@@ -48,7 +49,8 @@ export const SettingsPanel = ({
     workSpacePathName,
     toolsPathName,
     syncing,
-    askAlert
+    askAlert,
+    askConfirm
 }: SettingsPanelProps) => {
     const [showApiKey, setShowApiKey] = useState(false);
     // Track which provider's key we are currently editing in the global section
@@ -56,6 +58,8 @@ export const SettingsPanel = ({
     const [localApiKey, setLocalApiKey] = useState('');
     const [showFloatingSave, setShowFloatingSave] = useState(false);
     const [settingsTab, setSettingsTab] = useState<'core' | 'scheduler'>('core');
+    const [localModels, setLocalModels] = useState<string[]>([]);
+    const [downloading, setDownloading] = useState<Record<string, number>>({});
 
     const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
         // Toggle the floating button when having scrolled past the top header
@@ -65,6 +69,50 @@ export const SettingsPanel = ({
     useEffect(() => {
         setLocalApiKey(config.apiKeys[editingProvider] || '');
     }, [editingProvider, config.apiKeys]);
+
+    useEffect(() => {
+        if ((window as any).electron) {
+            (window as any).electron.listVoiceModels().then((res: any) => {
+                if (res.ok) setLocalModels(res.models);
+            });
+
+            const cleanup = (window as any).electron.onVoiceDownloadProgress((data: any) => {
+                setDownloading(prev => ({ ...prev, [data.lang]: data.progress }));
+            });
+            return cleanup;
+        }
+    }, []);
+
+    const handleDownloadModel = async (lang: 'es' | 'en') => {
+        if (!(window as any).electron) return;
+        setDownloading(prev => ({ ...prev, [lang]: 0 }));
+        const res = await (window as any).electron.downloadVoiceModel({ lang });
+        setDownloading(prev => {
+            const next = { ...prev };
+            delete next[lang];
+            return next;
+        });
+
+        if (res.ok) {
+            const listRes = await (window as any).electron.listVoiceModels();
+            if (listRes.ok) setLocalModels(listRes.models);
+            await askAlert(`✅ Modelo (${lang}) descargado y extraído correctamente.`);
+        } else {
+            await askAlert(`❌ Error al descargar modelo: ${res.error}`);
+        }
+    };
+
+    const handleDeleteModel = async (modelName: string) => {
+        if (!(window as any).electron) return;
+        const confirm = await askConfirm(`¿Seguro que deseas eliminar el modelo ${modelName}?`);
+        if (!confirm) return;
+
+        const res = await (window as any).electron.deleteVoiceModel({ modelName });
+        if (res.ok) {
+            const listRes = await (window as any).electron.listVoiceModels();
+            if (listRes.ok) setLocalModels(listRes.models);
+        }
+    };
 
     const handleSaveKey = (provider: Provider, key: string) => {
         updateConfig('apiKeys', { ...config.apiKeys, [provider]: key });
@@ -736,6 +784,75 @@ export const SettingsPanel = ({
                                                     />
                                                 </div>
                                             </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+
+                            {/* Vosk Recognition Engine Section */}
+                            <div className="space-y-6">
+                                <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
+                                    <Icon name="microphone" className="text-emerald-400" /> Vosk Recognition Engine
+                                </label>
+
+                                <div className="bg-slate-900/60 rounded-3xl p-8 border border-emerald-500/20 shadow-xl relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-emerald-500/10 transition-colors" />
+
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 relative z-10">
+                                        <div className="space-y-4">
+                                            <h3 className="text-lg font-black text-white tracking-tight">Gestión de Modelos Vocales</h3>
+                                            <p className="text-xs text-slate-400 leading-relaxed">
+                                                Descarga y selecciona modelos de reconocimiento de voz offline para procesar tus mensajes de voz.
+                                            </p>
+
+                                            <div className="flex flex-wrap gap-4 mt-4">
+                                                {['es', 'en'].map(lang => {
+                                                    const modelName = lang === 'es' ? 'vosk-model-small-es-0.42' : 'vosk-model-small-en-us-0.15';
+                                                    const isDownloaded = localModels.some(m => m === modelName);
+                                                    const isDownloading = downloading[lang] !== undefined;
+
+                                                    return (
+                                                        <div key={lang} className="flex items-center gap-2 w-full sm:w-auto">
+                                                            <button
+                                                                onClick={() => handleDownloadModel(lang as any)}
+                                                                disabled={isDownloaded || isDownloading}
+                                                                className={`flex-1 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-3 border ${isDownloaded
+                                                                    ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 cursor-default'
+                                                                    : isDownloading
+                                                                        ? 'bg-blue-600/20 border-blue-500/50 text-blue-400'
+                                                                        : 'bg-white/5 hover:bg-white/10 border-white/10 text-slate-300'
+                                                                    }`}
+                                                            >
+                                                                <Icon name={isDownloaded ? "check-circle" : isDownloading ? "sync fa-spin" : "download"} />
+                                                                {lang === 'es' ? 'Español' : 'English'} {isDownloading && `(${downloading[lang]}%)`}
+                                                            </button>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block ml-1">Modelo Activo para el Usuario</label>
+                                            <div className="relative">
+                                                <select
+                                                    value={config.voskModelPath || ''}
+                                                    onChange={(e) => updateConfig('voskModelPath', e.target.value)}
+                                                    title="Seleccionar modelo de voz"
+                                                    className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-4 py-3.5 text-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/50 appearance-none shadow-inner"
+                                                >
+                                                    <option value="">Ninguno (Voz Desactivada)</option>
+                                                    {localModels.map(m => (
+                                                        <option key={m} value={m}>{m}</option>
+                                                    ))}
+                                                </select>
+                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                                                    <Icon name="chevron-down" />
+                                                </div>
+                                            </div>
+
                                         </div>
                                     </div>
                                 </div>

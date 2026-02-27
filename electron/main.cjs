@@ -1,4 +1,5 @@
 const { app, BrowserWindow, ipcMain, dialog, Menu, shell, Tray, nativeImage } = require('electron');
+const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
@@ -388,6 +389,183 @@ ipcMain.handle('load-scheduler-logs', async () => {
         }
         return { ok: true, data: '[]' };
     } catch (error) {
+        return { ok: false, error: error.message };
+    }
+});
+
+// ── Voice & Vosk Model Management ────────────────────────────────────
+const VOSK_MODELS_ROOT = path.join(currentWorkspacePath, 'engine', 'models', 'vosk');
+const VOSK_BUNDLED_ROOT = path.join(resourcesPath, 'engine', 'models', 'vosk');
+
+console.log('[Voice] Models Workspace Path:', VOSK_MODELS_ROOT);
+console.log('[Voice] Models Bundled Path:', VOSK_BUNDLED_ROOT);
+
+ipcMain.handle('voice:list-models', async () => {
+    try {
+        const models = new Set();
+
+        // 1. Check workspace
+        if (fs.existsSync(VOSK_MODELS_ROOT)) {
+            fs.readdirSync(VOSK_MODELS_ROOT)
+                .filter(f => fs.statSync(path.join(VOSK_MODELS_ROOT, f)).isDirectory())
+                .forEach(m => models.add(m));
+        } else {
+            fs.mkdirSync(VOSK_MODELS_ROOT, { recursive: true });
+        }
+
+        // 2. Check bundled resources
+        if (fs.existsSync(VOSK_BUNDLED_ROOT)) {
+            fs.readdirSync(VOSK_BUNDLED_ROOT)
+                .filter(f => fs.statSync(path.join(VOSK_BUNDLED_ROOT, f)).isDirectory())
+                .forEach(m => models.add(m));
+        }
+
+        return { ok: true, models: Array.from(models) };
+    } catch (error) {
+        console.error('[Voice] list-models error:', error);
+        return { ok: false, error: error.message };
+    }
+});
+
+ipcMain.handle('voice:download-model', async (event, { lang }) => {
+    const sender = event.sender;
+    const modelUrls = {
+        'es': 'https://alphacephei.com/vosk/models/vosk-model-small-es-0.42.zip',
+        'en': 'https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip'
+    };
+
+    const url = modelUrls[lang];
+    if (!url) return { ok: false, error: `Language ${lang} not supported for auto-download.` };
+
+    try {
+        const https = require('https');
+        const unzipper = require('unzipper'); // Needs to be installed or use a different method
+
+        const tempZip = path.join(VOSK_MODELS_ROOT, `model_${lang}.zip`);
+        const file = fs.createWriteStream(tempZip);
+
+        return new Promise((resolve) => {
+            https.get(url, (response) => {
+                const totalBytes = parseInt(response.headers['content-length'], 10);
+                let downloadedBytes = 0;
+
+                response.on('data', (chunk) => {
+                    downloadedBytes += chunk.length;
+                    const progress = Math.round((downloadedBytes / totalBytes) * 100);
+                    sender.send('voice:download-progress', { lang, progress });
+                });
+
+                response.pipe(file);
+
+                file.on('finish', () => {
+                    file.close();
+                    // Extract
+                    fs.createReadStream(tempZip)
+                        .pipe(unzipper.Extract({ path: VOSK_MODELS_ROOT }))
+                        .on('close', () => {
+                            fs.unlinkSync(tempZip);
+                            resolve({ ok: true, lang });
+                        })
+                        .on('error', (err) => resolve({ ok: false, error: err.message }));
+                });
+            }).on('error', (err) => {
+                fs.unlinkSync(tempZip);
+                resolve({ ok: false, error: err.message });
+            });
+        });
+    } catch (error) {
+        return { ok: false, error: error.message };
+    }
+});
+
+ipcMain.handle('voice:delete-model', async (event, { modelName }) => {
+    try {
+        const modelPath = path.join(VOSK_MODELS_ROOT, modelName);
+        if (fs.existsSync(modelPath)) {
+            fs.rmSync(modelPath, { recursive: true, force: true });
+        }
+        return { ok: true };
+    } catch (error) {
+        return { ok: false, error: error.message };
+    }
+});
+
+// ── Voice Recognition Engine ──────────────────────────────────────────
+let voicePythonProcess = null;
+
+ipcMain.handle('voice:start-recognition', async (event, { modelName }) => {
+    const sender = event.sender;
+
+    const pythonExe = path.join(resourcesPath, 'engine', 'python', 'python.exe');
+    const engineScript = path.join(resourcesPath, 'engine', 'voice_engine.py');
+
+    if (!fs.existsSync(pythonExe)) return { ok: false, error: 'Bundled Python not found.' };
+    if (!fs.existsSync(engineScript)) return { ok: false, error: 'Voice engine script missing.' };
+
+    try {
+        let fullPath = path.join(VOSK_MODELS_ROOT, modelName);
+        if (!fs.existsSync(fullPath)) fullPath = path.join(VOSK_BUNDLED_ROOT, modelName);
+        if (!fs.existsSync(fullPath)) return { ok: false, error: `Model not found: ${modelName}` };
+
+        // Clean up previous if any
+        if (voicePythonProcess) {
+            voicePythonProcess.kill();
+            voicePythonProcess = null;
+        }
+
+        console.log('[Voice] Starting Python Engine with model:', fullPath);
+        const { spawn } = require('child_process');
+        voicePythonProcess = spawn(pythonExe, [engineScript, fullPath]);
+
+        voicePythonProcess.stdout.on('data', (data) => {
+            try {
+                const lines = data.toString().split('\n').filter(l => l.trim());
+                for (const line of lines) {
+                    const msg = JSON.parse(line);
+                    if (msg.status === 'ready') {
+                        console.log('[Voice] Python Engine Ready. Waiting for renderer audio.');
+                        sender.send('voice:engine-ready');
+                    } else if (msg.text) {
+                        sender.send('voice:recognition-result', { text: msg.text, final: msg.final });
+                    } else if (msg.error) {
+                        sender.send('voice:recognition-error', { error: msg.error });
+                    }
+                }
+            } catch (e) { }
+        });
+
+        voicePythonProcess.stderr.on('data', (data) => {
+            console.error('[Voice Engine Error]:', data.toString());
+        });
+
+        voicePythonProcess.on('close', (code) => {
+            console.log('[Voice] Python Engine closed with code:', code);
+            voicePythonProcess = null;
+        });
+
+        return { ok: true };
+    } catch (error) {
+        console.error('[Voice] Start Error:', error);
+        return { ok: false, error: error.message };
+    }
+});
+
+ipcMain.on('voice:audio-chunk', (event, arrayBuffer) => {
+    if (voicePythonProcess && voicePythonProcess.stdin.writable) {
+        // Convertimos ArrayBuffer a Buffer de Node.js para que el proceso Python lo acepte
+        voicePythonProcess.stdin.write(Buffer.from(arrayBuffer));
+    }
+});
+
+ipcMain.handle('voice:stop-recognition', async () => {
+    try {
+        if (voicePythonProcess) {
+            voicePythonProcess.kill();
+            voicePythonProcess = null;
+        }
+        return { ok: true };
+    } catch (error) {
+        console.error('[Voice] Stop Error:', error);
         return { ok: false, error: error.message };
     }
 });

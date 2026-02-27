@@ -103,6 +103,7 @@ export interface AppConfig {
     disabledSkills?: string[];
     autoLaunch?: boolean;
     minimizeToTray?: boolean;
+    voskModelPath?: string;
 }
 
 export type ApprovalMode = 'auto' | 'manual';

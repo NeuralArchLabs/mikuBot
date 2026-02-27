@@ -53,6 +53,36 @@ contextBridge.exposeInMainWorld('electron', {
     listBlueprints: (data) => ipcRenderer.invoke('list-blueprints', data),
     executeSkill: (data) => ipcRenderer.invoke('execute-skill', data),
 
+    // Voice & Vosk Models
+    listVoiceModels: () => ipcRenderer.invoke('voice:list-models'),
+    downloadVoiceModel: (data) => ipcRenderer.invoke('voice:download-model', data),
+    deleteVoiceModel: (data) => ipcRenderer.invoke('voice:delete-model', data),
+    onVoiceDownloadProgress: (callback) => {
+        const listener = (event, data) => callback(data);
+        ipcRenderer.on('voice:download-progress', listener);
+        return () => ipcRenderer.removeListener('voice:download-progress', listener);
+    },
+
+    // Recognition
+    startVoiceRecognition: (data) => ipcRenderer.invoke('voice:start-recognition', data),
+    stopVoiceRecognition: () => ipcRenderer.invoke('voice:stop-recognition'),
+    sendAudioChunk: (buffer) => ipcRenderer.send('voice:audio-chunk', buffer),
+    onVoiceEngineReady: (callback) => {
+        const listener = (event) => callback();
+        ipcRenderer.on('voice:engine-ready', listener);
+        return () => ipcRenderer.removeListener('voice:engine-ready', listener);
+    },
+    onVoiceRecognitionResult: (callback) => {
+        const listener = (event, data) => callback(data);
+        ipcRenderer.on('voice:recognition-result', listener);
+        return () => ipcRenderer.removeListener('voice:recognition-result', listener);
+    },
+    onVoiceRecognitionError: (callback) => {
+        const listener = (event, data) => callback(data);
+        ipcRenderer.on('voice:recognition-error', listener);
+        return () => ipcRenderer.removeListener('voice:recognition-error', listener);
+    },
+
     // API streaming: listen for chunks from main process proxy
     onApiStreamChunk: (callback) => {
         const listener = (event, data) => callback(data);

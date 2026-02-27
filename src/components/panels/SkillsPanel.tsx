@@ -257,7 +257,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
     return (
         <div className="flex-1 overflow-hidden flex flex-col">
             {/* Header */}
-            <div className="py-5 lg:py-8 border-b border-slate-800/50 bg-slate-900/40 shrink-0 px-4 lg:px-8 transform-gpu" style={{ contain: 'paint' }}>
+            <div className="py-5 lg:py-8 border-b border-slate-800/50 bg-slate-900/40 shrink-0 px-4 lg:px-8 transform-gpu contain-paint">
                 <div className="flex flex-wrap items-center gap-4 w-full">
                     <div className="flex items-center gap-3 min-w-0 mr-auto group">
                         <div className="text-cyan-400 text-xl lg:text-3xl shrink-0 drop-shadow-[0_0_15px_rgba(6,182,212,0.4)] animate-title-slide">

@@ -45,7 +45,8 @@ export const DEFAULT_CONFIG: AppConfig = {
     folderNames: { core: '', extra: '', workSpace: '', tools: '' },
     folderPaths: { core: '', extra: '', workSpace: '', tools: '' },
     skillsConfig: {},
-    disabledSkills: []
+    disabledSkills: [],
+    voskModelPath: ''
 };
 
 export const AGENT_TOOLS: ToolDefinition[] = [

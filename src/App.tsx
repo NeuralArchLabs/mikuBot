@@ -1575,6 +1575,7 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                             onRequestPermission={requestFolderPermission}
                             onWakeUpAll={wakeUpAllFolders}
                             askAlert={askAlert}
+                            voskModelPath={state.config.voskModelPath}
                         />
                     </div>
                 )}
@@ -1622,6 +1623,7 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                             toolsPathName={toolsHandle?.name || state.config.folderPaths?.tools || ''}
                             syncing={syncing}
                             askAlert={askAlert}
+                            askConfirm={askConfirm}
                         />
                     </div>
                 )}
