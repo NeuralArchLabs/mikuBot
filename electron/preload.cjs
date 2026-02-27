@@ -83,6 +83,9 @@ contextBridge.exposeInMainWorld('electron', {
         return () => ipcRenderer.removeListener('voice:recognition-error', listener);
     },
 
+    // Telegram Voice Processing
+    processTelegramVoice: (fileId) => ipcRenderer.invoke('telegram:process-voice', fileId),
+
     // API streaming: listen for chunks from main process proxy
     onApiStreamChunk: (callback) => {
         const listener = (event, data) => callback(data);

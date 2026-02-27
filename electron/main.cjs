@@ -2,6 +2,14 @@ const { app, BrowserWindow, ipcMain, dialog, Menu, shell, Tray, nativeImage } = 
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const https = require('https');
+const ffmpeg = require('fluent-ffmpeg');
+const ffmpegPath = require('ffmpeg-static');
+
+// Configure ffmpeg
+if (ffmpegPath) {
+    ffmpeg.setFfmpegPath(ffmpegPath.replace('app.asar', 'app.asar.unpacked'));
+}
 
 // Global state for window and system tray
 let mainWin = null;
@@ -81,6 +89,34 @@ function getApiKeys() {
         console.error('[Main Process] Failed to read API keys:', e.message);
     }
     return {};
+}
+
+function getTelegramToken() {
+    try {
+        const configPath = getEffectivePaths().config;
+        if (fs.existsSync(configPath)) {
+            const raw = fs.readFileSync(configPath, 'utf8');
+            const parsed = JSON.parse(raw);
+            return parsed.config?.telegramBotToken || null;
+        }
+    } catch (e) {
+        console.error('[Main Process] Failed to read config:', e.message);
+    }
+    return null;
+}
+
+function getVoskModelPath() {
+    try {
+        const configPath = getEffectivePaths().config;
+        if (fs.existsSync(configPath)) {
+            const raw = fs.readFileSync(configPath, 'utf8');
+            const parsed = JSON.parse(raw);
+            return parsed.config?.voskModelPath || null;
+        }
+    } catch (e) {
+        console.error('[Main Process] Failed to read config for Vosk:', e.message);
+    }
+    return null;
 }
 
 // ── API Streaming Proxy ──────────────────────────────────────────────
@@ -569,6 +605,110 @@ ipcMain.handle('voice:stop-recognition', async () => {
         return { ok: false, error: error.message };
     }
 });
+
+// ── Telegram Voice Processing ────────────────────────────────────────
+ipcMain.handle('telegram:process-voice', async (event, fileId) => {
+    const token = getTelegramToken();
+    if (!token) return { ok: false, error: 'Telegram Bot Token not configured.' };
+
+    const voskModelName = getVoskModelPath();
+    if (!voskModelName) return { ok: false, error: 'Vosk Model not configured.' };
+
+    const pythonExe = path.join(resourcesPath, 'engine', 'python', 'python.exe');
+    const engineScript = path.join(resourcesPath, 'engine', 'voice_engine.py');
+
+    if (!fs.existsSync(pythonExe)) return { ok: false, error: 'Bundled Python not found.' };
+    if (!fs.existsSync(engineScript)) return { ok: false, error: 'Voice engine script missing.' };
+
+    // Resolve model path
+    let modelPath = path.join(VOSK_MODELS_ROOT, voskModelName);
+    if (!fs.existsSync(modelPath)) modelPath = path.join(VOSK_BUNDLED_ROOT, voskModelName);
+    if (!fs.existsSync(modelPath)) return { ok: false, error: `Model not found: ${voskModelName}` };
+
+    const tempDir = path.join(app.getPath('temp'), 'miku_voice_temp');
+    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+
+    const oggPath = path.join(tempDir, `${fileId}.ogg`);
+    // NOTE: ffmpeg might require .wav extension for automatic format detection if output options aren't explicit enough,
+    // but we will stream it. However, let's write to a temp wav file first to ensure clean conversion, then pipe that file.
+    // Actually, voice_engine.py expects raw PCM 16-bit 16000Hz mono via stdin.
+
+    try {
+        // 1. Get File Path from Telegram
+        const fileRes = await fetch(`https://api.telegram.org/bot${token}/getFile?file_id=${fileId}`);
+        const fileData = await fileRes.json();
+        if (!fileData.ok) throw new Error(fileData.description || 'Failed to get file path');
+
+        const filePath = fileData.result.file_path;
+        const downloadUrl = `https://api.telegram.org/file/bot${token}/${filePath}`;
+
+        // 2. Download File
+        const downloadRes = await fetch(downloadUrl);
+        if (!downloadRes.ok) throw new Error('Failed to download voice file');
+
+        const arrayBuffer = await downloadRes.arrayBuffer();
+        fs.writeFileSync(oggPath, Buffer.from(arrayBuffer));
+
+        console.log(`[Telegram Voice] Downloaded to ${oggPath}`);
+
+        // 3. Convert OGG to PCM stream and Pipe to Python Engine
+        return new Promise((resolve, reject) => {
+            let transcription = "";
+            let errorMsg = "";
+
+            // Spawn python process dedicated for this file
+            // Note: We use the same script but spawn a new ephemeral process
+            const pyProc = spawn(pythonExe, [engineScript, modelPath]);
+
+            pyProc.stdout.on('data', (data) => {
+                const lines = data.toString().split('\n').filter(l => l.trim());
+                for (const line of lines) {
+                    try {
+                        const msg = JSON.parse(line);
+                        if (msg.text) {
+                            transcription += msg.text + " ";
+                        }
+                    } catch (e) {}
+                }
+            });
+
+            pyProc.stderr.on('data', (data) => {
+                console.error('[Voice Engine Stderr]:', data.toString());
+            });
+
+            pyProc.on('close', (code) => {
+                fs.unlinkSync(oggPath); // Clean up OGG
+                if (code !== 0 && !transcription) {
+                    resolve({ ok: false, error: 'Voice engine failed or produced no output.' });
+                } else {
+                    resolve({ ok: true, text: transcription.trim() });
+                }
+            });
+
+            // Start conversion and pipe to pyProc.stdin
+            ffmpeg(oggPath)
+                .toFormat('s16le')   // Raw PCM signed 16-bit little-endian
+                .audioFrequency(16000)
+                .audioChannels(1)
+                .on('error', (err) => {
+                    console.error('[FFmpeg Error]', err);
+                    pyProc.kill();
+                    resolve({ ok: false, error: 'Audio conversion failed: ' + err.message });
+                })
+                .on('end', () => {
+                    console.log('[FFmpeg] Conversion finished, closing python stdin');
+                    pyProc.stdin.end();
+                })
+                .pipe(pyProc.stdin);
+        });
+
+    } catch (e) {
+        console.error('[Telegram Voice] Error:', e);
+        if (fs.existsSync(oggPath)) fs.unlinkSync(oggPath);
+        return { ok: false, error: e.message };
+    }
+});
+
 
 // File System Native Handlers
 ipcMain.handle('fs-select-folder', async () => {
