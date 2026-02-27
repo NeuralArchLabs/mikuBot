@@ -47,6 +47,7 @@ contextBridge.exposeInMainWorld('electron', {
 
     // API proxied calls (keys injected by main process, never sent from renderer)
     apiStream: (data) => ipcRenderer.invoke('api-stream', data),
+    getModels: (provider) => ipcRenderer.invoke('api-get-models', provider),
 
     // Skills
     listSkills: (data) => ipcRenderer.invoke('list-skills', data),
