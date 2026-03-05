@@ -232,6 +232,7 @@ function startSearXNG() {
         cwd: searxngDir,
         env: {
             ...process.env,
+            SEARXNG_SECRET: "12345678123456781234567812345678",
             SEARXNG_DEBUG: "0",
             GRANIAN_INTERFACE: "wsgi",
             GRANIAN_HOST: "127.0.0.1",

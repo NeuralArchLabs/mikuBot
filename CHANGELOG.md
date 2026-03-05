@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.9.2] - 2026-03-05
+### Changed
+- **Local Search Engine Integration**: Migrated the `web_research` and `deep_research` neural skills from the external `duckduckgo_search` python library to the internal, locally hosted **SearXNG** engine. This ensures completely private, self-hosted, and stable search capabilities for the agent without API rate limits.
+- **SearXNG Engine Stability**: Patched the local engine boot sequence to dynamically inject the required `SEARXNG_SECRET` on startup, preventing "fatal 10106" boot blocking errors.
+
 ## [1.9.1] - 2026-02-23
 ### Added
 - **Semantic Scheduler Messaging**: 

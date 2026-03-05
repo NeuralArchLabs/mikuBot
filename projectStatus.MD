@@ -1,6 +1,6 @@
-# Project Status: MikuCentral v1.9.1 🚀
+# Project Status: MikuCentral v1.9.2 🚀
 
-> **Última actualización**: 23 de febrero de 2026
+> **Última actualización**: 5 de marzo de 2026
 > **Autor del análisis**: Antigravity AI Engine
 
 Este documento detalla el análisis exhaustivo del proyecto **MikuCentral**, una interfaz de IA neural y asistente personal integral diseñada para la soberanía tecnológica local, la ejecución de agentes autónomos y la persistencia automodificable en todas las facetas de la vida del usuario (personal, profesional y financiera).
@@ -54,7 +54,7 @@ MikuCentral es mucho más que un simple chat; es un orquestador de agentes con l
 | Runtime | Electron 40 + Node.js | Acceso nativo al SO, IPC bridge |
 | Build | Vite 6 | Dev server + bundler |
 | AI APIs | Ollama (local), Gemini, Groq | Endpoints de chat y streaming |
-| Búsqueda | Tavily, Brave Search | Herramientas de web search |
+| Búsqueda | SearXNG (local), Tavily | Herramientas de web search |
 | Persistencia | IndexedDB (handles) + FileSystem Access API (contenido) + Electron FS (sesiones/config) | Triple capa de almacenamiento |
 | Normalización | `toolCallNormalizer.ts` (891 líneas) | Diccionario de alucinaciones, reparación JSON, limpieza XML |
 
