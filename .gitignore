@@ -40,3 +40,7 @@ release/
 **/__pycache__/
 *.pyc
 *.pyo
+
+# Engines
+engine/searxng/local/
+engine/searxng/.miku/

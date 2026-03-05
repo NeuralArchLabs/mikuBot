@@ -19,6 +19,7 @@ if (ffmpegPath) {
 let mainWin = null;
 let tray = null;
 let isQuitting = false;
+let searxngProcess = null;
 
 // Global Error Handler for Production Debugging
 process.on('uncaughtException', (error) => {
@@ -212,6 +213,55 @@ ipcMain.handle('api-stream', async (event, { provider, model, body, ollamaUrl, s
         };
     }
 });
+
+// ── SearXNG Engine Management ──────────────────────────────────────
+function startSearXNG() {
+    if (searxngProcess) return;
+
+    const searxngDir = path.join(resourcesPath, 'engine', 'searxng');
+    const granianExe = path.join(searxngDir, 'local', 'py3', 'Scripts', 'granian.exe');
+
+    if (!fs.existsSync(granianExe)) {
+        console.warn('[SearXNG] Granian not found, search engine might not be available.');
+        return;
+    }
+
+    console.log('[Main Process] Starting SearXNG Engine...');
+
+    searxngProcess = spawn(granianExe, ['searx.webapp:app'], {
+        cwd: searxngDir,
+        env: {
+            ...process.env,
+            SEARXNG_DEBUG: "0",
+            GRANIAN_INTERFACE: "wsgi",
+            GRANIAN_HOST: "127.0.0.1",
+            GRANIAN_PORT: "8888",
+            GRANIAN_WEBSOCKETS: "false",
+            GRANIAN_BLOCKING_THREADS: "4"
+        }
+    });
+
+    searxngProcess.stdout.on('data', (data) => {
+        // console.log(`[SearXNG]: ${data}`);
+    });
+
+    searxngProcess.stderr.on('data', (data) => {
+        // console.error(`[SearXNG Error]: ${data}`);
+    });
+
+    searxngProcess.on('close', (code) => {
+        console.log(`[SearXNG] Process exited with code ${code}`);
+        searxngProcess = null;
+    });
+}
+
+function stopSearXNG() {
+    if (searxngProcess) {
+        console.log('[Main Process] Stopping SearXNG Engine...');
+        searxngProcess.kill('SIGINT'); // Try graceful kill
+        searxngProcess = null;
+    }
+}
 
 // ── IPC Handlers ─────────────────────────────────────────────────────
 
@@ -1477,6 +1527,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
     createWindow();
+    startSearXNG();
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
             createWindow();
@@ -1488,6 +1539,7 @@ app.whenReady().then(() => {
 
 app.on('before-quit', () => {
     isQuitting = true;
+    stopSearXNG();
 });
 
 app.on('window-all-closed', () => {
