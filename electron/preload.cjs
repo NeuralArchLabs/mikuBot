@@ -86,6 +86,10 @@ contextBridge.exposeInMainWorld('electron', {
     // Telegram Voice Processing
     processTelegramVoice: (fileId) => ipcRenderer.invoke('telegram:process-voice', fileId),
 
+    // SearXNG Search Engine
+    installSearXNG: () => ipcRenderer.invoke('searxng:install'),
+    getSearXNGStatus: () => ipcRenderer.invoke('searxng:status'),
+
     // API streaming: listen for chunks from main process proxy
     onApiStreamChunk: (callback) => {
         const listener = (event, data) => callback(data);

@@ -216,14 +216,14 @@ ipcMain.handle('api-stream', async (event, { provider, model, body, ollamaUrl, s
 
 // ── SearXNG Engine Management ──────────────────────────────────────
 function startSearXNG() {
-    if (searxngProcess) return;
+    if (searxngProcess) return { ok: true, status: 'already_running' };
 
     const searxngDir = path.join(resourcesPath, 'engine', 'searxng');
     const granianExe = path.join(searxngDir, 'local', 'py3', 'Scripts', 'granian.exe');
 
     if (!fs.existsSync(granianExe)) {
         console.warn('[SearXNG] Granian not found, search engine might not be available.');
-        return;
+        return { ok: false, error: 'Engine not installed' };
     }
 
     console.log('[Main Process] Starting SearXNG Engine...');
@@ -252,6 +252,49 @@ function startSearXNG() {
     searxngProcess.on('close', (code) => {
         console.log(`[SearXNG] Process exited with code ${code}`);
         searxngProcess = null;
+    });
+
+    return { ok: true };
+}
+
+function installSearXNG() {
+    return new Promise((resolve) => {
+        const searxngDir = path.join(resourcesPath, 'engine', 'searxng');
+        const managePs1 = path.join(searxngDir, 'manage.ps1');
+
+        if (!fs.existsSync(managePs1)) {
+            resolve({ ok: false, error: 'manage.ps1 not found in engine/searxng' });
+            return;
+        }
+
+        console.log('[Main Process] Running SearXNG Setup (pyenv.install)...');
+
+        const setupProcess = spawn('powershell.exe', [
+            '-ExecutionPolicy', 'Bypass',
+            '-File', managePs1,
+            'pyenv.install'
+        ], {
+            cwd: searxngDir
+        });
+
+        setupProcess.stdout.on('data', (data) => {
+            console.log(`[SearXNG Setup]: ${data}`);
+        });
+
+        setupProcess.stderr.on('data', (data) => {
+            console.error(`[SearXNG Setup Error]: ${data}`);
+        });
+
+        setupProcess.on('close', (code) => {
+            if (code === 0) {
+                console.log('[SearXNG Setup] Installation completed successfully.');
+                const startRes = startSearXNG();
+                resolve({ ok: true, startResult: startRes });
+            } else {
+                console.error(`[SearXNG Setup] Installation failed with code ${code}`);
+                resolve({ ok: false, error: `Setup failed (code ${code})` });
+            }
+        });
     });
 }
 
@@ -1434,6 +1477,19 @@ function destroyTray() {
 
 ipcMain.handle('set-auto-launch', async (event, enabled) => {
     return updateAutoLaunch(enabled);
+});
+
+ipcMain.handle('searxng:install', async () => {
+    return installSearXNG();
+});
+
+ipcMain.handle('searxng:status', async () => {
+    const searxngDir = path.join(resourcesPath, 'engine', 'searxng');
+    const granianExe = path.join(searxngDir, 'local', 'py3', 'Scripts', 'granian.exe');
+    return {
+        installed: fs.existsSync(granianExe),
+        running: !!searxngProcess
+    };
 });
 
 // Note: Settings are also checked during 'save-settings'

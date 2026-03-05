@@ -220,6 +220,12 @@ export async function executeToolCall(
                             return { success: true, data: response.data };
                         }
                         console.warn("Native Search failed, falling back to APIs...", response.error);
+                        if (response.error?.includes('Engine not installed') || response.error?.includes('ECONNREFUSED')) {
+                            return {
+                                success: false,
+                                error: `Native Search failed: ${response.error}. TIP: El motor SearXNG no parece estar activo. Puedes instalarlo o arrancarlo desde la Configuración.`
+                            };
+                        }
                     } catch (e) {
                         console.error("Native Search error, falling back...", e);
                     }

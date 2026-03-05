@@ -61,6 +61,8 @@ export const SettingsPanel = ({
     const [settingsTab, setSettingsTab] = useState<'core' | 'scheduler'>('core');
     const [localModels, setLocalModels] = useState<string[]>([]);
     const [downloading, setDownloading] = useState<Record<string, number>>({});
+    const [searxngStatus, setSearxngStatus] = useState<{ installed: boolean, running: boolean }>({ installed: false, running: false });
+    const [installingSearxng, setInstallingSearxng] = useState(false);
 
     const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
         // Toggle the floating button when having scrolled past the top header
@@ -84,9 +86,30 @@ export const SettingsPanel = ({
             const cleanup = (window as any).electron.onVoiceDownloadProgress((data: any) => {
                 setDownloading(prev => ({ ...prev, [data.lang]: data.progress }));
             });
+
+            // SearXNG Status
+            (window as any).electron.getSearXNGStatus().then((status: any) => {
+                setSearxngStatus(status);
+            });
+
             return cleanup;
         }
     }, []);
+
+    const handleInstallSearXNG = async () => {
+        if (!(window as any).electron) return;
+        setInstallingSearxng(true);
+        const res = await (window as any).electron.installSearXNG();
+        setInstallingSearxng(false);
+
+        if (res.ok) {
+            await askAlert("✅ SearXNG instalado y arrancado correctamente.");
+            const status = await (window as any).electron.getSearXNGStatus();
+            setSearxngStatus(status);
+        } else {
+            await askAlert(`❌ Error al instalar SearXNG: ${res.error}`);
+        }
+    };
 
     const handleDownloadModel = async (lang: 'es' | 'en') => {
         if (!(window as any).electron) return;
@@ -859,6 +882,59 @@ export const SettingsPanel = ({
                                                 </div>
                                             </div>
 
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-6 pt-6 md:pt-8">
+                                <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
+                                    <Icon name="search" className="text-blue-400" /> Web Search Engine (SearXNG)
+                                </label>
+
+                                <div className="bg-slate-900/60 rounded-3xl p-8 border border-blue-500/20 shadow-xl relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-blue-500/10 transition-colors" />
+
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 relative z-10">
+                                        <div className="space-y-4">
+                                            <h3 className="text-lg font-black text-white tracking-tight">Motor de Búsqueda Privado</h3>
+                                            <p className="text-xs text-slate-400 leading-relaxed">
+                                                Miku utiliza una instancia local de SearXNG para realizar búsquedas web de forma privada. El motor se ejecuta nativamente en tu máquina.
+                                            </p>
+
+                                            <div className="flex flex-col gap-4 mt-2">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-3 h-3 rounded-full ${searxngStatus.installed ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-slate-600'}`} />
+                                                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
+                                                        {searxngStatus.installed ? 'Instalado' : 'No Instalado'}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-3 h-3 rounded-full ${searxngStatus.running ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-red-500/50'}`} />
+                                                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
+                                                        {searxngStatus.running ? 'En Ejecución (Puerto 8888)' : 'Detenido'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex flex-col justify-center">
+                                            <button
+                                                onClick={handleInstallSearXNG}
+                                                disabled={installingSearxng || (searxngStatus.installed && searxngStatus.running)}
+                                                className={`w-full py-4 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 border shadow-lg ${installingSearxng
+                                                    ? 'bg-blue-600/20 border-blue-500/50 text-blue-400'
+                                                    : searxngStatus.installed && searxngStatus.running
+                                                        ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 cursor-default opacity-60'
+                                                        : 'bg-blue-600 hover:bg-blue-500 border-blue-400 text-white shadow-blue-900/20'
+                                                    }`}
+                                            >
+                                                <Icon name={installingSearxng ? "sync fa-spin" : searxngStatus.installed ? "tools" : "download"} />
+                                                {installingSearxng ? 'Instalando Entorno...' : searxngStatus.installed ? (searxngStatus.running ? 'Motor Listo' : 'Reparar / Arrancar Motor') : 'Instalar Motor de Búsqueda'}
+                                            </button>
+                                            <p className="text-[9px] text-slate-500 mt-4 text-center px-4">
+                                                Esta acción creará un entorno virtual de Python y descargará las dependencias necesarias (~400MB).
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
