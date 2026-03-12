@@ -85,16 +85,33 @@ export const AGENT_TOOLS: ToolDefinition[] = [
         type: 'function',
         function: {
             name: 'patch_file',
-            description: 'Patch a section of an existing file. Preferred for partial edits on large files. The "find" text must match EXACTLY.',
+            description: 'Patch a section of an existing file. Use for partial edits. Supports strategies like "auto", "exact", "lineNumber".',
             parameters: {
                 type: 'object',
                 properties: {
                     filename: { type: 'string', description: 'The file to patch.' },
-                    find: { type: 'string', description: 'The exact text block to find. Must match character-for-character.' },
+                    find: { type: 'string', description: 'The exact text block to find. For "lineNumber" strategy, this can be null.' },
                     replace: { type: 'string', description: 'The replacement text.' },
+                    strategy: { type: 'string', enum: ['auto', 'exact', 'lineNumber'], default: 'auto', description: 'Strategy to find the block.' },
+                    lineNumber: { type: 'number', description: 'Target line number for "lineNumber" strategy.' },
                     source: { type: 'string', description: 'Where the file lives. Defaults to "workSpace".', enum: ['workSpace', 'core', 'library'] }
                 },
-                required: ['filename', 'find', 'replace']
+                required: ['filename', 'replace']
+            }
+        }
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'undo_patch',
+            description: 'Revert the last patch made to a file using the backup (.bak) file.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    filename: { type: 'string', description: 'The file to revert.' },
+                    source: { type: 'string', description: 'Where the file lives.', enum: ['workSpace', 'core', 'library'] }
+                },
+                required: ['filename']
             }
         }
     },
@@ -116,7 +133,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
         type: 'function',
         function: {
             name: 'search_files',
-            description: 'Search for a text pattern across all files in a folder.',
+            description: 'Search for a text pattern across all files in a folder using high-performance search.',
             parameters: {
                 type: 'object',
                 properties: {
@@ -124,6 +141,63 @@ export const AGENT_TOOLS: ToolDefinition[] = [
                     source: { type: 'string', description: 'Which folder to search. Defaults to "workSpace".', enum: ['workSpace', 'core', 'library'] }
                 },
                 required: ['query']
+            }
+        }
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'get_file_outline',
+            description: 'Extract Classes, Functions, and Interfaces from a source file.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    filename: { type: 'string', description: 'The source file.' },
+                    source: { type: 'string', description: 'Where the file lives.', enum: ['workSpace', 'core', 'library'] }
+                },
+                required: ['filename']
+            }
+        }
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'batch_operation',
+            description: 'Perform batch file operations like copy, move, or delete with glob pattern support.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    operation: { type: 'string', enum: ['copy', 'move', 'delete'], description: 'Type of operation.' },
+                    source_path: { type: 'string', description: 'Source path or directory.' },
+                    destination_path: { type: 'string', description: 'Target destination (for copy/move).' },
+                    pattern: { type: 'string', description: 'Optional glob pattern (e.g. "*.ts").' },
+                    source: { type: 'string', enum: ['workSpace', 'core', 'library'], description: 'Reference mount point.' }
+                },
+                required: ['operation', 'source_path']
+            }
+        }
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'get_system_metrics',
+            description: 'Retrieve real-time OS performance metrics (CPU, RAM, Uptime).',
+            parameters: {
+                type: 'object',
+                properties: {},
+                required: []
+            }
+        }
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'get_git_info',
+            description: 'Retrieve current Git repository state (branch, dirty files, repo root).',
+            parameters: {
+                type: 'object',
+                properties: {},
+                required: []
             }
         }
     },

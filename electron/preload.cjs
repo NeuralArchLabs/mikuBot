@@ -53,6 +53,16 @@ contextBridge.exposeInMainWorld('electron', {
     listBlueprints: (data) => ipcRenderer.invoke('list-blueprints', data),
     executeSkill: (data) => ipcRenderer.invoke('execute-skill', data),
 
+    // Advanced Agent Tools
+    agentReadFile: (data) => ipcRenderer.invoke('agent:read-file', data),
+    getFileOutline: (data) => ipcRenderer.invoke('agent:get-file-outline', data),
+    batchOperation: (data) => ipcRenderer.invoke('agent:batch-operation', data),
+    searchFilesNative: (data) => ipcRenderer.invoke('agent:search-files', data),
+    smartPatch: (data) => ipcRenderer.invoke('agent:smart-patch', data),
+    undoPatch: (data) => ipcRenderer.invoke('agent:undo-patch', data),
+    getSystemMetrics: () => ipcRenderer.invoke('agent:system-metrics'),
+    getGitInfo: () => ipcRenderer.invoke('agent:git-info'),
+
     // Voice & Vosk Models
     listVoiceModels: () => ipcRenderer.invoke('voice:list-models'),
     downloadVoiceModel: (data) => ipcRenderer.invoke('voice:download-model', data),

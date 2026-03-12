@@ -25,7 +25,7 @@ Este archivo contiene fragmentos de código JSON válidos para cada herramienta.
 }
 ```
 
-## [patch_file]
+## [patch_file] / [smart_patch]
 ```json
 {
   "name": "patch_file",
@@ -33,6 +33,18 @@ Este archivo contiene fragmentos de código JSON válidos para cada herramienta.
     "filename": "archivo.js",
     "find": "bloque de texto exacto a buscar",
     "replace": "nuevo bloque de texto",
+    "strategy": "auto",
+    "source": "workSpace"
+  }
+}
+```
+
+## [undo_patch]
+```json
+{
+  "name": "undo_patch",
+  "arguments": {
+    "filename": "archivo.js",
     "source": "workSpace"
   }
 }
@@ -55,6 +67,30 @@ Este archivo contiene fragmentos de código JSON válidos para cada herramienta.
   "arguments": {
     "query": "patrón o texto a buscar",
     "source": "workSpace"
+  }
+}
+```
+
+## [get_file_outline]
+```json
+{
+  "name": "get_file_outline",
+  "arguments": {
+    "filename": "src/main.ts",
+    "source": "workSpace"
+  }
+}
+```
+
+## [batch_operation]
+```json
+{
+  "name": "batch_operation",
+  "arguments": {
+    "operation": "copy",
+    "source_path": "temp_logs",
+    "destination_path": "backup_logs",
+    "pattern": "*.log"
   }
 }
 ```
@@ -148,5 +184,21 @@ Este archivo contiene fragmentos de código JSON válidos para cada herramienta.
   "arguments": {
     "format": "24h"
   }
+}
+```
+
+## [get_system_metrics]
+```json
+{
+  "name": "get_system_metrics",
+  "arguments": {}
+}
+```
+
+## [get_git_info]
+```json
+{
+  "name": "get_git_info",
+  "arguments": {}
 }
 ```

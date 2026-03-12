@@ -70,10 +70,14 @@ Read content from any mount point.
 Create or overwrite files. Directories are created automatically.
 - **Param:** `filename`, `content`, `source`
 
-### `patch_file`
-Efficiently edit large files by replacing a specific block.
-- **Param:** `filename`, `find` (exact block), `replace` (new text)
-- **Note:** `find` must match character-for-character, including whitespace.
+### `patch_file` / `smart_patch`
+Efficiently edit files using various strategies.
+- **Param:** `filename`, `search` (or `find`), `replace`, `strategy` (optional: auto, exact, lineNumber), `lineNumber` (optional)
+- **Note:** `search` must be a substantial block for `auto` strategy. Use `lineNumber` for precise edits.
+
+### `undo_patch`
+Reverts the last patch to a file using the `.bak` file.
+- **Param:** `filename`
 
 ## 🔍 Discovery & Search (`list_files`, `search_files`)
 
@@ -82,19 +86,35 @@ List all files in a mount point. Use ONLY when lost.
 - **Param:** `source`
 
 ### `search_files`
-Search for a text pattern in all files.
-- **Param:** `query` (The text to find)
-- **Warning:** Do NOT use "filename" as a parameter; use `query`.
+Search for a text pattern in all files using native search.
+- **Param:** `query` (The text to find), `source` (optional)
 
-## 🌐 Research & Synthesis (`web_search`, `read_url`, `final_answer`)
+### `get_file_outline`
+Extract classes, functions, and interfaces from a source file.
+- **Param:** `filename`, `source`
 
-### `web_search`
-Search the internet via Tavily/Brave.
-- **Param:** `query`, `search_depth` (basic/advanced)
+### `batch_operation`
+Perform bulk file operations (copy, move, delete) using glob patterns.
+- **Param:** `operation` (copy, move, delete), `source_path`, `destination_path` (optional), `pattern` (optional glob)
 
-### `read_url`
-Fetch and convert content from a URL to Markdown.
-- **Param:** `url` (The target address)
+## 🛰️ System & Environment tools (`get_system_metrics`, `get_git_info`)
+
+### `get_system_metrics`
+Get real-time OS metrics (CPU, Memory, Uptime, Hostname).
+
+### `get_git_info`
+Get repository status, branch name, and modified files count.
+
+## 🛰️ Jerarquía de Investigación (Tiers 1-3)
+
+### Tier 1: `web_search` [Base Tool]
+Búsqueda superficial rápida. Devuelve títulos y resúmenes cortos (snippets).
+
+### Tier 2: `web_research` [Skill Intermedia]
+Investigación con lectura de contenido real (Top 3-5 sitios). Evita alucinaciones.
+
+### Tier 3: `deep_research` [Artillería Pesada]
+Investigación exhaustiva. Multi-idioma, Auditoría interna de calidad, Descarte de ruido y Dossier de justificación técnica.
 
 ## ⏳ Neural Scheduling (`add_scheduled_task`)
 

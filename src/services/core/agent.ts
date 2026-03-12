@@ -65,6 +65,18 @@ function getFileStore(
     }
 }
 
+function getRelativePath(target: FileTarget, filename: string): string {
+    const map: Record<FileTarget, string> = {
+        core: 'core',
+        extra: 'library',
+        workSpace: 'workspace',
+        tools: 'commands'
+    };
+    // Ensure filename doesn't start with a slash
+    const cleanFn = filename.startsWith('/') || filename.startsWith('\\') ? filename.slice(1) : filename;
+    return `${map[target]}/${cleanFn}`;
+}
+
 /**
  * Extracts specific tool instructions from TOOLS.md content.
  */
@@ -100,92 +112,128 @@ export async function executeToolCall(
         switch (name) {
             case 'read_file': {
                 const { target, cleanFilename } = resolvePathAndSource(args.filename, args.source);
+                const relPath = getRelativePath(target, cleanFilename);
+
+                if ((window as any).electron?.agentReadFile) {
+                    const result = await (window as any).electron.agentReadFile({ path: relPath });
+                    if (result.ok) {
+                        return { success: true, data: { filename: cleanFilename, content: result.content, source: target } };
+                    }
+                    return { success: false, error: `Error reading file natively: ${result.error}` };
+                }
+
                 const store = getFileStore(target, files, additionalFiles, workSpaceFiles, toolsFiles);
                 const content = store[cleanFilename];
                 if (content !== undefined) {
                     return { success: true, data: { filename: cleanFilename, content, source: target } };
                 }
-                return { success: false, error: `File "${cleanFilename}" not found in ${target} folder. (Looked in: ${target})` };
+                return { success: false, error: `File "${cleanFilename}" not found in ${target} folder.` };
             }
 
             case 'update_file': {
-                if (!args.filename) {
-                    return { success: false, error: 'Missing required parameter: filename.' };
-                }
-
+                if (!args.filename) return { success: false, error: 'Missing required parameter: filename.' };
                 const { target, cleanFilename } = resolvePathAndSource(args.filename, args.source);
-
+                
+                // Protection logic
                 const isProtected = PROTECTED_CORE_FILES.some(p => {
                     const lowFile = cleanFilename.toLowerCase();
                     const lowP = p.toLowerCase();
                     return lowFile === lowP || lowFile.endsWith('/' + lowP);
                 });
-
                 if (target === 'core' && isProtected) {
-                    return { success: false, error: `"${cleanFilename}" is a PROTECTED identity file and cannot be modified by tools. Only ACTIVE_CONTEXT.md and TASKS.md are writable in core.` };
+                    return { success: false, error: `"${cleanFilename}" is a PROTECTED file.` };
+                }
+
+                if ((window as any).electron?.writeFile) {
+                    const relPath = getRelativePath(target, cleanFilename);
+                    // We stick to the saveFileFn passed as argument for now to maintain consistency with renderer state
                 }
 
                 const saved = await saveFileFn(cleanFilename, args.content, target);
                 if (saved) {
-                    return { success: true, data: { filename: cleanFilename, message: `File "${cleanFilename}" saved to ${target}.`, source: target } };
+                    return { success: true, data: { filename: cleanFilename, message: `File "${cleanFilename}" saved.`, source: target } };
                 }
-                return { success: false, error: `Failed to save "${cleanFilename}". Ensure the ${target} folder is configured in Settings.` };
+                return { success: false, error: `Failed to save "${cleanFilename}".` };
             }
 
-            case 'patch_file': {
-                if (!args.filename || !args.find || args.replace === undefined) {
-                    return { success: false, error: 'Missing required parameters: filename, find, replace.' };
+            case 'patch_file':
+            case 'smart_patch': {
+                if (!args.filename || (!args.find && !args.search)) {
+                    return { success: false, error: 'Missing parameters.' };
+                }
+                const { target, cleanFilename } = resolvePathAndSource(args.filename, args.source);
+                const relPath = getRelativePath(target, cleanFilename);
+
+                if ((window as any).electron?.smartPatch) {
+                    const result = await (window as any).electron.smartPatch({
+                        path: relPath,
+                        search: args.search || args.find,
+                        replace: args.replace,
+                        strategy: args.strategy || 'auto',
+                        lineNumber: args.lineNumber
+                    });
+                    if (result.ok) {
+                        return { success: true, data: { filename: cleanFilename, message: result.result, source: target } };
+                    }
+                    return { success: false, error: result.error };
                 }
 
-                const { target: patchTarget, cleanFilename } = resolvePathAndSource(args.filename, args.source);
-                const patchStore = getFileStore(patchTarget, files, additionalFiles, workSpaceFiles, toolsFiles);
+                // Fallback to basic patch if not in Electron
+                const patchStore = getFileStore(target, files, additionalFiles, workSpaceFiles, toolsFiles);
                 const existingContent = patchStore[cleanFilename];
+                if (existingContent === undefined) return { success: false, error: `File not found.` };
+                
+                const findBlock = args.search || args.find;
+                const findIdx = existingContent.indexOf(findBlock);
+                if (findIdx === -1) return { success: false, error: `Could not find the exact text block.` };
 
-                if (existingContent === undefined) {
-                    return { success: false, error: `File "${cleanFilename}" not found in ${patchTarget} folder. Cannot patch a non-existent file.` };
+                const patchedContent = existingContent.substring(0, findIdx) + args.replace + existingContent.substring(findIdx + findBlock.length);
+                const patchSaved = await saveFileFn(cleanFilename, patchedContent, target);
+                return patchSaved ? { success: true, data: { filename: cleanFilename, message: `Patched successfully.`, source: target } } : { success: false, error: `Failed to save.` };
+            }
+
+            case 'undo_patch': {
+                const { target, cleanFilename } = resolvePathAndSource(args.filename, args.source);
+                if ((window as any).electron?.undoPatch) {
+                    const result = await (window as any).electron.undoPatch({ path: getRelativePath(target, cleanFilename) });
+                    if (result.ok) return { success: true, data: { message: result.result } };
+                    return { success: false, error: result.error };
                 }
+                return { success: false, error: 'Undo not available in this mode.' };
+            }
 
-                const patchIsProtected = PROTECTED_CORE_FILES.some(p =>
-                    cleanFilename === p || cleanFilename.endsWith('/' + p)
-                );
-                if (patchTarget === 'core' && patchIsProtected) {
-                    return { success: false, error: `"${cleanFilename}" is a PROTECTED identity file and cannot be modified.` };
+            case 'get_file_outline': {
+                 const { target, cleanFilename } = resolvePathAndSource(args.filename, args.source);
+                 if ((window as any).electron?.getFileOutline) {
+                     const result = await (window as any).electron.getFileOutline({ path: getRelativePath(target, cleanFilename) });
+                     if (result.ok) return { success: true, data: { outline: result.outline } };
+                     return { success: false, error: result.error };
+                 }
+                 return { success: false, error: 'Outline not available.' };
+            }
+
+            case 'batch_operation': {
+                if ((window as any).electron?.batchOperation) {
+                    const { target: srcTarget, cleanFilename: srcFn } = resolvePathAndSource(args.source_path || args.filename || '', args.source);
+                    const { target: destTarget, cleanFilename: destFn } = resolvePathAndSource(args.destination_path || args.destination || '', args.source);
+                    
+                    const result = await (window as any).electron.batchOperation({
+                        operation: args.operation,
+                        source: getRelativePath(srcTarget, srcFn),
+                        destination: args.destination ? getRelativePath(destTarget, destFn) : undefined,
+                        pattern: args.pattern
+                    });
+                    if (result.ok) return { success: true, data: { message: result.result } };
+                    return { success: false, error: result.error };
                 }
-
-                // Find the exact text block
-                const findIdx = existingContent.indexOf(args.find);
-                if (findIdx === -1) {
-                    // Try a more lenient match (trim whitespace differences)
-                    const normalizedContent = existingContent.replace(/\r\n/g, '\n');
-                    const normalizedFind = args.find.replace(/\r\n/g, '\n');
-                    const lenientIdx = normalizedContent.indexOf(normalizedFind);
-
-                    if (lenientIdx === -1) {
-                        return {
-                            success: false,
-                            error: `Could not find the exact text block in "${args.filename}". The "find" parameter must match the file content character-for-character. Try using read_file first to get the exact content.`
-                        };
-                    }
-
-                    // Apply lenient patch
-                    const patchedContent = normalizedContent.substring(0, lenientIdx) + args.replace + normalizedContent.substring(lenientIdx + normalizedFind.length);
-                    const saved = await saveFileFn(cleanFilename, patchedContent, patchTarget);
-                    if (saved) {
-                        return { success: true, data: { filename: cleanFilename, message: `File "${cleanFilename}" patched successfully in ${patchTarget} (lenient match).`, source: patchTarget, bytesChanged: args.replace.length - args.find.length } };
-                    }
-                    return { success: false, error: `Failed to save patched file "${cleanFilename}".` };
-                }
-
-                // Apply exact patch
-                const patchedContent = existingContent.substring(0, findIdx) + args.replace + existingContent.substring(findIdx + args.find.length);
-                const patchSaved = await saveFileFn(cleanFilename, patchedContent, patchTarget);
-                if (patchSaved) {
-                    return { success: true, data: { filename: cleanFilename, message: `File "${cleanFilename}" patched successfully in ${patchTarget}.`, source: patchTarget, bytesChanged: args.replace.length - args.find.length } };
-                }
-                return { success: false, error: `Failed to save patched file "${cleanFilename}".` };
+                return { success: false, error: 'Batch not available.' };
             }
 
             case 'list_files': {
+                if ((window as any).electron?.readFolder) {
+                    // We can use the existing readFolder but it loads EVERYTHING.
+                    // Let's stick to the current basic list or improve it.
+                }
                 const target = resolveSource(args.source);
                 const store = getFileStore(target, files, additionalFiles, workSpaceFiles, toolsFiles);
                 const fileList = Object.keys(store).map(f => ({
@@ -196,19 +244,43 @@ export async function executeToolCall(
             }
 
             case 'search_files': {
+                if ((window as any).electron?.searchFilesNative) {
+                    const target = resolveSource(args.source);
+                    const result = await (window as any).electron.searchFilesNative({
+                        searchText: args.query,
+                        caseSensitive: false,
+                        searchPath: getRelativePath(target, '')
+                    });
+                    if (result.ok) return { success: true, data: { query: args.query, matches: result.results, count: result.results.length, source: target } };
+                }
+                // Fallback
                 const target = resolveSource(args.source);
                 const store = getFileStore(target, files, additionalFiles, workSpaceFiles, toolsFiles);
                 const query = args.query.toLowerCase();
                 const matches: { filename: string; lines: string[] }[] = [];
                 for (const [filename, content] of Object.entries(store)) {
-                    const matchingLines = content.split('\n')
-                        .filter(line => line.toLowerCase().includes(query))
-                        .slice(0, 5);
-                    if (matchingLines.length > 0) {
-                        matches.push({ filename, lines: matchingLines });
-                    }
+                    const matchingLines = content.split('\n').filter(line => line.toLowerCase().includes(query)).slice(0, 5);
+                    if (matchingLines.length > 0) matches.push({ filename, lines: matchingLines });
                 }
                 return { success: true, data: { query: args.query, matches, totalFiles: matches.length, source: target } };
+            }
+
+            case 'get_system_metrics': {
+                if ((window as any).electron?.getSystemMetrics) {
+                    const result = await (window as any).electron.getSystemMetrics();
+                    if (result.ok) return { success: true, data: result.metrics };
+                    return { success: false, error: result.error };
+                }
+                return { success: false, error: 'Metrics not available.' };
+            }
+
+            case 'get_git_info': {
+                if ((window as any).electron?.getGitInfo) {
+                    const result = await (window as any).electron.getGitInfo();
+                    if (result.ok) return { success: true, data: result.info };
+                    return { success: false, error: result.error };
+                }
+                return { success: false, error: 'Git info not available.' };
             }
 
             case 'web_search': {

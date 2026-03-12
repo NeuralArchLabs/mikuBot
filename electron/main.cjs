@@ -5,6 +5,7 @@ const fs = require('fs');
 const { Readable } = require('stream');
 
 const https = require('https');
+const agentActions = require('./agentActions.cjs');
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('ffmpeg-static');
 const readline = require('readline');
@@ -1599,6 +1600,83 @@ ipcMain.handle('searxena:stop', async () => {
     await stopSearXena();
     return { ok: true };
 });
+
+// ── Advanced Agent Tools (Ported) ──────────────────────────────────
+ipcMain.handle('agent:read-file', async (event, { path: relPath }) => {
+    const fullPath = path.resolve(currentWorkspacePath, relPath);
+    try {
+        const content = await fs.promises.readFile(fullPath, 'utf-8');
+        return { ok: true, content };
+    } catch (e) {
+        return { ok: false, error: e.message };
+    }
+});
+
+ipcMain.handle('agent:get-file-outline', async (event, { path: relPath }) => {
+    const fullPath = path.resolve(currentWorkspacePath, relPath);
+    try {
+        const outline = await agentActions.handleGetFileOutline(fullPath);
+        return { ok: true, outline };
+    } catch (e) {
+        return { ok: false, error: e.message };
+    }
+});
+
+ipcMain.handle('agent:batch-operation', async (event, data) => {
+    try {
+        const result = await agentActions.handleBatchOperation(currentWorkspacePath, data);
+        return { ok: true, result };
+    } catch (e) {
+        return { ok: false, error: e.message };
+    }
+});
+
+ipcMain.handle('agent:search-files', async (event, data) => {
+    try {
+        const results = await agentActions.handleSearchFilesNative(currentWorkspacePath, data);
+        return { ok: true, results };
+    } catch (e) {
+        return { ok: false, error: e.message };
+    }
+});
+
+ipcMain.handle('agent:smart-patch', async (event, data) => {
+    try {
+        const result = await agentActions.handleSmartPatch(currentWorkspacePath, data);
+        return { ok: true, result };
+    } catch (e) {
+        return { ok: false, error: e.message };
+    }
+});
+
+ipcMain.handle('agent:undo-patch', async (event, { path: relPath }) => {
+    try {
+        const result = await agentActions.handleUndoPatch(currentWorkspacePath, relPath);
+        return { ok: true, result };
+    } catch (e) {
+        return { ok: false, error: e.message };
+    }
+});
+
+ipcMain.handle('agent:system-metrics', async () => {
+    try {
+        const metrics = await agentActions.handleSystemMetrics();
+        return { ok: true, metrics };
+    } catch (e) {
+        return { ok: false, error: e.message };
+    }
+});
+
+ipcMain.handle('agent:git-info', async () => {
+    try {
+        const info = await agentActions.handleGitInfo(currentWorkspacePath);
+        return { ok: true, info };
+    } catch (e) {
+        return { ok: false, error: e.message };
+    }
+});
+
+// ... rest of the file
 
 ipcMain.handle('searxena:status', async () => {
     let isRunning = !!searxenaProcess;
