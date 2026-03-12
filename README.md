@@ -30,7 +30,7 @@
 ### 🛠️ Ecosistema de Herramientas (The Toolbelt)
 - **Native File System**: Lectura, escritura, borrado y particionamiento de archivos en tiempo real con rutas absolutas de Windows.
 - **Integrated Terminal**: Ejecución de comandos seguros (`git`, `node`, `python`, etc.) directamente desde la interfaz del agente.
-- **Web Intelligence**: Motor de búsqueda integrado y extractor de markdown desde URLs para investigación profunda.
+- **Web Intelligence (searXena)**: Motor de búsqueda nativo con **Auto-Setup**. El sistema detecta e instala automáticamente su propio entorno de Python al primer arranque y garantiza un cierre limpio del proceso al salir.
 - **Native Explorer**: Integración directa con el explorador de Windows para abrir carpetas de proyecto con un solo click.
 
 ### 🎨 Estética Cinema-Dark Premium

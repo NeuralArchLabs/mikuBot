@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.9.5] - 2026-03-12
+### Added
+- **Automated searXena Setup**: The engine now handles its own Python environment creation. If `py3` is missing, it automatically creates a venv, upgrades core tools (`pip`, `wheel`, `setuptools`), and installs dependencies from `requirements.txt`.
+- **Orphan Process Prevention**: Implemented a multi-layered shutdown protocol (`before-quit`, `will-quit`, `process exit`). Added a synchronous `stopSearXenaSync` to ensure the engine is killed before the app terminates.
+- **PS Fallback Cleanup**: Refined the PowerShell process cleanup to safely ignore system processes (PID < 10), avoiding "critical process" errors on exit.
+- **Background Engine Execution**: Added `windowsHide: true` to the engine spawn, ensuring the search core runs invisibly without popping up console windows.
+
+### Changed
+- **Branding Cleanup**: Removed "Powered by searXena" text from the title bar and settings header for a cleaner, unified UI.
+
 ## [1.9.3] - 2026-03-11
 ### Added
 - **Native Search Engine Integration (searXena)**: Completely replaced SearXNG with our own native search engine **searXena**. This engine runs as a native core in Windows via a dedicated Python environment, providing structured API access (`/api/v1/search`) with POST support.
