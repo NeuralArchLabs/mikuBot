@@ -19,7 +19,7 @@ if (ffmpegPath) {
 let mainWin = null;
 let tray = null;
 let isQuitting = false;
-let searxngProcess = null;
+let searxenaProcess = null;
 
 // Global Error Handler for Production Debugging
 process.on('uncaughtException', (error) => {
@@ -57,7 +57,8 @@ function saveWorkspacePath(folderPath) {
 }
 
 // Global path state
-let currentWorkspacePath = getStoredWorkspacePath() || (app.isPackaged ? path.dirname(app.getPath('exe')) : process.cwd());
+// Robust Fallback: In production, prioritize User Data directory over App Path to avoid common environment conflicts
+let currentWorkspacePath = getStoredWorkspacePath() || (app.isPackaged ? path.join(app.getPath('userData'), 'default-workspace') : process.cwd());
 
 const getEffectivePaths = () => {
     return {
@@ -69,6 +70,12 @@ const getEffectivePaths = () => {
 };
 
 const resourcesPath = app.isPackaged ? process.resourcesPath : process.cwd();
+
+// ── Native Engine Configuration (searXena) ───────────────────────────
+const SEARXENA_DIR = app.isPackaged 
+    ? path.join(process.resourcesPath, 'engine', 'searxena')
+    : path.join(process.cwd(), 'engine', 'searxena');
+const ENGINE_PYTHON = path.join(SEARXENA_DIR, 'local', 'py3', 'Scripts', 'python.exe');
 
 console.log('Main Process: Active Workspace Path:', currentWorkspacePath);
 
@@ -214,97 +221,131 @@ ipcMain.handle('api-stream', async (event, { provider, model, body, ollamaUrl, s
     }
 });
 
-// ── SearXNG Engine Management ──────────────────────────────────────
-function startSearXNG() {
-    if (searxngProcess) return { ok: true, status: 'already_running' };
+// ── searXena Engine Management ──────────────────────────────────────
+async function startSearXena() {
+    if (searxenaProcess) return { ok: true, status: 'already_running' };
 
-    const searxngDir = path.join(resourcesPath, 'engine', 'searxng');
-    const granianExe = path.join(searxngDir, 'local', 'py3', 'Scripts', 'granian.exe');
-
-    if (!fs.existsSync(granianExe)) {
-        console.warn('[SearXNG] Granian not found, search engine might not be available.');
-        return { ok: false, error: 'Engine not installed' };
+    // Proactive check to avoid port conflicts if engine is already running (e.g. from previous crash)
+    const isBusy = await checkPort8000();
+    if (isBusy) {
+        console.log('[Main Process] searXena detected as already active on port 8000. No start needed.');
+        return { ok: true, status: 'already_running' };
     }
 
-    console.log('[Main Process] Starting SearXNG Engine...');
+    const pythonExe = ENGINE_PYTHON;
+    const appScript = path.join(SEARXENA_DIR, 'core', 'app.py');
 
-    searxngProcess = spawn(granianExe, ['searx.webapp:app'], {
-        cwd: searxngDir,
+    if (!fs.existsSync(pythonExe)) {
+        console.warn('[searXena] Python environment not found in searXena directory.');
+        return { ok: false, error: 'Engine environment not found' };
+    }
+
+    console.log('[Main Process] Starting searXena Engine (Native Core)...');
+
+    searxenaProcess = spawn(pythonExe, [appScript], {
+        cwd: SEARXENA_DIR,
+        shell: true,
+        windowsHide: true,
         env: {
             ...process.env,
-            SEARXNG_SECRET: "12345678123456781234567812345678",
-            SEARXNG_DEBUG: "0",
-            GRANIAN_INTERFACE: "wsgi",
-            GRANIAN_HOST: "127.0.0.1",
-            GRANIAN_PORT: "8888",
-            GRANIAN_WEBSOCKETS: "false",
-            GRANIAN_BLOCKING_THREADS: "4"
+            PORT: "8000",
+            DEBUG: "0"
         }
     });
 
-    searxngProcess.stdout.on('data', (data) => {
-        // console.log(`[SearXNG]: ${data}`);
+    searxenaProcess.stdout.on('data', (data) => {
+        console.log(`[searXena] ${data}`);
     });
 
-    searxngProcess.stderr.on('data', (data) => {
-        // console.error(`[SearXNG Error]: ${data}`);
+    searxenaProcess.stderr.on('data', (data) => {
+        const line = data.toString();
+        if (line.includes('INFO:')) {
+            console.log(`[searXena Engine] ${line.trim()}`);
+        } else {
+            console.error(`[searXena Error] ${line.trim()}`);
+        }
     });
 
-    searxngProcess.on('close', (code) => {
-        console.log(`[SearXNG] Process exited with code ${code}`);
-        searxngProcess = null;
+    searxenaProcess.on('close', (code) => {
+        console.log(`[searXena] Process exited with code ${code}`);
+        searxenaProcess = null;
     });
 
     return { ok: true };
 }
 
-function installSearXNG() {
+let isSearxenaShuttingDown = false;
+
+function stopSearXena() {
+    if (isSearxenaShuttingDown) return Promise.resolve();
+    
     return new Promise((resolve) => {
-        const searxngDir = path.join(resourcesPath, 'engine', 'searxng');
-        const managePs1 = path.join(searxngDir, 'manage.ps1');
+        console.log('[Main Process] Requesting searXena shutdown...');
+        const { exec } = require('child_process');
 
-        if (!fs.existsSync(managePs1)) {
-            resolve({ ok: false, error: 'manage.ps1 not found in engine/searxng' });
-            return;
+        if (searxenaProcess) {
+            console.log(`[Main Process] Stopping searXena process tree (PID ${searxenaProcess.pid})...`);
+            exec(`taskkill /pid ${searxenaProcess.pid} /f /t`, (err) => {
+                if (err) console.warn('[Main Process] taskkill error (likely already dead):', err.message);
+                searxenaProcess = null;
+                isSearxenaShuttingDown = true;
+                setTimeout(resolve, 500);
+            });
+        } else {
+            console.log('[Main Process] Process handle missing. Attempting to clear port 8000 safely...');
+            // Refined PS command: Filter out PIDs < 10 (System/Idle) and get Unique PIDs
+            const cmd = 'powershell -Command "Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | Where-Object { $_.OwningProcess -gt 10 } | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { taskkill /f /pid $_ }"';
+            exec(cmd, (err) => {
+                if (err) console.log('[Main Process] No user process found on port 8000.');
+                isSearxenaShuttingDown = true;
+                setTimeout(resolve, 800);
+            });
         }
-
-        console.log('[Main Process] Running SearXNG Setup (pyenv.install)...');
-
-        const setupProcess = spawn('powershell.exe', [
-            '-ExecutionPolicy', 'Bypass',
-            '-File', managePs1,
-            'pyenv.install'
-        ], {
-            cwd: searxngDir
-        });
-
-        setupProcess.stdout.on('data', (data) => {
-            console.log(`[SearXNG Setup]: ${data}`);
-        });
-
-        setupProcess.stderr.on('data', (data) => {
-            console.error(`[SearXNG Setup Error]: ${data}`);
-        });
-
-        setupProcess.on('close', (code) => {
-            if (code === 0) {
-                console.log('[SearXNG Setup] Installation completed successfully.');
-                const startRes = startSearXNG();
-                resolve({ ok: true, startResult: startRes });
-            } else {
-                console.error(`[SearXNG Setup] Installation failed with code ${code}`);
-                resolve({ ok: false, error: `Setup failed (code ${code})` });
-            }
-        });
     });
 }
 
-function stopSearXNG() {
-    if (searxngProcess) {
-        console.log('[Main Process] Stopping SearXNG Engine...');
-        searxngProcess.kill('SIGINT'); // Try graceful kill
-        searxngProcess = null;
+/**
+ * Synchronous version of shutdown for app exit events.
+ */
+function stopSearXenaSync() {
+    if (isSearxenaShuttingDown) return;
+    const { execSync } = require('child_process');
+    try {
+        if (searxenaProcess) {
+            console.log(`[Main Process] Sync-killing searXena tree (PID ${searxenaProcess.pid})...`);
+            execSync(`taskkill /pid ${searxenaProcess.pid} /f /t`);
+            searxenaProcess = null;
+        } else {
+            const cmd = 'powershell -Command "Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | Where-Object { $_.OwningProcess -gt 10 } | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { taskkill /f /pid $_ }"';
+            execSync(cmd);
+        }
+        isSearxenaShuttingDown = true;
+    } catch (e) {
+        // Silently fail if process is already gone
     }
+}
+
+async function checkPort8000() {
+    return new Promise((resolve) => {
+        const http = require('http');
+        const options = {
+            hostname: '127.0.0.1',
+            port: 8000,
+            path: '/api/v1/tools_schema',
+            method: 'GET',
+            timeout: 500
+        };
+
+        const req = http.request(options, (res) => {
+            resolve(res.statusCode === 200);
+        });
+
+        req.on('error', () => {
+            resolve(false);
+        });
+
+        req.end();
+    });
 }
 
 // ── IPC Handlers ─────────────────────────────────────────────────────
@@ -428,19 +469,27 @@ ipcMain.handle('get-sessions', async () => {
         const sessions = files
             .filter(f => f.endsWith('.json'))
             .map(f => {
-                const filePath = path.join(sessionsDir, f);
-                const content = fs.readFileSync(filePath, 'utf8');
-                const session = JSON.parse(content);
-                return {
-                    id: session.id,
-                    title: session.title,
-                    lastModified: fs.statSync(filePath).mtimeMs,
-                    messageCount: session.messages.length
-                };
+                try {
+                    const filePath = path.join(sessionsDir, f);
+                    const content = fs.readFileSync(filePath, 'utf8');
+                    const session = JSON.parse(content);
+                    return {
+                        id: session.id,
+                        title: session.title,
+                        lastModified: fs.statSync(filePath).mtimeMs,
+                        messageCount: session.messages?.length || 0
+                    };
+                } catch (e) {
+                    console.warn(`[Main Process] Skipping corrupted session file: ${f}`, e.message);
+                    return null;
+                }
             })
+            .filter(s => s !== null)
             .sort((a, b) => b.lastModified - a.lastModified);
+            
         return { ok: true, sessions };
     } catch (error) {
+        console.error('[Main Process] get-sessions fatal error:', error);
         return { ok: false, error: error.message };
     }
 });
@@ -630,10 +679,10 @@ let voicePythonProcess = null;
 ipcMain.handle('voice:start-recognition', async (event, { modelName }) => {
     const sender = event.sender;
 
-    const pythonExe = path.join(resourcesPath, 'engine', 'python', 'python.exe');
+    const pythonExe = ENGINE_PYTHON;
     const engineScript = path.join(resourcesPath, 'engine', 'voice_engine.py');
 
-    if (!fs.existsSync(pythonExe)) return { ok: false, error: 'Bundled Python not found.' };
+    if (!fs.existsSync(pythonExe)) return { ok: false, error: 'Engine environment not found (searXena).' };
     if (!fs.existsSync(engineScript)) return { ok: false, error: 'Voice engine script missing.' };
 
     try {
@@ -714,10 +763,10 @@ ipcMain.handle('telegram:process-voice', async (event, fileId) => {
     const voskModelName = getVoskModelPath();
     if (!voskModelName) return { ok: false, error: 'Vosk Model not configured.' };
 
-    const pythonExe = path.join(resourcesPath, 'engine', 'python', 'python.exe');
+    const pythonExe = ENGINE_PYTHON;
     const engineScript = path.join(resourcesPath, 'engine', 'voice_engine.py');
 
-    if (!fs.existsSync(pythonExe)) return { ok: false, error: 'Bundled Python not found.' };
+    if (!fs.existsSync(pythonExe)) return { ok: false, error: 'Engine environment not found (searXena).' };
     if (!fs.existsSync(engineScript)) return { ok: false, error: 'Voice engine script missing.' };
 
     let modelPath = path.join(VOSK_MODELS_ROOT, voskModelName);
@@ -967,7 +1016,7 @@ ipcMain.handle('run-console', async (event, { command, args, cwd }) => {
 
 ipcMain.handle('run-search', async (event, { query }) => {
     const { execFile } = require('child_process');
-    const pythonExe = path.join(resourcesPath, 'engine', 'python', 'python.exe');
+    const pythonExe = ENGINE_PYTHON;
     const searchScript = path.join(resourcesPath, 'engine', 'search.py');
 
     return new Promise((resolve) => {
@@ -1000,7 +1049,7 @@ ipcMain.handle('run-extract', async (event, { url }) => {
 
     return new Promise((resolve) => {
         console.log(`[Main Process] Internal Extraction: "${url}"`);
-        execFile(pythonExe, [extractScript, url], (error, stdout, stderr) => {
+        execFile(ENGINE_PYTHON, [extractScript, url], (error, stdout, stderr) => {
             if (error) {
                 console.error('[Main Process] Extraction Error:', error);
                 return resolve({ ok: false, error: error.message });
@@ -1163,7 +1212,7 @@ ipcMain.handle('execute-skill', async (event, { toolsPath, skillName, args }) =>
 
         if (manifest.runtime === 'python') {
             const { execFile } = require('child_process');
-            const pythonExe = path.join(resourcesPath, 'engine', 'python', 'python.exe');
+            const pythonExe = ENGINE_PYTHON;
 
             return new Promise((resolve) => {
                 execFile(pythonExe, [entryFile, JSON.stringify(args)], (error, stdout, stderr) => {
@@ -1480,16 +1529,87 @@ ipcMain.handle('set-auto-launch', async (event, enabled) => {
     return updateAutoLaunch(enabled);
 });
 
-ipcMain.handle('searxng:install', async () => {
-    return installSearXNG();
+ipcMain.handle('searxena:install-env', async () => {
+    return installSearXenaEnv();
 });
 
-ipcMain.handle('searxng:status', async () => {
-    const searxngDir = path.join(resourcesPath, 'engine', 'searxng');
-    const granianExe = path.join(searxngDir, 'local', 'py3', 'Scripts', 'granian.exe');
+async function installSearXenaEnv() {
+    const { exec } = require('child_process');
+    const requirementsFile = path.join(SEARXENA_DIR, 'requirements.txt');
+    const venvDir = path.join(SEARXENA_DIR, 'local', 'py3');
+
+    if (!fs.existsSync(requirementsFile)) {
+        return { ok: false, error: 'No se encontró el archivo requirements.txt' };
+    }
+
+    return new Promise((resolve) => {
+        console.log('[Main Process] Initializing searXena Environment Setup (replicating win_setup.ps1)...');
+        
+        // Step 1: Create VENV if missing
+        const createVenvCmd = fs.existsSync(ENGINE_PYTHON) 
+            ? 'echo Venv already exists' 
+            : `python -m venv "${venvDir}"`;
+
+        exec(createVenvCmd, (err) => {
+            if (err) {
+                console.error('[searXena Venv Error] Failed to create venv. Make sure Python is in PATH.', err.message);
+                return resolve({ ok: false, error: 'No se pudo crear el entorno virtual. Asegúrate de tener Python instalado en el sistema.' });
+            }
+
+            console.log('[Main Process] Virtual Env Ready. Upgrading core tools...');
+            
+            // Step 2: Upgrade core tools (like win_setup.ps1 does)
+            const upgradeCmd = `"${ENGINE_PYTHON}" -m pip install -U pip wheel setuptools`;
+            exec(upgradeCmd, (err) => {
+                if (err) console.warn('[Main Process] Non-critical error upgrading pip tools.');
+
+                console.log('[Main Process] Installing dependencies from requirements.txt...');
+                
+                // Step 3: Install requirements
+                const installCmd = `"${ENGINE_PYTHON}" -m pip install -r "${requirementsFile}"`;
+                exec(installCmd, (err, stdout, stderr) => {
+                    if (err) {
+                        console.error('[searXena Install Error]', stderr);
+                        resolve({ ok: false, error: stderr || err.message });
+                    } else {
+                        console.log('[searXena Install Success] Dependencies ready.');
+                        resolve({ ok: true, output: stdout });
+                    }
+                });
+            });
+        });
+    });
+}
+
+ipcMain.handle('searxena:update-env', async () => {
+    return installSearXenaEnv(); // Reuse the same logic
+});
+
+ipcMain.handle('searxena:start', async () => {
+    // Check if env exists before starting
+    if (!fs.existsSync(ENGINE_PYTHON)) {
+        console.log('[Main Process] Engine environment missing. Triggering auto-install...');
+        const setup = await installSearXenaEnv();
+        if (!setup.ok) return setup;
+    }
+    return startSearXena();
+});
+
+ipcMain.handle('searxena:stop', async () => {
+    await stopSearXena();
+    return { ok: true };
+});
+
+ipcMain.handle('searxena:status', async () => {
+    let isRunning = !!searxenaProcess;
+    if (!isRunning) {
+        isRunning = await checkPort8000();
+    }
+    const engineSourceExists = fs.existsSync(path.join(SEARXENA_DIR, 'core', 'app.py'));
     return {
-        installed: fs.existsSync(granianExe),
-        running: !!searxngProcess
+        installed: engineSourceExists,
+        envReady: fs.existsSync(ENGINE_PYTHON),
+        running: isRunning
     };
 });
 
@@ -1582,9 +1702,17 @@ function createWindow() {
     });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+    // Proactive engine detection
+    const isRunning = await checkPort8000();
+    if (isRunning) {
+        console.log('[Main Process] searXena detected as ALREADY RUNNING on port 8000.');
+    } else {
+        console.log('[Main Process] searXena engine is currently STOPPED.');
+    }
+    
     createWindow();
-    startSearXNG();
+    startSearXena();
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
             createWindow();
@@ -1596,7 +1724,16 @@ app.whenReady().then(() => {
 
 app.on('before-quit', () => {
     isQuitting = true;
-    stopSearXNG();
+    stopSearXenaSync(); // Use sync version to ensure it happens before exit
+});
+
+app.on('will-quit', () => {
+    stopSearXenaSync(); // Fallback double-check
+});
+
+// Windows/Process level emergency cleanup
+process.on('exit', () => {
+    stopSearXenaSync();
 });
 
 app.on('window-all-closed', () => {

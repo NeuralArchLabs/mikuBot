@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ {'en': 'Preferences', 'zh': '偏好设置'}.get(lang, 'Preferencias') }} - searXena</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css?v=3.7">
+    <meta name="referrer" content="no-referrer">
+
+    <!-- Animación de ojos parpadeantes para el logo estático -->
+    <style>
+        .dog-eye {
+            animation: blinkEye 4s infinite;
+            transform-origin: center;
+            transform-box: fill-box;
+            display: inline-block;
+        }
+
+        @keyframes blinkEye {
+
+            0%,
+            46%,
+            54%,
+            100% {
+                opacity: 1;
+                transform: scaleY(1);
+            }
+
+            50% {
+                opacity: 0;
+                transform: scaleY(0.1);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="settings-page">
+        <a href="javascript:history.back()" class="back-btn" title="Volver">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            {{ {'en': 'Back', 'zh': '返回'}.get(lang, 'Volver') }}
+        </a>
+
+        <div class="settings-card">
+            <div class="settings-header"
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                <div>
+                    <h1 class="logo-main"
+                        style="font-size: 2.5rem; text-align: left; margin-bottom: 5px; margin-top: 0;">{{ {'en':
+                        'Preferences', 'zh': '偏好设置'}.get(lang, 'Preferencias') }}
+                    </h1>
+                    <p style="color: var(--text-secondary); margin: 0;">{{ {'en': 'Customize your private search
+                        experience', 'zh': '自定义您的私人搜索体验'}.get(lang, 'Personaliza tu experiencia de búsqueda privada') }}
+                    </p>
+                </div>
+
+                <div class="settings-mascot"
+                    style="position: relative; width: 220px; height: 80px; transform: scale(0.95); margin-right: -20px; pointer-events: none;">
+                    <svg viewBox="0 0 300 160" xmlns="http://www.w3.org/2000/svg" aria-label="searXena Mascot">
+                        <defs>
+                            <linearGradient id="neonGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#818cf8" />
+                                <stop offset="50%" stop-color="#c084fc" />
+                                <stop offset="100%" stop-color="#e879f9" />
+                            </linearGradient>
+                        </defs>
+                        <g transform="translate(150, 80)" font-family="'Outfit', sans-serif">
+                            <g class="text-dog-wrapper">
+                                <!-- Lupa alineada a la izquierda del perrito (posición del final de animación) -->
+                                <g transform="translate(-115, 8)">
+                                    <circle cx="0" cy="0" r="14" fill="none" stroke="url(#neonGrad)" stroke-width="4" />
+                                    <line x1="10" y1="10" x2="24" y2="24" stroke="url(#neonGrad)" stroke-width="4"
+                                        stroke-linecap="round" />
+                                </g>
+
+                                <!-- Rostro del Perrito (Estado final) -->
+                                <text x="18" y="2" text-anchor="middle" dominant-baseline="central" font-size="52"
+                                    font-weight="700" fill="url(#neonGrad)">
+                                    V<tspan class="dog-eye">•</tspan>
+                                    <tspan style="opacity: 0;">ᴥ</tspan>
+                                    <tspan class="dog-eye">•</tspan>V
+                                </text>
+                                <text x="18" y="2" text-anchor="middle" dominant-baseline="central" font-size="52"
+                                    font-weight="700" fill="url(#neonGrad)">
+                                    ᴥ
+                                </text>
+                            </g>
+                        </g>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="settings-tabs" role="tablist">
+                <div class="settings-tab active" onclick="showSection('general')" role="tab">{{ {'en': 'General', 'zh':
+                    '综合'}.get(lang, 'General') }}</div>
+                <div class="settings-tab" onclick="showSection('engines')" role="tab">{{ {'en': 'Engines', 'zh':
+                    '搜索引擎'}.get(lang, 'Motores') }} ({{ engines|length }})
+                </div>
+                <div class="settings-tab" onclick="showSection('about')" role="tab">{{ {'en': 'Privacy & Security',
+                    'zh': '隐私与安全'}.get(lang, 'Privacidad y Seguridad') }}</div>
+            </div>
+
+            <form action="/save_settings" method="post">
+                <div id="section-general" class="settings-section active">
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <h3>{{ {'en': 'Search Language', 'zh': '搜索语言'}.get(lang, 'Idioma de búsqueda') }}</h3>
+                            <p>{{ {'en': 'Prioritize results in this language.', 'zh': '优先显示此语言的结果。'}.get(lang,
+                                'Priorizar resultados en este idioma.') }}</p>
+                        </div>
+                        <select name="language" class="select-custom" title="Seleccionar idioma">
+                            <option value="es" {% if general.get('default_lang', 'es' )=='es' %}selected{% endif %}>
+                                Español</option>
+                            <option value="en" {% if general.get('default_lang')=='en' %}selected{% endif %}>English
+                            </option>
+                            <option value="zh" {% if general.get('default_lang')=='zh' %}selected{% endif %}>中文
+                                (Chinese)</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <h3>{{ {'en': 'Safe Search', 'zh': '安全搜索'}.get(lang, 'Búsqueda Segura') }}</h3>
+                            <p>{{ {'en': 'Filter explicit content from results.', 'zh': '从结果中过滤露骨内容。'}.get(lang,
+                                'Filtrar contenido explícito de los resultados.') }}</p>
+                        </div>
+                        <select name="safesearch" class="select-custom" title="Configurar búsqueda segura">
+                            <option value="0" {% if general.get('safe_search')==0 %}selected{% endif %}>{{ {'en':
+                                'Disabled', 'zh': '已禁用'}.get(lang, 'Desactivado') }}
+                            </option>
+                            <option value="1" {% if general.get('safe_search', 1)==1 %}selected{% endif %}>{{ {'en':
+                                'Moderate', 'zh': '中等'}.get(lang, 'Moderado') }}
+                            </option>
+                            <option value="2" {% if general.get('safe_search')==2 %}selected{% endif %}>{{ {'en':
+                                'Strict', 'zh': '严格'}.get(lang, 'Estricto') }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <h3>{{ {'en': 'Autocomplete', 'zh': '自动完成'}.get(lang, 'Autocompletado') }}</h3>
+                            <p>{{ {'en': 'Suggestions are processed locally to protect your privacy.', 'zh':
+                                '建议在本地处理以保护您的隐私。'}.get(lang, 'Las sugerencias se procesan localmente para proteger tu
+                                privacidad.') }}</p>
+                        </div>
+                        <select name="autocomplete" class="select-custom" title="Motor de sugerencias">
+                            <option value="google" {% if general.get('autocomplete', 'google' )=='google' %}selected{%
+                                endif %}>Google (Proxy)</option>
+                            <option value="duckduckgo" {% if general.get('autocomplete')=='duckduckgo' %}selected{%
+                                endif %}>DuckDuckGo (Proxy)</option>
+                            <option value="none" {% if general.get('autocomplete')=='none' %}selected{% endif %}>
+                                {{ {'en': 'Disabled', 'zh': '已禁用'}.get(lang, 'Desactivado') }}</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="section-engines" class="settings-section">
+                    <div style="margin-bottom: 20px; color: var(--text-secondary); font-size: 0.9rem;">
+                        {{ {'en': 'Select the search engines searXena will query simultaneously.', 'zh':
+                        '选择searXena将同时查询的搜索引擎。'}.get(lang, 'Selecciona los motores de búsqueda que searXena consultará
+                        simultáneamente.') }}
+                    </div>
+                    <div class="engine-grid">
+                        {% for engine in engines %}
+                        <label class="engine-label">
+                            <input type="checkbox" name="engines" value="{{ engine.name }}" {% if engine.enabled
+                                %}checked{% endif %}>
+                            <span style="text-transform: capitalize;">{{ engine.name.replace('_', ' ') }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div id="section-about" class="settings-section">
+                    <div class="infobox-container" style="background: rgba(129, 140, 248, 0.05);">
+                        {% if lang == 'en' %}
+                        <h2 style="color: var(--accent); margin-bottom: 15px;">Sovereignty, Privacy & AI Readiness</h2>
+                        <p style="color: var(--text-primary); font-size: 1rem; line-height: 1.6;">
+                            searXena is a <b>privacy-first metasearch engine</b> and an <b>AI infrastructure</b>
+                            designed to run
+                            on your own hardware. It acts as a neutral bridge between you (or your AI agents) and the
+                            global web.
+                        </p>
+                        <ul
+                            style="margin-left: 20px; margin-top: 20px; color: var(--text-secondary); line-height: 1.8; font-size: 0.95rem;">
+                            <li><b>Local Sovereignty:</b> 100% execution on your hardware. No cloud, no central servers,
+                                no telemetry.</li>
+                            <li><b>AI Explorer (Tool Calling):</b> Native JSON API designed to feed LLMs with clean,
+                                structured data for real-time research.</li>
+                            <li><b>Privacy-Enhanced Delivery:</b> Images, favicons, and results are delivered through a
+                                local proxy to ensure user anonymity.</li>
+                            <li><b>Direct Media Delivery (DMD):</b> High-trust, non-profit sources like Wikipedia or Wikimedia are prioritized for direct loading to optimize performance, as they strictly do not use commercial trackers.</li>
+                            <li><b>Privacy Zero-Logs:</b> We implement a strict zero-persistence policy. No history, no
+                                search profiles, no cookies.</li>
+                            <li><b>Upstream Integration:</b> searXena acts as a neutral interface that aggregates and
+                                anonymizes public signals from global engines, respecting the technological value of the
+                                commercial providers.</li>
+                            <li><b>Neutral Experience & Recommendations:</b> searXena focuses on a neutral, private search environment. If you require the personalization and conveniences provided by tracking algorithms, we recommend using commercial search platforms directly.</li>
+                        </ul>
+                        {% elif lang == 'zh' %}
+                        <h2 style="color: var(--accent); margin-bottom: 15px;">主权、隐私与 AI 就绪</h2>
+                        <p style="color: var(--text-primary); font-size: 1rem; line-height: 1.6;">
+                            searXena 是一个<b>隐私优先的元搜索引擎</b>，也是一个专为在您自己的硬件上运行而设计的 <b>AI 基础设施</b>。它充当您（或您的 AI
+                            智能体）与全球网络之间的中立桥梁。
+                        </p>
+                        <ul
+                            style="margin-left: 20px; margin-top: 20px; color: var(--text-secondary); line-height: 1.8; font-size: 0.95rem;">
+                            <li><b>本地主权:</b> 100% 在您的硬件上执行。无云端，无中央服务器，无遥测。</li>
+                            <li><b>AI 探索器 (Tool Calling):</b> 原生 JSON API，旨在为大语言模型 (LLM) 提供干净、结构化的数据以进行实时研究。</li>
+                            <li><b>隐私增强交付:</b> 图像、网页图标和结果通过本地代理过滤，以确保用户匿名。</li>
+                            <li><b>零日志隐私:</b> 我们执行严格的零持久化策略。无历史记录，无搜索画像，无 Cookie。</li>
+                            <li><b>上游集成:</b> searXena 作为一个中立接口，汇总并匿名化来自全球引擎的公开信号，尊重这些商业平台的技术价值。</li>
+                            <li><b>中立体验与建议:</b> searXena 专注于中立且私密的搜索环境。如果您需要基于跟踪算法的个性化和便捷功能，我们建议您直接使用商业搜索平台。</li>
+                        </ul>
+                        {% else %}
+                        <h2 style="color: var(--accent); margin-bottom: 15px;">Soberanía, Privacidad e IA</h2>
+                        <p style="color: var(--text-primary); font-size: 1rem; line-height: 1.6;">
+                            searXena es un <b>metabuscador enfocado en la privacidad</b> y una <b>infraestructura
+                                para IA</b> diseñada para ejecutarse
+                            en tu propio hardware. Actúa como un puente neutral entre tú (o tus agentes de IA) y la web
+                            global.
+                        </p>
+                        <ul
+                            style="margin-left: 20px; margin-top: 20px; color: var(--text-secondary); line-height: 1.8; font-size: 0.95rem;">
+                            <li><b>Soberanía Local:</b> Ejecución 100% en tu hardware. Sin nube, sin servidores
+                                centrales, sin telemetría.</li>
+                            <li><b>Explorador IA (Tool Calling):</b> API JSON nativa diseñada para alimentar a los LLMs
+                                con datos limpios y estructurados para investigación en tiempo real.</li>
+                            <li><b>Entrega Protegida:</b> Imágenes, favicons y resultados se procesan a través de
+                                un proxy local para garantizar el anonimato del usuario.</li>
+                            <li><b>Aceleración de Activos de Confianza (Direct Media):</b> Fuentes de infraestructura pública como Wikipedia o Wikimedia se cargan directamente para optimizar el rendimiento, garantizando la ausencia de rastreadores comerciales.</li>
+                            <li><b>Privacidad Sin Registros:</b> Implementamos una política estricta de cero
+                                persistencia. Sin historial, sin perfiles, sin cookies.</li>
+                            <li><b>Integración Upstream:</b> searXena funciona como una interfaz unificada que agrega y
+                                anonimiza señales públicas de motores globales, facilitando el acceso a la información
+                                de forma neutral y respetuosa con los proveedores comerciales.</li>
+                            <li><b>Experiencia Neutral y Recomendaciones:</b> searXena se enfoca en un entorno de búsqueda neutral. Si requiere de la personalización y comodidades basadas en algoritmos de seguimiento, le recomendamos el uso directo de plataformas comerciales de búsqueda.</li>
+                        </ul>
+                        {% endif %}
+                        <div
+                            style="margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--glass-border); font-size: 0.85rem; color: var(--text-secondary);">
+                            <p>Licencia: <b>GNU AGPLv3</b> — <a href="https://github.com/NeuralArchLabs"
+                                    class="credit-link">Neural Arch Labs</a></p>
+                            <p style="margin-top: 10px; font-size: 0.75rem; opacity: 0.6;">{{ {'en': 'Provided "AS IS"
+                                for research purposes only. Use at your own risk.', 'zh':
+                                '按“原样”提供，仅供研究使用。风险自担。'}.get(lang, 'Proporcionado "TAL CUAL" solo para fines de
+                                investigación. Úselo bajo su propio riesgo.') }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="save-bar">{{ {'en': 'Save Preferences and Protect Session', 'zh':
+                    '保存偏好设置并保护会话'}.get(lang, 'Guardar Preferencias y Proteger sesión') }}</button>
+            </form>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>searXena 2026 — AGPLv3 Open Source — Built by <a href="https://github.com/NeuralArchLabs" class="credit-link"
+                target="_blank" rel="noopener noreferrer">Neural Arch Labs</a></p>
+    </footer>
+
+    <script>
+        function showSection(name) {
+            document.querySelectorAll('.settings-section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('section-' + name).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+    </script>
+</body>
+
+</html>

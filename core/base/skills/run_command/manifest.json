@@ -1,0 +1,31 @@
+{
+    "name": "run_command",
+    "description": "Ejecuta comandos del sistema operativo. Detecta automáticamente procesos de larga duración y los ejecuta en background. Soporta PowerShell en Windows y Bash en Unix.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "command": {
+                "type": "string",
+                "description": "Comando a ejecutar"
+            },
+            "shell": {
+                "type": "string",
+                "description": "Shell a usar: 'auto' (detección automática), 'powershell', 'cmd', 'bash'",
+                "default": "auto"
+            },
+            "cwd": {
+                "type": "string",
+                "description": "Directorio de trabajo para el comando",
+                "default": "./"
+            },
+            "timeout": {
+                "type": "integer",
+                "description": "Timeout en segundos (0 = sin timeout)",
+                "default": 60
+            }
+        },
+        "required": ["command"]
+    },
+    "runtime": "python",
+    "entry": "main.py"
+}

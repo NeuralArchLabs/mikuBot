@@ -1,0 +1,30 @@
+{
+    "name": "write_file",
+    "description": "Crea o sobrescribe un archivo. Crea automáticamente directorios faltantes y realiza backup del archivo anterior si existe.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "path": {
+                "type": "string",
+                "description": "Ruta donde guardar el archivo. Los directorios se crean automáticamente."
+            },
+            "content": {
+                "type": "string",
+                "description": "Contenido a escribir en el archivo"
+            },
+            "encoding": {
+                "type": "string",
+                "description": "Codificación del archivo (utf-8, latin-1, etc.)",
+                "default": "utf-8"
+            },
+            "create_backup": {
+                "type": "boolean",
+                "description": "Si es true, crea backup del archivo anterior con extensión .bak",
+                "default": true
+            }
+        },
+        "required": ["path", "content"]
+    },
+    "runtime": "python",
+    "entry": "main.py"
+}

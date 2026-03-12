@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.9.3] - 2026-03-11
+### Added
+- **Native Search Engine Integration (searXena)**: Completely replaced SearXNG with our own native search engine **searXena**. This engine runs as a native core in Windows via a dedicated Python environment, providing structured API access (`/api/v1/search`) with POST support.
+- **Improved Tool Schema**: searXena provides standardized JSON outputs optimized for AI tool calling, reducing parsing latency and improving search accuracy.
+
+### Removed
+- **SearXNG**: Fully decoupled and removed SearXNG from the codebase, including its engine directory and management logic.
+
 ## [1.9.2] - 2026-03-05
 ### Changed
 - **Local Search Engine Integration**: Migrated the `web_research` and `deep_research` neural skills from the external `duckduckgo_search` python library to the internal, locally hosted **SearXNG** engine. This ensures completely private, self-hosted, and stable search capabilities for the agent without API rate limits.

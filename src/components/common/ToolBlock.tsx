@@ -130,8 +130,15 @@ export const ToolBlock: React.FC<ToolBlockProps> = ({ block, isOld }) => {
 
                     {result && (
                         <div className="space-y-2">
-                            <div className={`text-[9px] uppercase tracking-widest font-bold flex items-center gap-1 ${isSuccess ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                <IconComp name={isSuccess ? 'check-double' : 'exclamation-triangle'} /> Detailed Response
+                            <div className={`text-[9px] uppercase tracking-widest font-bold flex items-center justify-between gap-1 ${isSuccess ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                <div className="flex items-center gap-1">
+                                    <IconComp name={isSuccess ? 'check-double' : 'exclamation-triangle'} /> Detailed Response
+                                </div>
+                                {isSuccess && result.data?.engine === 'searXena' && (
+                                    <div className="text-[8px] font-black text-slate-600 bg-slate-800/40 px-2 py-0.5 rounded border border-slate-800 tracking-[0.2em] animate-in fade-in slide-in-from-right-2 duration-700">
+                                        POWERED BY <span className="text-blue-500/60">searXena</span>
+                                    </div>
+                                )}
                             </div>
                             <pre className={`custom-scrollbar overflow-y-auto max-h-60 p-3 bg-black/40 rounded-lg text-[10px] whitespace-pre-wrap break-all border transition-colors duration-500 ${isSuccess ? 'text-emerald-400/70 border-emerald-500/10' : 'text-rose-400/70 border-rose-500/10'}`}>
                                 {isTyping ? displayText : JSON.stringify(result.data || result.error, null, 2)}

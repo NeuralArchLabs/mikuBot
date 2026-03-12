@@ -1,0 +1,20 @@
+{
+    "name": "file_outline",
+    "description": "Extrae la estructura/outline de un archivo (funciones, clases, métodos, variables). Soporta Python, JavaScript, TypeScript, Java, C++, etc.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "path": {
+                "type": "string",
+                "description": "Ruta del archivo a analizar"
+            },
+            "language": {
+                "type": "string",
+                "description": "Lenguaje del archivo (se detecta automáticamente por extensión si no se especifica)"
+            }
+        },
+        "required": ["path"]
+    },
+    "runtime": "python",
+    "entry": "main.py"
+}

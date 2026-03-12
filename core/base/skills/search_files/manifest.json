@@ -1,0 +1,36 @@
+{
+    "name": "search_files",
+    "description": "Busca un patrón de texto en archivos de un directorio. Retorna los archivos que contienen el patrón y las líneas coincidentes.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "Término o patrón a buscar"
+            },
+            "path": {
+                "type": "string",
+                "description": "Ruta del directorio donde buscar",
+                "default": "./"
+            },
+            "recursive": {
+                "type": "boolean",
+                "description": "Buscar recursivamente en subdirectorios",
+                "default": true
+            },
+            "file_pattern": {
+                "type": "string",
+                "description": "Filtro de archivos (ej: *.py, *.js)",
+                "default": "*"
+            },
+            "case_sensitive": {
+                "type": "boolean",
+                "description": "Búsqueda sensible a mayúsculas",
+                "default": false
+            }
+        },
+        "required": ["query"]
+    },
+    "runtime": "python",
+    "entry": "main.py"
+}

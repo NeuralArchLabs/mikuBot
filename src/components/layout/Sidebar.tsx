@@ -172,7 +172,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                             <h1 className={`font-bold text-lg text-white tracking-tight leading-tight whitespace-nowrap overflow-hidden text-ellipsis transition-all duration-300 ${isAnimatingEgg ? 'text-blue-400 font-mono text-sm' : ''}`}>
                                 {displayName}
                             </h1>
-                            <div className="text-[11px] text-slate-500/80 font-bold uppercase tracking-[0.2em] leading-tight mt-0.5">v1.9.1</div>
+                            <div className="text-[11px] text-slate-500/80 font-bold uppercase tracking-[0.2em] leading-tight mt-0.5">v1.9.5</div>
                         </div>
                     </div>
 

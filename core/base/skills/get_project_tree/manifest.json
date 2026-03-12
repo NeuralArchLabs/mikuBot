@@ -1,0 +1,32 @@
+{
+    "name": "get_project_tree",
+    "description": "Genera un árbol visual del proyecto mostrando la estructura de directorios y archivos. Útil para explorar proyectos complejos.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "path": {
+                "type": "string",
+                "description": "Ruta raíz del proyecto",
+                "default": "./"
+            },
+            "depth": {
+                "type": "integer",
+                "description": "Profundidad máxima de recursión",
+                "default": 3
+            },
+            "max_items": {
+                "type": "integer",
+                "description": "Máximo de items a mostrar por nivel",
+                "default": 50
+            },
+            "ignore_patterns": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Patrones a ignorar (ej: ['.git', 'node_modules', '__pycache__'])",
+                "default": [".git", "node_modules", "__pycache__", ".venv", "dist", "build"]
+            }
+        }
+    },
+    "runtime": "python",
+    "entry": "main.py"
+}

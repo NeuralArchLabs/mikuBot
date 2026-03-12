@@ -1,7 +1,7 @@
 {
   "name": "mikucentral",
   "private": true,
-  "version": "1.9.2",
+  "version": "1.9.5",
   "type": "module",
   "description": "MikuCentral - Neural AI Interface",
   "author": "Armando Martinez",
@@ -21,7 +21,12 @@
     "extraResources": [
       {
         "from": "engine",
-        "to": "engine"
+        "to": "engine",
+        "filter": [
+          "**/*",
+          "!searxena/local/**/*",
+          "!searxena/.miku/**/*"
+        ]
       },
       {
         "from": "core",

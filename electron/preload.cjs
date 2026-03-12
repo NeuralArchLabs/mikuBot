@@ -86,9 +86,11 @@ contextBridge.exposeInMainWorld('electron', {
     // Telegram Voice Processing
     processTelegramVoice: (fileId) => ipcRenderer.invoke('telegram:process-voice', fileId),
 
-    // SearXNG Search Engine
-    installSearXNG: () => ipcRenderer.invoke('searxng:install'),
-    getSearXNGStatus: () => ipcRenderer.invoke('searxng:status'),
+    // searXena Search Engine
+    startSearXena: () => ipcRenderer.invoke('searxena:start'),
+    stopSearXena: () => ipcRenderer.invoke('searxena:stop'),
+    updateSearXenaEnv: () => ipcRenderer.invoke('searxena:update-env'),
+    getSearXenaStatus: () => ipcRenderer.invoke('searxena:status'),
 
     // API streaming: listen for chunks from main process proxy
     onApiStreamChunk: (callback) => {

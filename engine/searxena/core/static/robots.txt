@@ -1,0 +1,6 @@
+User-agent: *
+Disallow: /settings
+Disallow: /save_settings
+Disallow: /proxify
+Allow: /api/v1/
+Allow: /

@@ -223,7 +223,7 @@ export async function executeToolCall(
                         if (response.error?.includes('Engine not installed') || response.error?.includes('ECONNREFUSED')) {
                             return {
                                 success: false,
-                                error: `Native Search failed: ${response.error}. TIP: El motor SearXNG no parece estar activo. Puedes instalarlo o arrancarlo desde la Configuración.`
+                                error: `Native Search failed: ${response.error}. TIP: El motor searXena no parece estar activo. Puedes arrancarlo desde la Configuración.`
                             };
                         }
                     } catch (e) {

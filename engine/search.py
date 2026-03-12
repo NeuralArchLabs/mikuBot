@@ -9,44 +9,41 @@ if sys.stdout.encoding != 'utf-8':
 
 def search(query):
     try:
-        # SearXNG local instance (started by Electron)
-        url = "http://127.0.0.1:8888/search"
-        params = {
-            "q": query,
-            "format": "json",
-            "language": "es-ES"
+        # searXena local instance (Native Windows Engine)
+        url = "http://127.0.0.1:8000/api/v1/search"
+        payload = {
+            "query": query,
+            "limit": 10
         }
         
-        # Increase timeout as local SearXNG might take a moment to aggregate results
-        response = requests.get(url, params=params, timeout=15)
+        # Native searXena uses POST with JSON payload
+        response = requests.post(url, json=payload, timeout=15)
         response.raise_for_status()
         
         data = response.json()
-        raw_results = data.get("results", [])
+        results = data.get("results", [])
         
         scored_results = []
-        for r in raw_results:
-            # SearXNG results come with 'title', 'url', 'content', 'score', etc.
+        for r in results:
+            # searXena returns 'title', 'url', 'content', and metadata
             scored_results.append({
                 "title": r.get("title", ""),
                 "url": r.get("url", ""),
                 "content": r.get("content", ""),
-                "relevance_score": r.get("score", 0)
+                "relevance_score": 100 # searXena pre-ranks results
             })
-            
-        # Sort by relevance score just in case, though SearXNG usually handles this
-        scored_results.sort(key=lambda x: x["relevance_score"], reverse=True)
                 
         return {
             "success": True,
             "results": scored_results[:10],
-            "count": len(scored_results[:10]),
-            "original_query": query
+            "count": len(scored_results),
+            "original_query": query,
+            "engine": "searXena"
         }
     except Exception as e:
         return {
             "success": False,
-            "error": f"SearXNG Error: {str(e)}"
+            "error": f"searXena Error: {str(e)}"
         }
 
 if __name__ == "__main__":

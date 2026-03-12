@@ -1,0 +1,34 @@
+{
+    "name": "http_request",
+    "description": "Realiza solicitudes HTTP(S) (GET, POST, PUT, DELETE) con soporte para JSON, headers personalizados y autenticación.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "url": {
+                "type": "string",
+                "description": "URL a consultar (http:// o https://)"
+            },
+            "method": {
+                "type": "string",
+                "description": "Método HTTP: GET, POST, PUT, DELETE, PATCH",
+                "default": "GET"
+            },
+            "headers": {
+                "type": "object",
+                "description": "Headers personalizados (ej: {'Authorization': 'Bearer TOKEN'})"
+            },
+            "data": {
+                "type": "object",
+                "description": "Datos a enviar (se convierte a JSON automáticamente para POST/PUT)"
+            },
+            "timeout": {
+                "type": "integer",
+                "description": "Timeout en segundos",
+                "default": 30
+            }
+        },
+        "required": ["url"]
+    },
+    "runtime": "python",
+    "entry": "main.py"
+}

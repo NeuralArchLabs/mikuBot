@@ -42,5 +42,5 @@ release/
 *.pyo
 
 # Engines
-engine/searxng/local/
-engine/searxng/.miku/
+engine/searxena/local/
+engine/searxena/.miku/

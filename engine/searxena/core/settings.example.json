@@ -1,0 +1,301 @@
+{
+    "general": {
+        "instance_name": "searXena",
+        "safe_search": 0,
+        "autocomplete": "google",
+        "default_lang": "es",
+        "timeout": 8.0,
+        "cache_ttl": 600
+    },
+    "engines": [
+        {
+            "name": "google",
+            "enabled": true,
+            "weight": 4.0
+        },
+        {
+            "name": "duckduckgo",
+            "enabled": true,
+            "weight": 2.5
+        },
+        {
+            "name": "brave",
+            "enabled": true,
+            "weight": 3.5
+        },
+        {
+            "name": "qwant",
+            "enabled": false,
+            "weight": 1.1
+        },
+        {
+            "name": "bing",
+            "enabled": true,
+            "weight": 3.0
+        },
+        {
+            "name": "startpage",
+            "enabled": true,
+            "weight": 3.0
+        },
+        {
+            "name": "yahoo",
+            "enabled": true,
+            "weight": 3.0
+        },
+        {
+            "name": "ecosia",
+            "enabled": false,
+            "weight": 1.0
+        },
+        {
+            "name": "mojeek",
+            "enabled": true,
+            "weight": 2.0
+        },
+        {
+            "name": "swisscows",
+            "enabled": false,
+            "weight": 1.0
+        },
+        {
+            "name": "metager",
+            "enabled": false,
+            "weight": 1.0
+        },
+        {
+            "name": "ask",
+            "enabled": false,
+            "weight": 0.9
+        },
+        {
+            "name": "baidu",
+            "enabled": true,
+            "weight": 0.8
+        },
+        {
+            "name": "naver",
+            "enabled": false,
+            "weight": 0.8
+        },
+        {
+            "name": "seznam",
+            "enabled": false,
+            "weight": 0.8
+        },
+        {
+            "name": "gigablast",
+            "enabled": false,
+            "weight": 0.7
+        },
+        {
+            "name": "arxiv",
+            "enabled": true,
+            "weight": 0.8
+        },
+        {
+            "name": "mdn",
+            "enabled": true,
+            "weight": 1.2
+        },
+        {
+            "name": "pydoc",
+            "enabled": false,
+            "weight": 1.1
+        },
+        {
+            "name": "wikipedia",
+            "enabled": true,
+            "weight": 1.2
+        },
+        {
+            "name": "wikidata",
+            "enabled": true,
+            "weight": 1.0
+        },
+        {
+            "name": "wolframalpha",
+            "enabled": false,
+            "weight": 4.5
+        },
+        {
+            "name": "google_news",
+            "enabled": true,
+            "weight": 2.0
+        },
+        {
+            "name": "bing_news",
+            "enabled": true,
+            "weight": 2.5
+        },
+        {
+            "name": "duckduckgo_news",
+            "enabled": true,
+            "weight": 1.8
+        },
+        {
+            "name": "qwant",
+            "enabled": false,
+            "weight": 1.3
+        },
+        {
+            "name": "youtube",
+            "enabled": true,
+            "weight": 2.5
+        },
+        {
+            "name": "duckduckgo_videos",
+            "enabled": true,
+            "weight": 2.0
+        },
+        {
+            "name": "google_videos",
+            "enabled": true,
+            "weight": 2.0
+        },
+        {
+            "name": "bing_videos",
+            "enabled": true,
+            "weight": 1.8
+        },
+        {
+            "name": "vimeo",
+            "enabled": false,
+            "weight": 1.3
+        },
+        {
+            "name": "dailymotion",
+            "enabled": false,
+            "weight": 1.2
+        },
+        {
+            "name": "google_images",
+            "enabled": true,
+            "weight": 2.0
+        },
+        {
+            "name": "duckduckgo_images",
+            "enabled": true,
+            "weight": 1.8
+        },
+        {
+            "name": "bing_images",
+            "enabled": true,
+            "weight": 1.6
+        },
+        {
+            "name": "brave_images",
+            "enabled": true,
+            "weight": 1.4
+        },
+        {
+            "name": "unsplash",
+            "enabled": false,
+            "weight": 1.8
+        },
+        {
+            "name": "flickr",
+            "enabled": true,
+            "weight": 1.3
+        },
+        {
+            "name": "pixabay",
+            "enabled": false,
+            "weight": 1.5
+        },
+        {
+            "name": "giphy",
+            "enabled": false,
+            "weight": 1.2
+        },
+        {
+            "name": "pinterest",
+            "enabled": false,
+            "weight": 1.1
+        },
+        {
+            "name": "wallhaven",
+            "enabled": true,
+            "weight": 1.2
+        },
+        {
+            "name": "librestock",
+            "enabled": false,
+            "weight": 1.1
+        },
+        {
+            "name": "reddit",
+            "enabled": true,
+            "weight": 2.5
+        },
+        {
+            "name": "stackoverflow",
+            "enabled": true,
+            "weight": 1.5
+        },
+        {
+            "name": "github",
+            "enabled": true,
+            "weight": 1.0
+        },
+        {
+            "name": "gitlab",
+            "enabled": false,
+            "weight": 0.8
+        },
+        {
+            "name": "sourceforge",
+            "enabled": false,
+            "weight": 0.8
+        },
+        {
+            "name": "pypi",
+            "enabled": false,
+            "weight": 0.8
+        },
+        {
+            "name": "npm",
+            "enabled": true,
+            "weight": 0.8
+        },
+        {
+            "name": "docker",
+            "enabled": false,
+            "weight": 0.8
+        },
+        {
+            "name": "ebay",
+            "enabled": false,
+            "weight": 0.7
+        },
+        {
+            "name": "instant_answers",
+            "enabled": false,
+            "weight": 5.0
+        },
+        {
+            "name": "hackernews",
+            "enabled": true,
+            "weight": 0.5
+        },
+        {
+            "name": "brave_news",
+            "enabled": false,
+            "weight": 2.0
+        },
+        {
+            "name": "amazon",
+            "enabled": false,
+            "weight": 1.5
+        },
+        {
+            "name": "osm",
+            "enabled": true,
+            "weight": 1.2
+        },
+        {
+            "name": "scholar",
+            "enabled": true
+        }
+    ]
+}

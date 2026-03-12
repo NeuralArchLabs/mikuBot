@@ -61,8 +61,9 @@ export const SettingsPanel = ({
     const [settingsTab, setSettingsTab] = useState<'core' | 'scheduler'>('core');
     const [localModels, setLocalModels] = useState<string[]>([]);
     const [downloading, setDownloading] = useState<Record<string, number>>({});
-    const [searxngStatus, setSearxngStatus] = useState<{ installed: boolean, running: boolean }>({ installed: false, running: false });
-    const [installingSearxng, setInstallingSearxng] = useState(false);
+    const [searxenaStatus, setSearxenaStatus] = useState<{ installed: boolean, envReady: boolean, running: boolean }>({ installed: false, envReady: false, running: false });
+    const [startingSearxena, setStartingSearxena] = useState(false);
+    const [updatingSearxena, setUpdatingSearxena] = useState(false);
 
     const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
         // Toggle the floating button when having scrolled past the top header
@@ -87,27 +88,54 @@ export const SettingsPanel = ({
                 setDownloading(prev => ({ ...prev, [data.lang]: data.progress }));
             });
 
-            // SearXNG Status
-            (window as any).electron.getSearXNGStatus().then((status: any) => {
-                setSearxngStatus(status);
+            // Initial searXena Status check
+            (window as any).electron.getSearXenaStatus().then((status: any) => {
+                setSearxenaStatus(status);
             });
 
             return cleanup;
         }
     }, []);
 
-    const handleInstallSearXNG = async () => {
+    const handleStartSearXena = async () => {
         if (!(window as any).electron) return;
-        setInstallingSearxng(true);
-        const res = await (window as any).electron.installSearXNG();
-        setInstallingSearxng(false);
+        const isFirstTime = !searxenaStatus.envReady;
+        if (isFirstTime) {
+            await askAlert("☕ El motor searXena se instalará por primera vez. Esto puede tardar un minuto mientras configuramos el entorno de Python...");
+        }
+
+        setStartingSearxena(true);
+        const res = await (window as any).electron.startSearXena();
+        setStartingSearxena(false);
 
         if (res.ok) {
-            await askAlert("✅ SearXNG instalado y arrancado correctamente.");
-            const status = await (window as any).electron.getSearXNGStatus();
-            setSearxngStatus(status);
+            await askAlert(isFirstTime ? "🚀 Entorno configurado y motor arrancado con éxito." : "✅ searXena arrancado correctamente.");
+            const status = await (window as any).electron.getSearXenaStatus();
+            setSearxenaStatus(status);
         } else {
-            await askAlert(`❌ Error al instalar SearXNG: ${res.error}`);
+            await askAlert(`❌ Error: ${res.error}`);
+        }
+    };
+
+    const handleStopSearXena = async () => {
+        if (!(window as any).electron) return;
+        if (await askConfirm("¿Estás seguro de que deseas detener el motor searXena?")) {
+            await (window as any).electron.stopSearXena();
+            setSearxenaStatus(prev => ({ ...prev, running: false }));
+            await askAlert("🛑 searXena se ha detenido.");
+        }
+    };
+
+    const handleUpdateSearXenaEnv = async () => {
+        if (!(window as any).electron) return;
+        setUpdatingSearxena(true);
+        const res = await (window as any).electron.updateSearXenaEnv();
+        setUpdatingSearxena(false);
+        
+        if (res.ok) {
+            await askAlert("✅ Entorno de searXena sincronizado y actualizado.");
+        } else {
+            await askAlert(`❌ Error al actualizar entorno: ${res.error}`);
         }
     };
 
@@ -888,31 +916,45 @@ export const SettingsPanel = ({
                             </div>
 
                             <div className="space-y-6 pt-6 md:pt-8">
-                                <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
-                                    <Icon name="search" className="text-blue-400" /> Web Search Engine (SearXNG)
-                                </label>
+                                <div className="flex items-center justify-between pr-2">
+                                    <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
+                                        <Icon name="search" className="text-blue-400" /> Web Search Engine
+                                    </label>
+                                    
+                                </div>
 
                                 <div className="bg-slate-900/60 rounded-3xl p-8 border border-blue-500/20 shadow-xl relative overflow-hidden group">
                                     <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-blue-500/10 transition-colors" />
 
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 relative z-10">
                                         <div className="space-y-4">
-                                            <h3 className="text-lg font-black text-white tracking-tight">Motor de Búsqueda Privado</h3>
+                                            <h3 className="text-lg font-black text-white tracking-tight">Motor de Búsqueda Privado (searXena)</h3>
                                             <p className="text-xs text-slate-400 leading-relaxed">
-                                                Miku utiliza una instancia local de SearXNG para realizar búsquedas web de forma privada. El motor se ejecuta nativamente en tu máquina.
+                                                Miku utiliza el motor nativo searXena para realizar búsquedas web de forma privada. El motor se ejecuta de forma soberana en tu Windows.
                                             </p>
+                                            <div className="flex flex-wrap items-center gap-3 mt-1">
+                                                <a 
+                                                    href="http://127.0.0.1:8000" 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex items-center gap-2 text-[10px] font-bold text-cyan-400 hover:text-cyan-300 transition-colors bg-cyan-400/10 px-3 py-1.5 rounded-lg border border-cyan-400/20"
+                                                >
+                                                    <Icon name="external-link-alt" />
+                                                    Abrir Buscador Directamente
+                                                </a>
+                                            </div>
 
                                             <div className="flex flex-col gap-4 mt-2">
                                                 <div className="flex items-center gap-3">
-                                                    <div className={`w-3 h-3 rounded-full ${searxngStatus.installed ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-slate-600'}`} />
+                                                    <div className={`w-3 h-3 rounded-full ${searxenaStatus.installed ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-red-500/50'}`} />
                                                     <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
-                                                        {searxngStatus.installed ? 'Instalado' : 'No Instalado'}
+                                                        {searxenaStatus.installed ? 'Motor Detectado' : 'Motor No Encontrado'}
                                                     </span>
                                                 </div>
                                                 <div className="flex items-center gap-3">
-                                                    <div className={`w-3 h-3 rounded-full ${searxngStatus.running ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-red-500/50'}`} />
+                                                    <div className={`w-3 h-3 rounded-full ${searxenaStatus.running ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-red-500/50'}`} />
                                                     <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
-                                                        {searxngStatus.running ? 'En Ejecución (Puerto 8888)' : 'Detenido'}
+                                                        {searxenaStatus.running ? 'En Ejecución (Puerto 8000)' : 'Detenido'}
                                                     </span>
                                                 </div>
                                             </div>
@@ -920,21 +962,81 @@ export const SettingsPanel = ({
 
                                         <div className="flex flex-col justify-center">
                                             <button
-                                                onClick={handleInstallSearXNG}
-                                                disabled={installingSearxng || (searxngStatus.installed && searxngStatus.running)}
-                                                className={`w-full py-4 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 border shadow-lg ${installingSearxng
+                                                onClick={handleStartSearXena}
+                                                disabled={startingSearxena || (searxenaStatus.installed && searxenaStatus.running)}
+                                                className={`w-full py-4 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 border shadow-lg ${startingSearxena
                                                     ? 'bg-blue-600/20 border-blue-500/50 text-blue-400'
-                                                    : searxngStatus.installed && searxngStatus.running
-                                                        ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 cursor-default opacity-60'
+                                                    : searxenaStatus.installed && searxenaStatus.running
+                                                        ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 cursor-default'
                                                         : 'bg-blue-600 hover:bg-blue-500 border-blue-400 text-white shadow-blue-900/20'
                                                     }`}
                                             >
-                                                <Icon name={installingSearxng ? "sync fa-spin" : searxngStatus.installed ? "tools" : "download"} />
-                                                {installingSearxng ? 'Instalando Entorno...' : searxngStatus.installed ? (searxngStatus.running ? 'Motor Listo' : 'Reparar / Arrancar Motor') : 'Instalar Motor de Búsqueda'}
+                                                <Icon name={startingSearxena ? "sync fa-spin" : (!searxenaStatus.envReady ? "magic" : "play")} />
+                                                {startingSearxena ? (searxenaStatus.envReady ? 'Iniciando...' : 'Instalando...') : searxenaStatus.running ? 'Motor Activo' : (!searxenaStatus.envReady ? 'Instalar y Arrancar' : 'Arrancar searXena')}
                                             </button>
-                                            <p className="text-[9px] text-slate-500 mt-4 text-center px-4">
-                                                Esta acción creará un entorno virtual de Python y descargará las dependencias necesarias (~400MB).
+                                            
+                                            <div className="mt-4 p-4 rounded-xl bg-slate-950/40 border border-white/5 space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className={`w-2 h-2 rounded-full ${searxenaStatus.installed ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-slate-700'}`} />
+                                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Código Motor</span>
+                                                    </div>
+                                                    <span className="text-[9px] font-mono text-slate-500">{searxenaStatus.installed ? 'DETECTADO' : 'MISSING'}</span>
+                                                </div>
+
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className={`w-2 h-2 rounded-full ${searxenaStatus.envReady ? 'bg-emerald-500' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]'}`} />
+                                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Entorno Python</span>
+                                                    </div>
+                                                    <span className="text-[9px] font-mono text-slate-500">{searxenaStatus.envReady ? 'LISTO' : 'REQUIERE SETUP'}</span>
+                                                </div>
+                                                
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className={`w-2 h-2 rounded-full ${searxenaStatus.running ? 'bg-emerald-500 animate-pulse' : 'bg-slate-700'}`} />
+                                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Estado</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-[9px] font-mono text-slate-500">{searxenaStatus.running ? 'RUNNING' : 'STOPPED'}</span>
+                                                        {searxenaStatus.running && (
+                                                            <button 
+                                                                onClick={handleStopSearXena}
+                                                                title="Detener searXena"
+                                                                className="w-6 h-6 flex items-center justify-center rounded-md bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-all border border-rose-500/20 active:scale-90"
+                                                            >
+                                                                <Icon name="stop" className="text-[8px]" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <p className="text-[9px] text-slate-600 mt-2 text-center px-4 leading-tight font-medium italic">
+                                                {searxenaStatus.installed ? 'Control nativo de proceso habilitado.' : 'Motor no detectado en la ruta de desarrollo.'}
                                             </p>
+
+                                            {searxenaStatus.installed && (
+                                                <div className="mt-4 pt-4 border-t border-white/5">
+                                                    <button
+                                                        onClick={handleUpdateSearXenaEnv}
+                                                        disabled={updatingSearxena || searxenaStatus.running}
+                                                        className={`w-full py-2.5 rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 border ${updatingSearxena
+                                                            ? 'bg-amber-500/10 border-amber-500/30 text-amber-500 cursor-wait'
+                                                            : searxenaStatus.running
+                                                                ? 'bg-slate-800/50 border-slate-700/30 text-slate-500 cursor-not-allowed opacity-50'
+                                                                : 'bg-slate-800/80 hover:bg-slate-700 border-slate-700/50 text-slate-300 hover:text-white'
+                                                            }`}
+                                                        title={searxenaStatus.running ? "Detén el motor antes de actualizar" : "Sincronizar librerías de Python"}
+                                                    >
+                                                        <Icon name={updatingSearxena ? "sync fa-spin" : "wrench"} />
+                                                        {updatingSearxena ? 'Sincronizando...' : 'Sincronizar Dependencias (Update)'}
+                                                    </button>
+                                                    <p className="text-[8px] text-slate-500 mt-2 text-center leading-relaxed">
+                                                        Usa esto si reemplazas los archivos de searXena por una versión más reciente para asegurar que las librerías necesarias estén instaladas.
+                                                    </p>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -1108,9 +1210,8 @@ export const SettingsPanel = ({
                         )}
 
                     </div>
-                    )}
+                )}
             </div>
         </div>
     );
 };
-

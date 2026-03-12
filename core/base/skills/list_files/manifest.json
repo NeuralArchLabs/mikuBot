@@ -1,0 +1,25 @@
+{
+    "name": "list_files",
+    "description": "Lista archivos y directorios en una ruta especificada. Útil para explorar la estructura de proyectos.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "path": {
+                "type": "string",
+                "description": "Ruta del directorio a listar. Por defecto es el directorio actual.",
+                "default": "./"
+            },
+            "recursive": {
+                "type": "boolean",
+                "description": "Si es true, lista recursivamente todos los subdirectorios",
+                "default": false
+            },
+            "pattern": {
+                "type": "string",
+                "description": "Filtro de patrón (ej: *.py, *.js). Opcional."
+            }
+        }
+    },
+    "runtime": "python",
+    "entry": "main.py"
+}
