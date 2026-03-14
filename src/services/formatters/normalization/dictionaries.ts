@@ -82,6 +82,8 @@ export const TOOL_NAME_ALIASES: Record<string, string> = {
     'modify_part': 'patch_file',
     'edit_block': 'patch_file',
     'replace_block': 'patch_file',
+    'smart_patch': 'patch_file',
+    'smartpatch': 'patch_file',
     // ── delete_file variants ────────────────────────────────────────
     'delete_file': 'delete_file',
     'remove_file': 'delete_file',

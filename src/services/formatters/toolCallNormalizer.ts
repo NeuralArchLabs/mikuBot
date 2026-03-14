@@ -432,7 +432,13 @@ export function normalizeRawToolCall(
         }
     }
 
-    // 2. content="delete" -> content="" (Clear File)
+    // 2. NEW: update_file WITH patches -> treat as patch_file (canonical name)
+    if (toolName === 'update_file' && args.patches && Array.isArray(args.patches)) {
+        toolName = 'patch_file';
+        warnings.push('Converted "update_file" + "patches[]" to "patch_file".');
+    }
+
+    // 3. content="delete" -> content="" (Clear File)
     // Applies to update_file (and converted patch_file)
     if (toolName === 'update_file') {
         const c = args.content;

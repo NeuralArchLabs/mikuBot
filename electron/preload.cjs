@@ -58,7 +58,7 @@ contextBridge.exposeInMainWorld('electron', {
     getFileOutline: (data) => ipcRenderer.invoke('agent:get-file-outline', data),
     batchOperation: (data) => ipcRenderer.invoke('agent:batch-operation', data),
     searchFilesNative: (data) => ipcRenderer.invoke('agent:search-files', data),
-    smartPatch: (data) => ipcRenderer.invoke('agent:smart-patch', data),
+    patchFile: (data) => ipcRenderer.invoke('agent:patch-file', data),
     undoPatch: (data) => ipcRenderer.invoke('agent:undo-patch', data),
     getSystemMetrics: () => ipcRenderer.invoke('agent:system-metrics'),
 

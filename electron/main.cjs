@@ -1640,9 +1640,9 @@ ipcMain.handle('agent:search-files', async (event, data) => {
     }
 });
 
-ipcMain.handle('agent:smart-patch', async (event, data) => {
+ipcMain.handle('agent:patch-file', async (event, data) => {
     try {
-        const result = await agentActions.handleSmartPatch(currentWorkspacePath, data);
+        const result = await agentActions.handlePatchFile(currentWorkspacePath, data);
         return { ok: true, result };
     } catch (e) {
         return { ok: false, error: e.message };

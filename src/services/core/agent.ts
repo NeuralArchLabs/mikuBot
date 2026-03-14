@@ -112,10 +112,13 @@ export async function executeToolCall(
         switch (name) {
             case 'read_file': {
                 const { target, cleanFilename } = resolvePathAndSource(args.filename, args.source);
+                const staticPath = config.folderPaths?.[target];
                 const relPath = getRelativePath(target, cleanFilename);
+                const isElectron = !!(window as any).electron;
+                const finalPath = (isElectron && staticPath) ? `${staticPath}/${cleanFilename}` : relPath;
 
-                if ((window as any).electron?.agentReadFile) {
-                    const result = await (window as any).electron.agentReadFile({ path: relPath });
+                if (isElectron && (window as any).electron?.agentReadFile) {
+                    const result = await (window as any).electron.agentReadFile({ path: finalPath });
                     if (result.ok) {
                         return { success: true, data: { filename: cleanFilename, content: result.content, source: target } };
                     }
@@ -156,17 +159,21 @@ export async function executeToolCall(
                 return { success: false, error: `Failed to save "${cleanFilename}".` };
             }
 
-            case 'patch_file':
-            case 'smart_patch': {
-                if (!args.filename || (!args.find && !args.search)) {
-                    return { success: false, error: 'Missing parameters.' };
+            case 'patch_file': {
+                if (!args.filename || (!args.find && !args.search && !args.patches)) {
+                    return { success: false, error: 'Missing parameters: must provide either (find/search + replace) OR a "patches" array.' };
                 }
                 const { target, cleanFilename } = resolvePathAndSource(args.filename, args.source);
+                const staticPath = config.folderPaths?.[target];
                 const relPath = getRelativePath(target, cleanFilename);
+                const isElectron = !!(window as any).electron;
+                
+                // If in Electron and we have a static path, use absolute path to avoid workspace desync
+                const finalPath = (isElectron && staticPath) ? `${staticPath}/${cleanFilename}` : relPath;
 
-                if ((window as any).electron?.smartPatch) {
-                    const result = await (window as any).electron.smartPatch({
-                        path: relPath,
+                if (isElectron && (window as any).electron?.patchFile) {
+                    const result = await (window as any).electron.patchFile({
+                        path: finalPath,
                         search: args.search || args.find,
                         replace: args.replace,
                         strategy: args.strategy || 'auto',
@@ -195,8 +202,13 @@ export async function executeToolCall(
 
             case 'undo_patch': {
                 const { target, cleanFilename } = resolvePathAndSource(args.filename, args.source);
-                if ((window as any).electron?.undoPatch) {
-                    const result = await (window as any).electron.undoPatch({ path: getRelativePath(target, cleanFilename) });
+                const staticPath = config.folderPaths?.[target];
+                const relPath = getRelativePath(target, cleanFilename);
+                const isElectron = !!(window as any).electron;
+                const finalPath = (isElectron && staticPath) ? `${staticPath}/${cleanFilename}` : relPath;
+
+                if (isElectron && (window as any).electron?.undoPatch) {
+                    const result = await (window as any).electron.undoPatch({ path: finalPath });
                     if (result.ok) return { success: true, data: { message: result.result } };
                     return { success: false, error: result.error };
                 }
@@ -205,8 +217,13 @@ export async function executeToolCall(
 
             case 'get_file_outline': {
                  const { target, cleanFilename } = resolvePathAndSource(args.filename, args.source);
-                 if ((window as any).electron?.getFileOutline) {
-                     const result = await (window as any).electron.getFileOutline({ path: getRelativePath(target, cleanFilename) });
+                 const staticPath = config.folderPaths?.[target];
+                 const relPath = getRelativePath(target, cleanFilename);
+                 const isElectron = !!(window as any).electron;
+                 const finalPath = (isElectron && staticPath) ? `${staticPath}/${cleanFilename}` : relPath;
+
+                 if (isElectron && (window as any).electron?.getFileOutline) {
+                     const result = await (window as any).electron.getFileOutline({ path: finalPath });
                      if (result.ok) return { success: true, data: { outline: result.outline } };
                      return { success: false, error: result.error };
                  }
@@ -444,9 +461,21 @@ export async function executeToolCall(
                 }
 
                 try {
+                    let finalArgs = cmdArgs;
+                    const isWindows = navigator.userAgent.includes('Windows') || (window as any).electron?.platform === 'win32';
+
+                    // Specialized fix for mkdir on Windows
+                    if (cmd === 'mkdir' && isWindows) {
+                        // Normalize slashes to backslashes for Windows mkdir
+                        finalArgs = finalArgs.replace(/\//g, '\\');
+                        // Remove -p flag (can be -p, --parents, etc. but Windows mkdir creates parents by default if single path, 
+                        // or we just remove it to avoid syntax error in CMD)
+                        finalArgs = finalArgs.replace(/\B-p\b/g, '').replace(/\B--parents\b/g, '').replace(/\s+/g, ' ').trim();
+                    }
+
                     const result = await (window as any).electron.runConsole({
                         command: cmd,
-                        args: cmdArgs,
+                        args: finalArgs,
                         cwd: args.cwd || '',
                     });
                     return {
@@ -555,18 +584,17 @@ export async function executeToolCall(
 /**
  * Cleans narrative segments to remove technical noise, protocol echoes, and JSON fragments.
  */
-function cleanThoughtContent(text: string, signatureRegex: RegExp): string {
+/**
+ * Cleans technical noise, protocol echoes, and JSON fragments from segments.
+ */
+function cleanTechnicalNoise(text: string, signatureRegex: RegExp): string {
     let s = (text || '').trim();
     if (!s) return '';
 
-    // 1. PRESERVAR FIRMA DEL BOT (El usuario prefiere que aparezca si el modelo la genera)
-    // No aplicamos replace al signatureRegex.
-
-    // 2. ELIMINAR ETIQUETAS XML (Think/Tool Call de modelos como R1 o Gemma)
-    s = s.replace(/<think>[\s\S]*?<\/think>/gi, '');
+    // 1. ELIMINAR ETIQUETAS XML (Ghost tools)
     s = s.replace(/<\|?tool_call\|?>[\s\S]*?<\|?\/?tool_call\|?>/gi, '');
 
-    // 3. ELIMINAR BLOQUES JSON COMPLETOS Y FRAGMENTADOS
+    // 2. ELIMINAR BLOQUES JSON COMPLETOS Y FRAGMENTADOS
     s = s.replace(/```(?:json|JSON)?\s*\{[\s\S]*?\}\s*```/gi, '');
 
     // Objetos JSON técnicos por marcadores
@@ -580,12 +608,11 @@ function cleanThoughtContent(text: string, signatureRegex: RegExp): string {
         return toolMarkers.some(m => lowerMatch.includes(m.toLowerCase())) ? '' : match;
     });
 
-    // Limpieza de basura técnica residual (braces o inicios de objetos)
     s = s.replace(/\{\s*"(?:name|action|function|tool_call|arguments|args)"\s*:.*$/gim, '');
     s = s.replace(/^\s*[\}\],]+\s*$/gm, '');
     s = s.replace(/[\}\],]+\s*$/g, '');
 
-    // 4. ELIMINAR ECOS DEL PROTOCOLO Y LOGS TÉCNICOS
+    // 3. ELIMINAR ECOS DEL PROTOCOLO Y LOGS TÉCNICOS
     const noisePatterns = [
         /^(?:I apologize|My apologies|You are right|You are correct)[\s\S]*?(?={|\[|{{)/i,
         /^(?:Thinking Process|Neural Flow|Neural Core|Proceso de Razonamiento|Active Reasoning|Razonamiento Activo|Flujo Neural|Core de Miku|Razonamiento)[\s\S]*?(?={|\[|{{)/i,
@@ -595,11 +622,56 @@ function cleanThoughtContent(text: string, signatureRegex: RegExp): string {
     ];
     noisePatterns.forEach(p => s = s.replace(p, ''));
 
-    // 5. LIMPIEZA DE CERCAS Y ESPACIOS SOBRANTES
+    // 4. LIMPIEZA DE CERCAS Y ESPACIOS SOBRANTES
     s = s.replace(/```(?:json|JSON)?/gi, '');
     s = s.replace(/```/g, '');
 
     return s.trim();
+}
+
+/**
+ * Segments a text into thought and narrative blocks, preserving <think> content.
+ */
+function segmentThoughtsAndNarrative(text: string, signatureRegex: RegExp): { type: 'thought' | 'answer', content: string }[] {
+    let s = (text || '').trim();
+    if (!s) return [];
+
+    const blocks: { type: 'thought' | 'answer', content: string }[] = [];
+    const thinkRegex = /<think>([\s\S]*?)<\/think>/gi;
+    
+    // Heuristic: If text starts with common "Conclusion" markers, it might be an answer
+    const isLikelyAnswer = (t: string) => {
+        const p = /^(?:Conclusión|Veredicto|Resumen|Resultado Final|Answer|Conclusion|Summary|Final Answer)[\s\S]*?/i;
+        return p.test(t.trim());
+    };
+
+    let lastIdx = 0;
+    let match;
+    
+    while ((match = thinkRegex.exec(s)) !== null) {
+        const before = s.substring(lastIdx, match.index).trim();
+        if (before) {
+            const cleaned = cleanTechnicalNoise(before, signatureRegex);
+            if (cleaned) {
+                blocks.push({ type: isLikelyAnswer(cleaned) ? 'answer' : 'thought', content: cleaned });
+            }
+        }
+        const thought = match[1].trim();
+        if (thought) {
+            blocks.push({ type: 'thought', content: thought });
+        }
+        lastIdx = thinkRegex.lastIndex;
+    }
+
+    const remaining = s.substring(lastIdx).trim();
+    if (remaining) {
+        const cleaned = cleanTechnicalNoise(remaining, signatureRegex);
+        if (cleaned) {
+            blocks.push({ type: isLikelyAnswer(cleaned) ? 'answer' : 'thought', content: cleaned });
+        }
+    }
+
+    return blocks;
 }
 
 export async function sendAgentMessage(
@@ -639,7 +711,7 @@ export async function sendAgentMessage(
     async function streamModelRequest(
         messages: any[],
         useTools: boolean,
-    ): Promise<{ content: string; toolCalls: any[] }> {
+    ): Promise<{ content: string; toolCalls: any[]; reasoning?: string }> {
         const provider = config.provider;
         const isElectronProxy = !!(window as any).electron?.apiStream;
 
@@ -662,6 +734,7 @@ export async function sendAgentMessage(
 
             if (isElectronProxy) {
                 let fullContent = '';
+                let fullReasoning = '';
                 let toolCalls: any[] = [];
                 let buffer = '';
 
@@ -684,6 +757,10 @@ export async function sendAgentMessage(
                                         fullContent += parsed.message.content;
                                         onStatus({ streamedText: fullContent, phase: 'streaming' });
                                     }
+                                    if (parsed.message?.thought) {
+                                        fullReasoning += parsed.message.thought;
+                                        onStatus({ streamedReasoning: fullReasoning, phase: 'streaming' });
+                                    }
                                     if (parsed.message?.tool_calls) {
                                         toolCalls = [...toolCalls, ...parsed.message.tool_calls];
                                     }
@@ -692,7 +769,6 @@ export async function sendAgentMessage(
                         }
                     });
                 } catch (err: any) {
-                    // Handle HTTP 400 for tool fallback (match original behavior)
                     if (err.message?.includes('HTTP 400') && useTools && modelSupportsNativeTools) {
                         log('warn', 'Este modelo está siendo optimizado para el llamado y uso de herramientas');
                         modelSupportsNativeTools = false;
@@ -700,9 +776,8 @@ export async function sendAgentMessage(
                     }
                     throw err;
                 }
-                return { content: fullContent, toolCalls };
+                return { content: fullContent, toolCalls, reasoning: fullReasoning };
             } else {
-                // Direct fetch fallback (browser dev & local Ollama)
                 const response = await fetch(`${config.ollamaUrl}/api/chat`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -724,6 +799,7 @@ export async function sendAgentMessage(
                 const reader = response.body?.getReader();
                 const decoder = new TextDecoder();
                 let fullContent = '';
+                let fullReasoning = '';
                 let toolCalls: any[] = [];
                 let buffer = '';
 
@@ -746,6 +822,10 @@ export async function sendAgentMessage(
                                     fullContent += parsed.message.content;
                                     onStatus({ streamedText: fullContent, phase: 'streaming' });
                                 }
+                                if (parsed.message?.thought) {
+                                    fullReasoning += parsed.message.thought;
+                                    onStatus({ streamedReasoning: fullReasoning, phase: 'streaming' });
+                                }
                                 if (parsed.message?.tool_calls) {
                                     toolCalls = [...toolCalls, ...parsed.message.tool_calls];
                                 }
@@ -753,7 +833,7 @@ export async function sendAgentMessage(
                         }
                     }
                 }
-                return { content: fullContent, toolCalls };
+                return { content: fullContent, toolCalls, reasoning: fullReasoning };
             }
         } else if (provider === 'groq') {
             const body: any = {
@@ -777,8 +857,8 @@ export async function sendAgentMessage(
             };
 
             if (isElectronProxy) {
-                // ── Secure Path: Route through main process (API key injected server-side)
                 let fullContent = '';
+                let fullReasoning = '';
                 let buffer = '';
 
                 await streamViaProxy({
@@ -798,17 +878,21 @@ export async function sendAgentMessage(
                             try {
                                 const parsed = JSON.parse(data);
                                 const content = parsed.choices?.[0]?.delta?.content;
+                                const reasoning = parsed.choices?.[0]?.delta?.reasoning_content;
                                 if (content) {
                                     fullContent += content;
                                     onStatus({ streamedText: fullContent, phase: 'streaming' });
+                                }
+                                if (reasoning) {
+                                    fullReasoning += reasoning;
+                                    onStatus({ streamedReasoning: fullReasoning, phase: 'streaming' });
                                 }
                             } catch { }
                         }
                     }
                 });
-                return { content: fullContent, toolCalls: [] };
+                return { content: fullContent, toolCalls: [], reasoning: fullReasoning };
             } else {
-                // ── Fallback: direct fetch (browser dev mode only)
                 const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                     method: 'POST',
                     headers: {
@@ -827,6 +911,7 @@ export async function sendAgentMessage(
                 const reader = response.body?.getReader();
                 const decoder = new TextDecoder();
                 let fullContent = '';
+                let fullReasoning = '';
                 let buffer = '';
 
                 if (reader) {
@@ -847,18 +932,24 @@ export async function sendAgentMessage(
                             try {
                                 const parsed = JSON.parse(data);
                                 const content = parsed.choices?.[0]?.delta?.content;
+                                const reasoning = parsed.choices?.[0]?.delta?.reasoning_content;
                                 if (content) {
                                     fullContent += content;
                                     onStatus({ streamedText: fullContent, phase: 'streaming' });
+                                }
+                                if (reasoning) {
+                                    fullReasoning += reasoning;
+                                    onStatus({ streamedReasoning: fullReasoning, phase: 'streaming' });
                                 }
                             } catch { }
                         }
                     }
                 }
-                return { content: fullContent, toolCalls: [] };
+                return { content: fullContent, toolCalls: [], reasoning: fullReasoning };
             }
         } else if (provider === 'gemini') {
             const isGemma = config.model.toLowerCase().includes('gemma');
+            const isThinkingModel = config.model.toLowerCase().includes('thinking');
             const systemPromptContent = messages.find(m => m.role === 'system')?.content || '';
 
             const consolidatedHistory: any[] = [];
@@ -905,8 +996,8 @@ export async function sendAgentMessage(
             }
 
             if (isElectronProxy) {
-                // ── Secure Path: Route through main process
                 let fullContent = '';
+                let fullReasoning = '';
                 let buffer = '';
 
                 await streamViaProxy({
@@ -929,6 +1020,10 @@ export async function sendAgentMessage(
                                         if (part.text) {
                                             fullContent += part.text;
                                         }
+                                        if (part.thought || part.thought_content) {
+                                            fullReasoning += (part.thought || part.thought_content);
+                                            onStatus({ streamedReasoning: fullReasoning, phase: 'streaming' });
+                                        }
                                     });
                                     onStatus({ streamedText: fullContent, phase: 'streaming' });
                                 }
@@ -936,9 +1031,8 @@ export async function sendAgentMessage(
                         }
                     }
                 });
-                return { content: fullContent, toolCalls: [] };
+                return { content: fullContent, toolCalls: [], reasoning: fullReasoning };
             } else {
-                // ── Fallback: direct fetch (browser dev mode)
                 const response = await fetch(
                     `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:streamGenerateContent?alt=sse&key=${config.apiKeys.gemini}`,
                     {
@@ -957,6 +1051,7 @@ export async function sendAgentMessage(
                 const reader = response.body?.getReader();
                 const decoder = new TextDecoder();
                 let fullContent = '';
+                let fullReasoning = '';
                 let buffer = '';
 
                 if (reader) {
@@ -980,6 +1075,10 @@ export async function sendAgentMessage(
                                         if (part.text) {
                                             fullContent += part.text;
                                         }
+                                        if (part.thought || part.thought_content) {
+                                            fullReasoning += (part.thought || part.thought_content);
+                                            onStatus({ streamedReasoning: fullReasoning, phase: 'streaming' });
+                                        }
                                     });
                                     onStatus({ streamedText: fullContent, phase: 'streaming' });
                                 }
@@ -987,7 +1086,7 @@ export async function sendAgentMessage(
                         }
                     }
                 }
-                return { content: fullContent, toolCalls: [] };
+                return { content: fullContent, toolCalls: [], reasoning: fullReasoning };
             }
         }
 
@@ -995,11 +1094,18 @@ export async function sendAgentMessage(
     }
 
     let historicalContext = chatMessages;
-    if (isAgentMode) {
-        // En modo agente/instrucción, incluimos los últimos 3 turnos (6 mensajes) 
-        // para dar contexto sin saturar el sistema.
-        const filteredHistory = chatMessages.filter(m => !m.content.startsWith('⚡ Command Executed:'));
-        historicalContext = filteredHistory.slice(-6);
+    // Normalización: Tanto el modo Agente como el modo de Instrucción (Rayo) 
+    // deben usar una ventana de contexto optimizada que preserve la misión inicial.
+    if (isAgentMode || isInstructionMode) {
+        const filtered = chatMessages.filter(m => !m.content.startsWith('⚡ Command Executed:'));
+        
+        // El Modo Instrucción (Rayo) es "Lite": 2 turnos (4 msgs) + Petición actual (1 msg).
+        // El Modo Agente es "Full": 7 turnos (14 msgs) + Petición actual (1 msg).
+        const windowSize = isInstructionMode ? 5 : 15;
+
+        // Simplemente tomamos los últimos mensajes. No necesitamos anclar el mensaje [0]
+        // porque la "Misión Original" ya se inyecta en el System Prompt abajo.
+        historicalContext = filtered.slice(-windowSize);
     }
 
     const agentMessages: any[] = [
@@ -1028,8 +1134,9 @@ export async function sendAgentMessage(
     let retries = 0;
     let actionHistory: string[] = [];
 
-    // Capture original trigger request for Mission Anchoring
-    const missionTrigger = historicalContext.filter(m => m.role === 'user' || m.role === 'system').slice(-1)[0]?.content || 'Sin objetivo definido.';
+    // Mission Anchoring: The "missionTrigger" is the last specific instruction from the user.
+    // We search the historicalContext (already optimized) for the most recent user prompt.
+    const missionTrigger = [...historicalContext].reverse().find(m => m.role === 'user')?.content || 'Sin objetivo definido.';
     let lastExecutionFeedback = 'Inicio de misión.';
 
     // Proxy onStatus to always include feedback for visual synchronization
@@ -1120,12 +1227,14 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
 
         let content: string;
         let nativeToolCalls: any[];
+        let nativeReasoning: string | undefined;
 
         try {
             const messagesForModel = [...agentMessages];
             const result = await streamModelRequest(messagesForModel, useTextExtraction);
             content = result.content;
             nativeToolCalls = result.toolCalls;
+            nativeReasoning = result.reasoning;
         } catch (err) {
             if (err instanceof DOMException && err.name === 'AbortError') return;
             throw err;
@@ -1173,6 +1282,12 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
 
         // INTERLEAVED SEGMENTATION: Chronologically interleave text and tool blocks
         const iterationBlocks: any[] = [];
+        
+        // A0. Add Native Reasoning if present
+        if (nativeReasoning && nativeReasoning.trim()) {
+            iterationBlocks.push({ type: 'thought', content: nativeReasoning.trim() });
+        }
+
         let curIdx = 0;
 
         // Ensure positionalCalls is sorted (includes duplicates to swallow repetitions)
@@ -1181,11 +1296,8 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
 
         for (const rc of sortedPosCalls) {
             const rawSegment = (content || '').substring(curIdx, rc.start);
-            const cleanSeg = cleanThoughtContent(rawSegment, signatureRegex);
-
-            if (cleanSeg && cleanSeg.length > 2) {
-                iterationBlocks.push({ type: 'thought', content: cleanSeg });
-            }
+            const segmentBlocks = segmentThoughtsAndNarrative(rawSegment, signatureRegex);
+            iterationBlocks.push(...segmentBlocks);
 
             // B. Extract thoughts embedded in tool arguments for separate display above the tool
             const args = rc.toolCall.function.arguments;
@@ -1224,20 +1336,34 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
         }
 
         const finalRawSegment = (content || '').substring(curIdx);
-        const cleanFinal = cleanThoughtContent(finalRawSegment, signatureRegex);
-        if (cleanFinal && cleanFinal.length > 2) {
+        const finalBlocks = segmentThoughtsAndNarrative(finalRawSegment, signatureRegex);
+        
+        if (finalBlocks.length > 0) {
             const isOnlyText = uniqueToolCalls.length === 0;
-            iterationBlocks.push({ type: isOnlyText ? 'answer' : 'thought', content: cleanFinal });
+            if (isOnlyText) {
+                // In purely narrative turns, treat the last segment of cleaned text as an answer if not already tagged
+                finalBlocks.forEach(b => b.type = 'answer');
+            }
+            iterationBlocks.push(...finalBlocks);
         }
 
-        // CONSOLIDATION: Merge consecutive thoughts to avoid fragmented UI
+        // CONSOLIDATION: Merge consecutive thoughts and discard "Narrative Echoes"
         const mergedIterationBlocks: any[] = [];
+        const turnHasFinalAnswer = uniqueToolCalls.some(tc => tc.function.name === 'final_answer');
+        const finalAnswerTextRaw = uniqueToolCalls.find(tc => tc.function.name === 'final_answer')?.function.arguments?.text || '';
+
         iterationBlocks.forEach(block => {
+            // EKO Prevention: If this block is basically a copy of the final_answer text, skip it
+            if (turnHasFinalAnswer && block.type === 'answer' && block.content.length > 50) {
+                const similarity = block.content.includes(finalAnswerTextRaw.substring(0, 50)) || 
+                                   finalAnswerTextRaw.includes(block.content.substring(0, 50));
+                if (similarity) return; // Skip redundant narrative
+            }
+
             const last = mergedIterationBlocks[mergedIterationBlocks.length - 1];
             if (last && last.type === 'thought' && block.type === 'thought') {
                 last.content += `\n\n${block.content}`;
             } else {
-                // Final validation: only push non-empty blocks
                 if (block.content && block.content.trim().length > 1) {
                     mergedIterationBlocks.push(block);
                 }
@@ -1246,7 +1372,7 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
 
         agentMessages.push({
             role: 'assistant',
-            content: content || '',
+            content: (nativeReasoning ? `<think>\n${nativeReasoning}\n</think>\n` : '') + (content || ''),
             tool_calls: uniqueToolCalls.length > 0 ? uniqueToolCalls : undefined,
         });
 
@@ -1277,6 +1403,11 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
 
             if (isViolation && isAgentMode) {
                 log('warn', 'Agent tried to answer while TASKS.md is active or being updated. Force rejection.');
+                
+                // CRITICAL: Clean up UI blocks to avoid "yellow" stuck tools
+                const cleanedBlocks = mergedIterationBlocks.filter(b => b.type !== 'tool_call');
+                onChunk(content || '', false, [...allBlocks, ...cleanedBlocks]);
+
                 uniqueToolCalls.length = 0;
                 agentMessages.push({
                     role: 'user',
@@ -1302,8 +1433,8 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
 
         if (activeToolCalls.length === 0) {
             const isJustSignature = signatureRegex.test(content || '') && (content?.length || 0) < 100;
-            if (isAgentMode) {
-                const hasSubstantialText = (content?.length || 0) > 15;
+            if (isAgentMode || isInstructionMode) {
+                const hasSubstantialText = (content?.length || 0) > 15 || (nativeReasoning?.length || 0) > 15;
 
                 if (isJustSignature || hasSubstantialText) {
                     onChunk(content || '', true, allBlocks);
@@ -1411,9 +1542,25 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
 
         async function executeAndProcess(toolCall: ToolCall, label: string): Promise<void> {
             localOnStatus({ phase: 'tool_executing', currentTool: label });
+
+            const args = toolCall.function.arguments;
+            // [WIN-FIX]: Handle Linux-style mkdir -p on Windows
+            if (toolCall.function.name === 'run_console') {
+                const cmd = args.command || '';
+                const a = args.args || '';
+                if (cmd === 'mkdir' && a.includes('-p')) {
+                    args.args = a.replace('-p', '').trim();
+                }
+            }
+
             const result = await executeToolCall(toolCall, currentFiles, currentAdditional, currentWorkSpace, currentTools, saveFileFn, deleteFileFn, config, onAddTask);
             const b = allBlocks.find(x => x.toolCall?.id === toolCall.id);
-            if (b) b.result = result;
+            if (b) {
+                b.result = result;
+                // [SYNC-FIX]: Explicitly set the block status based on result to avoid "stuck" yellow blocks
+                const isExitError = result?.data?.exitCode && result.data.exitCode !== 0;
+                b.status = (result?.success && !isExitError) ? 'success' : 'error';
+            }
 
             // DYNAMIC SYNC: Update UI after each tool execution
             onChunk("", false, allBlocks);
@@ -1450,16 +1597,33 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
                 onStatus({ rawMessages: [...agentMessages] });
 
                 // CRITICAL: Update local mutable stores so subsequent steps in this session see the changes
-                if (['update_file', 'patch_file'].includes(toolCall.function.name) && result.data?.filename) {
+                if (toolCall.function.name === 'update_file' && result.data?.filename) {
                     const { target, cleanFilename } = resolvePathAndSource(toolCall.function.arguments.filename, toolCall.function.arguments.source);
                     let newContent = toolCall.function.arguments.content;
-                    if (toolCall.function.name === 'patch_file') {
-                        const store = getFileStore(target, currentFiles, currentAdditional, currentWorkSpace, currentTools);
-                        const existing = store[cleanFilename] || '';
-                        const find = toolCall.function.arguments.find;
+                    if (target === 'core') currentFiles[cleanFilename] = newContent;
+                    else if (target === 'extra') currentAdditional[cleanFilename] = newContent;
+                    else if (target === 'workSpace') currentWorkSpace[cleanFilename] = newContent;
+                    else if (target === 'tools') currentTools[cleanFilename] = newContent;
+                }
+
+                if (toolCall.function.name === 'patch_file' && result.data?.filename) {
+                    const { target, cleanFilename } = resolvePathAndSource(toolCall.function.arguments.filename, toolCall.function.arguments.source);
+                    const store = getFileStore(target, currentFiles, currentAdditional, currentWorkSpace, currentTools);
+                    const existing = store[cleanFilename] || '';
+                    
+                    let newContent = '';
+                    if (toolCall.function.arguments.patches) {
+                        // Multi-patch logic (Simplified for UI state sync)
+                        newContent = existing;
+                        for (const p of toolCall.function.arguments.patches) {
+                            newContent = newContent.replace(p.search || p.find, p.replace);
+                        }
+                    } else {
+                        const find = toolCall.function.arguments.find || toolCall.function.arguments.search;
                         const replace = toolCall.function.arguments.replace;
                         newContent = existing.replace(find, replace);
                     }
+
                     if (target === 'core') currentFiles[cleanFilename] = newContent;
                     else if (target === 'extra') currentAdditional[cleanFilename] = newContent;
                     else if (target === 'workSpace') currentWorkSpace[cleanFilename] = newContent;
@@ -1599,12 +1763,12 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
             const textRaw = args.text || 'Tarea completada exitosamente.';
             const reasoning = args.reasoning || '';
 
-            // REDUNDANCY CHECK: If we have a thought block exactly matches textRaw, remove it
+            // REDUNDANCY CHECK: If we have an existing block that matches textRaw, remove it to avoid duplication
             const redundantIdx = mergedIterationBlocks.findIndex(b =>
-                b.type === 'thought' &&
-                (b.content.trim() === textRaw.trim() || textRaw.trim().includes(b.content.trim()))
+                (b.type === 'thought' || b.type === 'answer') &&
+                (b.content.trim() === textRaw.trim() || textRaw.trim().includes(b.content.trim()) || b.content.trim().includes(textRaw.trim()))
             );
-            if (redundantIdx !== -1 && textRaw.length > 20) {
+            if (redundantIdx !== -1 && textRaw.length > 15) {
                 mergedIterationBlocks.splice(redundantIdx, 1);
             }
 

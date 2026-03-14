@@ -184,6 +184,7 @@ export interface AgentStatus {
     currentTool: string | null;
     log: AgentLogEntry[];
     streamedText: string;
+    streamedReasoning?: string;
     errorCount: number;
     rawMessages?: any[];
     currentSystemPrompt?: string;

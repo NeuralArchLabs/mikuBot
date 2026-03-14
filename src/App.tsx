@@ -295,6 +295,7 @@ export const App = () => {
         if (state.sessionId) {
             const timer = setTimeout(() => {
                 const currentSession = sessions.find(s => s.id === state.sessionId);
+
                 const firstRealMsg = messages.find(m => !m.excludeFromContext && m.role === 'user');
                 const candidateContent = firstRealMsg?.text?.slice(0, 30);
 
@@ -1157,8 +1158,9 @@ Para ver todas tus habilidades adicionales habilitadas y sus parámetros técnic
 
         const modelMsgId = (Date.now() + 1).toString();
 
-        // Use Agent Engine if we are in Agent mode OR if the Bolt (forceToolMode) was clicked
-        const useAgentEngine = currentState.agentMode === 'agent' || forceToolMode;
+        // Use Agent Engine if we are in Agent mode OR if the Bolt/Task forced it.
+        // scheduled tasks must use their own defined mode, not the UI mode.
+        const useAgentEngine = isScheduled ? forceToolMode : (currentState.agentMode === 'agent' || forceToolMode);
 
         // Dynamic Model/Provider Selection (Safe pairing)
         const agentOverride = currentState.config.agentProvider && currentState.config.agentModel;
@@ -1200,7 +1202,7 @@ Para ver todas tus habilidades adicionales habilitadas y sus parámetros técnic
                 .map(m => ({ role: m.role, content: m.text, attachments: m.attachments }));
             chatHistoryLocal.push({ role: 'user', content: text, attachments: userAttachments });
 
-            const isAgentLoop = currentState.agentMode === 'agent' || forceToolMode;
+            const isAgentLoop = useAgentEngine;
             const isChatTools = currentState.agentMode === 'chat' && !forceToolMode;
 
             // Fetch Neural Skills (Dynamic Tools) - WITH CACHING

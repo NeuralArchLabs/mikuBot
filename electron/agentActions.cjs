@@ -309,16 +309,30 @@ function applySinglePatch(content, search, replace, strategy, eol, lineNumber) {
         }
     }
 
-    // 4. Fuzzy Match (Match line containing trimmed search)
+    // 4. Fuzzy Match (Multi-line resilient)
     if (!appliedStrategy && (strategy === 'fuzzy' || strategy === 'auto')) {
-        const tSearch = normalizedSearch.trim();
-        if (tSearch) {
-            const lines = content.split(eol);
-            const idx = lines.findIndex(l => l.trim().includes(tSearch));
-            if (idx !== -1) {
-                lines[idx] = lines[idx].replace(tSearch, normalizedReplace);
-                newContent = lines.join(eol);
-                appliedStrategy = 'fuzzy';
+        const lines = content.split(eol);
+        const searchLines = normalizedSearch.trim().split(eol).map(l => l.trim()).filter(l => l.length > 0);
+        
+        if (searchLines.length > 0) {
+            // Find a sequence of lines that contains all search lines in order
+            for (let i = 0; i <= lines.length - searchLines.length; i++) {
+                let match = true;
+                for (let j = 0; j < searchLines.length; j++) {
+                    if (!lines[i + j].trim().includes(searchLines[j])) {
+                        match = false;
+                        break;
+                    }
+                }
+
+                if (match) {
+                    // We found a block. Replace the whole range.
+                    const before = lines.slice(0, i);
+                    const after = lines.slice(i + searchLines.length);
+                    newContent = [...before, normalizedReplace, ...after].join(eol);
+                    appliedStrategy = 'fuzzy';
+                    break;
+                }
             }
         }
     }
@@ -327,9 +341,9 @@ function applySinglePatch(content, search, replace, strategy, eol, lineNumber) {
 }
 
 /**
- * Smart Patch 2.0 with multi-patch support and EOL detection.
+ * Patch File logic with multi-patch support and EOL detection.
  */
-async function handleSmartPatch(root, { path: relPath, search, replace, strategy = 'auto', lineNumber, patches }) {
+async function handlePatchFile(root, { path: relPath, search, replace, strategy = 'auto', lineNumber, patches }) {
     const fullPath = path.resolve(root, relPath);
     try {
         const content = await fs.readFile(fullPath, 'utf-8');
@@ -370,7 +384,7 @@ async function handleSmartPatch(root, { path: relPath, search, replace, strategy
         }
         throw new Error('No patches could be applied.');
     } catch (e) {
-        throw new Error(`SmartPatch 2.0 failed: ${e.message}`);
+        throw new Error(`Patch File Engine failed: ${e.message}`);
     }
 }
 
@@ -484,7 +498,7 @@ module.exports = {
     handleGetFileOutline,
     handleBatchOperation,
     handleSearchFilesNative,
-    handleSmartPatch,
+    handlePatchFile,
     handleUndoPatch,
     handleSystemMetrics,
     handleGitInfo

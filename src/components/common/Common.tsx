@@ -10,7 +10,7 @@ const MarkdownRendererBase = ({ content }: { content: string }) => {
 
     return (
         <div
-            className="markdown-body whitespace-pre-wrap leading-relaxed text-sm font-mono"
+            className="markdown-body whitespace-pre-wrap leading-relaxed text-sm"
             dangerouslySetInnerHTML={{ __html: html }}
         />
     );

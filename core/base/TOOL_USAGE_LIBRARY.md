@@ -25,7 +25,7 @@ Este archivo contiene fragmentos de código JSON válidos para cada herramienta.
 }
 ```
 
-## [patch_file] / [smart_patch]
+## [patch_file]
 ```json
 {
   "name": "patch_file",

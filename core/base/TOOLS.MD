@@ -70,7 +70,7 @@ Read content from any mount point.
 Create or overwrite files. Directories are created automatically.
 - **Param:** `filename`, `content`, `source`
 
-### `patch_file` / `smart_patch` (Version 2.0)
+### `patch_file` (Version 2.0)
 Efficiently edit files using various strategies. Always creates a `.bak` backup.
 - **Param:** `filename`, `find`, `replace`, `strategy` (auto, exact, lineNumber, fuzzy, regex).
 - **Supports:** `patches` array for multiple edits in a single call.

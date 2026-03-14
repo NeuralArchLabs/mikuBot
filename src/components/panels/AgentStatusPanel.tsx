@@ -179,9 +179,18 @@ export const AgentStatusPanel = React.memo(({
                 })}
             </div>
 
-            {status.streamedText && (
-                <div className="p-2 border-t border-slate-700/50 bg-slate-900/20 text-slate-400 italic line-clamp-2">
-                    {status.streamedText}
+            {(status.streamedText || status.streamedReasoning) && (
+                <div className="p-2 border-t border-slate-700/50 bg-slate-900/20 text-slate-400 italic">
+                    {status.streamedReasoning && (
+                        <div className="mb-1 text-cyan-500/80 border-l-2 border-cyan-500/20 pl-2 text-[10px]">
+                            [Thinking] {status.streamedReasoning}
+                        </div>
+                    )}
+                    {status.streamedText && (
+                        <div className="line-clamp-2">
+                            {status.streamedText}
+                        </div>
+                    )}
                 </div>
             )}
         </div>
