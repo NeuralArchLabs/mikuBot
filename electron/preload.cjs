@@ -61,7 +61,6 @@ contextBridge.exposeInMainWorld('electron', {
     smartPatch: (data) => ipcRenderer.invoke('agent:smart-patch', data),
     undoPatch: (data) => ipcRenderer.invoke('agent:undo-patch', data),
     getSystemMetrics: () => ipcRenderer.invoke('agent:system-metrics'),
-    getGitInfo: () => ipcRenderer.invoke('agent:git-info'),
 
     // Voice & Vosk Models
     listVoiceModels: () => ipcRenderer.invoke('voice:list-models'),

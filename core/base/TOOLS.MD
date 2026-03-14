@@ -70,10 +70,12 @@ Read content from any mount point.
 Create or overwrite files. Directories are created automatically.
 - **Param:** `filename`, `content`, `source`
 
-### `patch_file` / `smart_patch`
-Efficiently edit files using various strategies.
-- **Param:** `filename`, `search` (or `find`), `replace`, `strategy` (optional: auto, exact, lineNumber), `lineNumber` (optional)
-- **Note:** `search` must be a substantial block for `auto` strategy. Use `lineNumber` for precise edits.
+### `patch_file` / `smart_patch` (Version 2.0)
+Efficiently edit files using various strategies. Always creates a `.bak` backup.
+- **Param:** `filename`, `find`, `replace`, `strategy` (auto, exact, lineNumber, fuzzy, regex).
+- **Supports:** `patches` array for multiple edits in a single call.
+- **Fuzzy Strategy:** Matches a line containing `find`. Highly resilient to minor whitespace changes.
+- **Note:** `find` must be a substantial block for `auto` strategy. Use `lineNumber` for precise edits.
 
 ### `undo_patch`
 Reverts the last patch to a file using the `.bak` file.
@@ -86,8 +88,11 @@ List all files in a mount point. Use ONLY when lost.
 - **Param:** `source`
 
 ### `search_files`
-Search for a text pattern in all files using native search.
-- **Param:** `query` (The text to find), `source` (optional)
+High-performance native search across all files in a folder.
+- **Param:** `query` (The text to find).
+- **Param:** `filePattern` (e.g., "*.js", "!node_modules/*").
+- **Param:** `caseSensitive` (boolean).
+- **Param:** `searchPath` (sub-folder to start search).
 
 ### `get_file_outline`
 Extract classes, functions, and interfaces from a source file.
@@ -97,7 +102,7 @@ Extract classes, functions, and interfaces from a source file.
 Perform bulk file operations (copy, move, delete) using glob patterns.
 - **Param:** `operation` (copy, move, delete), `source_path`, `destination_path` (optional), `pattern` (optional glob)
 
-## 🛰️ System & Environment tools (`get_system_metrics`, `get_git_info`)
+## 🛰️ System & Environment tools (`get_system_metrics`)
 
 ### `get_system_metrics`
 Get real-time OS metrics (CPU, Memory, Uptime, Hostname).

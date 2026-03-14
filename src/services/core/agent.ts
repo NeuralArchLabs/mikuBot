@@ -170,7 +170,8 @@ export async function executeToolCall(
                         search: args.search || args.find,
                         replace: args.replace,
                         strategy: args.strategy || 'auto',
-                        lineNumber: args.lineNumber
+                        lineNumber: args.lineNumber,
+                        patches: args.patches
                     });
                     if (result.ok) {
                         return { success: true, data: { filename: cleanFilename, message: result.result, source: target } };
@@ -248,8 +249,9 @@ export async function executeToolCall(
                     const target = resolveSource(args.source);
                     const result = await (window as any).electron.searchFilesNative({
                         searchText: args.query,
-                        caseSensitive: false,
-                        searchPath: getRelativePath(target, '')
+                        caseSensitive: args.caseSensitive || false,
+                        filePattern: args.filePattern,
+                        searchPath: args.searchPath ? `${getRelativePath(target, '')}/${args.searchPath}` : getRelativePath(target, '')
                     });
                     if (result.ok) return { success: true, data: { query: args.query, matches: result.results, count: result.results.length, source: target } };
                 }

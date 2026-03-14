@@ -1,10 +1,9 @@
 /**
  * agentActions.cjs - Advanced Agent Tools for MikuCentral
- * Ported and adapted from mikuInterpreterAgent_V1.0
+ * Upgraded with SmartPatch 2.0 and Native Search Engines
  */
 
 const fs = require('fs/promises');
-const fsSync = require('fs');
 const path = require('path');
 const os = require('os');
 const { exec } = require('child_process');
@@ -32,21 +31,33 @@ function formatUptime(seconds) {
     return `${days}d ${hours}h ${minutes}m`;
 }
 
+/**
+ * Detects the predominant line ending in content.
+ */
+function detectEOL(content) {
+    const crlfCount = (content.match(/\r\n/g) || []).length;
+    const lfCount = (content.split('\n').length - 1) - crlfCount;
+    return crlfCount > lfCount ? '\r\n' : '\n';
+}
+
 // --- FILE SYSTEM ACTIONS ---
 
 /**
  * Extracts classes, functions, and interfaces from a file.
+ * Regex improved for broader language support and assignment patterns.
  */
 async function handleGetFileOutline(fullPath) {
     try {
         const content = await fs.readFile(fullPath, 'utf-8');
         const outline = [];
-        const lines = content.split('\n');
+        const lines = content.split(/\r?\n/);
+        
+        // Comprehensive regex for functions, classes, interfaces and high-level assignments
+        const regex = /^\s*(?:export\s+)?(?:async\s+)?(?:class|function|interface|type)\s+[a-zA-Z0-9_$]+|^\s*(?:export\s+)?(?:const|let|var)\s+[a-zA-Z0-9_$]+\s*=\s*(?:async\s*)?(?:function|\([^)]*\)\s*=>|\{)|^\s*(?!(?:if|for|while|switch|catch)\b)[a-zA-Z0-9_$]+\s*(?::\s*(?:async\s*)?(?:function|\([^)]*\)\s*=>)|\([^)]*\)\s*\{)/;
+
         for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
-            // Precise regex for common programming languages
-            if (/^\s*(?:export\s+)?(?:async\s+)?(?:class|function|interface|type|const|let|var)\s+[a-zA-Z0-9_$]+|^\s*(?!(?:if|for|while|switch|catch)\b)[a-zA-Z0-9_$]+\s*(?::\s*(?:async\s*)?(?:function|\([^)]*\)\s*=>)|\([^)]*\)\s*\{)/.test(line)) {
-                outline.push(`L${i + 1}: ${line.trim()}`);
+            if (regex.test(lines[i])) {
+                outline.push(`L${i + 1}: ${lines[i].trim()}`);
             }
         }
         return outline.length ? outline.join('\n') : 'No functions or classes found.';
@@ -68,7 +79,6 @@ async function handleBatchOperation(root, { operation, source, destination, patt
         const baseDir = stats.isDirectory() ? sourcePath : path.dirname(sourcePath);
         const files = await fs.readdir(baseDir);
         
-        // Simple glob to regex conversion
         const regex = new RegExp('^' + pattern.replace(/\./g, '\\.').replace(/\*/g, '.*').replace(/\?/g, '.') + '$');
 
         for (const file of files) {
@@ -103,54 +113,116 @@ async function applyBatchOp(op, src, dest) {
     }
 }
 
+// --- NATIVE SEARCH ENGINE ---
+
+async function searchWithRipGrep(searchText, root, caseSensitive, filePattern) {
+    try {
+        let command = `rg --json ${caseSensitive ? '' : '-i'} "${searchText}" "${root}"`;
+        if (filePattern) command += ` -g "${filePattern}"`;
+        command += ' --max-count 50'; 
+
+        const { stdout } = await execPromise(command, { maxBuffer: 1024 * 1024 * 10 });
+        const lines = stdout.trim().split('\n');
+        const fileResults = {};
+
+        for (const line of lines) {
+            try {
+                const parsed = JSON.parse(line);
+                if (parsed.type === 'match') {
+                    const filePath = path.relative(root, parsed.data.path.text).replace(/\\/g, '/');
+                    if (!fileResults[filePath]) {
+                        fileResults[filePath] = { file: filePath, matches: [] };
+                    }
+                    fileResults[filePath].matches.push({
+                        line: parsed.data.line_number,
+                        content: parsed.data.lines.text.trim()
+                    });
+                }
+            } catch (e) { }
+        }
+        return Object.values(fileResults);
+    } catch (e) { return null; }
+}
+
+async function searchWithGrep(searchText, root, caseSensitive) {
+    try {
+        const command = `grep -rIn ${caseSensitive ? '' : '-i'} "${searchText}" "${root}" | head -n 300`;
+        const { stdout } = await execPromise(command, { maxBuffer: 1024 * 1024 * 5 });
+        const lines = stdout.trim().split('\n');
+        const fileResults = {};
+
+        for (const line of lines) {
+            const match = line.match(/^(.+):(\d+):(.*)$/);
+            if (match) {
+                const filePath = path.relative(root, match[1]).replace(/\\/g, '/');
+                if (!fileResults[filePath]) {
+                    fileResults[filePath] = { file: filePath, matches: [] };
+                }
+                fileResults[filePath].matches.push({
+                    line: parseInt(match[2]),
+                    content: match[3].trim()
+                });
+            }
+        }
+        return Object.values(fileResults);
+    } catch (e) { return null; }
+}
+
+async function searchWithFindstr(searchText, root, caseSensitive) {
+    try {
+        const command = `findstr /S /N ${caseSensitive ? '' : '/I'} "${searchText}" "${path.join(root, '*')}"`;
+        const { stdout } = await execPromise(command, { maxBuffer: 1024 * 1024 * 5 });
+        const lines = stdout.trim().split('\n');
+        const fileResults = {};
+
+        for (const line of lines) {
+            const match = line.match(/^(.+):(\d+):(.*)$/);
+            if (match) {
+                const filePath = path.relative(root, match[1]).replace(/\\/g, '/');
+                if (filePath.includes('node_modules') || filePath.includes('.git')) continue;
+                if (!fileResults[filePath]) {
+                    fileResults[filePath] = { file: filePath, matches: [] };
+                }
+                if (fileResults[filePath].matches.length < 15) {
+                    fileResults[filePath].matches.push({
+                        line: parseInt(match[2]),
+                        content: match[3].trim()
+                    });
+                }
+            }
+        }
+        return Object.values(fileResults);
+    } catch (e) { return null; }
+}
+
 /**
- * Native file search with better performance.
+ * Orchestrates native search based on available tools.
+ * Prioritize RipGrep, then fallback to standard OS tools.
  */
 async function handleSearchFilesNative(root, { searchText, filePattern, caseSensitive, searchPath }) {
     if (!searchText) throw new Error('Search text required');
-    const results = [];
-    const startPath = searchPath ? path.resolve(root, searchPath) : root;
-    const regex = new RegExp(searchText, caseSensitive ? 'g' : 'gi');
-    const fileRegex = filePattern ? new RegExp(filePattern.replace(/\./g, '\\.').replace(/\*/g, '.*').replace(/\?/g, '.')) : null;
+    const targetRoot = searchPath ? path.resolve(root, searchPath) : root;
 
-    async function searchDir(dirPath) {
-        try {
-            const entries = await fs.readdir(dirPath, { withFileTypes: true });
-            for (const entry of entries) {
-                if (['node_modules', '.git', '.next', 'dist', 'build'].includes(entry.name)) continue;
-                const fullPath = path.join(dirPath, entry.name);
-                if (entry.isDirectory()) {
-                    await searchDir(fullPath);
-                } else {
-                    if (fileRegex && !fileRegex.test(entry.name)) continue;
-                    try {
-                        const content = await fs.readFile(fullPath, 'utf-8');
-                        if (regex.test(content)) {
-                            const lines = content.split('\n');
-                            const matchedLines = [];
-                            lines.forEach((line, index) => {
-                                if (new RegExp(searchText, caseSensitive ? '' : 'i').test(line)) {
-                                    matchedLines.push({
-                                        line: index + 1,
-                                        content: line.trim()
-                                    });
-                                }
-                            });
-                            results.push({
-                                file: path.relative(root, fullPath).replace(/\\/g, '/'),
-                                matches: matchedLines
-                            });
-                        }
-                    } catch (e) { }
-                }
-            }
-        } catch (e) { }
+    // 1. Try RipGrep
+    const rgResult = await searchWithRipGrep(searchText, targetRoot, !!caseSensitive, filePattern);
+    if (rgResult) return rgResult;
+
+    // 2. Try Grep (Unix)
+    if (process.platform !== 'win32') {
+        const grepResult = await searchWithGrep(searchText, targetRoot, !!caseSensitive);
+        if (grepResult) return grepResult;
     }
-    await searchDir(startPath);
-    return results;
+
+    // 3. Try Findstr (Windows)
+    if (process.platform === 'win32') {
+        const findstrResult = await searchWithFindstr(searchText, targetRoot, !!caseSensitive);
+        if (findstrResult) return findstrResult;
+    }
+
+    throw new Error('No native search tool found (rg, grep, findstr) or search failed.');
 }
 
-// --- SMART PATCH ENGINE ---
+// --- SMART PATCH ENGINE 2.0 ---
 
 function verifySyntax(str) {
     const stack = [];
@@ -161,7 +233,12 @@ function verifySyntax(str) {
         const char = str[i];
         const nextChar = i + 1 < str.length ? str[i + 1] : '';
 
-        if ((char === '/' && nextChar === '/') && !insideString && !inBlockComment) { inLineComment = true; i++; continue; }
+        // Comments (handles // and #)
+        if (((char === '/' && nextChar === '/') || char === '#') && !insideString && !inBlockComment) { 
+            inLineComment = true; 
+            if (char === '/') i++; 
+            continue; 
+        }
         if (char === '\n' && inLineComment) { inLineComment = false; continue; }
         if (inLineComment) continue;
 
@@ -188,58 +265,112 @@ function verifySyntax(str) {
     return stack.length === 0 && !insideString && !inBlockComment;
 }
 
-async function handleSmartPatch(root, { path: relPath, search, replace, strategy = 'auto', lineNumber }) {
+function applySinglePatch(content, search, replace, strategy, eol, lineNumber) {
+    let newContent = content;
+    let appliedStrategy = '';
+
+    const normalizedSearch = (search || '').replace(/\r\n|\r|\n/g, eol);
+    const normalizedReplace = (replace || '').replace(/\r\n|\r|\n/g, eol);
+
+    // 1. Line Number
+    if (strategy === 'lineNumber' || (strategy === 'auto' && lineNumber !== undefined)) {
+        if (lineNumber !== undefined) {
+            const lines = content.split(eol);
+            if (lineNumber >= 1 && lineNumber <= lines.length) {
+                lines[lineNumber - 1] = normalizedReplace;
+                newContent = lines.join(eol);
+                appliedStrategy = 'lineNumber';
+            }
+        }
+    }
+
+    // 2. Exact Match
+    if (!appliedStrategy && (strategy === 'exact' || strategy === 'auto')) {
+        if (content.includes(normalizedSearch)) {
+            const occurrences = content.split(normalizedSearch).length - 1;
+            if (occurrences > 1 && normalizedSearch.length < 30) {
+                throw new Error(`Ambiguity: ${occurrences} matches found. Provide more context or use lineNumber.`);
+            }
+            newContent = content.replace(normalizedSearch, normalizedReplace);
+            appliedStrategy = 'exact';
+        }
+    }
+
+    // 3. Normalized Match (Whitespace flexible)
+    if (!appliedStrategy && strategy === 'auto') {
+        const normalizedContent = content.replace(/\r\n|\r|\n/g, '\n').replace(/[ \t]+/g, ' ');
+        const normalizedSearchInt = normalizedSearch.replace(/\r\n|\r|\n/g, '\n').replace(/[ \t]+/g, ' ');
+
+        if (normalizedContent.includes(normalizedSearchInt)) {
+            const escapedSearch = normalizedSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const pattern = new RegExp(escapedSearch.replace(/\s+/g, '\\s+'), 'g');
+            newContent = content.replace(pattern, normalizedReplace);
+            appliedStrategy = 'normalized';
+        }
+    }
+
+    // 4. Fuzzy Match (Match line containing trimmed search)
+    if (!appliedStrategy && (strategy === 'fuzzy' || strategy === 'auto')) {
+        const tSearch = normalizedSearch.trim();
+        if (tSearch) {
+            const lines = content.split(eol);
+            const idx = lines.findIndex(l => l.trim().includes(tSearch));
+            if (idx !== -1) {
+                lines[idx] = lines[idx].replace(tSearch, normalizedReplace);
+                newContent = lines.join(eol);
+                appliedStrategy = 'fuzzy';
+            }
+        }
+    }
+
+    return { newContent, appliedStrategy };
+}
+
+/**
+ * Smart Patch 2.0 with multi-patch support and EOL detection.
+ */
+async function handleSmartPatch(root, { path: relPath, search, replace, strategy = 'auto', lineNumber, patches }) {
     const fullPath = path.resolve(root, relPath);
     try {
         const content = await fs.readFile(fullPath, 'utf-8');
         const originalContent = content;
+        const eol = detectEOL(content);
         const isInitialValid = verifySyntax(content);
-        let newContent = content;
-        let appliedStrategy = '';
 
-        // Line Number Strategy
-        if (lineNumber !== undefined && (strategy === 'lineNumber' || strategy === 'auto')) {
-            const lines = content.split('\n');
-            if (lineNumber >= 1 && lineNumber <= lines.length) {
-                lines[lineNumber - 1] = replace;
-                newContent = lines.join('\n');
-                appliedStrategy = 'lineNumber';
-            }
+        let workingContent = content;
+        const applied = [];
+
+        const queue = (patches && patches.length) ? patches : [{ search, replace, lineNumber }];
+
+        for (const patch of queue) {
+            const { newContent, appliedStrategy } = applySinglePatch(
+                workingContent,
+                patch.search,
+                patch.replace,
+                strategy,
+                eol,
+                patch.lineNumber
+            );
+
+            if (!appliedStrategy) throw new Error(`Pattern not found for patch: ${patch.search?.substring(0, 20)}...`);
+            workingContent = newContent;
+            applied.push(appliedStrategy);
         }
 
-        // Exact Match Strategy
-        if (!appliedStrategy && (strategy === 'exact' || strategy === 'auto')) {
-            if (content.includes(search)) {
-                newContent = content.replace(search, replace);
-                appliedStrategy = 'exact';
+        if (applied.length > 0) {
+            if (isInitialValid && !verifySyntax(workingContent)) {
+                throw new Error("Integrity Check: Patch breaks structure (unbalanced brackets).");
             }
-        }
-
-        // Normalized Strategy
-        if (!appliedStrategy && strategy === 'auto') {
-            const normalizedContent = content.replace(/\r\n/g, '\n').replace(/[ \t]+/g, ' ');
-            const normalizedSearch = search.replace(/\r\n/g, '\n').replace(/[ \t]+/g, ' ');
-            if (normalizedContent.includes(normalizedSearch)) {
-                const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
-                newContent = content.replace(new RegExp(escapedSearch, 'g'), replace);
-                appliedStrategy = 'normalized';
-            }
-        }
-
-        if (appliedStrategy) {
-            if (isInitialValid && !verifySyntax(newContent)) {
-                throw new Error(`Integrity Error: Patch breaks syntax (braces/brackets mismatch).`);
-            }
-            if (newContent !== originalContent) {
+            if (workingContent !== originalContent) {
                 await fs.writeFile(fullPath + '.bak', originalContent, 'utf-8');
-                await fs.writeFile(fullPath, newContent, 'utf-8');
-                return `Successfully patched using ${appliedStrategy} strategy.`;
+                await fs.writeFile(fullPath, workingContent, 'utf-8');
+                return `Patched successfully using [${applied.join(', ')}] strategies.`;
             }
             return 'No changes applied.';
         }
-        throw new Error('Pattern not found.');
+        throw new Error('No patches could be applied.');
     } catch (e) {
-        throw new Error(`SmartPatch failed: ${e.message}`);
+        throw new Error(`SmartPatch 2.0 failed: ${e.message}`);
     }
 }
 
@@ -297,24 +428,52 @@ async function handleSystemMetrics() {
 
 async function handleGitInfo(root) {
     try {
-        const { stdout: gitRoot } = await execPromise('git rev-parse --show-toplevel', { cwd: root }).catch(() => ({ stdout: '' }));
-        if (!gitRoot.trim()) return { isRepo: false };
+        const { stdout: gitRootRaw } = await execPromise('git rev-parse --show-toplevel', { cwd: root }).catch(() => ({ stdout: '' }));
+        if (!gitRootRaw.trim()) return { isRepo: false };
 
-        const r = gitRoot.trim();
-        const [branch, status] = await Promise.all([
-            execPromise('git rev-parse --abbrev-ref HEAD', { cwd: r }).then(res => res.stdout.trim()),
-            execPromise('git status --short', { cwd: r }).then(res => res.stdout.trim())
+        const r = gitRootRaw.trim();
+        const [branchRes, statusRes, countsRes] = await Promise.all([
+            execPromise('git rev-parse --abbrev-ref HEAD', { cwd: r }),
+            execPromise('git status --short', { cwd: r }),
+            execPromise('git rev-list --left-right --count HEAD...@{u}', { cwd: r }).catch(() => ({ stdout: '0\t0' }))
         ]);
 
-        const lines = status ? status.split('\n') : [];
+        const branch = branchRes.stdout.trim();
+        const statusRaw = statusRes.stdout.trim();
+        const statusLines = statusRaw ? statusRaw.split('\n') : [];
+
+        const modified = statusLines.filter(l => l.startsWith(' M') || l.startsWith('M ') || l.startsWith('R ') || l.startsWith(' R')).length;
+        const added = statusLines.filter(l => l.startsWith(' A') || l.startsWith('A ') || l.startsWith('??')).length;
+        const deleted = statusLines.filter(l => l.startsWith(' D') || l.startsWith('D ')).length;
+
+        const fileStatus = {};
+        statusLines.forEach(line => {
+            const match = line.match(/^(.{2})\s(.+)$/);
+            if (!match) return;
+            const code = match[1].trim();
+            let relPath = match[2].trim();
+            if (code.startsWith('R')) {
+                const parts = relPath.split(' -> ');
+                if (parts.length === 2) relPath = parts[1].trim();
+            }
+            if (relPath.startsWith('"') && relPath.endsWith('"')) relPath = relPath.slice(1, -1);
+            fileStatus[relPath] = code;
+        });
+
+        const countsOutput = (countsRes.stdout || '0\t0').trim();
+        const [ahead, behind] = countsOutput.includes('\t') ? countsOutput.split('\t').map(Number) : [0, 0];
+
         return {
             isRepo: true,
             root: r,
             branch,
-            modified: lines.filter(l => l.startsWith(' M') || l.startsWith('M ')).length,
-            added: lines.filter(l => l.startsWith(' A') || l.startsWith('A ') || l.startsWith('??')).length,
-            deleted: lines.filter(l => l.startsWith(' D') || l.startsWith('D ')).length,
-            statusRaw: status
+            modified,
+            added,
+            deleted,
+            ahead: ahead || 0,
+            behind: behind || 0,
+            statusRaw,
+            fileStatus
         };
     } catch (e) {
         return { isRepo: false, error: e.message };

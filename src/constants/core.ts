@@ -85,18 +85,30 @@ export const AGENT_TOOLS: ToolDefinition[] = [
         type: 'function',
         function: {
             name: 'patch_file',
-            description: 'Patch a section of an existing file. Use for partial edits. Supports strategies like "auto", "exact", "lineNumber".',
+            description: 'Apply one or more smart patches to a file. Supports "fuzzy" match (line-based), "exact" match, and "lineNumber". Always creates a .bak backup.',
             parameters: {
                 type: 'object',
                 properties: {
                     filename: { type: 'string', description: 'The file to patch.' },
-                    find: { type: 'string', description: 'The exact text block to find. For "lineNumber" strategy, this can be null.' },
+                    find: { type: 'string', description: 'Text to find (Tier 2/3). For "lineNumber", this is optional.' },
                     replace: { type: 'string', description: 'The replacement text.' },
-                    strategy: { type: 'string', enum: ['auto', 'exact', 'lineNumber'], default: 'auto', description: 'Strategy to find the block.' },
-                    lineNumber: { type: 'number', description: 'Target line number for "lineNumber" strategy.' },
-                    source: { type: 'string', description: 'Where the file lives. Defaults to "workSpace".', enum: ['workSpace', 'core', 'library'] }
+                    strategy: { type: 'string', enum: ['auto', 'exact', 'lineNumber', 'fuzzy', 'regex'], default: 'auto', description: 'Search strategy. "fuzzy" matches a line containing "find".' },
+                    lineNumber: { type: 'number', description: 'Optional for "lineNumber" or "auto" strategies.' },
+                    patches: { 
+                        type: 'array', 
+                        description: 'Apply multiple patches at once. Each object needs {search, replace}.',
+                        items: {
+                            type: 'object',
+                            properties: {
+                                search: { type: 'string' },
+                                replace: { type: 'string' },
+                                lineNumber: { type: 'number' }
+                            }
+                        }
+                    },
+                    source: { type: 'string', description: 'Defaults to "workSpace".', enum: ['workSpace', 'core', 'library'] }
                 },
-                required: ['filename', 'replace']
+                required: ['filename']
             }
         }
     },
@@ -133,12 +145,15 @@ export const AGENT_TOOLS: ToolDefinition[] = [
         type: 'function',
         function: {
             name: 'search_files',
-            description: 'Search for a text pattern across all files in a folder using high-performance search.',
+            description: 'High-performance search using native engines (RipGrep, Grep, Findstr). Finds text across all files in a folder.',
             parameters: {
                 type: 'object',
                 properties: {
                     query: { type: 'string', description: 'The text pattern to search for' },
-                    source: { type: 'string', description: 'Which folder to search. Defaults to "workSpace".', enum: ['workSpace', 'core', 'library'] }
+                    filePattern: { type: 'string', description: 'Optional glob filter (e.g. "*.js").' },
+                    caseSensitive: { type: 'boolean', description: 'Defaults to false.' },
+                    searchPath: { type: 'string', description: 'Specific sub-folder to search.' },
+                    source: { type: 'string', description: 'Defaults to "workSpace".', enum: ['workSpace', 'core', 'library'] }
                 },
                 required: ['query']
             }
@@ -189,18 +204,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
             }
         }
     },
-    {
-        type: 'function',
-        function: {
-            name: 'get_git_info',
-            description: 'Retrieve current Git repository state (branch, dirty files, repo root).',
-            parameters: {
-                type: 'object',
-                properties: {},
-                required: []
-            }
-        }
-    },
+// git_info removed as it is redundant with run_console
     {
         type: 'function',
         function: {

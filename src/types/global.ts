@@ -132,10 +132,11 @@ export interface AppState {
 
 export interface ToolParameter {
     type: string;
-    description: string;
+    description?: string;
     enum?: string[];
     default?: any;
     items?: ToolParameter; // For recursive array definitions
+    properties?: Record<string, ToolParameter>; // For nested object definitions
 }
 
 export interface ToolDefinition {

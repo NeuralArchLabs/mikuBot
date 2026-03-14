@@ -1667,14 +1667,7 @@ ipcMain.handle('agent:system-metrics', async () => {
     }
 });
 
-ipcMain.handle('agent:git-info', async () => {
-    try {
-        const info = await agentActions.handleGitInfo(currentWorkspacePath);
-        return { ok: true, info };
-    } catch (e) {
-        return { ok: false, error: e.message };
-    }
-});
+// Redundant tool removed
 
 // ... rest of the file
 
