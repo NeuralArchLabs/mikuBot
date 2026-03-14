@@ -71,8 +71,9 @@ export function formatTelegramResponse(rawText: string): string {
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
 
-        // Filter out horizontal rules (*** or ---) and stray markers
-        if (line === '***' || line === '---' || line === '*' || line === '-') {
+        // Filter out horizontal rules (*** or ---) and stray markers that clutter the view
+        const trimmedLine = line.trim();
+        if (trimmedLine === '***' || trimmedLine === '---' || trimmedLine === '*' || trimmedLine === '-') {
             continue;
         }
 

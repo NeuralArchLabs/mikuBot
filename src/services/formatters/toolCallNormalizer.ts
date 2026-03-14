@@ -481,13 +481,31 @@ export function recoverToolCallsFromText(
     const validToolNames = tools.map(t => t.function.name);
 
     // === SCAN ORIGINAL TEXT ===
-    // We MUST use the original text for scanning to ensure offsets (start/end)
-    // correctly map back to the raw content for narrative segmentation in agent.ts
-    const text = rawText;
+    // We use a "Masked Content" approach to ensure that once a tool call is identified,
+    // its range is blocked so subsequent (lower-confidence) attempts don't re-trigger
+    // or pull arguments from it.
+    let workingText = rawText; 
     const foundCalls: RecoveredCall[] = [];
 
+    const maskRange = (start: number, end: number) => {
+        if (start < 0 || end > workingText.length || start >= end) return;
+        const prefix = workingText.substring(0, start);
+        const middle = ' '.repeat(end - start);
+        const suffix = workingText.substring(end);
+        workingText = prefix + middle + suffix;
+    };
+
+    // Pre-Masking: Always mask <think> blocks for heuristics (B, C, D) 
+    // to avoid executing thought-process examples or monologues.
+    const thinkRegex = /<think>([\s\S]*?)<\/think>/gi;
+    let thinkMatch;
+    while ((thinkMatch = thinkRegex.exec(rawText)) !== null) {
+        // We mask it in workingText but indices remain synced with rawText
+        maskRange(thinkMatch.index, thinkMatch.index + thinkMatch[0].length);
+    }
+
     // Attempt A: JSON objects with balanced braces
-    const jsonObjects = extractAllBalancedObjects(text);
+    const jsonObjects = extractAllBalancedObjects(rawText);
     for (const obj of jsonObjects) {
         try {
             // Internal stabilization for the JSON blob itself
@@ -497,6 +515,8 @@ export function recoverToolCallsFromText(
             if (result.toolCall && !result.blocked) {
                 foundCalls.push({ toolCall: result.toolCall, start: obj.start, end: obj.end });
                 allWarnings.push(...result.warnings);
+                // MASK the identified JSON range to prevent Narrative recovery from seeing it
+                maskRange(obj.start, obj.end);
             }
         } catch {
             try {
@@ -505,6 +525,7 @@ export function recoverToolCallsFromText(
                 const result = normalizeRawToolCall(parsed, tools);
                 if (result.toolCall) {
                     foundCalls.push({ toolCall: result.toolCall, start: obj.start, end: obj.end });
+                    maskRange(obj.start, obj.end);
                     allWarnings.push('JSON repaired');
                 }
             } catch { /* skip */ }
@@ -517,7 +538,8 @@ export function recoverToolCallsFromText(
         const escaped = fnName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const re = new RegExp(`\\{\\s*${escaped}\\s*([^}]*)\\}`, 'gi');
         let m;
-        while ((m = re.exec(text)) !== null) {
+        // Search in workingText (partially masked)
+        while ((m = re.exec(workingText)) !== null) {
             const nameResult = normalizeToolName(fnName, validToolNames);
             if (nameResult.canonical) {
                 const noise = m[1].trim();
@@ -526,22 +548,28 @@ export function recoverToolCallsFromText(
                     const stringMatch = noise.match(/"([^"]+)"|'([^']+)'/);
                     args.text = stringMatch ? (stringMatch[1] || stringMatch[2]) : noise;
                 }
+                const start = m.index;
+                const end = m.index + m[0].length;
                 foundCalls.push({
                     toolCall: {
                         id: `ab-${Math.random().toString(36).slice(2, 11)}`,
                         function: { name: nameResult.canonical, arguments: args },
                     },
-                    start: m.index,
-                    end: m.index + m[0].length
+                    start,
+                    end
                 });
+                maskRange(start, end);
             }
         }
     }
 
     // Attempt C: Narrative Fragment Reconstructor
-    const narrResult = reconstructFromNarrative(text, tools);
+    const narrResult = reconstructFromNarrative(workingText, tools);
     if (narrResult.calls.length > 0) {
-        foundCalls.push(...narrResult.calls);
+        for (const call of narrResult.calls) {
+            foundCalls.push(call);
+            maskRange(call.start, call.end);
+        }
         allWarnings.push(...narrResult.warnings);
     }
 
@@ -551,9 +579,10 @@ export function recoverToolCallsFromText(
     for (const keyCandidate of bareKeys) {
         const escaped = keyCandidate.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         // Match: /^final_answer:\s*(.*)/ or /final_answer:\s*(.*)/
+        // Search in workingText
         const bareRe = new RegExp(`(?:^|\\n)(${escaped})\\s*[:=]\\s*([\\s\\S]*?)(?=\\n[a-z0-9_]+\\s*[:=]|\\n[^\\s]|$)`, 'gi');
         let m;
-        while ((m = bareRe.exec(text)) !== null) {
+        while ((m = bareRe.exec(workingText)) !== null) {
             const rawName = m[1];
             const rawValue = m[2].trim();
             const nameResult = normalizeToolName(rawName, validToolNames);
@@ -579,15 +608,45 @@ export function recoverToolCallsFromText(
                 else args.text = rawValue; // fallback
             }
 
+            const start = m.index;
+            const end = m.index + m[0].length;
             foundCalls.push({
                 toolCall: {
                     id: `bare-${Math.random().toString(36).slice(2, 11)}`,
                     function: { name: canonical, arguments: normalizeArgKeys(canonical, args) }
                 },
-                start: m.index,
-                end: m.index + m[0].length
+                start,
+                end
             });
+            maskRange(start, end);
             allWarnings.push(`Recovered via Bare-Key Heuristic: ${canonical}`);
+        }
+    }
+
+    // Attempt E: Conclusion Heuristic (¡ÉXITO!, Conclusion:, etc.)
+    // If we have NO calls at all and the model seems to be finishing
+    if (foundCalls.length === 0) {
+        const conclusionMarkers = [
+            /¡ÉXITO!/i, /✅ ¡ÉXITO!/i, /Conclusión:/i, 
+            /Finalizado con éxito/i, /Tarea completada/i,
+            /---[\s\S]*?✅/i
+        ];
+        for (const marker of conclusionMarkers) {
+            const m = marker.exec(workingText);
+            if (m) {
+                const start = m.index;
+                const end = m.index + m[0].length;
+                const text = workingText.substring(start).trim();
+                foundCalls.push({
+                    toolCall: {
+                        id: `heur-${Math.random().toString(36).slice(2, 11)}`,
+                        function: { name: 'final_answer', arguments: { text } }
+                    },
+                    start,
+                    end
+                });
+                break; 
+            }
         }
     }
 
@@ -648,8 +707,11 @@ function reconstructFromNarrative(text: string, tools: ToolDefinition[]): { call
             const canonical = nameResult.canonical;
             const args: Record<string, any> = {};
 
-            // 2. Scan for argument fragments in the vicinity (Limit window to 1000 chars after name)
-            const textToScan = text.substring(nameRe.lastIndex, nameRe.lastIndex + 1000);
+            // 2. Scan for argument fragments in the vicinity
+            // LIMIT the scanning window: stop if another tool name appears or a heavy break (---) occurs
+            const nextToolIdx = findNextToolNameIndex(text, nameRe.lastIndex, allKnownNames);
+            const scanEnd = nextToolIdx !== -1 ? nextToolIdx : nameRe.lastIndex + 1000;
+            const textToScan = text.substring(nameRe.lastIndex, Math.min(scanEnd, text.length));
 
             const possibleArgKeys = {
                 ...ARG_KEY_ALIASES[canonical],
@@ -713,6 +775,32 @@ function reconstructFromNarrative(text: string, tools: ToolDefinition[]): { call
     }
 
     return { calls, warnings };
+}
+
+/**
+ * Finds the index of the next occurring tool name or structural break.
+ */
+function findNextToolNameIndex(text: string, start: number, toolNames: string[]): number {
+    const sub = text.substring(start);
+    let earliest = -1;
+
+    // 1. Structural Breaks (Markdown horizontal rules or header changes)
+    const breakRegex = /(?:\n---\n|\n#+ |🧠 Bibliografía)/i;
+    const breakMatch = sub.match(breakRegex);
+    if (breakMatch && breakMatch.index !== undefined) earliest = breakMatch.index;
+
+    // 2. Tool Name Markers
+    for (const name of toolNames) {
+        const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // Look for tool name followed by colon, paren, or quote (common in logs/json)
+        const nameRe = new RegExp(`(?:["']?name["']?\\s*[:=]\\s*["']?|tool[:=]\\s*|action[:=]\\s*|execute\\s+|\\b)(${escaped})\\b[:(\\s{]`, 'i');
+        const m = sub.match(nameRe);
+        if (m && m.index !== undefined) {
+             if (earliest === -1 || m.index < earliest) earliest = m.index;
+        }
+    }
+
+    return earliest !== -1 ? start + earliest : -1;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════

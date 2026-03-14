@@ -73,7 +73,7 @@ export const CollapsibleTextBlock: React.FC<CollapsibleTextBlockProps> = ({ cont
                             Hide <Icon name="chevron-up" className="text-[8px]" />
                         </button>
                     </div>
-                    <div className="text-[12px] sm:text-[13px] leading-relaxed text-slate-300 bg-white/[0.02] border border-white/5 rounded-2xl p-4 shadow-inner">
+                    <div className="text-[13px] sm:text-[14px] leading-loose text-slate-300 bg-white/[0.02] border border-white/5 rounded-2xl p-4 shadow-inner">
                         <MarkdownRenderer content={cleanContent} />
                     </div>
                 </div>

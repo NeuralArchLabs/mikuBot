@@ -248,17 +248,24 @@ export async function executeToolCall(
             }
 
             case 'list_files': {
-                if ((window as any).electron?.readFolder) {
-                    // We can use the existing readFolder but it loads EVERYTHING.
-                    // Let's stick to the current basic list or improve it.
-                }
                 const target = resolveSource(args.source);
+                const subDir = args.directory || args.path || "";
                 const store = getFileStore(target, files, additionalFiles, workSpaceFiles, toolsFiles);
-                const fileList = Object.keys(store).map(f => ({
+                
+                let fileList = Object.keys(store).map(f => ({
                     name: f,
                     size: (store[f] || '').length
                 }));
-                return { success: true, data: { files: fileList, count: fileList.length, source: target } };
+
+                if (subDir) {
+                    const normalizedSub = subDir.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+                    fileList = fileList.filter(f => 
+                        f.name.startsWith(normalizedSub + '/') || 
+                        f.name === normalizedSub
+                    );
+                }
+
+                return { success: true, data: { files: fileList, count: fileList.length, source: target, filtered_by: subDir || 'all' } };
             }
 
             case 'search_files': {
@@ -653,7 +660,8 @@ function segmentThoughtsAndNarrative(text: string, signatureRegex: RegExp): { ty
         if (before) {
             const cleaned = cleanTechnicalNoise(before, signatureRegex);
             if (cleaned) {
-                blocks.push({ type: isLikelyAnswer(cleaned) ? 'answer' : 'thought', content: cleaned });
+                // Before tags, it's usually answer content
+                blocks.push({ type: 'answer', content: cleaned });
             }
         }
         const thought = match[1].trim();
@@ -663,11 +671,16 @@ function segmentThoughtsAndNarrative(text: string, signatureRegex: RegExp): { ty
         lastIdx = thinkRegex.lastIndex;
     }
 
+    // Segments NOT inside <think> tags are usually narrative (answer)
+    // UNLESS the model is in Agent Mode and we want to hide "monologues".
+    // However, the most reliable way to handle this is to treat it as answer
+    // and let the redundant content detector clean up duplicates.
     const remaining = s.substring(lastIdx).trim();
     if (remaining) {
         const cleaned = cleanTechnicalNoise(remaining, signatureRegex);
         if (cleaned) {
-            blocks.push({ type: isLikelyAnswer(cleaned) ? 'answer' : 'thought', content: cleaned });
+            // Default to 'answer' for narrative text to ensure visibility
+            blocks.push({ type: 'answer', content: cleaned });
         }
     }
 
@@ -677,7 +690,7 @@ function segmentThoughtsAndNarrative(text: string, signatureRegex: RegExp): { ty
 export async function sendAgentMessage(
     config: AppConfig,
     systemPrompt: string,
-    chatMessages: { role: string; content: string }[],
+    chatMessages: any[],
     tools: ToolDefinition[],
     files: Record<string, string>,
     additionalFiles: Record<string, string>,
@@ -785,7 +798,7 @@ export async function sendAgentMessage(
                     signal: abortSignal,
                 });
 
-                if (response.status === 400 && useTools && modelSupportsNativeTools) {
+                if ((response.status === 400 || response.status === 422) && useTools && modelSupportsNativeTools) {
                     log('warn', 'Este modelo está siendo optimizado para el llamado y uso de herramientas');
                     modelSupportsNativeTools = false;
                     return streamModelRequest(messages, false);
@@ -856,42 +869,57 @@ export async function sendAgentMessage(
                 temperature: config.temperature,
             };
 
+            if (useTools && modelSupportsNativeTools) body.tools = tools;
+
             if (isElectronProxy) {
                 let fullContent = '';
                 let fullReasoning = '';
+                let toolCalls: any[] = [];
                 let buffer = '';
 
-                await streamViaProxy({
-                    provider: 'groq',
-                    model: config.model,
-                    body,
-                    abortSignal,
-                    onChunk: (raw) => {
-                        buffer += raw;
-                        const lines = buffer.split('\n');
-                        buffer = lines.pop() || '';
-                        for (const line of lines) {
-                            const cleanLine = line.trim();
-                            if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
-                            const data = cleanLine.slice(6);
-                            if (data === '[DONE]') continue;
-                            try {
-                                const parsed = JSON.parse(data);
-                                const content = parsed.choices?.[0]?.delta?.content;
-                                const reasoning = parsed.choices?.[0]?.delta?.reasoning_content;
-                                if (content) {
-                                    fullContent += content;
-                                    onStatus({ streamedText: fullContent, phase: 'streaming' });
-                                }
-                                if (reasoning) {
-                                    fullReasoning += reasoning;
-                                    onStatus({ streamedReasoning: fullReasoning, phase: 'streaming' });
-                                }
-                            } catch { }
+                try {
+                    await streamViaProxy({
+                        provider: 'groq',
+                        model: config.model,
+                        body,
+                        abortSignal,
+                        onChunk: (raw) => {
+                            buffer += raw;
+                            const lines = buffer.split('\n');
+                            buffer = lines.pop() || '';
+                            for (const line of lines) {
+                                const cleanLine = line.trim();
+                                if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
+                                const data = cleanLine.slice(6);
+                                if (data === '[DONE]') continue;
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    const content = parsed.choices?.[0]?.delta?.content;
+                                    const reasoning = parsed.choices?.[0]?.delta?.reasoning_content;
+                                    if (content) {
+                                        fullContent += content;
+                                        onStatus({ streamedText: fullContent, phase: 'streaming' });
+                                    }
+                                    if (reasoning) {
+                                        fullReasoning += reasoning;
+                                        onStatus({ streamedReasoning: fullReasoning, phase: 'streaming' });
+                                    }
+                                    if (parsed.choices?.[0]?.delta?.tool_calls) {
+                                        toolCalls = [...toolCalls, ...parsed.choices[0].delta.tool_calls];
+                                    }
+                                } catch { }
+                            }
                         }
+                    });
+                } catch (err: any) {
+                    if (err.message?.includes('HTTP 400') && useTools && modelSupportsNativeTools) {
+                        log('warn', 'Este modelo está siendo optimizado para el llamado y uso de herramientas');
+                        modelSupportsNativeTools = false;
+                        return streamModelRequest(messages, false);
                     }
-                });
-                return { content: fullContent, toolCalls: [], reasoning: fullReasoning };
+                    throw err;
+                }
+                return { content: fullContent, toolCalls, reasoning: fullReasoning };
             } else {
                 const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                     method: 'POST',
@@ -903,6 +931,12 @@ export async function sendAgentMessage(
                     signal: abortSignal,
                 });
 
+                if ((response.status === 400 || response.status === 422) && useTools && modelSupportsNativeTools) {
+                    log('warn', 'Este modelo está siendo optimizado para el llamado y uso de herramientas');
+                    modelSupportsNativeTools = false;
+                    return streamModelRequest(messages, false);
+                }
+
                 if (!response.ok) {
                     const err = await response.json().catch(() => ({}));
                     throw new Error(err.error?.message || `Groq HTTP ${response.status}`);
@@ -912,6 +946,7 @@ export async function sendAgentMessage(
                 const decoder = new TextDecoder();
                 let fullContent = '';
                 let fullReasoning = '';
+                let toolCalls: any[] = [];
                 let buffer = '';
 
                 if (reader) {
@@ -941,11 +976,14 @@ export async function sendAgentMessage(
                                     fullReasoning += reasoning;
                                     onStatus({ streamedReasoning: fullReasoning, phase: 'streaming' });
                                 }
+                                if (parsed.choices?.[0]?.delta?.tool_calls) {
+                                    toolCalls = [...toolCalls, ...parsed.choices[0].delta.tool_calls];
+                                }
                             } catch { }
                         }
                     }
                 }
-                return { content: fullContent, toolCalls: [], reasoning: fullReasoning };
+                return { content: fullContent, toolCalls, reasoning: fullReasoning };
             }
         } else if (provider === 'gemini') {
             const isGemma = config.model.toLowerCase().includes('gemma');
@@ -955,41 +993,76 @@ export async function sendAgentMessage(
             const consolidatedHistory: any[] = [];
             for (const m of messages.filter(msg => msg.role !== 'system')) {
                 const role = m.role === 'assistant' ? 'model' : (m.role === 'tool' ? 'user' : m.role);
-                const content = m.role === 'tool'
-                    ? `[TOOL_RESULT: ${m.tool_call_id}]\n${m.content}`
-                    : (m.content || '[Proceeding]');
+                const parts: any[] = [];
 
-                const imageAttachments = m.attachments?.filter((a: any) => a.type.startsWith('image/')) || [];
-                if (consolidatedHistory.length > 0 && consolidatedHistory[consolidatedHistory.length - 1].role === role) {
-                    consolidatedHistory[consolidatedHistory.length - 1].parts[0].text += `\n\n${content}`;
-                    imageAttachments.forEach((img: any) => {
-                        consolidatedHistory[consolidatedHistory.length - 1].parts.push({
-                            inlineData: { mimeType: img.type, data: img.data.split(',')[1] }
+                if (m.role === 'tool' && modelSupportsNativeTools) {
+                    // Native Tool Response for Gemini
+                    parts.push({
+                        functionResponse: {
+                            name: (m as any).tool_name || 'unknown_tool',
+                            response: { content: m.content || '{}' }
+                        }
+                    });
+                } else if (m.role === 'assistant' && modelSupportsNativeTools && m.tool_calls && Array.isArray(m.tool_calls) && m.tool_calls.length > 0) {
+                    // Native Tool Call Turn
+                    if (m.content) parts.push({ text: m.content });
+                    m.tool_calls.forEach((tc: any) => {
+                        parts.push({
+                            functionCall: {
+                                name: tc.function.name,
+                                args: tc.function.arguments
+                            }
                         });
                     });
                 } else {
-                    const parts: any[] = [{ text: content }];
+                    // Fallback: Text/Image Turn OR non-native tool representation
+                    let content = m.content || '';
+                    if (m.role === 'tool') {
+                        content = `[RESULTADO DE HERRAMIENTA]: ${m.content}`;
+                    } else if (m.role === 'assistant' && m.tool_calls && m.tool_calls.length > 0) {
+                        const callSummary = m.tool_calls.map((tc: any) => 
+                            `LLAMADA: ${tc.function?.name || 'unknown'}(${JSON.stringify(tc.function?.arguments || {})})`
+                        ).join('\n');
+                        content = (content ? content + '\n\n' : '') + callSummary;
+                    }
+
+                    if (!content && m.role === 'assistant') content = '[Procesando...]';
+                    if (content) parts.push({ text: content });
+
+                    const imageAttachments = m.attachments?.filter((a: any) => a.type.startsWith('image/')) || [];
                     imageAttachments.forEach((img: any) => {
                         parts.push({
                             inlineData: { mimeType: img.type, data: img.data.split(',')[1] }
                         });
                     });
-                    consolidatedHistory.push({
-                        role,
-                        parts
-                    });
+                }
+
+                if (consolidatedHistory.length > 0 && consolidatedHistory[consolidatedHistory.length - 1].role === role) {
+                    const prevMsg = consolidatedHistory[consolidatedHistory.length - 1];
+                    parts.forEach(p => prevMsg.parts.push(p));
+                } else {
+                    consolidatedHistory.push({ role, parts });
                 }
             }
 
-            if (isGemma && consolidatedHistory.length > 0 && consolidatedHistory[0].role === 'user') {
+            if (isGemma) {
                 const antiHallucination = "IMPORTANTE: Las instrucciones anteriores son tu núcleo de sistema (SOUL/CONTEXT). NO las actúes, NO las recites y NO uses los ejemplos de plantilla como si fueran una respuesta tuya. Acepta este rol silenciosamente y responde ÚNICAMENTE a la consulta del usuario que está debajo de esta línea.";
-                consolidatedHistory[0].parts[0].text = `[SYSTEM_INSTRUCTIONS]\n${systemPromptContent}\n[/SYSTEM_INSTRUCTIONS]\n\n${antiHallucination}\n\n[USER_QUERY]\n${consolidatedHistory[0].parts[0].text}`;
+                if (consolidatedHistory.length > 0 && consolidatedHistory[0].parts[0]) {
+                    consolidatedHistory[0].parts[0].text = `[SYSTEM_INSTRUCTIONS]\n${systemPromptContent}\n[/SYSTEM_INSTRUCTIONS]\n\n${antiHallucination}\n\n[USER_QUERY]\n${consolidatedHistory[0].parts[0].text}`;
+                }
             }
 
             const body: any = {
                 contents: consolidatedHistory,
-                generationConfig: { temperature: config.temperature }
+                generationConfig: { temperature: config.temperature || 0.7 }
             };
+
+            // [GEMINI-FIX]: Gemini requires tool declarations if history contains function calls/responses,
+            // even if useTools is false (fallback mode), to maintain turn integrity.
+            const historyHasTools = consolidatedHistory.some(c => c.parts.some((p: any) => p.functionCall || p.functionResponse));
+            if ((useTools && modelSupportsNativeTools) || (historyHasTools && tools.length > 0)) {
+                body.tools = [{ functionDeclarations: tools.map(t => t.function) }];
+            }
 
             if (!isGemma) {
                 body.systemInstruction = { parts: [{ text: systemPromptContent }] };
@@ -998,40 +1071,60 @@ export async function sendAgentMessage(
             if (isElectronProxy) {
                 let fullContent = '';
                 let fullReasoning = '';
+                let toolCalls: any[] = [];
                 let buffer = '';
 
-                await streamViaProxy({
-                    provider: 'gemini',
-                    model: config.model,
-                    body,
-                    abortSignal,
-                    onChunk: (raw) => {
-                        buffer += raw;
-                        const lines = buffer.split('\n');
-                        buffer = lines.pop() || '';
-                        for (const line of lines) {
-                            const cleanLine = line.trim();
-                            if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
-                            try {
-                                const parsed = JSON.parse(cleanLine.slice(6));
-                                const parts = parsed.candidates?.[0]?.content?.parts;
-                                if (parts && Array.isArray(parts)) {
-                                    parts.forEach((part: any) => {
-                                        if (part.text) {
-                                            fullContent += part.text;
-                                        }
-                                        if (part.thought || part.thought_content) {
-                                            fullReasoning += (part.thought || part.thought_content);
-                                            onStatus({ streamedReasoning: fullReasoning, phase: 'streaming' });
-                                        }
-                                    });
-                                    onStatus({ streamedText: fullContent, phase: 'streaming' });
-                                }
-                            } catch { }
+                try {
+                    await streamViaProxy({
+                        provider: 'gemini',
+                        model: config.model,
+                        body,
+                        abortSignal,
+                        onChunk: (raw) => {
+                            buffer += raw;
+                            const lines = buffer.split('\n');
+                            buffer = lines.pop() || '';
+                            for (const line of lines) {
+                                const cleanLine = line.trim();
+                                if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
+                                try {
+                                    const parsed = JSON.parse(cleanLine.slice(6));
+                                    const parts = parsed.candidates?.[0]?.content?.parts;
+                                    if (parts && Array.isArray(parts)) {
+                                        parts.forEach((part: any) => {
+                                            if (part.text) {
+                                                fullContent += part.text;
+                                            }
+                                            if (part.thought || part.thought_content) {
+                                                fullReasoning += (part.thought || part.thought_content);
+                                                onStatus({ streamedReasoning: fullReasoning, phase: 'streaming' });
+                                            }
+                                            if (part.functionCall) {
+                                                toolCalls.push({
+                                                    id: 'tc-' + Math.random().toString(36).slice(2, 9),
+                                                    type: 'function',
+                                                    function: {
+                                                        name: part.functionCall.name,
+                                                        arguments: part.functionCall.args
+                                                    }
+                                                });
+                                            }
+                                        });
+                                        onStatus({ streamedText: fullContent, phase: 'streaming' });
+                                    }
+                                } catch { }
+                            }
                         }
+                    });
+                } catch (err: any) {
+                    if ((err.message?.includes('400') || err.message?.includes('INVALID_ARGUMENT')) && useTools && modelSupportsNativeTools) {
+                        log('warn', 'Este modelo está siendo optimizado para el llamado y uso de herramientas');
+                        modelSupportsNativeTools = false;
+                        return streamModelRequest(messages, false);
                     }
-                });
-                return { content: fullContent, toolCalls: [], reasoning: fullReasoning };
+                    throw err;
+                }
+                return { content: fullContent, toolCalls, reasoning: fullReasoning };
             } else {
                 const response = await fetch(
                     `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:streamGenerateContent?alt=sse&key=${config.apiKeys.gemini}`,
@@ -1043,16 +1136,24 @@ export async function sendAgentMessage(
                     }
                 );
 
+                if ((response.status === 400 || response.status === 422) && useTools && modelSupportsNativeTools) {
+                    log('warn', 'Este modelo está siendo optimizado para el llamado y uso de herramientas');
+                    modelSupportsNativeTools = false;
+                    return streamModelRequest(messages, false);
+                }
+
                 if (!response.ok) {
                     const err = await response.json().catch(() => ({}));
                     throw new Error(err.error?.message || `Gemini HTTP ${response.status}`);
                 }
 
-                const reader = response.body?.getReader();
-                const decoder = new TextDecoder();
                 let fullContent = '';
                 let fullReasoning = '';
+                let toolCalls: any[] = [];
                 let buffer = '';
+
+                const reader = response.body?.getReader();
+                const decoder = new TextDecoder();
 
                 if (reader) {
                     while (true) {
@@ -1079,6 +1180,16 @@ export async function sendAgentMessage(
                                             fullReasoning += (part.thought || part.thought_content);
                                             onStatus({ streamedReasoning: fullReasoning, phase: 'streaming' });
                                         }
+                                        if (part.functionCall) {
+                                            toolCalls.push({
+                                                id: 'tc-' + Math.random().toString(36).slice(2, 9),
+                                                type: 'function',
+                                                function: {
+                                                    name: part.functionCall.name,
+                                                    arguments: part.functionCall.args
+                                                }
+                                            });
+                                        }
                                     });
                                     onStatus({ streamedText: fullContent, phase: 'streaming' });
                                 }
@@ -1086,31 +1197,103 @@ export async function sendAgentMessage(
                         }
                     }
                 }
-                return { content: fullContent, toolCalls: [], reasoning: fullReasoning };
+                return { content: fullContent, toolCalls, reasoning: fullReasoning };
             }
         }
 
         throw new Error(`Unsupported provider for Agent Loop: ${provider}`);
     }
 
-    let historicalContext = chatMessages;
+    // OPTIMIZATION: Prepare historical context by summarizing past tool executions.
+    // This reduces token usage and prevents "context pollution" while keeping the agent 
+    // aware of its previous actions and their outcomes.
+    const historicalContext = chatMessages.map(m => {
+        const msg = { ...m } as any;
+        
+        // 1. Summarize heavy Assistant messages (plan turns with large arguments)
+        if (msg.role === 'assistant' && msg.tool_calls && msg.tool_calls.length > 0) {
+            try {
+                const calls = msg.tool_calls;
+                const totalArgsLen = JSON.stringify(calls).length;
+                
+                // If it's a "heavy" call (lots of code or data in arguments)
+                if (totalArgsLen > 300) {
+                    const callSummaries = calls.map((tc: any) => {
+                        const name = tc.function?.name || tc.tool_name || 'unknown';
+                        const args = tc.function?.arguments || tc.tool_args || {};
+                        let desc = `${name}`;
+                        if (args.filename) desc += `("${args.filename}")`;
+                        else if (args.query) desc += `("${args.query}")`;
+                        else if (args.command) desc += `("${args.command}")`;
+                        return desc;
+                    }).join(', ');
+
+                    msg.content = (msg.content || '') + `\n\n🤖 [HISTORIAL OPTIMIZADO] Se ejecutaron: ${callSummaries}. (Detalles técnicos comprimidos para ahorrar memoria).`;
+                    
+                    // CRITICAL: For plain history, we remove tool metadata to treat it as text
+                    delete msg.tool_calls;
+                }
+            } catch { /* ignore parsing errors */ }
+        }
+
+        // 2. Summarize Tool Responses (result turns)
+        if (msg.role === 'tool' && msg.content) {
+            try {
+                // Ignore already summarized messages or very brief ones
+                if (!msg.content.trim().startsWith('{') || msg.content.length < 150) return m;
+
+                const parsed = JSON.parse(msg.content);
+                const isSuccess = parsed.success !== false;
+                const toolName = msg.tool_name || 'unknown_tool';
+                
+                let summary = `${isSuccess ? '✅' : '❌'} [HISTÓRICO] ${toolName}`;
+                
+                // Add contextual brief from arguments or results
+                const args = msg.tool_args || {}; 
+                const filename = parsed.data?.filename || args.filename;
+                const query = parsed.data?.query || args.query;
+                const cmd = parsed.data?.command || args.command;
+
+                if (filename) summary += `: "${filename}"`;
+                else if (query) summary += `: "${query}"`;
+                else if (cmd) summary += `: "${cmd} ${args.args || ''}"`;
+                else if (parsed.message) summary += `: ${parsed.message.substring(0, 80)}...`;
+                
+                if (isSuccess) {
+                    summary += ` | Status: SUCCESS (Acción completada con éxito)`;
+                } else {
+                    summary += ` | Status: ERROR (${(parsed.error || parsed.data?.error || 'Falló').substring(0, 100)})`;
+                }
+                
+                // Convert to plain user message for the model in history to optimize tokens
+                return { 
+                    role: 'user', 
+                    content: `[LOG DE SISTEMA] ${summary}`
+                };
+            } catch {
+                return m;
+            }
+        }
+        return msg;
+    });
+
+    let activeContext = historicalContext;
     // Normalización: Tanto el modo Agente como el modo de Instrucción (Rayo) 
     // deben usar una ventana de contexto optimizada que preserve la misión inicial.
     if (isAgentMode || isInstructionMode) {
-        const filtered = chatMessages.filter(m => !m.content.startsWith('⚡ Command Executed:'));
+        const filtered = historicalContext.filter(m => !m.content.startsWith('⚡ Command Executed:'));
         
-        // El Modo Instrucción (Rayo) es "Lite": 2 turnos (4 msgs) + Petición actual (1 msg).
-        // El Modo Agente es "Full": 7 turnos (14 msgs) + Petición actual (1 msg).
-        const windowSize = isInstructionMode ? 5 : 15;
+        // El Modo Instrucción (Rayo) es "Lite": 10 mensajes.
+        // El Modo Agente es "Full": 30 mensajes.
+        const windowSize = isInstructionMode ? 10 : 30;
 
-        // Simplemente tomamos los últimos mensajes. No necesitamos anclar el mensaje [0]
-        // porque la "Misión Original" ya se inyecta en el System Prompt abajo.
-        historicalContext = filtered.slice(-windowSize);
+        // Tomamos los últimos mensajes. La "Misión Original" se inyecta dinámicamente en el System Prompt.
+        activeContext = filtered.slice(-windowSize);
     }
 
     const agentMessages: any[] = [
         { role: 'system', content: systemPrompt },
-        ...historicalContext,
+        ...activeContext,
     ];
 
     const startTime = Date.now();
@@ -1144,15 +1327,18 @@ export async function sendAgentMessage(
         onStatus({ ...status, lastExecutionFeedback });
     };
 
-    // ── Main Agent Loop ──────────────────────────────────────────────
-    while (!abortSignal.aborted) {
-        if (retries >= MAX_RETRIES) {
-            log('warn', `Max retries reached (${MAX_RETRIES}). Stopping.`);
-            localOnStatus({ phase: 'error', retries, maxRetries: MAX_RETRIES, errorCount: retries, elapsedMs: Date.now() - startTime, rawMessages: [...agentMessages] });
-            break;
-        }
+    let memorySaved = false;
 
-        iterations++;
+    // ── Main Agent Loop ──────────────────────────────────────────────
+    try {
+        while (!abortSignal.aborted) {
+            if (retries >= MAX_RETRIES) {
+                log('warn', `Max retries reached (${MAX_RETRIES}). Stopping.`);
+                localOnStatus({ phase: 'error', retries, maxRetries: MAX_RETRIES, errorCount: retries, elapsedMs: Date.now() - startTime, rawMessages: [...agentMessages] });
+                break;
+            }
+
+            iterations++;
 
         // DYNAMIC SYSTEM PROMPT REFRESH (Awareness & Working Memory)
         if (isAgentMode || isInstructionMode) {
@@ -1247,7 +1433,11 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
 
         // 1. Extract tool calls (with positions if possible)
         if (content && useTextExtraction) {
-            const { calls } = recoverToolCallsFromText(content, tools);
+            const { calls, warnings } = recoverToolCallsFromText(content, tools);
+            if (calls.length > 0) {
+                log('info', `📡 Herramientas detectadas en texto: ${calls.map(c => c.toolCall.function.name).join(', ')}`);
+                console.log(`[Tool Recovery] Found ${calls.length} calls in text.`, warnings);
+            }
             positionalCalls = calls;
             finalToolCalls = calls.map(c => c.toolCall);
         }
@@ -1282,6 +1472,7 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
 
         // INTERLEAVED SEGMENTATION: Chronologically interleave text and tool blocks
         const iterationBlocks: any[] = [];
+        const nativeReasoningClean = nativeReasoning?.trim().toLowerCase().replace(/[#*>\s:-]+/g, '');
         
         // A0. Add Native Reasoning if present
         if (nativeReasoning && nativeReasoning.trim()) {
@@ -1289,15 +1480,34 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
         }
 
         let curIdx = 0;
-
-        // Ensure positionalCalls is sorted (includes duplicates to swallow repetitions)
-        const sortedPosCalls = [...positionalCalls].sort((a, b) => a.start - b.start);
         const seenFpForInterleaving = new Set<string>();
+
+        const sortedPosCalls = [...positionalCalls].sort((a, b) => a.start - b.start);
+        
+        const pushDeDuplicated = (b: { type: string, content: string }) => {
+            if (!nativeReasoningClean) {
+                iterationBlocks.push(b);
+                return;
+            }
+
+            const blockClean = b.content.toLowerCase().replace(/[#*>\s:-]+/g, '');
+            const isDuplicate = blockClean === nativeReasoningClean || 
+                               (blockClean.length > 50 && nativeReasoningClean.includes(blockClean)) ||
+                               (nativeReasoningClean.length > 50 && blockClean.includes(nativeReasoningClean));
+
+            // If it's a duplicate of the native thought, and we haven't added much text yet, skip it
+            if (isDuplicate && iterationBlocks.length <= 1) {
+                console.log(`[Deduplicator] Skipping duplicate content in text block: "${b.content.substring(0, 30)}..."`);
+                return;
+            }
+            iterationBlocks.push(b);
+        };
 
         for (const rc of sortedPosCalls) {
             const rawSegment = (content || '').substring(curIdx, rc.start);
             const segmentBlocks = segmentThoughtsAndNarrative(rawSegment, signatureRegex);
-            iterationBlocks.push(...segmentBlocks);
+            
+            segmentBlocks.forEach(pushDeDuplicated);
 
             // B. Extract thoughts embedded in tool arguments for separate display above the tool
             const args = rc.toolCall.function.arguments;
@@ -1372,8 +1582,8 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
 
         agentMessages.push({
             role: 'assistant',
-            content: (nativeReasoning ? `<think>\n${nativeReasoning}\n</think>\n` : '') + (content || ''),
-            tool_calls: uniqueToolCalls.length > 0 ? uniqueToolCalls : undefined,
+            content: (nativeReasoning ? `<think>\n${nativeReasoning}\n</think>\n` : '') + (content || ' '),
+            tool_calls: uniqueToolCalls.length > 0 ? JSON.parse(JSON.stringify(uniqueToolCalls)) : undefined, // Deep copy to prevent reference clearing
         });
 
         // DYNAMIC SYNC: Emit blocks early so thoughts & tools appear before execution
@@ -1408,11 +1618,18 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
                 const cleanedBlocks = mergedIterationBlocks.filter(b => b.type !== 'tool_call');
                 onChunk(content || '', false, [...allBlocks, ...cleanedBlocks]);
 
-                uniqueToolCalls.length = 0;
+                const protocolError = '⚠️ BLOQUEO DE PROTOCOLO: No puedes dar un "final_answer" mientras `@CORE/TASKS.md` exista o esté siendo actualizado. Debes completar TODAS las tareas, marcar los checks `[x]` y finalmente ELIMINAR el archivo con `delete_file` antes de responder.';
+                lastExecutionFeedback = `❌ FALLO: Protocolo violado (${finalAnswerCall.function.name}).`;
+                
                 agentMessages.push({
-                    role: 'user',
-                    content: '⚠️ BLOQUEO DE PROTOCOLO: No puedes dar un "final_answer" mientras `@CORE/TASKS.md` exista o esté siendo actualizado. Debes completar TODAS las tareas, marcar los checks `[x]` y finalmente ELIMINAR el archivo con `delete_file` antes de responder.'
+                    role: 'tool',
+                    tool_name: finalAnswerCall.function.name,
+                    content: protocolError,
+                    tool_call_id: finalAnswerCall.id,
+                    tool_args: finalAnswerCall.function.arguments
                 });
+                
+                uniqueToolCalls.length = 0;
                 localOnStatus({ phase: 'thinking', rawMessages: [...agentMessages] });
                 continue;
             }
@@ -1438,7 +1655,10 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
 
                 if (isJustSignature || hasSubstantialText) {
                     onChunk(content || '', true, allBlocks);
-                    if (onFinalRawHistory) onFinalRawHistory([...agentMessages]);
+                    if (onFinalRawHistory) {
+                        onFinalRawHistory([...agentMessages]);
+                        memorySaved = true;
+                    }
                     localOnStatus({ phase: 'idle', elapsedMs: Date.now() - startTime, rawMessages: [...agentMessages] });
                     return;
                 } else if (retries < MAX_RETRIES) {
@@ -1446,23 +1666,24 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
 
                     // Check if the previous message was already a technical error nudge to avoid redundancy
                     const lastMsg = agentMessages[agentMessages.length - 1];
-                    if (lastMsg && lastMsg.role === 'user' && lastMsg.content.includes('⚠️ ERROR TÉCNICO')) {
+                    if (lastMsg && lastMsg.role === 'user' && lastMsg.content.includes('⚠️ PROTOCOLO DE AGENTE INCOMPLETO')) {
                         localOnStatus({ phase: 'thinking', retries, rawMessages: [...agentMessages] });
                         continue; // Skip the redundant "Incomplete Protocol" nudge if we already nudged for a tool error
                     }
 
-                    agentMessages.push({
-                        role: 'user', content: `⚠️ PROTOCOLO DE AGENTE INCOMPLETO:
+                    const protocolNudge = `⚠️ PROTOCOLO DE AGENTE INCOMPLETO:
 Has proporcionado texto, pero ninguna herramienta (JSON). Si ya tienes la respuesta final para Armando, debes usar obligatoriamente la herramienta "final_answer".
 
 **EJEMPLO DE CIERRE:**
 {"name": "final_answer", "arguments": {
   "text": "Tu respuesta final aquí...",
-  "reasoning": "Breve explicación de por qué esta es la respuesta.",
-  "sources": ["fuente1.md", "url_sitio"]
+  "reasoning": "Breve explicación de por qué esta es la respuesta."
 }}
 
-Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO respondas solo con texto.` });
+Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO respondas solo con texto.`;
+                    
+                    lastExecutionFeedback = '❌ FALLO: Falta llamada a herramienta (JSON).';
+                    agentMessages.push({ role: 'user', content: protocolNudge });
                     onStatus({ phase: 'thinking', retries, rawMessages: [...agentMessages] });
                     continue;
                 }
@@ -1476,7 +1697,11 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
 
         // --- Execute tool calls ---
         localOnStatus({ phase: 'tool_calling' });
-        const READ_ONLY_TOOLS = new Set(['read_file', 'list_files', 'search_files', 'web_search', 'read_url', 'list_available_skills']);
+        const READ_ONLY_TOOLS = new Set([
+            'read_file', 'list_files', 'search_files', 'web_search', 'read_url', 
+            'list_available_skills', 'get_system_metrics', 'get_git_info', 
+            'instruction_booklet', 'get_file_outline'
+        ]);
 
         function isAutoApproved(tc: ToolCall): boolean {
             // 0. Auto-Scheduled Background Tasks (Unsupervised Full autonomy)
@@ -1515,9 +1740,9 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
                 return true;
             }
 
-            // Chat Mode u otros: Auto-aprobar todo lo que no sea consola o archivos protegidos
-            // (Ya que el usuario es consciente de los riesgos y las herramientas son seguras)
-            return true;
+            // Chat Mode: Auto-approve safe operations to keep flow smooth. 
+            // Risky ones (console) and protected files are still blocked by specific rules above.
+            return !isAgentMode && !isInstructionMode; 
         }
 
         function needsApproval(tc: ToolCall): boolean {
@@ -1534,7 +1759,13 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
                 lastExecutionFeedback = `⚠️ RECHAZADO: El usuario no permitió ejecutar "${toolCall.function.name}".`;
                 const b = allBlocks.find(x => x.toolCall?.id === toolCall.id);
                 if (b) b.result = { success: false, error: 'Rechazado.' };
-                agentMessages.push({ role: 'tool', content: 'Rejected', tool_call_id: toolCall.id });
+                agentMessages.push({ 
+                    role: 'tool', 
+                    tool_name: toolCall.function.name,
+                    content: 'Rejected', 
+                    tool_call_id: toolCall.id,
+                    tool_args: toolCall.function.arguments
+                });
                 onStatus({ rawMessages: [...agentMessages] });
             }
             return approved;
@@ -1570,17 +1801,19 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
 
             if (!isSuccess) {
                 retries++;
-                const errorContent = hasError ? `Error: ${hasError}` : 'Tool execution failed.';
-                lastExecutionFeedback = `❌ FALLO: ${errorContent}`;
-                agentMessages.push({ role: 'tool', content: errorContent, tool_call_id: toolCall.id });
-
-                // Fetch JIT Snippet for recovery
                 const snippet = extractToolSnippet(toolCall.function.name);
-                if (snippet) {
-                    const snippetBlock = `\n\nEJEMPLO DE USO CORRECTO:\n${snippet}`;
-                    unifiedUserFeedback.push(`⚠️ INSTRUCCIÓN DE RECUPERACIÓN: Se detectó un fallo en "${toolCall.function.name}". Utiliza este formato exacto para corregirlo:${snippetBlock}`);
-                    localOnStatus({ rawMessages: [...agentMessages] });
-                }
+                const snippetBlock = snippet ? `\n\nEJEMPLO DE USO CORRECTO:\n${snippet}` : "";
+                const errorContent = `❌ FALLO EN LA HERRAMIENTA: ${hasError || 'Ejecución fallida.'}${snippetBlock}\n\nRECUERDA: Debes corregir esta llamada en tu siguiente turno.`;
+                
+                lastExecutionFeedback = `❌ FALLO: ${hasError || 'Herramienta falló'}`;
+                agentMessages.push({ 
+                    role: 'tool', 
+                    tool_name: toolCall.function.name,
+                    content: errorContent, 
+                    tool_call_id: toolCall.id,
+                    tool_args: toolCall.function.arguments
+                });
+                localOnStatus({ rawMessages: [...agentMessages] });
             } else {
                 retries = 0;
                 const resultData = result.data || {};
@@ -1589,11 +1822,32 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
 
                 const desc = `${toolCall.function.name}(${JSON.stringify(toolCall.function.arguments)})`;
                 actionHistory.push(desc);
-                agentMessages.push({ role: 'tool', content: JSON.stringify(result), tool_call_id: toolCall.id });
 
-                // Add to unified feedback array
-                unifiedUserFeedback.push(`📌 DATOS OBTENIDOS: La herramienta "${toolCall.function.name}" devolvió:\n${summary}`);
+                // --- TOKEN OPTIMIZATION ---
+                // Data-Rich tools need to return full content to the agent.
+                // Action tools (write/delete/exec) only need success confirmation to avoid echoing inputs.
+                const dataRichTools = [
+                    'read_file', 'list_files', 'search_files', 'web_search', 'read_url', 
+                    'get_file_outline', 'get_system_metrics', 'get_git_info', 
+                    'run_console', 'list_available_skills'
+                ];
+                const isDataRich = dataRichTools.includes(toolCall.function.name);
 
+                let chatResult = JSON.stringify(result);
+                if (!isDataRich && result.success) {
+                    const thinData: any = { status: 'success' };
+                    if (result.data?.filename) thinData.filename = result.data.filename;
+                    if (result.data?.message) thinData.message = result.data.message;
+                    chatResult = JSON.stringify({ success: true, data: thinData });
+                }
+
+                agentMessages.push({ 
+                    role: 'tool', 
+                    tool_name: toolCall.function.name,
+                    content: chatResult, 
+                    tool_call_id: toolCall.id,
+                    tool_args: toolCall.function.arguments
+                });
                 onStatus({ rawMessages: [...agentMessages] });
 
                 // CRITICAL: Update local mutable stores so subsequent steps in this session see the changes
@@ -1706,7 +1960,7 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
         function validateAndReport(tc: ToolCall): boolean {
             const v = validateToolArgs(tc, tools);
             if (!v.valid) {
-                lastExecutionFeedback = `❌ ERROR TÉCNICO: Parámetros inválidos en "${tc.function.name}". Detalle: ${v.error}`;
+                lastExecutionFeedback = `❌ ERROR TÉCNICO: Parámetros inválidos en "${tc.function.name}".`;
                 const b = allBlocks.find(x => x.toolCall?.id === tc.id);
                 if (b) b.result = { success: false, error: v.error };
 
@@ -1715,10 +1969,15 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
                 const snippetBlock = snippet ? `\n\nEJEMPLO DE USO CORRECTO:\n${snippet}` : "";
 
                 // Content for the tool response
-                agentMessages.push({ role: 'tool', content: `ERROR DE VALIDACIÓN: ${v.error}${snippetBlock}`, tool_call_id: tc.id });
-
-                // Add to unified feedback
-                unifiedUserFeedback.push(`⚠️ ERROR TÉCNICO: Intentaste usar la herramienta "${tc.function.name}" pero los parámetros son incorrectos.\n\nDETALLE: ${v.error}${snippetBlock}\n\nPOR FAVOR, CORRIGE TU LLAMADA EN LA SIGUIENTE ITERACIÓN. No inventes datos.`);
+                const toolErrorContent = `⚠️ ERROR DE VALIDACIÓN: Intentaste usar la herramienta "${tc.function.name}" pero los parámetros son incorrectos.\n\nDETALLE: ${v.error}${snippetBlock}\n\nPOR FAVOR, CORRIGE TU LLAMADA. No inventes datos.`;
+                
+                agentMessages.push({ 
+                    role: 'tool', 
+                    tool_name: tc.function.name,
+                    content: toolErrorContent, 
+                    tool_call_id: tc.id,
+                    tool_args: tc.function.arguments
+                });
 
                 onStatus({ rawMessages: [...agentMessages] });
                 // Update UI with the failure result in the block
@@ -1730,17 +1989,23 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
 
         // Tool Execution: Batch (Paralelo) vs Seguro (Secuencial)
         let hasFinalAnswer = false;
-        const unifiedUserFeedback: string[] = [];
+        let turnHasFailure = false;
 
         const processTool = async (tc: ToolCall) => {
             if (abortSignal.aborted) return;
-            if (!validateAndReport(tc)) return;
+            if (!validateAndReport(tc)) { turnHasFailure = true; return; }
             const approval = needsApproval(tc);
             console.log(`[Agent] Tool "${tc.function.name}": needsApproval=${approval}, isScheduled=${isScheduled}, isAgentMode=${isAgentMode}`);
             if (approval) {
-                if (!await requestApproval(tc, tc.function.name)) return;
+                if (!await requestApproval(tc, tc.function.name)) { turnHasFailure = true; return; }
             }
             await executeAndProcess(tc, tc.function.name);
+            
+            // Check if execution resulted in a failure message being pushed to history
+            const lastMsg = agentMessages[agentMessages.length - 1];
+            if (lastMsg && lastMsg.role === 'tool' && (lastMsg.content.includes('❌ FALLO') || lastMsg.content.includes('⚠️ ERROR'))) {
+                turnHasFailure = true;
+            }
         };
 
         const operativeCalls = activeToolCalls.filter(tc => tc.function.name !== 'final_answer');
@@ -1756,7 +2021,7 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
             }
         }
 
-        if (finalCallToProcess && !abortSignal.aborted) {
+        if (finalCallToProcess && !abortSignal.aborted && !turnHasFailure) {
             hasFinalAnswer = true;
             const args = finalCallToProcess.function.arguments;
             // Canonical keys handled by normalizeArgKeys in toolCallNormalizer
@@ -1794,7 +2059,17 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
             // RENDERING: Update blocks for immediate UI display
             allBlocks.push({ type: 'answer', content: finalContent });
 
-            // PERSISTENCE: Overwrite content in the message history so it's not "empty"
+            // PERSISTENCE: 
+            // 1. Maintain tool-message integrity (Assistant Call -> Tool Response)
+            agentMessages.push({ 
+                role: 'tool', 
+                tool_name: 'final_answer',
+                content: JSON.stringify({ success: true, data: { status: 'Answer delivered' } }), 
+                tool_call_id: finalCallToProcess.id,
+                tool_args: finalCallToProcess.function.arguments
+            });
+
+            // 2. Overwrite content in the message history so it's not "empty" or just a tool call
             const lastAssistant = [...agentMessages].reverse().find(m => m.role === 'assistant');
             if (lastAssistant) {
                 lastAssistant.content = finalContent;
@@ -1803,22 +2078,28 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
             onChunk(finalContent, true, allBlocks);
         }
 
-        // Apply unified feedback AFTER all tool responses to keep tool messages contiguous
-        if (unifiedUserFeedback.length > 0 && !hasFinalAnswer) {
-            agentMessages.push({
-                role: 'user',
-                content: unifiedUserFeedback.join('\n\n---\n\n') + '\n\nREGLA: Usa esta información como base para tu respuesta, pero mantén siempre tu sentido común técnico. Si los resultados parecen irrelevantes, admítelo honestamente y no intentes forzar una conexión falsa. Prioriza la precisión.'
-            });
-            onStatus({ rawMessages: [...agentMessages] });
-        }
+        // All feedbacks are now integrated into tool roles to minimize narrative overhead
 
         if (hasFinalAnswer) {
-            if (onFinalRawHistory) onFinalRawHistory([...agentMessages]);
+            if (onFinalRawHistory) {
+                onFinalRawHistory([...agentMessages]);
+                memorySaved = true;
+            }
             localOnStatus({ phase: 'idle', elapsedMs: Date.now() - startTime, rawMessages: [...agentMessages] });
             return;
         }
 
         onChunk(content, true, allBlocks);
         onStatus({ rawMessages: [...agentMessages] });
+    }
+    } catch (err) {
+        console.error("[Agent Loop Error]", err);
+        log('error', `Agent Loop Error: ${err instanceof Error ? err.message : String(err)}`);
+        throw err;
+    } finally {
+        if (!memorySaved && onFinalRawHistory) {
+            console.log("[Agent Persistence] Emergency save of turn history triggered.");
+            onFinalRawHistory([...agentMessages]);
+        }
     }
 }

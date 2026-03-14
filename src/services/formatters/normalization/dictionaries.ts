@@ -269,8 +269,11 @@ export const KEY_ALIASES: Record<string, string> = {
     'tool_name': 'name',
     'tool_code': 'name',
     'tool_call': 'name',
+    'skill': 'name',
+    'herramienta': 'name',
     'call': 'name',
     'call_tool': 'name',
+    '@': 'name',
     'action': 'name',
     'command': 'name',
     'method': 'name',
@@ -396,19 +399,20 @@ export const ARG_KEY_ALIASES: Record<string, Record<string, string>> = {
         'carpeta': 'source',
     },
     list_files: {
-        // -> source
-        'folder': 'source',
-        'directory': 'source',
-        'dir': 'source',
+        // -> source (mount point)
         'target': 'source',
         'location': 'source',
-        'path': 'source',
-        'carpeta': 'source',
+        'mount': 'source',
         'ubicacion': 'source',
         'ubicación': 'source',
-        'ubidación': 'source',
-        'directorio': 'source',
-        'destino': 'source',
+        // -> directory (sub-folder)
+        'path': 'directory',
+        'directory': 'directory',
+        'dir': 'directory',
+        'folder': 'directory',
+        'carpeta': 'directory',
+        'directorio': 'directory',
+        'ruta': 'directory',
     },
     search_files: {
         // -> query

@@ -135,7 +135,8 @@ export const AGENT_TOOLS: ToolDefinition[] = [
             parameters: {
                 type: 'object',
                 properties: {
-                    source: { type: 'string', description: 'Which folder to list. Defaults to "workSpace".', enum: ['workSpace', 'core', 'library'] }
+                    source: { type: 'string', description: 'Which mount point to list. Defaults to "workSpace".', enum: ['workSpace', 'core', 'library'] },
+                    directory: { type: 'string', description: 'Optional sub-folder to list (e.g. "src/components").' }
                 },
                 required: []
             }

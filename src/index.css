@@ -27,62 +27,45 @@
 }
 
 .markdown-body p {
-  margin-bottom: 0.75em;
+  margin-bottom: 0.5em;
+  line-height: 1.5;
 }
 
-.markdown-body ul {
-  list-style-type: disc;
-  margin-left: 1.5em;
-  margin-bottom: 0.75em;
-}
-
+.markdown-body ul, 
 .markdown-body ol {
-  list-style-type: decimal;
-  margin-left: 1.5em;
-  margin-bottom: 0.75em;
+  margin-bottom: 0.5em;
 }
 
 .markdown-body h1 {
-  font-size: 1.5em;
+  font-size: 1.4em;
   font-weight: bold;
-  margin-top: 1em;
-  margin-bottom: 0.5em;
+  margin-top: 0.75em;
+  margin-bottom: 0.4em;
   color: #60a5fa;
 }
 
 .markdown-body h2 {
-  font-size: 1.25em;
+  font-size: 1.2em;
   font-weight: bold;
-  margin-top: 1em;
-  margin-bottom: 0.5em;
+  margin-top: 0.75em;
+  margin-bottom: 0.4em;
   color: #93c5fd;
 }
 
 .markdown-body h3 {
   font-size: 1.1em;
   font-weight: bold;
-  margin-top: 1em;
-  margin-bottom: 0.5em;
-}
-
-.markdown-body code {
-  background: rgba(0, 0, 0, 0.3);
-  padding: 0.2em 0.4em;
-  border-radius: 4px;
-  font-family: monospace;
-  font-size: 0.9em;
-  word-break: break-all;
+  margin-top: 0.75em;
+  margin-bottom: 0.4em;
 }
 
 .markdown-body pre {
   background: rgba(0, 0, 0, 0.3);
-  padding: 1em;
+  padding: 0.75em;
   border-radius: 8px;
   overflow-x: auto;
-  margin-bottom: 1em;
+  margin-bottom: 0.75em;
   max-width: 100%;
-  white-space: pre-wrap;
-  word-break: break-word;
 }
 
 .markdown-body pre code {

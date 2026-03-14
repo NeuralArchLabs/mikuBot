@@ -28,14 +28,59 @@ export const ToolBlock: React.FC<ToolBlockProps> = ({ block, isOld }) => {
     const hasError = result?.error || (result?.data?.success === false && result?.data?.error);
     const isPending = !result;
 
+    const getFriendlySummary = () => {
+        if (!result) return 'Procesando...';
+        const data = result.data || {};
+        const args = toolCall.function.arguments || {};
+        const name = toolCall.function.name;
+
+        if (!isSuccess && hasError) {
+            return `Error: ${result.error || data.error || 'Operación fallida'}`;
+        }
+
+        switch (name) {
+            case 'get_system_metrics':
+                return `Métricas del sistema obtenidas: ${data.platform || 'OS'} [CPU: ${data.cpu || '?'}%, RAM: ${data.ram || '?'}]`;
+            case 'web_search':
+                return `Búsqueda en la red finalizada para: "${args.query}". Se encontraron resultados relevantes.`;
+            case 'list_files':
+                return `Exploración de archivos completada en "${args.source || 'workSpace'}". ${data.files?.length || 0} elementos encontrados.`;
+            case 'read_file':
+                return `Lectura del archivo "${args.filename}" completada con éxito.`;
+            case 'update_file':
+                return typeof result.data === 'string' ? result.data : `Archivo "${args.filename}" guardado correctamente.`;
+            case 'patch_file':
+                return `Parche "Smart" aplicado a "${args.filename}". Cambios integrados.`;
+            case 'search_files':
+                return `Búsqueda de texto finalizada. Coincidencias encontradas para: "${args.query}".`;
+            case 'run_console':
+                return `Comando "${args.command}${args.args ? ' ' + args.args : ''}" ejecutado en la terminal.`;
+            case 'read_url':
+                return `Contenido extraído y analizado de la URL: ${args.url}`;
+            case 'delete_file':
+                return `Archivo "${args.filename}" eliminado satisfactoriamente.`;
+            case 'add_scheduled_task':
+                return `Tarea autónoma programada: "${args.name}". Próxima ejecución: ${args.schedule}.`;
+            case 'send_telegram_message':
+                return `Transmisión enviada a Telegram con éxito.`;
+            case 'batch_operation':
+                return `Operación por lotes (${args.operation}) realizada sobre "${args.source_path}".`;
+            case 'get_file_outline':
+                return `Mapa estructural de "${args.filename}" generado correctamente.`;
+            default:
+                return typeof result.data === 'string' ? result.data : result.data?.message || `Operación "${name}" completada.`;
+        }
+    };
+
+    const friendlySummary = getFriendlySummary();
     const fullResultText = result
         ? (typeof result.data === 'string' ? result.data : result.data?.message || JSON.stringify(result.data || result.error, null, 2))
         : '';
 
-    // Truncated version for the big display
-    const truncatedText = fullResultText.length > 50
-        ? fullResultText.substring(0, 50) + '...'
-        : fullResultText;
+    // Truncated version for the big display (using friendly summary)
+    const truncatedText = friendlySummary.length > 80
+        ? friendlySummary.substring(0, 80) + '...'
+        : friendlySummary;
 
     useEffect(() => {
         if (isExpanded && result && !isTyping && displayText === '') {

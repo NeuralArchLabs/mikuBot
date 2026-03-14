@@ -158,11 +158,6 @@ export const ChatArea = ({
 
         const cleanupResult = (window as any).electron.onVoiceRecognitionResult((data: any) => {
             if (data.final) {
-                // Correctly update with functional or simple string depending on support,
-                // but since setInput is (s: string) => void, we use our own buffer or state.
-                // Wait, setInput is passed as (s: string) => void from App.tsx. 
-                // In App.tsx: const [input, setInput] = useState('');
-                // Let's assume React's setInput from useState is available.
                 const currentInput = (inputRef.current as any)?.value || "";
                 const separator = currentInput.trim() ? ' ' : '';
                 setInput(currentInput.trim() + separator + data.text);
@@ -456,7 +451,7 @@ export const ChatArea = ({
                                         <MarkdownRenderer content={msg.text} />
                                     </div>
                                 ) : (
-                                    <div className={`relative w-auto max-w-[95%] sm:max-w-[85%] lg:max-w-[75%] rounded-2xl p-4 sm:px-5 sm:py-4 shadow-xl transition-[opacity,transform,background-color] duration-300 break-words message-pop-in transform-gpu ${msg.role === 'user'
+                                    <div className={`relative w-auto max-w-[98%] sm:max-w-[90%] lg:max-w-[80%] rounded-2xl p-5 sm:px-8 sm:py-6 shadow-xl transition-[opacity,transform,background-color] duration-300 break-words message-pop-in transform-gpu ${msg.role === 'user'
                                         ? 'bg-blue-600/20 border border-blue-500/30 text-blue-50'
                                         : 'bg-slate-800 border border-slate-700 text-slate-200'
                                         }`}>
@@ -510,7 +505,7 @@ export const ChatArea = ({
                                                 <span className="font-mono text-xs tracking-wider animate-pulse uppercase">Analizando Parámetros...</span>
                                             </div>
                                         ) : (
-                                            <div className="text-[12px] sm:text-[13px] leading-relaxed space-y-4 overflow-hidden break-words max-w-full w-full">
+                                            <div className="text-[13px] sm:text-[14px] leading-loose space-y-5 overflow-hidden break-words max-w-full w-full px-2 sm:px-4 py-2">
                                                 {msg.attachments && msg.attachments.length > 0 && (
                                                     <div className="flex flex-wrap gap-2 mb-3">
                                                         {msg.attachments.map(att => (
@@ -525,7 +520,7 @@ export const ChatArea = ({
                                                         ))}
                                                     </div>
                                                 )}
-                                                {msg.blocks && msg.blocks.length > 0 && (
+                                                {msg.blocks && msg.blocks.length > 0 ? (
                                                     <div className="space-y-4 mb-4">
                                                         {msg.blocks.map((block, idx) => {
                                                             if (block.type === 'answer') {
@@ -540,9 +535,10 @@ export const ChatArea = ({
                                                             return null;
                                                         })}
                                                     </div>
-                                                )}
-                                                {msg.text && (msg.blocks?.length === 0 || !msg.blocks || msg.text.includes('⚠️ Error:')) && (
-                                                    <MarkdownRenderer content={msg.text} />
+                                                ) : (
+                                                    msg.text && (
+                                                        <MarkdownRenderer content={msg.text} />
+                                                    )
                                                 )}
                                             </div>
                                         )}

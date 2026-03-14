@@ -130,15 +130,15 @@ export const toHtml = (md: string): string => {
     if (inTable) outputLines.push(tableHtml + '</tbody></table></div>');
     html = outputLines.join('\n');
 
-    // Headlines
-    html = html.replace(/^### (.+)$/gm, '<h3 class="text-md font-bold text-slate-300 mt-4 mb-2">$1</h3>');
-    html = html.replace(/^## (.+)$/gm, '<h2 class="text-lg font-bold text-slate-200 mt-6 mb-3 border-b border-white/5 pb-1">$1</h2>');
-    html = html.replace(/^# (.+)$/gm, '<h1 class="text-xl font-extrabold text-white mt-8 mb-4 border-b border-white/10 pb-2">$1</h1>');
+    // Headlines (comfort margins + vibrant colors)
+    html = html.replace(/^### (.+)$/gm, '<h3 class="text-sm font-bold text-slate-100 mt-4 mb-2">$1</h3>');
+    html = html.replace(/^## (.+)$/gm, '<h2 class="text-md font-bold text-cyan-400 mt-5 mb-3 border-b border-white/10 pb-1">$1</h2>');
+    html = html.replace(/^# (.+)$/gm, '<h1 class="text-lg font-extrabold text-white mt-6 mb-4 border-b border-cyan-500/20 pb-1.5 shadow-sm">$1</h1>');
 
     // Bold/Italic
-    html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong class="text-amber-200"><em>$1</em></strong>');
-    html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="text-blue-200">$1</strong>');
-    html = html.replace(/\*(.+?)\*/g, '<em class="text-slate-400">$1</em>');
+    html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong class="text-amber-300"><em>$1</em></strong>');
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="text-amber-400">$1</strong>');
+    html = html.replace(/\*(.+?)\*/g, '<em class="text-slate-300">$1</em>');
 
     // Links and blockquotes
     const sanitizeUrl = (url: string): string => {
@@ -152,43 +152,51 @@ export const toHtml = (md: string): string => {
         return safe ? `<a href="${safe}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors">${text}</a>` : text;
     });
 
-    html = html.replace(/^&gt; (.+)$/gm, '<blockquote class="border-l-4 border-blue-500/30 pl-4 italic text-slate-400 my-2 bg-blue-500/5 py-2 pr-2 rounded-r">$1</blockquote>');
+    html = html.replace(/^&gt; (.+)$/gm, '<blockquote class="border-l-3 border-cyan-500/50 pl-3 italic text-slate-300 my-2 bg-cyan-500/5 py-1.5 pr-2 rounded-r">$1</blockquote>');
 
-    // Robust Lists wrapping to avoid stray characters and invalid HTML
-    const listLines = html.split('\n');
-    const processedLines = [];
-    let listOpen: 'ul' | 'ol' | null = null;
+    const contentLines = html.split('\n');
+    const processed = [];
+    let currentList: 'ul' | 'ol' | null = null;
 
-    for (const line of listLines) {
+    for (let i = 0; i < contentLines.length; i++) {
+        const line = contentLines[i];
         const trimmed = line.trim();
-        const ulMatch = line.match(/^[\*\-] (.*)$/);
-        const olMatch = line.match(/^(\d+)\. (.*)$/);
+        
+        // Match lists (allow indentation)
+        const ulMatch = line.match(/^(\s*)[\*\-] (.*)$/);
+        const olMatch = line.match(/^(\s*)(\d+)\. (.*)$/);
 
-        if (ulMatch) {
-            if (listOpen !== 'ul') {
-                if (listOpen) processedLines.push(`</${listOpen}>`);
-                processedLines.push('<ul class="space-y-1 my-3">');
-                listOpen = 'ul';
+        if (ulMatch || olMatch) {
+            const isUl = !!ulMatch;
+            const type = isUl ? 'ul' : 'ol';
+            const content = isUl ? ulMatch[2] : olMatch[3];
+            const indent = (isUl ? ulMatch[1] : olMatch[1]).length;
+
+            if (currentList !== type) {
+                if (currentList) processed.push(`</${currentList}>`);
+                processed.push(`<${type} class="space-y-1.5 my-2 ${indent > 0 ? 'ml-6' : ''}">`);
+                currentList = type;
             }
-            processedLines.push(`<li class="ml-5 list-disc list-outside marker:text-blue-500/50 pl-1">${ulMatch[1] || '&nbsp;'}</li>`);
-        } else if (olMatch) {
-            if (listOpen !== 'ol') {
-                if (listOpen) processedLines.push(`</${listOpen}>`);
-                processedLines.push('<ol class="space-y-1 my-3">');
-                listOpen = 'ol';
-            }
-            processedLines.push(`<li class="ml-5 list-decimal list-outside marker:text-blue-500/50 pl-1">${olMatch[2] || '&nbsp;'}</li>`);
+            processed.push(`<li class="ml-6 list-${isUl ? 'disc' : 'decimal'} list-outside marker:text-cyan-400/60 pl-1">${content}</li>`);
+        } else if (trimmed === "" && i < contentLines.length - 1 && (contentLines[i+1].match(/^(\s*)[\*\-] /) || contentLines[i+1].match(/^(\s*)\d+\. /))) {
+            // Skip empty lines between list items to keep them together
+            continue;
         } else {
-            if (listOpen) {
-                processedLines.push(`</${listOpen}>`);
-                listOpen = null;
+            if (currentList) {
+                processed.push(`</${currentList}>`);
+                currentList = null;
             }
-            // Filter out dangling noise like single asterisks or dashes
-            if (["*", "-", "***", "---"].includes(trimmed)) continue;
-            processedLines.push(line);
+            if (trimmed) {
+                // If it's not a tag already, wrap in paragraph-like div for better spacing control
+                if (!trimmed.startsWith('<') || trimmed.startsWith('<code') || trimmed.startsWith('<strong') || trimmed.startsWith('<em')) {
+                    processed.push(`<div class="mb-3 leading-loose">${trimmed}</div>`);
+                } else {
+                    processed.push(line);
+                }
+            }
         }
     }
-    if (listOpen) processedLines.push(`</${listOpen}>`);
+    if (currentList) processed.push(`</${currentList}>`);
     
-    return processedLines.join('\n');
+    return processed.join('').trim();
 };

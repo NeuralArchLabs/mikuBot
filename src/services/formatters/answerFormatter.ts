@@ -23,23 +23,33 @@ export function formatFinalResponse(rawText: any): string {
     formatted = formatted.replace(/\r\n/g, '\n');
 
     // 2. Unescape literal \n strings if they escaped double-parsing
-    // Handle both \\n and literal \n artifacts from some local models
     formatted = formatted.replace(/\\n/g, '\n');
 
     // 3. Fix double escaping of quotes and tabs
     formatted = formatted.replace(/\\t/g, '    ');
     formatted = formatted.replace(/\\"/g, '"');
 
-    // 4. Ensure clear separation before lists or headers if missing
-    // If we see a line ending in text immediately followed by a list or header, add a newline
+    // 4. Clean up trailing whitespace on each line and handle stray spaces between newlines
+    formatted = formatted.split('\n').map(line => line.trimEnd()).join('\n');
+
+    // 5. Collapse excessive vertical space (more than 2 newlines -> 2 newlines)
+    // This now handles cases with spaces between the newlines (e.g., \n  \n\n)
+    formatted = formatted.replace(/\n\s*\n\s*\n+/g, '\n\n');
+
+    // 6. Ensure exactly one blank line before lists or headers if they are preceded by text
+    // Fixed: Avoid adding newlines if already present
     formatted = formatted.replace(/([^\n])\n(?=[-*+]\s|#|\d+\.)/g, '$1\n\n');
 
-    // 5. Remove extra surrounding quotes and trim
-    formatted = formatted.trim();
-    if (formatted.startsWith('"') && formatted.endsWith('"')) {
-        formatted = formatted.slice(1, -1);
-        formatted = formatted.trim();
-    }
+    // 7. Filter out noise artifacts (like trailing *** or ---) that some models add
+    formatted = formatted.split('\n')
+        .filter(line => {
+            const trimmed = line.trim();
+            if (trimmed === '***' || trimmed === '---' || (trimmed.length === 1 && (trimmed === '*' || trimmed === '-' || trimmed === '_'))) {
+                return false;
+            }
+            return true;
+        })
+        .join('\n');
 
-    return formatted;
+    return formatted.trim();
 }
