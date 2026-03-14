@@ -315,15 +315,17 @@ export const ARG_KEY_ALIASES: Record<string, Record<string, string>> = {
     read_file: {
         // -> filename
         'file': 'filename',
-        'filepath': 'filename',
-        'file_path': 'filename',
         'path': 'filename',
         'name': 'filename',
+        'filepath': 'filename',
+        'file_path': 'filename',
         'file_name': 'filename',
         'archivo': 'filename',
+        'nombre_archivo': 'filename',
         'ruta': 'filename',
-        'nombre': 'filename',
         // -> source
+        'target': 'source',
+        'from': 'source',
         'folder': 'source',
         'directory': 'source',
         'ubicación': 'source',
@@ -339,6 +341,7 @@ export const ARG_KEY_ALIASES: Record<string, Record<string, string>> = {
         'file_name': 'filename',
         'archivo': 'filename',
         'ruta': 'filename',
+        'nombre': 'filename',
         // -> content
         'text': 'content',
         'body': 'content',
@@ -413,6 +416,40 @@ export const ARG_KEY_ALIASES: Record<string, Record<string, string>> = {
         'carpeta': 'directory',
         'directorio': 'directory',
         'ruta': 'directory',
+    },
+    batch_operation: {
+        // -> operation
+        'type': 'operation',
+        'action': 'operation',
+        'op': 'operation',
+        'method': 'operation',
+        'command': 'operation',
+        'operacion': 'operation',
+        'operación': 'operation',
+        'accion': 'operation',
+        'acción': 'operation',
+        // -> source_path
+        'from': 'source_path',
+        'src': 'source_path',
+        'origin': 'source_path',
+        'path': 'source_path',
+        'source_file': 'source_path',
+        'filename': 'source_path',
+        'origen': 'source_path',
+        // -> destination_path
+        'to': 'destination_path',
+        'dest': 'destination_path',
+        'target': 'destination_path',
+        'output': 'destination_path',
+        'destination': 'destination_path',
+        'destino': 'destination_path',
+        // -> pattern
+        'regex': 'pattern',
+        'glob': 'pattern',
+        'filter': 'pattern',
+        'filtro': 'pattern',
+        // -> decoy for batch unrolling
+        'operations': 'operations'
     },
     search_files: {
         // -> query

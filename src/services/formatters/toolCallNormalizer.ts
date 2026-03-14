@@ -341,8 +341,11 @@ function stripUnknownArgs(toolName: string, args: any, tools: ToolDefinition[]):
     const cleaned: any = {};
     const stripped: string[] = [];
 
+    // Keys that are always allowed because they are structural or part of heuristics
+    const GLOBAL_ALLOWED = ['operations', 'think', 'thought', 'reasoning'];
+
     for (const key in args) {
-        if (schema[key]) {
+        if (schema[key] || GLOBAL_ALLOWED.includes(key)) {
             cleaned[key] = args[key];
         } else {
             stripped.push(key);
@@ -451,6 +454,16 @@ export function normalizeRawToolCall(
         }
     }
 
+    // 4. batch_operation flattening (for models that wrap single ops in an array)
+    if (toolName === 'batch_operation' && !args.operation && args.operations && Array.isArray(args.operations) && args.operations.length > 0) {
+        const first = args.operations[0];
+        if (first && typeof first === 'object') {
+             const flattened = normalizeArgKeys(toolName, first);
+             Object.assign(args, flattened);
+             warnings.push('Flattened single-item "operations" array into top-level parameters.');
+        }
+    }
+
     // Step 5: Build the final ToolCall
     const toolCall: ToolCall = {
         id: `norm-${Math.random().toString(36).slice(2, 11)}`,
@@ -513,9 +526,13 @@ export function recoverToolCallsFromText(
             const parsed = JSON.parse(stabilized);
             const result = normalizeRawToolCall(parsed, tools);
             if (result.toolCall && !result.blocked) {
-                foundCalls.push({ toolCall: result.toolCall, start: obj.start, end: obj.end });
+                // UNROLL BATCH: If batch_operation has multiple operations, split them
+                const unrolled = unrollBatchCalls({ toolCall: result.toolCall, start: obj.start, end: obj.end }, tools);
+                for (const rc of unrolled) {
+                    foundCalls.push(rc);
+                }
+                
                 allWarnings.push(...result.warnings);
-                // MASK the identified JSON range to prevent Narrative recovery from seeing it
                 maskRange(obj.start, obj.end);
             }
         } catch {
@@ -524,7 +541,10 @@ export function recoverToolCallsFromText(
                 const parsed = JSON.parse(repaired);
                 const result = normalizeRawToolCall(parsed, tools);
                 if (result.toolCall) {
-                    foundCalls.push({ toolCall: result.toolCall, start: obj.start, end: obj.end });
+                    const unrolled = unrollBatchCalls({ toolCall: result.toolCall, start: obj.start, end: obj.end }, tools);
+                    for (const rc of unrolled) {
+                        foundCalls.push(rc);
+                    }
                     maskRange(obj.start, obj.end);
                     allWarnings.push('JSON repaired');
                 }
@@ -801,6 +821,45 @@ function findNextToolNameIndex(text: string, start: number, toolNames: string[])
     }
 
     return earliest !== -1 ? start + earliest : -1;
+}
+
+/**
+ * Explodes a batch_operation call into multiple independent tool calls if it contains an 'operations' array.
+ */
+function unrollBatchCalls(call: RecoveredCall, tools: ToolDefinition[]): RecoveredCall[] {
+    const { toolCall, start, end } = call;
+    const { name, arguments: args } = toolCall.function;
+
+    if (name !== 'batch_operation' || !args.operations || !Array.isArray(args.operations) || args.operations.length <= 1) {
+        return [call];
+    }
+
+    const unrolled: RecoveredCall[] = [];
+    const validNames = tools.map(t => t.function.name);
+
+    for (const op of args.operations) {
+        if (!op || typeof op !== 'object') continue;
+        
+        // Extract op name (action, type, operation)
+        const rawOpName = op.action || op.type || op.operation;
+        if (!rawOpName) continue;
+
+        const nameResult = normalizeToolName(rawOpName, validNames);
+        if (!nameResult.canonical) continue;
+
+        // Normalize its inner keys
+        const opArgs = normalizeArgKeys(nameResult.canonical, op);
+
+        unrolled.push({
+            toolCall: {
+                id: `unr-${Math.random().toString(36).slice(2, 11)}`,
+                function: { name: nameResult.canonical, arguments: opArgs }
+            },
+            start, end // Overlapping range is fine as we push to foundCalls together
+        });
+    }
+
+    return unrolled.length > 0 ? unrolled : [call];
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
