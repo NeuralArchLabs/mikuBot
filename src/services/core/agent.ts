@@ -1829,9 +1829,12 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
                 const dataRichTools = [
                     'read_file', 'list_files', 'search_files', 'web_search', 'read_url', 
                     'get_file_outline', 'get_system_metrics', 'get_git_info', 
-                    'run_console', 'list_available_skills'
+                    'run_console', 'list_available_skills', 
+                    'web_research', 'deep_research', 'crypto_tracker', 'gmail_imap'
                 ];
-                const isDataRich = dataRichTools.includes(toolCall.function.name);
+                // Allow dynamic skills to bypass token stripping if they explicitly return substantial extracted_sources or datasets
+                const isDataRich = dataRichTools.includes(toolCall.function.name) || 
+                                   (result.data && (result.data.extracted_sources || result.data.prices || result.data.emails));
 
                 let chatResult = JSON.stringify(result);
                 if (!isDataRich && result.success) {
