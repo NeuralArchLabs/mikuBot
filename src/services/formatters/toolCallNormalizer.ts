@@ -206,7 +206,7 @@ function normalizeJsonKeys(obj: any, validToolNames: string[] = []): { name: str
         for (const key in obj) {
             const lowerKey = key.toLowerCase().trim();
             // Check if this key itself is a tool name (direct or alias)
-            const aliasedTool = TOOL_NAME_ALIASES[lowerKey] || (validToolNames.includes(lowerKey) ? lowerKey : null);
+            const aliasedTool = TOOL_NAME_ALIASES[lowerKey] || validToolNames.find(v => v.toLowerCase() === lowerKey) || null;
 
             if (aliasedTool) {
                 name = aliasedTool;
@@ -261,6 +261,8 @@ function normalizeJsonKeys(obj: any, validToolNames: string[] = []): { name: str
     // Handle nested cases: { "tool_call": { "name": "...", "arguments": {...} } }
     if (!name && obj.tool_call) return normalizeJsonKeys(obj.tool_call, validToolNames);
     if (!name && obj.function_call) return normalizeJsonKeys(obj.function_call, validToolNames);
+    if (!name && obj.call) return normalizeJsonKeys(obj.call, validToolNames);
+    if (!name && obj.execute) return normalizeJsonKeys(obj.execute, validToolNames);
 
     if (name) return { name, arguments: args || {} };
     return null;
@@ -564,16 +566,35 @@ export function recoverToolCallsFromText(
             if (nameResult.canonical) {
                 const noise = m[1].trim();
                 let args: Record<string, any> = {};
+                
                 if (nameResult.canonical === 'final_answer') {
                     const stringMatch = noise.match(/"([^"]+)"|'([^']+)'/);
                     args.text = stringMatch ? (stringMatch[1] || stringMatch[2]) : noise;
+                } else if (noise) {
+                    // Try to parse KV pairs: key: value or key="value"
+                    const kvPattern = /([a-z0-9_]+)\s*[:=]\s*(?:(["'])([\s\S]*?)\2|([\s\S]*?)(?=\s*[a-z0-9_]+\s*[:=]|$))/gi;
+                    let kvMatch;
+                    let foundKv = false;
+                    while ((kvMatch = kvPattern.exec(noise)) !== null) {
+                        args[kvMatch[1].trim()] = (kvMatch[3] || kvMatch[4] || '').trim();
+                        foundKv = true;
+                    }
+                    if (!foundKv) {
+                        const primaryFields: Record<string, string> = {
+                            'read_file': 'filename', 'update_file': 'content', 'patch_file': 'content',
+                            'web_search': 'query', 'read_url': 'url', 'deep_research': 'topic', 'web_research': 'topic'
+                        };
+                        const field = primaryFields[nameResult.canonical] || 'text';
+                        args[field] = noise;
+                    }
                 }
+
                 const start = m.index;
                 const end = m.index + m[0].length;
                 foundCalls.push({
                     toolCall: {
                         id: `ab-${Math.random().toString(36).slice(2, 11)}`,
-                        function: { name: nameResult.canonical, arguments: args },
+                        function: { name: nameResult.canonical, arguments: normalizeArgKeys(nameResult.canonical, args) },
                     },
                     start,
                     end
@@ -878,13 +899,16 @@ export function extractAllBalancedObjects(text: string): { content: string; star
                 i += obj.length;
                 continue;
             } else {
-                // LINGERING FRAGMENT: If we found a '{' but no closing '}', and we are near the end,
-                // we treat the rest of the string as a potential fragment for repairJson.
+                // UNBALANCED: We found a '{' but it doesn't close correctly.
+                // We only treat it as a fragment for repair if we are very close to the end of the text.
+                // Otherwise, we skip it to prevent a stray brace from swallowing subsequent tool calls.
                 const remaining = text.substring(i);
-                if (remaining.includes('"') || remaining.includes(':')) {
+                const isNearEnd = remaining.length < 1500;
+                
+                if (isNearEnd && (remaining.includes('"') || remaining.includes(':'))) {
                     results.push({ content: remaining, start: i, end: text.length });
+                    break; // Final fragment, can safely break
                 }
-                break;
             }
         }
         i++;

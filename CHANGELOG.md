@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.0.0] - 2026-03-14
+### Added
+- **Real-Time Task Sync (UI Priority)**: Implemented sequential task ticking in `TASKS.md` at the end of every turn to enable fluid UI progress animations.
+- **Universal Tool Detection**: Expanded task-matching logic to recognize all available skills, including `web_research`, `miku_clock`, and `get_system_metrics`.
+- **Spanish Intent Recognition**: Added a comprehensive dictionary of Spanish synonyms for tools, allowing the agent to plan in natural language while maintaining automated tracking.
+- **Pre-Deletion Sincronization**: System now performs a "pre-tick" of all pending tasks (including the deletion itself) before `TASKS.md` is removed, ensuring the user sees the final progress checks.
+- **Agent Awareness Block**: Injected a direct instruction into the agent's status block confirming that `[PLAN_DE_TRABAJO_ACTUAL]` is an exact reflection of the disk file, eliminating redundant `read_file` calls.
+
+### Changed
+- **Robust `patch_file` Engine**: Introduced `flexibleIncludes` to the patching logic, making it resilient to minor variations in search patterns (whitespace, quotes, backticks).
+- **Silent Sincronization Feedback**: When the agent manually tries to mark a task already checked by the system, it now receives a "Synchronized" confirmation instead of an error, preventing confusion loops.
+
+### Fixed
+- **Loop Syntax Integrity**: Resolved a critical bracket mismatch in `src/services/core/agent.ts` that caused the application to crash during turn transitions.
+
+
 ## [1.9.5] - 2026-03-12
 ### Added
 - **Automated searXena Setup**: The engine now handles its own Python environment creation. If `py3` is missing, it automatically creates a venv, upgrades core tools (`pip`, `wheel`, `setuptools`), and installs dependencies from `requirements.txt`.

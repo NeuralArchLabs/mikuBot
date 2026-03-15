@@ -1,0 +1,6 @@
+[
+  {
+    "timestamp": "2026-03-14T23:23:33.272Z",
+    "content": "ARQUITECTURA AGENT.TS (Token Optimization): Las Skills dinámicas (Python/Node) que devuelvan grandes volúmenes de datos o texturas ricas deben estar explícitamente listadas en el array 'dataRichTools' (o coincidir con sus reglas de fallback) dentro de src/services/core/agent.ts. Si una tool no es considerada 'dataRich', el motor truncará su output a { status: 'success' } para ahorrar tokens de contexto, dejando al agente ciego ante los datos reales obtenidos."
+  }
+]

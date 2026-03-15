@@ -139,6 +139,16 @@ export const TOOL_NAME_ALIASES: Record<string, string> = {
     'query_web': 'web_search',
     'search_online': 'web_search',
     'google': 'web_search',
+    
+    // ── web_research & deep_research variants ────────────────────────
+    'webresearch': 'web_research',
+    'investigacion_web': 'web_research',
+    'investigar_web': 'web_research',
+    'deepresearch': 'deep_research',
+    'investigacion_profunda': 'deep_research',
+    'investigar_profundo': 'deep_research',
+    'research': 'deep_research',
+    'deep_search': 'deep_research',
 
     // ── read_url variants ───────────────────────────────────────────
     'readurl': 'read_url',
@@ -280,11 +290,13 @@ export const KEY_ALIASES: Record<string, string> = {
     'call_function': 'name',
     'function_name': 'name',
     'function_name_call': 'name',
+    'name': 'name',
 
     // Arguments field variants
     'args': 'arguments',
     'params': 'arguments',
     'parameters': 'arguments',
+    'arguments': 'arguments',
     'input': 'arguments',
     'inputs': 'arguments',
     'kwargs': 'arguments',

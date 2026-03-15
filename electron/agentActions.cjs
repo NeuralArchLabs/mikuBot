@@ -40,6 +40,46 @@ function detectEOL(content) {
     return crlfCount > lfCount ? '\r\n' : '\n';
 }
 
+/**
+ * Robust comparison that ignores minor punctuation and whitespace differences.
+ * Useful for Markdown tasks or quoted code.
+ */
+function flexibleIncludes(target, search) {
+    if (target.includes(search)) return true;
+    
+    const normalize = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const tClean = normalize(target);
+    const sClean = normalize(search);
+    
+    if (sClean.length > 5 && tClean.includes(sClean)) return true;
+    
+    // Also try line-by-line flex
+    const tLines = target.split(/\r?\n/).map(l => normalize(l)).filter(l => l.length > 0);
+    const sLines = search.split(/\r?\n/).map(l => normalize(l)).filter(l => l.length > 0);
+    
+    if (sLines.length > 0 && tLines.length >= sLines.length) {
+        // Simple sequence check
+        let matchCount = 0;
+        let tIdx = 0;
+        for (const sL of sLines) {
+            let found = false;
+            while (tIdx < tLines.length) {
+                if (tLines[tIdx].includes(sL)) {
+                    matchCount++;
+                    found = true;
+                    tIdx++;
+                    break;
+                }
+                tIdx++;
+            }
+            if (!found) break;
+        }
+        return matchCount === sLines.length;
+    }
+
+    return false;
+}
+
 // --- FILE SYSTEM ACTIONS ---
 
 /**
@@ -301,7 +341,7 @@ function applySinglePatch(content, search, replace, strategy, eol, lineNumber) {
         const normalizedContent = content.replace(/\r\n|\r|\n/g, '\n').replace(/[ \t]+/g, ' ');
         const normalizedSearchInt = normalizedSearch.replace(/\r\n|\r|\n/g, '\n').replace(/[ \t]+/g, ' ');
 
-        if (normalizedContent.includes(normalizedSearchInt)) {
+        if (normalizedContent.includes(normalizedSearchInt) || flexibleIncludes(normalizedContent, normalizedSearchInt)) {
             const escapedSearch = normalizedSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const pattern = new RegExp(escapedSearch.replace(/\s+/g, '\\s+'), 'g');
             newContent = content.replace(pattern, normalizedReplace);
@@ -319,7 +359,9 @@ function applySinglePatch(content, search, replace, strategy, eol, lineNumber) {
             for (let i = 0; i <= lines.length - searchLines.length; i++) {
                 let match = true;
                 for (let j = 0; j < searchLines.length; j++) {
-                    if (!lines[i + j].trim().includes(searchLines[j])) {
+                    const tLine = lines[i + j].trim();
+                    const sLine = searchLines[j];
+                    if (!tLine.includes(sLine) && !flexibleIncludes(tLine, sLine)) {
                         match = false;
                         break;
                     }
@@ -366,7 +408,10 @@ async function handlePatchFile(root, { path: relPath, search, replace, strategy 
                 patch.lineNumber
             );
 
-            if (!appliedStrategy) throw new Error(`Pattern not found for patch: ${patch.search?.substring(0, 20)}...`);
+            if (!appliedStrategy) {
+                const faultMsg = patch.search ? `Pattern not found: "${patch.search.substring(0, 40)}..."` : "Empty search pattern";
+                throw new Error(`${faultMsg}. Tip: verifica que el texto a buscar sea idéntico al del archivo (incluyendo espacios y signos de puntuación) o usa menos líneas.`);
+            }
             workingContent = newContent;
             applied.push(appliedStrategy);
         }

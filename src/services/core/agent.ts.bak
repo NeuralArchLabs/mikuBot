@@ -154,10 +154,6 @@ export async function executeToolCall(
 
                 const saved = await saveFileFn(cleanFilename, args.content, target);
                 if (saved) {
-                    const store = getFileStore(target, files, additionalFiles, workSpaceFiles, toolsFiles);
-                    store[cleanFilename] = args.content;
-                }
-                if (saved) {
                     return { success: true, data: { filename: cleanFilename, message: `File "${cleanFilename}" saved.`, source: target } };
                 }
                 return { success: false, error: `Failed to save "${cleanFilename}".` };
@@ -185,11 +181,7 @@ export async function executeToolCall(
                         patches: args.patches
                     });
                     if (result.ok) {
-                        let finalMsg = result.result;
-                        if (finalMsg === 'No changes applied.' && cleanFilename.toLowerCase().includes('tasks.md')) {
-                            finalMsg = '✅ SINCRONIZADO: El archivo ya refleja los cambios (marcado automático detectado).';
-                        }
-                        return { success: true, data: { filename: cleanFilename, message: finalMsg, source: target } };
+                        return { success: true, data: { filename: cleanFilename, message: result.result, source: target } };
                     }
                     return { success: false, error: result.error };
                 }
@@ -205,9 +197,6 @@ export async function executeToolCall(
 
                 const patchedContent = existingContent.substring(0, findIdx) + args.replace + existingContent.substring(findIdx + findBlock.length);
                 const patchSaved = await saveFileFn(cleanFilename, patchedContent, target);
-                if (patchSaved) {
-                    patchStore[cleanFilename] = patchedContent;
-                }
                 return patchSaved ? { success: true, data: { filename: cleanFilename, message: `Patched successfully.`, source: target } } : { success: false, error: `Failed to save.` };
             }
 
@@ -517,8 +506,6 @@ export async function executeToolCall(
                 const { target, cleanFilename } = resolvePathAndSource(args.filename, args.source);
                 const deleted = await deleteFileFn(cleanFilename, target);
                 if (deleted) {
-                    const store = getFileStore(target, files, additionalFiles, workSpaceFiles, toolsFiles);
-                    delete store[cleanFilename];
                     return { success: true, data: { filename: cleanFilename, message: `File "${cleanFilename}" deleted from ${target}.`, source: target } };
                 }
                 return { success: false, error: `Failed to delete "${cleanFilename}" from ${target}.` };
@@ -1352,9 +1339,6 @@ export async function sendAgentMessage(
             }
 
             iterations++;
-            let turnAutoTasks: string[] = [];
-            let tasksContent = '';
-            let successfulCalls: ToolCall[] = [];
 
         // DYNAMIC SYSTEM PROMPT REFRESH (Awareness & Working Memory)
         if (isAgentMode || isInstructionMode) {
@@ -1368,7 +1352,7 @@ export async function sendAgentMessage(
                 return null;
             };
 
-            tasksContent = findTaskContent() || '';
+            const tasksContent = findTaskContent() || '';
 
             // Focus Mode Extraction
             const taskLines = tasksContent.trim() ? tasksContent.split('\n') : [];
@@ -1383,42 +1367,20 @@ export async function sendAgentMessage(
             }
 
             // Build Mission Anchor & Operation Focus
-            const autoTaskInfo = turnAutoTasks.length > 0 ? `\n✨ AUTO-SINC: Tareas tachadas automáticamente: ${turnAutoTasks.join(', ')}` : "";
-            
-            // Check for unplanned actions to report to agent
-            const unplannedInfo = (successfulCalls.length > 0 && turnAutoTasks.length === 0 && tasksContent.includes('[ ]')) 
-                ? "\n⚠️ NOTA: Has realizado acciones que no parecen coincidir con ninguna tarea pendiente en tu plan. Asegúrate de que tus tareas mencionen la herramienta y el objetivo (ej: - [ ] Leer index.ts)."
-                : "";
-
             const awarenessBlock = `[ESTADO_DEL_AGENTE]
 Misión Original: "${missionTrigger}"
 Turno Actual: ${iterations} de ${MAX_RETRIES}
-(Nota: El bloque [PLAN_DE_TRABAJO_ACTUAL] de abajo es un reflejo EXACTO de @CORE/TASKS.md. No necesitas usar read_file para consultarlo).
 [/ESTADO_DEL_AGENTE]
 [FOCO_DE_OPERACIÓN]
-Resultado Anterior: ${lastExecutionFeedback}${autoTaskInfo}${unplannedInfo}
+Resultado Anterior: ${lastExecutionFeedback}
 Tarea Completada: ${lastDone}
 Siguiente Acción: ${nextTodo}
 ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa los datos del "Resultado Anterior" para tu respuesta final. NUNCA inventes números.' : ''}
 [/FOCO_DE_OPERACIÓN]`;
 
-            // PLAN DE TRABAJO REFRESH
-            // Sanitize tasksContent to avoid whitespace accumulation
-            const sanitizedTasks = (tasksContent || '').trim();
-            const workPlanBlock = `\n[PLAN_DE_TRABAJO_ACTUAL]\n${sanitizedTasks || 'No hay tareas activas.'}\n[/PLAN_DE_TRABAJO_ACTUAL]\n`;
-
             let systemPromptCurrent = agentMessages[0].content;
 
-            // Update Working Memory (tasks.md content)
-            const wpStart = systemPromptCurrent.indexOf("[PLAN_DE_TRABAJO_ACTUAL]");
-            const wpEnd = systemPromptCurrent.indexOf("[/PLAN_DE_TRABAJO_ACTUAL]");
-            if (wpStart !== -1 && wpEnd !== -1) {
-                const beforeWP = systemPromptCurrent.substring(0, wpStart).trimEnd();
-                const afterWP = systemPromptCurrent.substring(wpEnd + "[/PLAN_DE_TRABAJO_ACTUAL]".length).trimStart();
-                systemPromptCurrent = beforeWP + "\n" + workPlanBlock + "\n" + afterWP;
-            }
-
-            // Simplified markers for better reliability (awareness & focus)
+            // Simplified markers for better reliability
             const markerStart = "[ESTADO_DEL_AGENTE]";
             const markerEnd = "[/FOCO_DE_OPERACIÓN]";
             const sIdx = systemPromptCurrent.indexOf(markerStart);
@@ -1647,24 +1609,17 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
                 (tc.function.arguments.filename || '').toLowerCase().includes('tasks.md')
             );
 
-            // NEW: Count pending tasks to enforce completion
-            const pendingTasks = (tasksContent || '').split('\n').filter(l => l.trim().startsWith('- [ ]'));
-            const pendingTasksCount = pendingTasks.length;
-
-            const isViolation = (hasTasksFile && !isDeletingTasks) || (isUpdatingTasks && !isDeletingTasks) || (hasTasksFile && pendingTasksCount > 0);
+            const isViolation = (hasTasksFile && !isDeletingTasks) || (isUpdatingTasks && !isDeletingTasks);
 
             if (isViolation && isAgentMode) {
-                log('warn', `Protocol violation: pendingTasks=${pendingTasksCount}, hasTasksFile=${hasTasksFile}`);
+                log('warn', 'Agent tried to answer while TASKS.md is active or being updated. Force rejection.');
                 
                 // CRITICAL: Clean up UI blocks to avoid "yellow" stuck tools
                 const cleanedBlocks = mergedIterationBlocks.filter(b => b.type !== 'tool_call');
                 onChunk(content || '', false, [...allBlocks, ...cleanedBlocks]);
 
-                let protocolError = '⚠️ BLOQUEO DE PROTOCOLO: No puedes dar un "final_answer" mientras `@CORE/TASKS.md` exista o esté siendo actualizado. Debes completar TODAS las tareas, marcar los checks `[x]` y finalmente ELIMINAR el archivo con `delete_file` antes de responder.';
-                if (pendingTasksCount > 0) {
-                    const tasksList = pendingTasks.map(t => t.replace('- [ ]', '•')).join('\n');
-                    protocolError = `⚠️ BLOQUEO DE PROTOCOLO: Aún tienes ${pendingTasksCount} tarea(s) pendientes en \`TASKS.md\`:\n${tasksList}\n\nDebes marcar estas tareas como \`[x]\` (manualmente o mediante acciones que el sistema pueda auto-detectar) antes de poder finalizar.`;
-                }
+                const protocolError = '⚠️ BLOQUEO DE PROTOCOLO: No puedes dar un "final_answer" mientras `@CORE/TASKS.md` exista o esté siendo actualizado. Debes completar TODAS las tareas, marcar los checks `[x]` y finalmente ELIMINAR el archivo con `delete_file` antes de responder.';
+                lastExecutionFeedback = `❌ FALLO: Protocolo violado (${finalAnswerCall.function.name}).`;
                 
                 agentMessages.push({
                     role: 'tool',
@@ -2035,96 +1990,6 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
             return true;
         }
 
-
-
-        const findTaskStore = () => {
-            const coreKey = Object.keys(currentFiles).find(k => k.toLowerCase() === 'tasks.md');
-            if (coreKey) return { store: currentFiles, target: 'core' as FileTarget, key: coreKey };
-            const wsKey = Object.keys(currentWorkSpace).find(k => k.toLowerCase() === 'tasks.md');
-            if (wsKey) return { store: currentWorkSpace, target: 'workSpace' as FileTarget, key: wsKey };
-            return null;
-        };
-
-        const applyBatchTaskTicking = async (toolCalls: ToolCall[]): Promise<void> => {
-            if (toolCalls.length === 0) return;
-            
-            const taskInfo = findTaskStore();
-            if (!taskInfo) return;
-
-            const { store, target, key } = taskInfo;
-            const content = store[key];
-            if (!content || !content.trim()) return;
-
-            let lines = content.split('\n');
-            let modified = false;
-
-                // Mapping tool names to natural language synonyms for better detection
-                const toolSynonyms: Record<string, string[]> = {
-                    'read_file': ['leer', 'consultar', 'revisar', 'analizar', 'ver'],
-                    'update_file': ['escribir', 'crear', 'guardar', 'modificar', 'actualizar', 'generar'],
-                    'patch_file': ['parchear', 'aplicar', 'arreglar', 'corregir', 'editar'],
-                    'list_files': ['listar', 'explorar', 'ver archivos', 'inspeccionar'],
-                    'search_files': ['buscar', 'encontrar', 'localizar'],
-                    'web_search': ['investigar', 'noticias', 'google', 'buscar en internet', 'web_research', 'deep_research'],
-                    'web_research': ['investigar', 'noticias', 'google', 'buscar en internet', 'web_search', 'deep_research'],
-                    'deep_research': ['investigar', 'noticias', 'google', 'buscar en internet', 'web_search', 'web_research'],
-                    'run_console': ['ejecutar', 'comando', 'terminal', 'consola', 'git'],
-                    'get_system_metrics': ['métricas', 'cpu', 'ram', 'estado del sistema', 'salud'],
-                    'list_available_skills': ['habilidades', 'skills', 'capacidades', 'funciones extra'],
-                    'miku_clock': ['hora', 'reloj', 'tiempo', 'quién eres'],
-                    'get_crypto_price': ['bitcoin', 'crypto', 'precio', 'cripto', 'cotización', 'moneda'],
-                    'delete_file': ['borrar', 'eliminar', 'quitar', 'limpiar', 'suprimir'],
-                    'final_answer': ['finalizar', 'terminar', 'concluir', 'respuesta', 'completar', 'reportar', 'informar', 'conclusión']
-                };
-
-                for (const toolCall of toolCalls) {
-                    const toolName = toolCall.function.name;
-                    const args = toolCall.function.arguments || {};
-                    const mainArg = (args.filename || args.query || args.topic || args.url || args.command || args.path || '').toString();
-                    
-                    let markedInThisPass = false;
-                    lines = lines.map(line => {
-                        // Skip already done or empty
-                        if (markedInThisPass || !line.trim().startsWith('- [ ]')) return line;
-
-                        const lowerLine = line.toLowerCase();
-                        const lowerTool = toolName.toLowerCase();
-                        const lowerArg = mainArg.toLowerCase();
-                        
-                        // Rule 1: Direct name match (e.g., "- [ ] @web_search")
-                        const directMatch = lowerLine.includes(lowerTool) || lowerLine.includes(`@${lowerTool}`);
-                        
-                        // Rule 2: Synonym match
-                        const hasSynonym = (toolSynonyms[lowerTool] || []).some(s => lowerLine.includes(s));
-                        const toolMatch = directMatch || hasSynonym;
-                        
-                        // Rule 3: Argument match (if applicable)
-                        const argMatch = lowerArg.length > 2 && lowerLine.includes(lowerArg);
-                        
-                        // Exclude meta-updates to tasks.md
-                        if (lowerTool === 'update_file' || lowerTool === 'patch_file') {
-                            if (lowerArg.includes('tasks.md')) return line;
-                        }
-
-                        // COHERENCE POLICY: Match if tool concept matches target concept
-                        if (toolMatch && (argMatch || lowerArg === "")) {
-                            modified = true;
-                            markedInThisPass = true;
-                            const taskName = line.replace('- [ ]', '').trim();
-                            if (!turnAutoTasks.includes(taskName)) turnAutoTasks.push(taskName);
-                            return line.replace('- [ ]', '- [x]');
-                        }
-                        return line;
-                    });
-                }
-
-            if (modified) {
-                const newContent = lines.join('\n').trim();
-                await saveFileFn(key, newContent, target);
-                store[key] = newContent;
-            }
-        };
-
         // Tool Execution: Batch (Paralelo) vs Seguro (Secuencial)
         let hasFinalAnswer = false;
         let turnHasFailure = false;
@@ -2139,37 +2004,15 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
             }
             await executeAndProcess(tc, tc.function.name);
             
+            // Check if execution resulted in a failure message being pushed to history
             const lastMsg = agentMessages[agentMessages.length - 1];
-            const isFailure = lastMsg && lastMsg.role === 'tool' && (lastMsg.content.includes('❌ FALLO') || lastMsg.content.includes('⚠️ ERROR'));
-            
-            if (isFailure) {
+            if (lastMsg && lastMsg.role === 'tool' && (lastMsg.content.includes('❌ FALLO') || lastMsg.content.includes('⚠️ ERROR'))) {
                 turnHasFailure = true;
-            } else {
-                successfulCalls.push(tc);
             }
         };
 
         const operativeCalls = activeToolCalls.filter(tc => tc.function.name !== 'final_answer');
         const finalCallToProcess = activeToolCalls.find(tc => tc.function.name === 'final_answer');
-
-        const isAgentModifyingTasks = operativeCalls.some(tc => 
-            (tc.function.name === 'update_file' || tc.function.name === 'patch_file') &&
-            (tc.function.arguments.filename || '').toLowerCase().includes('tasks.md')
-        );
-
-        const isDeletingTasks = operativeCalls.some(tc => 
-            tc.function.name === 'delete_file' && 
-            (tc.function.arguments.filename || '').toLowerCase().includes('tasks.md')
-        );
-
-        // PRE-TICK: If we are about to delete the file, tick it BEFORE execution
-        // so the user actually sees the completion mark in the UI before it vanishes.
-        if (isDeletingTasks && !isAgentModifyingTasks) {
-            // Include final_answer if present for a complete pre-deletion tick
-            const allTurnCalls = [...operativeCalls];
-            if (finalCallToProcess) allTurnCalls.push(finalCallToProcess);
-            await applyBatchTaskTicking(allTurnCalls);
-        }
 
         if (!safeMode) {
             // Batch Mode (Paralelo)
@@ -2179,18 +2022,6 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
             for (const tc of operativeCalls) {
                 await processTool(tc);
             }
-        }
-
-        // Apply task ticks for successful calls (including final_answer)
-        if (!isAgentModifyingTasks) {
-            const callsToTick = [...successfulCalls];
-            if (finalCallToProcess && !turnHasFailure) {
-                // If it's a final_answer turn, we count it as successful
-                callsToTick.push(finalCallToProcess);
-            }
-            await applyBatchTaskTicking(callsToTick);
-        } else {
-            log('info', '[AutoTask] Omitiendo auto-tachado porque el agente modificó TASKS.md manualmente.');
         }
 
         if (finalCallToProcess && !abortSignal.aborted && !turnHasFailure) {
@@ -2263,13 +2094,14 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
 
         onChunk(content, true, allBlocks);
         onStatus({ rawMessages: [...agentMessages] });
-        }
+    }
     } catch (err) {
         console.error("[Agent Loop Error]", err);
         log('error', `Agent Loop Error: ${err instanceof Error ? err.message : String(err)}`);
         throw err;
     } finally {
         if (!memorySaved && onFinalRawHistory) {
+            console.log("[Agent Persistence] Emergency save of turn history triggered.");
             onFinalRawHistory([...agentMessages]);
         }
     }

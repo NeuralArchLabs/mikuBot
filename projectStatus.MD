@@ -1,6 +1,6 @@
-# Project Status: MikuCentral v1.9.5 🚀
+# Project Status: MikuCentral v2.0.0 🚀
 
-> **Última actualización**: 12 de marzo de 2026
+> **Última actualización**: 14 de marzo de 2026
 > **Autor del análisis**: Antigravity AI Engine
 
 Este documento detalla el análisis exhaustivo del proyecto **MikuCentral**, una interfaz de IA neural y asistente personal integral diseñada para la soberanía tecnológica local, la ejecución de agentes autónomos y la persistencia automodificable en todas las facetas de la vida del usuario (personal, profesional y financiera).
@@ -126,6 +126,8 @@ electron/
 | 17 | **Clipping en UI Premium** | ✅ Done | Ajustado `overflow` y `background-clip` en botones para permitir efectos de resplandor externos. |
 | 18 | **Lantencia en Tool Discovery** | ✅ Done | v1.9.1: Implementado caché de 30s para Neural Skills en `App.tsx`. |
 | 19 | **Ruido en Scheduler Messaging** | ✅ Done | v1.9.1: Mensajes centrados, colapsados y con código de colores (Naranja/Índigo). |
+| 20 | **Seguimiento Agéntico (Amnesia)** | ✅ Done | v2.0.0: Implementado motor de auto-marcado turn-by-turn con pre-ticking de borrado y soporte para sinónimos en español. |
+| 21 | **Inestabilidad de Patch File** | ✅ Done | v2.0.0: Integrado `flexibleIncludes` para ignorar diferencias irrelevantes de caracteres (backticks, espacios) en parches. |
 
 ### 3.2 Pendientes (Originales) ⏳
 | # | Problema | Severidad | Detalle |
@@ -138,9 +140,8 @@ electron/
 #### 🔴 CRÍTICAS
 
 **C1. Robustez del Agent Loop (Amnesia de Tareas)**
-- **Problema**: El agente pierde el hilo en tareas largas o ignora resultados de pasos anteriores.
-- **Riesgo**: Tareas incompletas, repetición de errores y pérdida de confianza del usuario.
-- **Solución propuesta**: Implementar "Dynamic Task Anchoring" en `TASKS.md` y una auditoría pre-final obligatoria.
+- **Estado**: ✅ Done (v2.0.0)
+- **Solución implementada**: `TASKS.md` ahora es el cerebro operativo. El sistema tacha tareas automáticamente al final de cada turno usando detección semántica. Se inyecta la confirmación de estado en el prompt para evitar lecturas de disco redundantes.
 
 **C2. Sistema de Skills Modular**
 - **Estado**: ✅ Done (v1.7.0)
