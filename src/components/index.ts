@@ -7,4 +7,5 @@ export * from './panels/SettingsPanel';
 export * from './panels/AgentStatusPanel';
 export * from './panels/ToolApprovalPanel';
 export * from './panels/SkillsPanel';
+export * from './panels/SchedulerTab';
 export * from './common';

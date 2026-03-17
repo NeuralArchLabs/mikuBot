@@ -183,7 +183,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                             { id: 'chat', label: 'Neural Chat', icon: 'comments', color: 'text-blue-400' },
                             { id: 'cortex', label: 'Cortex Editor', icon: 'project-diagram', color: 'text-indigo-400' },
                             { id: 'commands', label: 'Command Editor', icon: 'bolt', color: 'text-amber-400' },
-                            { id: 'skills', label: 'Neural Skills', icon: 'puzzle-piece', color: 'text-cyan-400' },
+                            { id: 'scheduler', label: 'Neural Tasks', icon: 'clock', color: 'text-cyan-400' },
                             { id: 'settings', label: 'Control Room', icon: 'cog', color: 'text-purple-400' }
                         ].map(tab => (
                             <button
@@ -248,16 +248,17 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
 
 
                     <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-                    <div className="p-4 bg-slate-900/60">
-                        <div className="flex items-center justify-between mb-2 px-1">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Context Library</label>
+                    <div className="px-5 py-2.5 bg-slate-900/60">
+                        <div className="flex items-center justify-between">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-2">Context Library</label>
                             <button
                                 onClick={() => setState(prev => ({ ...prev, isLibraryExpanded: true }))}
-                                className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors -mr-2 -my-2 p-2 px-3 cursor-pointer group"
+                                className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors -mr-2 p-2 px-3 cursor-pointer group"
                             >
                                 <Icon name="expand-alt" className="group-hover:scale-110 transition-transform" /> Manage
                             </button>
                         </div>
+                        <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mt-1.5 mb-1" />
 
                         {Object.keys(state.additionalFiles || {}).length === 0 ? (
                             <div className="text-center py-3 px-2 border border-dashed border-slate-700 rounded-xl bg-slate-800/10">
@@ -270,11 +271,11 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                 </div>
                             </div>
                         ) : (
-                            <div className="space-y-1 max-h-64 overflow-y-auto custom-scrollbar">
+                            <div className="context-library-container space-y-1 max-h-64 lg:max-h-[22rem] overflow-y-auto custom-scrollbar">
                                 {Object.keys(state.additionalFiles || {}).map(filename => {
                                     const isSelected = (state.selectedLibraryFiles || []).includes(filename);
                                     return (
-                                        <div key={filename} className="group relative">
+                                        <div key={filename} className="context-library-item group relative">
                                             <button
                                                 onClick={() => {
                                                     setState(prev => {
@@ -330,9 +331,26 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                     <p className="text-xs text-slate-500">Manage, load and branch conversation states</p>
                                 </div>
                             </div>
-                            <button onClick={handleClose} className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 flex items-center justify-center transition-colors" title="Close Session Manager">
-                                <Icon name="times" />
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => { (state as any).onImportSession(); handleClose(); }}
+                                    className="px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-lg border border-indigo-500/20 transition-all flex items-center gap-2 text-xs font-bold uppercase tracking-wider"
+                                    title="Import Session"
+                                >
+                                    <Icon name="download" /> Import
+                                </button>
+                                <button
+                                    onClick={() => { (state as any).onNewSession(); handleClose(); }}
+                                    className="px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg border border-blue-500/20 transition-all flex items-center gap-2 text-xs font-bold uppercase tracking-wider"
+                                    title="New Session"
+                                >
+                                    <Icon name="plus" /> New
+                                </button>
+                                <div className="w-px h-6 bg-slate-800 mx-1" />
+                                <button onClick={handleClose} className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 flex items-center justify-center transition-colors" title="Close Session Manager">
+                                    <Icon name="times" />
+                                </button>
+                            </div>
                         </div>
                         {/* Body */}
                         <div className="flex-1 overflow-hidden flex flex-col min-h-0 bg-slate-950 p-4 sm:p-6 pb-0">

@@ -256,18 +256,17 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
 
     return (
         <div className="flex-1 overflow-hidden flex flex-col">
-            {/* Header */}
-            <div className="py-5 lg:py-8 border-b border-slate-800/50 bg-slate-900/40 shrink-0 px-4 lg:px-8 transform-gpu contain-paint">
-                <div className="flex flex-wrap items-center gap-4 w-full">
-                    <div className="flex items-center gap-3 min-w-0 mr-auto group">
-                        <div className="text-cyan-400 text-xl lg:text-3xl shrink-0 drop-shadow-[0_0_15px_rgba(6,182,212,0.4)] animate-title-slide">
+            {/* Header - Buttons only on LG */}
+            <div className="py-2 lg:py-2 border-b border-slate-800/50 bg-slate-900/40 shrink-0 px-4 lg:px-8 transform-gpu contain-paint">
+                <div className="flex items-center justify-between gap-4 w-full">
+                    <div className="flex items-center gap-3 min-w-0 mr-auto group lg:hidden">
+                        <div className="text-cyan-400 text-xl shrink-0 drop-shadow-[0_0_15px_rgba(6,182,212,0.4)] animate-title-slide">
                             <Icon name="puzzle-piece" />
                         </div>
                         <div className="min-w-0">
-                            <h2 className="text-xl lg:text-3xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-teal-400 text-shadow-premium select-none animate-title-slide">
+                            <h2 className="text-xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-teal-400 text-shadow-premium select-none animate-title-slide">
                                 Neural Skills
                             </h2>
-                            <p className="text-cyan-500/60 text-[10px] lg:text-xs font-bold tracking-widest uppercase select-none mt-0.5 animate-title-slide hidden lg:block">Synaptic Core Architecture</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -280,10 +279,9 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                         </button>
                         <button
                             onClick={onSaveGlobal}
-                            className="btn-halo px-4 lg:px-6 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-[0_0_30px_rgba(6,182,212,0.3)] text-xs lg:text-sm hover:scale-105 active:scale-95 group/sync"
+                            className="btn-halo px-4 lg:hidden py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-[0_0_30px_rgba(6,182,212,0.3)] text-xs lg:text-sm hover:scale-105 active:scale-95 group/sync"
                         >
                             <Icon name="sync" className="group-hover/sync:rotate-180 transition-transform duration-500" />
-                            <span className="hidden lg:inline">Save Sync</span>
                             <span className="lg:hidden">Sync</span>
                         </button>
                     </div>
@@ -291,7 +289,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 overflow-y-auto lg:overflow-hidden w-full lg:flex lg:flex-row p-4 lg:p-8 gap-8 relative custom-scrollbar">
+            <div className="flex-1 overflow-y-auto lg:overflow-hidden w-full lg:flex lg:flex-row p-3 lg:p-6 gap-6 relative custom-scrollbar">
                 {/* Blueprints Overlay */}
                 {showBlueprints && (
                     <div className="fixed lg:absolute inset-0 z-[100] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 lg:p-12">

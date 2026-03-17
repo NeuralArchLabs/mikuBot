@@ -23,6 +23,14 @@ export const PROVIDERS: Record<Provider, ProviderConfig> = {
         color: 'from-emerald-500 to-green-500',
         apiKeyRequired: false,
         baseUrl: 'http://localhost:11434'
+    },
+    zai: {
+        name: 'Z.AI (BigModel)',
+        icon: 'bolt',
+        color: 'from-purple-500 to-indigo-500',
+        apiKeyRequired: true,
+        baseUrl: 'https://api.z.ai/api/coding/paas/v4',
+        getApiKeyUrl: 'https://z.ai/dashboard/apikeys'
     }
 };
 
@@ -35,7 +43,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     chatModel: '',
     agentProvider: 'groq',
     agentModel: '',
-    apiKeys: { groq: '', gemini: '', ollama: '' },
+    apiKeys: { groq: '', gemini: '', ollama: '', zai: '' },
     ollamaUrl: 'http://localhost:11434',
     temperature: 0.7,
     tavilyApiKey: '',

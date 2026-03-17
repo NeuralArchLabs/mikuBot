@@ -611,8 +611,9 @@ function cleanTechnicalNoise(text: string, signatureRegex: RegExp): string {
     let s = (text || '').trim();
     if (!s) return '';
 
-    // 1. ELIMINAR ETIQUETAS XML (Ghost tools)
+    // 1. ELIMINAR ETIQUETAS XML (Ghost tools) Y PENSAMIENTO FORZADO
     s = s.replace(/<\|?tool_call\|?>[\s\S]*?<\|?\/?tool_call\|?>/gi, '');
+    s = s.replace(/<think>[\s\S]*?<\/think>/gi, '');
 
     // 2. ELIMINAR BLOQUES JSON COMPLETOS Y FRAGMENTADOS
     s = s.replace(/```(?:json|JSON)?\s*\{[\s\S]*?\}\s*```/gi, '');
@@ -653,51 +654,9 @@ function cleanTechnicalNoise(text: string, signatureRegex: RegExp): string {
  * Segments a text into thought and narrative blocks, preserving <think> content.
  */
 function segmentThoughtsAndNarrative(text: string, signatureRegex: RegExp): { type: 'thought' | 'answer', content: string }[] {
-    let s = (text || '').trim();
-    if (!s) return [];
-
-    const blocks: { type: 'thought' | 'answer', content: string }[] = [];
-    const thinkRegex = /<think>([\s\S]*?)<\/think>/gi;
-    
-    // Heuristic: If text starts with common "Conclusion" markers, it might be an answer
-    const isLikelyAnswer = (t: string) => {
-        const p = /^(?:Conclusión|Veredicto|Resumen|Resultado Final|Answer|Conclusion|Summary|Final Answer)[\s\S]*?/i;
-        return p.test(t.trim());
-    };
-
-    let lastIdx = 0;
-    let match;
-    
-    while ((match = thinkRegex.exec(s)) !== null) {
-        const before = s.substring(lastIdx, match.index).trim();
-        if (before) {
-            const cleaned = cleanTechnicalNoise(before, signatureRegex);
-            if (cleaned) {
-                // Before tags, it's usually answer content
-                blocks.push({ type: 'answer', content: cleaned });
-            }
-        }
-        const thought = match[1].trim();
-        if (thought) {
-            blocks.push({ type: 'thought', content: thought });
-        }
-        lastIdx = thinkRegex.lastIndex;
-    }
-
-    // Segments NOT inside <think> tags are usually narrative (answer)
-    // UNLESS the model is in Agent Mode and we want to hide "monologues".
-    // However, the most reliable way to handle this is to treat it as answer
-    // and let the redundant content detector clean up duplicates.
-    const remaining = s.substring(lastIdx).trim();
-    if (remaining) {
-        const cleaned = cleanTechnicalNoise(remaining, signatureRegex);
-        if (cleaned) {
-            // Default to 'answer' for narrative text to ensure visibility
-            blocks.push({ type: 'answer', content: cleaned });
-        }
-    }
-
-    return blocks;
+    const cleaned = cleanTechnicalNoise(text, signatureRegex);
+    if (!cleaned) return [];
+    return [{ type: 'answer', content: cleaned }];
 }
 
 export async function sendAgentMessage(
@@ -988,6 +947,132 @@ export async function sendAgentMessage(
                                 if (reasoning) {
                                     fullReasoning += reasoning;
                                     onStatus({ streamedReasoning: fullReasoning, phase: 'streaming' });
+                                }
+                                if (parsed.choices?.[0]?.delta?.tool_calls) {
+                                    toolCalls = [...toolCalls, ...parsed.choices[0].delta.tool_calls];
+                                }
+                            } catch { }
+                        }
+                    }
+                }
+                return { content: fullContent, toolCalls, reasoning: fullReasoning };
+            }
+        } else if (provider === 'zai') {
+            const body: any = {
+                model: config.model,
+                messages: messages.map(m => {
+                    const imageAttachments = m.attachments?.filter((a: any) => a.type.startsWith('image/')) || [];
+                    if (imageAttachments.length > 0) {
+                        const contentBlocks: any[] = [{ type: 'text', text: m.content || '' }];
+                        imageAttachments.forEach((img: any) => {
+                            contentBlocks.push({
+                                type: 'image_url',
+                                image_url: { url: img.data }
+                            });
+                        });
+                        return { role: m.role, content: contentBlocks };
+                    }
+                    return { role: m.role, content: m.content || '' };
+                }),
+                stream: true,
+                temperature: config.temperature,
+            };
+
+            if (useTools && modelSupportsNativeTools) body.tools = tools;
+
+            if (isElectronProxy) {
+                let fullContent = '';
+                let fullReasoning = '';
+                let toolCalls: any[] = [];
+                let buffer = '';
+
+                try {
+                    await streamViaProxy({
+                        provider: 'zai',
+                        model: config.model,
+                        body,
+                        abortSignal,
+                        onChunk: (raw) => {
+                            buffer += raw;
+                            const lines = buffer.split('\n');
+                            buffer = lines.pop() || '';
+                            for (const line of lines) {
+                                const cleanLine = line.trim();
+                                if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
+                                const data = cleanLine.slice(6);
+                                if (data === '[DONE]') continue;
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    const content = parsed.choices?.[0]?.delta?.content;
+                                    const reasoning = parsed.choices?.[0]?.delta?.reasoning_content;
+                                    if (content) {
+                                        fullContent += content;
+                                        onStatus({ streamedText: fullContent, phase: 'streaming' });
+                                    }
+                                    if (reasoning) {
+                                        fullReasoning += reasoning;
+                                        onStatus({ streamedReasoning: fullReasoning, phase: 'streaming' });
+                                    }
+                                    if (parsed.choices?.[0]?.delta?.tool_calls) {
+                                        toolCalls = [...toolCalls, ...parsed.choices[0].delta.tool_calls];
+                                    }
+                                } catch { }
+                            }
+                        }
+                    });
+                } catch (err: any) {
+                    if (err.message?.includes('HTTP 400') && useTools && modelSupportsNativeTools) {
+                        log('warn', 'Este modelo está siendo optimizado para el llamado y uso de herramientas');
+                        modelSupportsNativeTools = false;
+                        return streamModelRequest(messages, false);
+                    }
+                    throw err;
+                }
+                return { content: fullContent, toolCalls, reasoning: fullReasoning };
+            } else {
+                const response = await fetch('https://api.z.ai/api/coding/paas/v4/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${config.apiKeys.zai}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(body),
+                    signal: abortSignal,
+                });
+
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.error?.message || `Z.AI HTTP ${response.status}`);
+                }
+
+                const reader = response.body?.getReader();
+                const decoder = new TextDecoder();
+                let fullContent = '';
+                let fullReasoning = '';
+                let toolCalls: any[] = [];
+                let buffer = '';
+
+                if (reader) {
+                    while (true) {
+                        if (abortSignal.aborted) throw new DOMException('Aborted', 'AbortError');
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+
+                        for (const line of lines) {
+                            const cleanLine = line.trim();
+                            if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
+                            const data = cleanLine.slice(6);
+                            if (data === '[DONE]') continue;
+                            try {
+                                const parsed = JSON.parse(data);
+                                const content = parsed.choices?.[0]?.delta?.content;
+                                if (content) {
+                                    fullContent += content;
+                                    onStatus({ streamedText: fullContent, phase: 'streaming' });
                                 }
                                 if (parsed.choices?.[0]?.delta?.tool_calls) {
                                     toolCalls = [...toolCalls, ...parsed.choices[0].delta.tool_calls];
@@ -1500,17 +1585,48 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
             }
         }
 
-        // Deduplicate
+        // Deduplicate and enforce single final_answer
         const uniqueToolCalls: ToolCall[] = [];
         const seenFpSet = new Set<string>();
-        for (const tc of finalToolCalls) {
+        let bestFinalAnswer: ToolCall | null = null;
+        
+        // We iterate in REVERSE to favor native/later calls if they have same fingerprint
+        const reversedCalls = [...finalToolCalls].reverse();
+
+        for (const tc of reversedCalls) {
+            const isFinal = tc.function.name === 'final_answer';
+            if (isFinal) {
+                if (!bestFinalAnswer) {
+                    bestFinalAnswer = tc;
+                } else {
+                    // Preference: higher argument richness
+                    const newLen = JSON.stringify(tc.function.arguments).length;
+                    const bestLen = JSON.stringify(bestFinalAnswer.function.arguments).length;
+                    const newHasSources = !!tc.function.arguments.sources;
+                    const bestHasSources = !!bestFinalAnswer.function.arguments.sources;
+                    
+                    if ((newHasSources && !bestHasSources) || (newLen > bestLen && !bestHasSources)) {
+                        bestFinalAnswer = tc;
+                    }
+                }
+                continue;
+            }
+
             const fp = getActionFingerprint(tc.function.name, tc.function.arguments);
-            if (!seenFpSet.has(fp)) { seenFpSet.add(fp); uniqueToolCalls.push(tc); }
+            if (!seenFpSet.has(fp)) {
+                seenFpSet.add(fp);
+                uniqueToolCalls.push(tc);
+            }
         }
+        if (bestFinalAnswer) uniqueToolCalls.push(bestFinalAnswer);
+        
+        // Sync positionalCalls with unique ones
+        positionalCalls = positionalCalls.filter(pc => 
+            uniqueToolCalls.some(utc => utc.id === pc.toolCall.id)
+        );
 
         // INTERLEAVED SEGMENTATION: Chronologically interleave text and tool blocks
         const iterationBlocks: any[] = [];
-        const nativeReasoningClean = nativeReasoning?.trim().toLowerCase().replace(/[#*>\s:-]+/g, '');
         
         // A0. Add Native Reasoning if present
         if (nativeReasoning && nativeReasoning.trim()) {
@@ -1522,30 +1638,19 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
 
         const sortedPosCalls = [...positionalCalls].sort((a, b) => a.start - b.start);
         
-        const pushDeDuplicated = (b: { type: string, content: string }) => {
-            if (!nativeReasoningClean) {
-                iterationBlocks.push(b);
-                return;
-            }
-
-            const blockClean = b.content.toLowerCase().replace(/[#*>\s:-]+/g, '');
-            const isDuplicate = blockClean === nativeReasoningClean || 
-                               (blockClean.length > 50 && nativeReasoningClean.includes(blockClean)) ||
-                               (nativeReasoningClean.length > 50 && blockClean.includes(nativeReasoningClean));
-
-            // If it's a duplicate of the native thought, and we haven't added much text yet, skip it
-            if (isDuplicate && iterationBlocks.length <= 1) {
-                console.log(`[Deduplicator] Skipping duplicate content in text block: "${b.content.substring(0, 30)}..."`);
-                return;
-            }
-            iterationBlocks.push(b);
-        };
-
         for (const rc of sortedPosCalls) {
             const rawSegment = (content || '').substring(curIdx, rc.start);
             const segmentBlocks = segmentThoughtsAndNarrative(rawSegment, signatureRegex);
             
-            segmentBlocks.forEach(pushDeDuplicated);
+            segmentBlocks.forEach(b => iterationBlocks.push(b));
+
+            // [DEDUPLICATION MASK]: Skip blocked/deduplicated calls so they don't echo in narrative
+            const isKept = uniqueToolCalls.some(utc => utc.id === rc.toolCall.id);
+            if (!isKept) {
+                console.log(`[Agent] Masking shadow call: ${rc.toolCall.function.name}`);
+                curIdx = rc.end;
+                continue;
+            }
 
             // B. Extract thoughts embedded in tool arguments for separate display above the tool
             const args = rc.toolCall.function.arguments;

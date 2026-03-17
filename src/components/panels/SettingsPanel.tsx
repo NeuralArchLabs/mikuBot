@@ -4,6 +4,7 @@ import { AppConfig, ModelInfo, Provider } from '../../types';
 import { PROVIDERS } from '../../constants';
 import { Icon } from '../common/Common';
 import { SchedulerTab } from './SchedulerTab';
+import { SkillsPanel } from './SkillsPanel';
 
 interface SettingsPanelProps {
     config: AppConfig;
@@ -27,6 +28,9 @@ interface SettingsPanelProps {
     syncing: boolean;
     askAlert: (message: string, position?: 'left' | 'right' | 'center') => Promise<void>;
     askConfirm: (message: string) => Promise<boolean>;
+    toolsFiles: Record<string, string>;
+    onSaveTools: (name: string, content: string) => Promise<boolean>;
+    onUpdatePartialConfig: (updates: Partial<AppConfig>) => void;
 }
 
 export const SettingsPanel = ({
@@ -50,7 +54,10 @@ export const SettingsPanel = ({
     toolsPathName,
     syncing,
     askAlert,
-    askConfirm
+    askConfirm,
+    toolsFiles,
+    onSaveTools,
+    onUpdatePartialConfig
 }: SettingsPanelProps) => {
     const [showApiKey, setShowApiKey] = useState(false);
     // Track which provider's key we are currently editing in the global section
@@ -58,7 +65,7 @@ export const SettingsPanel = ({
     const [localApiKey, setLocalApiKey] = useState('');
     const [showFloatingSave, setShowFloatingSave] = useState(false);
     const [isAtBottom, setIsAtBottom] = useState(false);
-    const [settingsTab, setSettingsTab] = useState<'core' | 'scheduler'>('core');
+    const [settingsTab, setSettingsTab] = useState<'core' | 'skills'>('core');
     const [localModels, setLocalModels] = useState<string[]>([]);
     const [downloading, setDownloading] = useState<Record<string, number>>({});
     const [searxenaStatus, setSearxenaStatus] = useState<{ installed: boolean, envReady: boolean, running: boolean }>({ installed: false, envReady: false, running: false });
@@ -182,10 +189,10 @@ export const SettingsPanel = ({
             <div className="absolute top-0 left-1/4 w-1/2 h-96 bg-blue-600/10 blur-[120px] pointer-events-none rounded-full transform-gpu" />
             <div className="absolute bottom-0 right-1/4 w-1/3 h-64 bg-purple-600/10 blur-[100px] pointer-events-none rounded-full transform-gpu" />
 
-            <div className="max-w-4xl mx-auto space-y-10 relative z-10">
+            <div className={`mx-auto relative z-10 transition-all duration-700 ease-in-out transform-gpu ${settingsTab === 'skills' ? 'max-w-6xl px-2 lg:px-4 space-y-0' : 'max-w-4xl space-y-10'}`}>
 
                 {/* ── Shared Macro-Tab Header ─────────────────────────── */}
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-8 border-b border-slate-800/50 relative transform-gpu contain-paint">
+                <div className={`flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-4 border-b border-slate-800/50 relative transform-gpu contain-paint transition-all duration-500`}>
                     <div className="grid grid-cols-2 items-start lg:flex lg:items-baseline gap-2 md:gap-3 lg:gap-6 w-full lg:w-auto">
                         {/* Core System Tab Title */}
                         <button
@@ -203,17 +210,17 @@ export const SettingsPanel = ({
                         {/* Separator */}
                         <div className="hidden lg:block w-px h-12 flex-shrink-0 self-center rounded-full bg-gradient-to-b from-transparent via-cyan-400/30 to-transparent" />
 
-                        {/* Neural Scheduler Tab Title */}
+                        {/* Neural Skills Tab Title */}
                         <button
-                            onClick={() => setSettingsTab('scheduler')}
-                            className={`text-left transition-all duration-300 group ${settingsTab === 'scheduler' ? '' : 'opacity-35 hover:opacity-60'}`}
+                            onClick={() => setSettingsTab('skills')}
+                            className={`text-left transition-all duration-300 group ${settingsTab === 'skills' ? '' : 'opacity-35 hover:opacity-60'}`}
                         >
-                            <h2 className={`text-2xl md:text-3xl font-black tracking-tighter select-none flex items-center gap-2 ${settingsTab === 'scheduler' ? 'text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-teal-400 text-shadow-premium animate-title-slide' : 'text-slate-400 group-hover:text-slate-200 transition-all duration-300'}`}>
-                                <Icon name="clock" className={`text-lg ${settingsTab === 'scheduler' ? 'text-cyan-400 animate-clock-neural' : 'text-slate-500 group-hover:text-slate-300'}`} />
-                                Scheduler
+                            <h2 className={`text-2xl md:text-3xl font-black tracking-tighter select-none flex items-center gap-2 ${settingsTab === 'skills' ? 'text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-teal-400 text-shadow-premium animate-title-slide' : 'text-slate-400 group-hover:text-slate-200 transition-all duration-300'}`}>
+                                <Icon name="puzzle-piece" className={`text-lg ${settingsTab === 'skills' ? 'text-cyan-400' : 'text-slate-500 group-hover:text-slate-300'}`} />
+                                Neural Skills
                             </h2>
-                            {settingsTab === 'scheduler' && (
-                                <p className="text-cyan-500/60 text-[10px] md:text-xs font-bold tracking-widest uppercase select-none mt-0.5 animate-title-slide">Autonomous Task Management</p>
+                            {settingsTab === 'skills' && (
+                                <p className="text-cyan-500/60 text-[10px] md:text-xs font-bold tracking-widest uppercase select-none mt-0.5 animate-title-slide">Synaptic Core Architecture</p>
                             )}
                         </button>
                     </div>
@@ -250,34 +257,30 @@ export const SettingsPanel = ({
                         </div>
                     )}
 
-                    {settingsTab === 'scheduler' && (
-                        <div className="grid grid-cols-2 lg:flex lg:flex-row lg:items-center gap-2 md:gap-3 bg-slate-900/40 p-2 md:p-3 rounded-2xl border border-white/5 shadow-xl flex-shrink-0 w-full lg:w-auto animate-in fade-in slide-in-from-top-1 duration-700">
-                            <button
-                                onClick={async () => {
-                                    const res = await neuralScheduler.importTasks();
-                                    if (res) window.dispatchEvent(new CustomEvent('scheduler-data-updated'));
-                                }}
-                                className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-slate-600 shadow-lg"
-                                title="Import tasks from JSON file"
+                    {settingsTab === 'skills' && (
+                        <div className="hidden lg:flex lg:flex-row lg:items-center bg-slate-900/40 p-2 md:p-3 rounded-2xl border border-white/5 shadow-xl flex-shrink-0 w-auto animate-in fade-in slide-in-from-top-1 duration-700">
+                             <button
+                                onClick={onSaveGlobal}
+                                className="btn-halo w-auto py-3 px-6 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-extrabold uppercase tracking-widest transition-all shadow-[0_0_30px_rgba(6,182,212,0.3)] flex items-center justify-center gap-2 border border-cyan-500/30 hover:scale-105 active:scale-95 group/sync"
                             >
-                                <Icon name="download" className="text-sm xl:text-base flex-shrink-0" /> <span className="inline lg:hidden min-[1150px]:inline">Import</span>
-                            </button>
-                            <button
-                                onClick={() => neuralScheduler.exportTasks()}
-                                className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-slate-600 shadow-lg"
-                                title="Export all tasks as JSON file"
-                            >
-                                <Icon name="file-export" className="text-sm xl:text-base flex-shrink-0" /> <span className="inline lg:hidden min-[1150px]:inline">Export</span>
+                                <Icon name="sync" className="group-hover/sync:rotate-180 transition-transform duration-500" />
+                                <span className="inline">Save Sync</span>
                             </button>
                         </div>
                     )}
                 </div>
 
-                {/* ── Scheduler Tab ───────────────────────────────────── */}
+                {/* ── Skills Tab ───────────────────────────────────── */}
                 {
-                    settingsTab === 'scheduler' && (
-                        <div className="animate-in fade-in duration-500">
-                            <SchedulerTab config={config} askAlert={askAlert} />
+                    settingsTab === 'skills' && (
+                        <div className="animate-in fade-in zoom-in-95 slide-in-from-top-4 duration-700 overflow-hidden flex flex-col min-h-[600px] h-[calc(100vh-320px)] lg:h-[calc(100vh-280px)]">
+                            <SkillsPanel
+                                config={config}
+                                toolsFiles={toolsFiles}
+                                onSaveTools={onSaveTools}
+                                updateConfig={onUpdatePartialConfig}
+                                onSaveGlobal={onSaveGlobal}
+                            />
                         </div>
                     )
                 }
@@ -520,6 +523,8 @@ export const SettingsPanel = ({
                                                                 <img src="./ollamaICON.webp" alt="Ollama" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'brightness-0 invert opacity-40 hover:opacity-80'}`} />
                                                             ) : pId === 'groq' ? (
                                                                 <img src="./groqICON.png" alt="Groq" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'brightness-0 invert opacity-40 hover:opacity-80'}`} />
+                                                            ) : pId === 'zai' ? (
+                                                                <img src="./zai.png" alt="Z.AI" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,165,0,0.3)]' : 'brightness-0 invert opacity-40 hover:opacity-80'}`} />
                                                             ) : (
                                                                 <Icon name={(PROVIDERS as any)[pId]?.icon || 'robot'} className="text-lg" />
                                                             )}
@@ -611,6 +616,8 @@ export const SettingsPanel = ({
                                                                 <img src="./ollamaICON.webp" alt="Ollama" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'brightness-0 invert opacity-40 hover:opacity-80'}`} />
                                                             ) : pId === 'groq' ? (
                                                                 <img src="./groqICON.png" alt="Groq" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'brightness-0 invert opacity-40 hover:opacity-80'}`} />
+                                                            ) : pId === 'zai' ? (
+                                                                <img src="./zai.png" alt="Z.AI" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,165,0,0.3)]' : 'brightness-0 invert opacity-40 hover:opacity-80'}`} />
                                                             ) : (
                                                                 <Icon name={(PROVIDERS as any)[pId]?.icon || 'robot'} className="text-lg" />
                                                             )}

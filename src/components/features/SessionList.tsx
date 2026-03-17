@@ -23,12 +23,12 @@ export const SessionList = React.memo(({ sessions, loading, currentSessionId, on
         <div className="flex flex-col h-full">
             {!isModal && (
                 <>
-                    <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-4" />
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-2" />
+                    <div className="flex items-center justify-between">
                         {onExpand ? (
                             <button
                                 onClick={onExpand}
-                                className="text-[10px] font-bold text-slate-500 hover:text-blue-400 uppercase tracking-widest flex items-center gap-1 transition-colors group p-2 -ml-2 -my-2 cursor-pointer"
+                                className="text-[10px] font-bold text-slate-500 hover:text-blue-400 uppercase tracking-widest flex items-center gap-1 transition-colors group p-1 -ml-1 cursor-pointer"
                                 title="Expand Sessions Viewer"
                             >
                                 <Icon name="expand-arrows-alt" className="opacity-0 group-hover:opacity-100 transition-all group-hover:scale-110" />
@@ -55,7 +55,7 @@ export const SessionList = React.memo(({ sessions, loading, currentSessionId, on
                         </div>
                     </div>
 
-                    <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-2" />
+                    <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mt-2 mb-2" />
                 </>
             )}
 
@@ -69,50 +69,100 @@ export const SessionList = React.memo(({ sessions, loading, currentSessionId, on
                         <p className={`${isModal ? 'text-sm' : 'text-[10px]'} text-slate-600`}>No active history found</p>
                     </div>
                 ) : (
-                    sessions.map(ss => (
-                        <div
-                            key={ss.id}
-                            className={`group relative flex flex-col gap-1.5 rounded-xl transition-all duration-200 cursor-pointer ${isModal ? 'p-4' : 'p-2.5'} ${currentSessionId === ss.id
-                                ? 'bg-blue-600/20 text-blue-300 border border-blue-500/30 shadow-lg shadow-blue-900/10'
-                                : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-transparent'
-                                }`}
-                            onClick={() => onSelect(ss.id)}
-                        >
-                            <div className="flex items-center gap-3 w-full">
-                                <div className={`${isModal ? 'w-2 h-2' : 'w-1.5 h-1.5'} rounded-full shrink-0 ${currentSessionId === ss.id ? 'bg-blue-400 shadow-glow' : 'bg-slate-700'}`} />
-                                <div className={`${isModal ? 'text-sm' : 'text-xs'} font-medium truncate flex-1`}>{ss.title || 'Untitled Session'}</div>
-                            </div>
+                    sessions.map(ss => {
+                        const isActive = currentSessionId === ss.id;
 
-                            <div className="flex items-center justify-between pl-5 w-full">
-                                <div className={`${isModal ? 'text-[11px]' : 'text-[9px]'} text-slate-500 font-mono truncate`}>
-                                    {ss.messageCount} messages • {new Date(ss.lastModified).toLocaleDateString()}
+                        if (isModal) {
+                            // 🪟 ORIGINAL WINDOW MODE LAYOUT (Modal)
+                            return (
+                                <div
+                                    key={ss.id}
+                                    className={`group relative flex flex-col gap-1.5 rounded-xl p-4 transition-all duration-200 cursor-pointer border ${isActive
+                                        ? 'bg-blue-600/20 text-blue-300 border-blue-500/30 shadow-lg shadow-blue-900/10'
+                                        : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200 border-transparent'
+                                        }`}
+                                    onClick={() => onSelect(ss.id)}
+                                >
+                                    <div className="flex items-center gap-3 w-full">
+                                        <div className={`w-2 h-2 rounded-full shrink-0 ${isActive ? 'bg-blue-400 shadow-glow' : 'bg-slate-700'}`} />
+                                        <div className="text-sm font-medium truncate flex-1">{ss.title || 'Untitled Session'}</div>
+                                    </div>
+
+                                    <div className="flex items-center justify-between pl-5 w-full">
+                                        <div className="text-[11px] text-slate-500 font-mono truncate">
+                                            {ss.messageCount} messages • {new Date(ss.lastModified).toLocaleDateString()}
+                                        </div>
+
+                                        <div className="flex items-center gap-2 opacity-100">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); onExport(ss.id); }}
+                                                className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-md transition-all"
+                                                title="Export session"
+                                            >
+                                                <Icon name="upload" className="text-sm" />
+                                            </button>
+                                            <button
+                                                onClick={async (e) => {
+                                                    e.stopPropagation();
+                                                    if (await askConfirm('Delete this session?', 'left')) onDelete(ss.id);
+                                                }}
+                                                className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-all"
+                                                title="Delete session"
+                                            >
+                                                <Icon name="times" className="text-sm" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        }
+
+                        // 🖥️ OPTIMIZED SIDEBAR LAYOUT
+                        return (
+                            <div
+                                key={ss.id}
+                                className={`session-card group relative grid grid-cols-[auto_1fr] gap-x-2.5 items-center rounded-xl p-2.5 transition-all duration-200 cursor-pointer border session-card-sidebar ${isActive
+                                    ? 'bg-blue-600/20 text-blue-300 border-blue-500/30'
+                                    : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200 border-transparent'
+                                    }`}
+                                onClick={() => onSelect(ss.id)}
+                            >
+                                {/* Status Indicator */}
+                                <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${isActive ? 'bg-blue-400 shadow-glow' : 'bg-slate-700'}`} />
+
+                                {/* Title - Dynamic Padding on Hover */}
+                                <div className="min-w-0 pr-0 group-hover:pr-[54px] transition-all duration-300">
+                                    <div className="text-xs font-medium truncate">
+                                        {ss.title || 'Untitled Session'}
+                                    </div>
+                                    <div className="session-metadata text-[9px] text-slate-500 font-mono truncate mt-0.5">
+                                        {ss.messageCount} msgs • {new Date(ss.lastModified).toLocaleDateString()}
+                                    </div>
                                 </div>
 
-                                <div className={`flex items-center gap-2 ${isModal ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
+                                {/* Floating Actions */}
+                                <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
                                     <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            onExport(ss.id);
-                                        }}
-                                        className={`${isModal ? 'w-8 h-8' : 'w-6 h-6'} flex items-center justify-center text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-md transition-all`}
+                                        onClick={(e) => { e.stopPropagation(); onExport(ss.id); }}
+                                        className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-md transition-all"
                                         title="Export session"
                                     >
-                                        <Icon name="upload" className={`${isModal ? 'text-sm' : 'text-[10px]'}`} />
+                                        <Icon name="upload" className="text-[10px]" />
                                     </button>
                                     <button
                                         onClick={async (e) => {
                                             e.stopPropagation();
                                             if (await askConfirm('Delete this session?', 'left')) onDelete(ss.id);
                                         }}
-                                        className={`${isModal ? 'w-8 h-8' : 'w-6 h-6'} flex items-center justify-center text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-all`}
+                                        className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-all"
                                         title="Delete session"
                                     >
-                                        <Icon name="times" className={`${isModal ? 'text-sm' : 'text-[10px]'}`} />
+                                        <Icon name="times" className="text-[10px]" />
                                     </button>
                                 </div>
                             </div>
-                        </div>
-                    ))
+                        );
+                    })
                 )}
             </div>
         </div>

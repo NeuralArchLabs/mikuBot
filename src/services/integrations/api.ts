@@ -28,6 +28,13 @@ export async function fetchModels(provider: Provider, config: AppConfig): Promis
                 if (!data || !data.models) return [];
                 return data.models.map((m: any) => ({ id: m.name, name: m.name, provider: 'ollama' }));
             }
+            case 'zai': {
+                const data = await safeFetch('https://api.z.ai/api/coding/paas/v4/models', {
+                    headers: { 'Authorization': `Bearer ${config.apiKeys.zai}` }
+                });
+                if (!data || !data.data) return [];
+                return data.data.map((m: any) => ({ id: m.id, name: m.id, provider: 'zai' }));
+            }
             default:
                 return [];
         }
@@ -306,6 +313,97 @@ export async function sendStreamingMessage(
                     const { done, value } = await reader.read();
                     if (done) break;
                     parseGeminiSSE(decoder.decode(value, { stream: true }), buf);
+                }
+            }
+        }
+        return;
+    }
+
+    // ── Z.AI (BigModel) ──────────────────────────────────────────────
+    if (providerToUse === 'zai') {
+        const zaiBody = {
+            model: config.model,
+            messages: [{ role: 'system', content: systemPrompt }, ...messages.map(m => {
+                const imageAttachments = m.attachments?.filter(a => a.type.startsWith('image/')) || [];
+                if (imageAttachments.length > 0) {
+                    const contentBlocks: any[] = [{ type: 'text', text: m.content || 'Attached images:' }];
+                    imageAttachments.forEach(img => {
+                        contentBlocks.push({
+                            type: 'image_url',
+                            image_url: { url: img.data }
+                        });
+                    });
+                    return { role: m.role, content: contentBlocks };
+                }
+                return { role: m.role, content: m.content };
+            })],
+            stream: true,
+            temperature: config.temperature,
+        };
+
+        if (isElectron) {
+            let buffer = '';
+            await streamViaProxy({
+                provider: 'zai',
+                model: config.model,
+                body: zaiBody,
+                onChunk: (raw) => {
+                    buffer += raw;
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
+                    for (const line of lines) {
+                        const cleanLine = line.trim();
+                        if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
+                        const data = cleanLine.slice(6);
+                        if (data === '[DONE]') continue;
+                        try {
+                            const parsed = JSON.parse(data);
+                            const content = parsed.choices?.[0]?.delta?.content;
+                            if (content) onChunk(content);
+                        } catch { }
+                    }
+                }
+            });
+        } else {
+            // Fallback: direct fetch (browser dev mode only)
+            const response = await fetch('https://api.z.ai/api/coding/paas/v4/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${config.apiKeys.zai}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(zaiBody),
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error?.message || `HTTP ${response.status}`);
+            }
+
+            const reader = response.body?.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            if (reader) {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
+
+                    for (const line of lines) {
+                        const cleanLine = line.trim();
+                        if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
+                        const data = cleanLine.slice(6);
+                        if (data === '[DONE]') continue;
+                        try {
+                            const parsed = JSON.parse(data);
+                            const content = parsed.choices?.[0]?.delta?.content;
+                            if (content) onChunk(content);
+                        } catch { }
+                    }
                 }
             }
         }

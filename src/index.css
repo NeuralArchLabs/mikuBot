@@ -1549,6 +1549,29 @@
       transparent 100%);
 }
 
+/* 🗜️ Session Card Compact Mode (Small Viewports) */
+@media (max-height: 820px) {
+  .session-card-sidebar .session-metadata {
+    display: none !important;
+  }
+
+  .session-card-sidebar {
+    padding-top: 5px !important;
+    padding-bottom: 5px !important;
+    row-gap: 0 !important;
+  }
+
+  /* 📚 Context Library Compact */
+  .context-library-item button {
+    padding-top: 2px !important;
+    padding-bottom: 2px !important;
+  }
+
+  .context-library-container {
+    max-height: 140px !important;
+  }
+}
+
 /* Utility classes */
 .contain-paint {
   contain: paint;

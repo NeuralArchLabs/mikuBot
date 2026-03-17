@@ -19,6 +19,7 @@ interface LibraryManagerProps {
     onSave: (name: string, content: string) => Promise<boolean>;
     onAdd: () => void;
     onDelete: (name: string) => Promise<boolean>;
+    onRename: (oldName: string, newName: string) => Promise<boolean>;
     askConfirm: (msg: string, position?: 'left' | 'right' | 'center') => Promise<boolean>;
     config: AppConfig;
 }
@@ -32,6 +33,7 @@ export const LibraryManager = ({
     onSave,
     onAdd,
     onDelete,
+    onRename,
     askConfirm,
     config
 }: LibraryManagerProps) => {
@@ -42,6 +44,8 @@ export const LibraryManager = ({
     const [searchQuery, setSearchQuery] = useState('');
     const [saving, setSaving] = useState(false);
     const [showBlueprints, setShowBlueprints] = useState(false);
+    const [renamingFile, setRenamingFile] = useState<string | null>(null);
+    const [renameInput, setRenameInput] = useState('');
     const [blueprints, setBlueprints] = useState<Blueprint[]>([]);
 
     useEffect(() => {
@@ -108,6 +112,27 @@ export const LibraryManager = ({
             setSaving(false);
         }
     }, [onSave]);
+ 
+    const handleRename = useCallback(async (oldName: string) => {
+        if (!renameInput.trim() || renameInput === oldName) {
+            setRenamingFile(null);
+            return;
+        }
+        
+        let newName = renameInput.trim();
+        if (!newName.endsWith('.md')) newName += '.md';
+        
+        setSaving(true);
+        try {
+            const ok = await onRename(oldName, newName);
+            if (ok) {
+                setRenamingFile(null);
+                if (viewFile === oldName) setViewFile(newName);
+            }
+        } finally {
+            setSaving(false);
+        }
+    }, [renameInput, onRename, viewFile]);
 
     const handleDelete = useCallback(async (name: string) => {
         if (await askConfirm(`Are you sure you want to permanently delete "${name}" from your library?`, 'center')) {
@@ -226,7 +251,7 @@ export const LibraryManager = ({
                                             className={`group relative w-full flex items-center justify-between p-2 rounded cursor-pointer transition-all ${isActive ? 'bg-slate-800' : 'hover:bg-slate-800/50'
                                                 }`}
                                         >
-                                            <div className="flex items-center gap-3 overflow-hidden">
+                                            <div className="flex items-center gap-3 overflow-hidden flex-1">
                                                 <div
                                                     onClick={(e) => { e.stopPropagation(); onToggleSelect(name); }}
                                                     className={`w-5 h-5 rounded border flex items-center justify-center transition-colors cursor-pointer flex-shrink-0 ${isSelected
@@ -236,21 +261,51 @@ export const LibraryManager = ({
                                                 >
                                                     <Icon name="check" className="text-[10px]" />
                                                 </div>
-                                                <div className="truncate pr-8">
-                                                    <div className={`text-sm font-mono truncate ${isActive ? 'text-pink-300' : 'text-slate-300'}`}>{name}</div>
+                                                <div className="truncate flex-1">
+                                                    {renamingFile === name ? (
+                                                        <input
+                                                            autoFocus
+                                                            value={renameInput}
+                                                            onChange={(e) => setRenameInput(e.target.value)}
+                                                            onBlur={() => handleRename(name)}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') handleRename(name);
+                                                                if (e.key === 'Escape') setRenamingFile(null);
+                                                            }}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            placeholder="New filename..."
+                                                            title="Enter new filename"
+                                                            className="w-full bg-slate-700 border border-pink-500/50 rounded px-1.5 py-0.5 text-xs text-white outline-none"
+                                                        />
+                                                    ) : (
+                                                        <div className={`text-sm font-mono truncate ${isActive ? 'text-pink-300' : 'text-slate-300'}`}>{name}</div>
+                                                    )}
                                                     <div className="text-[10px] text-slate-600 truncate">{files[name].length} chars</div>
                                                 </div>
                                             </div>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleDelete(name);
-                                                }}
-                                                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all rounded hover:bg-red-500/10"
-                                                title="Delete file"
-                                            >
-                                                <Icon name="times" />
-                                            </button>
+                                            <div className={`flex items-center gap-1 ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setRenamingFile(name);
+                                                        setRenameInput(name);
+                                                    }}
+                                                    className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-blue-400 rounded hover:bg-blue-500/10"
+                                                    title="Rename file"
+                                                >
+                                                    <Icon name="edit" className="text-xs" />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDelete(name);
+                                                    }}
+                                                    className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-red-400 rounded hover:bg-red-500/10"
+                                                    title="Delete file"
+                                                >
+                                                    <Icon name="times" className="text-sm" />
+                                                </button>
+                                            </div>
                                         </div>
                                     );
                                 })
@@ -265,15 +320,6 @@ export const LibraryManager = ({
                                 <div className="h-10 border-b border-slate-800 flex items-center justify-between px-4 bg-slate-900/30">
                                     <div className="flex items-center gap-4">
                                         <span className="text-xs font-mono text-slate-500">{viewFile}</span>
-                                        {!editMode && (
-                                            <button
-                                                onClick={() => handleDelete(viewFile)}
-                                                className="text-slate-600 hover:text-red-400 p-1.5 transition-colors rounded hover:bg-red-500/10"
-                                                title="Delete file"
-                                            >
-                                                <Icon name="trash" />
-                                            </button>
-                                        )}
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {editMode ? (

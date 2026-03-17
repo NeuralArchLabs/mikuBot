@@ -1,4 +1,4 @@
-export type Provider = 'groq' | 'gemini' | 'ollama';
+export type Provider = 'groq' | 'gemini' | 'ollama' | 'zai';
 export type AgentMode = 'chat' | 'agent';
 export type FileTarget = 'core' | 'extra' | 'workSpace' | 'tools';
 

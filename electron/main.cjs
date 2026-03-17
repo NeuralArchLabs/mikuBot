@@ -156,6 +156,14 @@ ipcMain.handle('api-stream', async (event, { provider, model, body, ollamaUrl, s
                 'Authorization': `Bearer ${groqKey}`,
                 'Content-Type': 'application/json',
             };
+        } else if (provider === 'zai') {
+            const zaiKey = keys.zai;
+            if (!zaiKey) return { ok: false, error: 'Z.AI API key not configured.' };
+            url = 'https://api.z.ai/api/coding/paas/v4/chat/completions';
+            headers = {
+                'Authorization': `Bearer ${zaiKey}`,
+                'Content-Type': 'application/json',
+            };
         } else if (provider === 'ollama') {
             url = `${ollamaUrl || 'http://localhost:11434'}/api/chat`;
             headers = { 'Content-Type': 'application/json' };

@@ -1,6 +1,6 @@
-# Project Status: MikuCentral v2.0.0 🚀
+# Project Status: MikuCentral v2.1.0 🚀
 
-> **Última actualización**: 14 de marzo de 2026
+> **Última actualización**: 16 de marzo de 2026
 > **Autor del análisis**: Antigravity AI Engine
 
 Este documento detalla el análisis exhaustivo del proyecto **MikuCentral**, una interfaz de IA neural y asistente personal integral diseñada para la soberanía tecnológica local, la ejecución de agentes autónomos y la persistencia automodificable en todas las facetas de la vida del usuario (personal, profesional y financiera).
@@ -61,20 +61,20 @@ MikuCentral es mucho más que un simple chat; es un orquestador de agentes con l
 ### Arquitectura de Archivos
 ```
 src/
-├── App.tsx               (1248 líneas) — Orquestador principal de estado y routing
+├── App.tsx               (1686 líneas) — Orquestador principal de estado y routing
 ├── components/
 │   ├── features/
 │   │   ├── ChatArea.tsx       (436 líneas) — Área de chat con bloques de herramientas
-│   │   ├── LibraryManager.tsx (320 líneas) — Gestor de contexto con blueprints y editor
+│   │   ├── LibraryManager.tsx (365 líneas) — Gestor de contexto con blueprints y editor
 │   │   ├── FileEditor.tsx     (137 líneas) — Editor de archivos core (Cortex)
-│   │   ├── SessionList.tsx    (113 líneas) — Lista de sesiones
+│   │   ├── SessionList.tsx    (171 líneas) — Lista de sesiones optimizada
 │   │   └── OnboardingWizard.tsx (234 líneas) — Setup inicial guiado
 │   ├── panels/
 │   │   ├── SettingsPanel.tsx  (651 líneas) — Configuración de proveedores y carpetas
 │   │   ├── AgentStatusPanel.tsx (173 líneas) — Panel de estado del agente
 │   │   └── ToolApprovalPanel.tsx (148 líneas) — Panel de aprobación glassmórfico
 │   ├── layout/
-│   │   └── Sidebar.tsx        (285 líneas) — Navegación y gestión de sesiones
+│   │   └── Sidebar.tsx        (376 líneas) — Navegación, sesiones y context library
 │   └── common/
 │       ├── ToolBlock.tsx      (129 líneas) — Rendering de bloques de herramientas
 │       ├── Common.tsx         (15 líneas)  — Icon + MarkdownRenderer compartidos
@@ -128,6 +128,9 @@ electron/
 | 19 | **Ruido en Scheduler Messaging** | ✅ Done | v1.9.1: Mensajes centrados, colapsados y con código de colores (Naranja/Índigo). |
 | 20 | **Seguimiento Agéntico (Amnesia)** | ✅ Done | v2.0.0: Implementado motor de auto-marcado turn-by-turn con pre-ticking de borrado y soporte para sinónimos en español. |
 | 21 | **Inestabilidad de Patch File** | ✅ Done | v2.0.0: Integrado `flexibleIncludes` para ignorar diferencias irrelevantes de caracteres (backticks, espacios) en parches. |
+| 22 | **Gestión de Librería Limitada** | ✅ Done | v2.1.0: Añadido **Renombrado Inline**, mejorada visibilidad de borrado y alineación visual de cabeceras. |
+| 23 | **Acceso Lento a Importación** | ✅ Done | v2.1.0: Botones de **Import/New** inyectados directamente en el header del Session Manager. |
+| 24 | **Conflicto Responsive Modal** | ✅ Done | v2.1.0: Aislamiento total de lógica CSS entre Sidebar (Grid/Hover) y Modal (Flex estable). |
 
 ### 3.2 Pendientes (Originales) ⏳
 | # | Problema | Severidad | Detalle |

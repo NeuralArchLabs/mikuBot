@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.1.0] - 2026-03-16
+### Added
+- **Session Manager Header Controls**: Integrated "Import" and "New Session" buttons directly into the Session Manager modal header for rapid access.
+- **Inline Library Renaming**: Enabled direct file renaming within the Context Library sidebar with automatic extension preservation and UI sync.
+- **Action Button Persistence**: Implemented a "Smart Hover" system where active library items show controls persistently, while others reveal them on hover.
+
+### Changed
+- **Sidebar Visual Alignment**: Synchronized "Context Library" and "Neural Sessions" headers with matching paddings, typography (`tracking-widest`), and gradient separators.
+- **Vertical Density Optimization**: Reduced vertical padding and margins across sidebar headers to maximize information density without sacrificing clarity.
+- **Header Indentation**: Specially aligned the Library title with the item status indicators (dots) for a cleaner vertical scan line.
+- **Redundancy Cleanup**: Removed the duplicated delete button from the document viewer header in Library Manager.
+
+### Fixed
+- **Modal vs Sidebar Collision**: Resolved a layout conflict where sidebar expansion logic was interfering with the fixed-width Session Manager modal. Reverted Modal to a stable Flexbox structure.
+
 ## [2.0.0] - 2026-03-14
 ### Added
 - **Real-Time Task Sync (UI Priority)**: Implemented sequential task ticking in `TASKS.md` at the end of every turn to enable fluid UI progress animations.

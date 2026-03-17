@@ -9,9 +9,11 @@ import {
     LibraryManager,
     SettingsPanel,
     SkillsPanel,
+    SchedulerTab,
     SystemDialog,
     SystemDialogConfig,
-    OnboardingWizard
+    OnboardingWizard,
+    Icon
 } from './components';
 import {
     fetchModels,
@@ -634,6 +636,22 @@ export const App = () => {
             return true;
         } catch (e) {
             console.error("Delete failed", e);
+            return false;
+        }
+    };
+
+    const renameFile = async (oldName: string, newName: string, target: FileTarget): Promise<boolean> => {
+        if (!oldName || !newName || oldName === newName) return false;
+        try {
+            const content = state.additionalFiles[oldName] || ''; // Only extra for now as per user request context
+            const saved = await saveFile(newName, content, target);
+            if (saved) {
+                await deleteFile(oldName, target);
+                return true;
+            }
+            return false;
+        } catch (e) {
+            console.error("Rename failed", e);
             return false;
         }
     };
@@ -1549,6 +1567,7 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                 onToggleSelect={(n) => setState(p => ({ ...p, selectedLibraryFiles: p.selectedLibraryFiles.includes(n) ? p.selectedLibraryFiles.filter(f => f !== n) : [...p.selectedLibraryFiles, n] }))}
                 onSave={(n, c) => saveFile(n, c, 'extra')} onAdd={() => createFile(`Library_${Date.now()}`, 'extra')}
                 onDelete={(n) => deleteFile(n, 'extra')}
+                onRename={(oldN, newN) => renameFile(oldN, newN, 'extra')}
                 askConfirm={askConfirm}
                 config={state.config}
             />
@@ -1629,19 +1648,50 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                             syncing={syncing}
                             askAlert={askAlert}
                             askConfirm={askConfirm}
+                            toolsFiles={state.toolsFiles}
+                            onSaveTools={(n, c) => saveFile(n, c, 'tools')}
+                            onUpdatePartialConfig={(updates) => setState(p => ({ ...p, config: { ...p.config, ...updates } }))}
                         />
                     </div>
                 )}
 
-                {state.activeTab === 'skills' && (
+                {state.activeTab === 'scheduler' && (
                     <div className="flex-1 flex flex-col h-full animate-control-room">
-                        <SkillsPanel
-                            config={state.config}
-                            toolsFiles={state.toolsFiles}
-                            onSaveTools={(n, c) => saveFile(n, c, 'tools')}
-                            updateConfig={(updates) => setState(p => ({ ...p, config: { ...p.config, ...updates } }))}
-                            onSaveGlobal={onSaveGlobal}
-                        />
+                        <div className="flex-1 overflow-y-auto custom-scrollbar">
+                            <div className="max-w-4xl mx-auto p-6 md:p-10">
+                                <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-800/50">
+                                    <div className="flex items-center gap-4">
+                                        <div className="bg-cyan-500/20 p-3 rounded-2xl text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.2)]">
+                                            <Icon name="clock" className="text-3xl animate-clock-neural" />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-3xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-teal-400 text-shadow-premium">
+                                                Scheduler
+                                            </h2>
+                                            <p className="text-cyan-500/60 text-xs font-bold tracking-widest uppercase">Autonomous Task Management</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={async () => {
+                                                const res = await neuralScheduler.importTasks();
+                                                if (res) window.dispatchEvent(new CustomEvent('scheduler-data-updated'));
+                                            }}
+                                            className="px-4 py-2.5 bg-slate-900/60 hover:bg-slate-800 text-slate-300 rounded-xl font-bold uppercase tracking-widest flex items-center gap-2 transition-all border border-slate-700/50 text-xs"
+                                        >
+                                            <Icon name="download" /> Import
+                                        </button>
+                                        <button
+                                            onClick={() => neuralScheduler.exportTasks()}
+                                            className="px-4 py-2.5 bg-slate-900/60 hover:bg-slate-800 text-slate-300 rounded-xl font-bold uppercase tracking-widest flex items-center gap-2 transition-all border border-slate-700/50 text-xs"
+                                        >
+                                            <Icon name="file-export" /> Export
+                                        </button>
+                                    </div>
+                                </div>
+                                <SchedulerTab config={state.config} askAlert={askAlert} />
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>
