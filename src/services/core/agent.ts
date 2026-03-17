@@ -4,11 +4,12 @@
  */
 import { ToolCall, ToolResult, ToolDefinition, AppConfig, AgentStatus, AgentLogEntry, FileTarget, ApprovalMode } from '../../types';
 import { PROTECTED_CORE_FILES, CONSOLE_ALLOWED_COMMANDS, CONSOLE_BLOCKED_PATTERNS } from '../../constants';
-import { validateToolArgs, safeFetch, streamViaProxy } from '../../utils';
+import { validateToolArgs, safeFetch } from '../../utils';
 import { recoverToolCallsFromText, normalizeRawToolCall, RecoveredCall } from '../formatters/toolCallNormalizer';
 import { formatFinalResponse } from '../formatters/answerFormatter';
 import { formatTelegramResponse } from '../formatters/telegramFormatter';
 import { TOOL_NAME_ALIASES } from '../formatters/normalization/dictionaries';
+import { ProviderFactory, ProviderOptions } from './ModelProviders';
 
 /**
  * Resolves the source and filename from a tool call.
@@ -700,606 +701,28 @@ export async function sendAgentMessage(
         const provider = config.provider;
         const isElectronProxy = !!(window as any).electron?.apiStream;
 
-        if (provider === 'ollama') {
-            const body: any = {
-                model: config.model,
-                messages: messages.filter(m => m.content || (m.tool_calls && m.tool_calls.length > 0)).map(m => {
-                    const imageAttachments = m.attachments?.filter((a: any) => a.type.startsWith('image/')) || [];
-                    return {
-                        role: m.role,
-                        content: m.content,
-                        tool_calls: m.tool_calls,
-                        images: imageAttachments.length > 0 ? imageAttachments.map((img: any) => img.data.split(',')[1]) : undefined
-                    };
-                }),
-                stream: true,
-                options: { temperature: config.temperature },
-            };
-            if (useTools && modelSupportsNativeTools) body.tools = tools;
+        const options: ProviderOptions = {
+            config,
+            onStatus,
+            abortSignal: abortSignal!,
+            useTools: useTools && modelSupportsNativeTools,
+            tools,
+            isElectronProxy
+        };
 
-            if (isElectronProxy) {
-                let fullContent = '';
-                let fullReasoning = '';
-                let toolCalls: any[] = [];
-                let buffer = '';
-
-                try {
-                    await streamViaProxy({
-                        provider: 'ollama',
-                        model: config.model,
-                        body,
-                        ollamaUrl: config.ollamaUrl,
-                        abortSignal,
-                        onChunk: (raw) => {
-                            buffer += raw;
-                            const lines = buffer.split('\n');
-                            buffer = lines.pop() || '';
-                            for (const line of lines) {
-                                if (!line.trim()) continue;
-                                try {
-                                    const parsed = JSON.parse(line);
-                                    if (parsed.message?.content) {
-                                        fullContent += parsed.message.content;
-                                        onStatus({ streamedText: fullContent, phase: 'streaming' });
-                                    }
-                                    if (parsed.message?.thought) {
-                                        fullReasoning += parsed.message.thought;
-                                        onStatus({ streamedReasoning: fullReasoning, phase: 'streaming' });
-                                    }
-                                    if (parsed.message?.tool_calls) {
-                                        toolCalls = [...toolCalls, ...parsed.message.tool_calls];
-                                    }
-                                } catch { }
-                            }
-                        }
-                    });
-                } catch (err: any) {
-                    if (err.message?.includes('HTTP 400') && useTools && modelSupportsNativeTools) {
-                        log('warn', 'Este modelo está siendo optimizado para el llamado y uso de herramientas');
-                        modelSupportsNativeTools = false;
-                        return streamModelRequest(messages, false);
-                    }
-                    throw err;
-                }
-                return { content: fullContent, toolCalls, reasoning: fullReasoning };
-            } else {
-                const response = await fetch(`${config.ollamaUrl}/api/chat`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body),
-                    signal: abortSignal,
-                });
-
-                if ((response.status === 400 || response.status === 422) && useTools && modelSupportsNativeTools) {
-                    log('warn', 'Este modelo está siendo optimizado para el llamado y uso de herramientas');
-                    modelSupportsNativeTools = false;
-                    return streamModelRequest(messages, false);
-                }
-
-                if (!response.ok) {
-                    const errBody = await response.text().catch(() => '');
-                    throw new Error(`Ollama HTTP ${response.status}: ${errBody}`);
-                }
-
-                const reader = response.body?.getReader();
-                const decoder = new TextDecoder();
-                let fullContent = '';
-                let fullReasoning = '';
-                let toolCalls: any[] = [];
-                let buffer = '';
-
-                if (reader) {
-                    while (true) {
-                        if (abortSignal.aborted) throw new DOMException('Aborted', 'AbortError');
-                        const { done, value } = await reader.read();
-                        if (done) break;
-
-                        buffer += decoder.decode(value, { stream: true });
-                        const lines = buffer.split('\n');
-                        buffer = lines.pop() || '';
-
-                        for (const line of lines) {
-                            const cleanLine = line.trim();
-                            if (!cleanLine) continue;
-                            try {
-                                const parsed = JSON.parse(cleanLine);
-                                if (parsed.message?.content) {
-                                    fullContent += parsed.message.content;
-                                    onStatus({ streamedText: fullContent, phase: 'streaming' });
-                                }
-                                if (parsed.message?.thought) {
-                                    fullReasoning += parsed.message.thought;
-                                    onStatus({ streamedReasoning: fullReasoning, phase: 'streaming' });
-                                }
-                                if (parsed.message?.tool_calls) {
-                                    toolCalls = [...toolCalls, ...parsed.message.tool_calls];
-                                }
-                            } catch { }
-                        }
-                    }
-                }
-                return { content: fullContent, toolCalls, reasoning: fullReasoning };
+        const providerInstance = ProviderFactory.create(provider, options);
+        
+        try {
+            return await providerInstance.streamRequest(messages);
+        } catch (err: any) {
+            // Polimorfismo: El proveedor decide si el error amerita un fallback a texto
+            if (useTools && modelSupportsNativeTools && providerInstance.shouldFallback(err)) {
+                log('warn', `El modelo ${config.model} reportó un error con herramientas nativas. Activando fallback a extracción de texto.`);
+                modelSupportsNativeTools = false;
+                return streamModelRequest(messages, useTools);
             }
-        } else if (provider === 'groq') {
-            const body: any = {
-                model: config.model,
-                messages: messages.map(m => {
-                    const imageAttachments = m.attachments?.filter((a: any) => a.type.startsWith('image/')) || [];
-                    if (imageAttachments.length > 0) {
-                        const contentBlocks: any[] = [{ type: 'text', text: m.content || '' }];
-                        imageAttachments.forEach((img: any) => {
-                            contentBlocks.push({
-                                type: 'image_url',
-                                image_url: { url: img.data }
-                            });
-                        });
-                        return { role: m.role, content: contentBlocks };
-                    }
-                    return { role: m.role, content: m.content || '' };
-                }),
-                stream: true,
-                temperature: config.temperature,
-            };
-
-            if (useTools && modelSupportsNativeTools) body.tools = tools;
-
-            if (isElectronProxy) {
-                let fullContent = '';
-                let fullReasoning = '';
-                let toolCalls: any[] = [];
-                let buffer = '';
-
-                try {
-                    await streamViaProxy({
-                        provider: 'groq',
-                        model: config.model,
-                        body,
-                        abortSignal,
-                        onChunk: (raw) => {
-                            buffer += raw;
-                            const lines = buffer.split('\n');
-                            buffer = lines.pop() || '';
-                            for (const line of lines) {
-                                const cleanLine = line.trim();
-                                if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
-                                const data = cleanLine.slice(6);
-                                if (data === '[DONE]') continue;
-                                try {
-                                    const parsed = JSON.parse(data);
-                                    const content = parsed.choices?.[0]?.delta?.content;
-                                    const reasoning = parsed.choices?.[0]?.delta?.reasoning_content;
-                                    if (content) {
-                                        fullContent += content;
-                                        onStatus({ streamedText: fullContent, phase: 'streaming' });
-                                    }
-                                    if (reasoning) {
-                                        fullReasoning += reasoning;
-                                        onStatus({ streamedReasoning: fullReasoning, phase: 'streaming' });
-                                    }
-                                    if (parsed.choices?.[0]?.delta?.tool_calls) {
-                                        toolCalls = [...toolCalls, ...parsed.choices[0].delta.tool_calls];
-                                    }
-                                } catch { }
-                            }
-                        }
-                    });
-                } catch (err: any) {
-                    if (err.message?.includes('HTTP 400') && useTools && modelSupportsNativeTools) {
-                        log('warn', 'Este modelo está siendo optimizado para el llamado y uso de herramientas');
-                        modelSupportsNativeTools = false;
-                        return streamModelRequest(messages, false);
-                    }
-                    throw err;
-                }
-                return { content: fullContent, toolCalls, reasoning: fullReasoning };
-            } else {
-                const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${config.apiKeys.groq}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(body),
-                    signal: abortSignal,
-                });
-
-                if ((response.status === 400 || response.status === 422) && useTools && modelSupportsNativeTools) {
-                    log('warn', 'Este modelo está siendo optimizado para el llamado y uso de herramientas');
-                    modelSupportsNativeTools = false;
-                    return streamModelRequest(messages, false);
-                }
-
-                if (!response.ok) {
-                    const err = await response.json().catch(() => ({}));
-                    throw new Error(err.error?.message || `Groq HTTP ${response.status}`);
-                }
-
-                const reader = response.body?.getReader();
-                const decoder = new TextDecoder();
-                let fullContent = '';
-                let fullReasoning = '';
-                let toolCalls: any[] = [];
-                let buffer = '';
-
-                if (reader) {
-                    while (true) {
-                        if (abortSignal.aborted) throw new DOMException('Aborted', 'AbortError');
-                        const { done, value } = await reader.read();
-                        if (done) break;
-
-                        buffer += decoder.decode(value, { stream: true });
-                        const lines = buffer.split('\n');
-                        buffer = lines.pop() || '';
-
-                        for (const line of lines) {
-                            const cleanLine = line.trim();
-                            if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
-                            const data = cleanLine.slice(6);
-                            if (data === '[DONE]') continue;
-                            try {
-                                const parsed = JSON.parse(data);
-                                const content = parsed.choices?.[0]?.delta?.content;
-                                const reasoning = parsed.choices?.[0]?.delta?.reasoning_content;
-                                if (content) {
-                                    fullContent += content;
-                                    onStatus({ streamedText: fullContent, phase: 'streaming' });
-                                }
-                                if (reasoning) {
-                                    fullReasoning += reasoning;
-                                    onStatus({ streamedReasoning: fullReasoning, phase: 'streaming' });
-                                }
-                                if (parsed.choices?.[0]?.delta?.tool_calls) {
-                                    toolCalls = [...toolCalls, ...parsed.choices[0].delta.tool_calls];
-                                }
-                            } catch { }
-                        }
-                    }
-                }
-                return { content: fullContent, toolCalls, reasoning: fullReasoning };
-            }
-        } else if (provider === 'zai') {
-            const body: any = {
-                model: config.model,
-                messages: messages.map(m => {
-                    const imageAttachments = m.attachments?.filter((a: any) => a.type.startsWith('image/')) || [];
-                    if (imageAttachments.length > 0) {
-                        const contentBlocks: any[] = [{ type: 'text', text: m.content || '' }];
-                        imageAttachments.forEach((img: any) => {
-                            contentBlocks.push({
-                                type: 'image_url',
-                                image_url: { url: img.data }
-                            });
-                        });
-                        return { role: m.role, content: contentBlocks };
-                    }
-                    return { role: m.role, content: m.content || '' };
-                }),
-                stream: true,
-                temperature: config.temperature,
-            };
-
-            if (useTools && modelSupportsNativeTools) body.tools = tools;
-
-            if (isElectronProxy) {
-                let fullContent = '';
-                let fullReasoning = '';
-                let toolCalls: any[] = [];
-                let buffer = '';
-
-                try {
-                    await streamViaProxy({
-                        provider: 'zai',
-                        model: config.model,
-                        body,
-                        abortSignal,
-                        onChunk: (raw) => {
-                            buffer += raw;
-                            const lines = buffer.split('\n');
-                            buffer = lines.pop() || '';
-                            for (const line of lines) {
-                                const cleanLine = line.trim();
-                                if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
-                                const data = cleanLine.slice(6);
-                                if (data === '[DONE]') continue;
-                                try {
-                                    const parsed = JSON.parse(data);
-                                    const content = parsed.choices?.[0]?.delta?.content;
-                                    const reasoning = parsed.choices?.[0]?.delta?.reasoning_content;
-                                    if (content) {
-                                        fullContent += content;
-                                        onStatus({ streamedText: fullContent, phase: 'streaming' });
-                                    }
-                                    if (reasoning) {
-                                        fullReasoning += reasoning;
-                                        onStatus({ streamedReasoning: fullReasoning, phase: 'streaming' });
-                                    }
-                                    if (parsed.choices?.[0]?.delta?.tool_calls) {
-                                        toolCalls = [...toolCalls, ...parsed.choices[0].delta.tool_calls];
-                                    }
-                                } catch { }
-                            }
-                        }
-                    });
-                } catch (err: any) {
-                    if (err.message?.includes('HTTP 400') && useTools && modelSupportsNativeTools) {
-                        log('warn', 'Este modelo está siendo optimizado para el llamado y uso de herramientas');
-                        modelSupportsNativeTools = false;
-                        return streamModelRequest(messages, false);
-                    }
-                    throw err;
-                }
-                return { content: fullContent, toolCalls, reasoning: fullReasoning };
-            } else {
-                const response = await fetch('https://api.z.ai/api/coding/paas/v4/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${config.apiKeys.zai}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(body),
-                    signal: abortSignal,
-                });
-
-                if (!response.ok) {
-                    const err = await response.json().catch(() => ({}));
-                    throw new Error(err.error?.message || `Z.AI HTTP ${response.status}`);
-                }
-
-                const reader = response.body?.getReader();
-                const decoder = new TextDecoder();
-                let fullContent = '';
-                let fullReasoning = '';
-                let toolCalls: any[] = [];
-                let buffer = '';
-
-                if (reader) {
-                    while (true) {
-                        if (abortSignal.aborted) throw new DOMException('Aborted', 'AbortError');
-                        const { done, value } = await reader.read();
-                        if (done) break;
-
-                        buffer += decoder.decode(value, { stream: true });
-                        const lines = buffer.split('\n');
-                        buffer = lines.pop() || '';
-
-                        for (const line of lines) {
-                            const cleanLine = line.trim();
-                            if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
-                            const data = cleanLine.slice(6);
-                            if (data === '[DONE]') continue;
-                            try {
-                                const parsed = JSON.parse(data);
-                                const content = parsed.choices?.[0]?.delta?.content;
-                                if (content) {
-                                    fullContent += content;
-                                    onStatus({ streamedText: fullContent, phase: 'streaming' });
-                                }
-                                if (parsed.choices?.[0]?.delta?.tool_calls) {
-                                    toolCalls = [...toolCalls, ...parsed.choices[0].delta.tool_calls];
-                                }
-                            } catch { }
-                        }
-                    }
-                }
-                return { content: fullContent, toolCalls, reasoning: fullReasoning };
-            }
-        } else if (provider === 'gemini') {
-            const isGemma = config.model.toLowerCase().includes('gemma');
-            const isThinkingModel = config.model.toLowerCase().includes('thinking');
-            const systemPromptContent = messages.find(m => m.role === 'system')?.content || '';
-
-            const consolidatedHistory: any[] = [];
-            for (const m of messages.filter(msg => msg.role !== 'system')) {
-                const role = m.role === 'assistant' ? 'model' : (m.role === 'tool' ? 'user' : m.role);
-                const parts: any[] = [];
-
-                if (m.role === 'tool' && modelSupportsNativeTools) {
-                    // Native Tool Response for Gemini
-                    parts.push({
-                        functionResponse: {
-                            name: (m as any).tool_name || 'unknown_tool',
-                            response: { content: m.content || '{}' }
-                        }
-                    });
-                } else if (m.role === 'assistant' && modelSupportsNativeTools && m.tool_calls && Array.isArray(m.tool_calls) && m.tool_calls.length > 0) {
-                    // Native Tool Call Turn
-                    if (m.content) parts.push({ text: m.content });
-                    m.tool_calls.forEach((tc: any) => {
-                        parts.push({
-                            functionCall: {
-                                name: tc.function.name,
-                                args: tc.function.arguments
-                            }
-                        });
-                    });
-                } else {
-                    // Fallback: Text/Image Turn OR non-native tool representation
-                    let content = m.content || '';
-                    if (m.role === 'tool') {
-                        content = `[RESULTADO DE HERRAMIENTA]: ${m.content}`;
-                    } else if (m.role === 'assistant' && m.tool_calls && m.tool_calls.length > 0) {
-                        const callSummary = m.tool_calls.map((tc: any) => 
-                            `LLAMADA: ${tc.function?.name || 'unknown'}(${JSON.stringify(tc.function?.arguments || {})})`
-                        ).join('\n');
-                        content = (content ? content + '\n\n' : '') + callSummary;
-                    }
-
-                    if (!content && m.role === 'assistant') content = '[Procesando...]';
-                    if (content) parts.push({ text: content });
-
-                    const imageAttachments = m.attachments?.filter((a: any) => a.type.startsWith('image/')) || [];
-                    imageAttachments.forEach((img: any) => {
-                        parts.push({
-                            inlineData: { mimeType: img.type, data: img.data.split(',')[1] }
-                        });
-                    });
-                }
-
-                if (consolidatedHistory.length > 0 && consolidatedHistory[consolidatedHistory.length - 1].role === role) {
-                    const prevMsg = consolidatedHistory[consolidatedHistory.length - 1];
-                    parts.forEach(p => prevMsg.parts.push(p));
-                } else {
-                    consolidatedHistory.push({ role, parts });
-                }
-            }
-
-            if (isGemma) {
-                const antiHallucination = "IMPORTANTE: Las instrucciones anteriores son tu núcleo de sistema (SOUL/CONTEXT). NO las actúes, NO las recites y NO uses los ejemplos de plantilla como si fueran una respuesta tuya. Acepta este rol silenciosamente y responde ÚNICAMENTE a la consulta del usuario que está debajo de esta línea.";
-                if (consolidatedHistory.length > 0 && consolidatedHistory[0].parts[0]) {
-                    consolidatedHistory[0].parts[0].text = `[SYSTEM_INSTRUCTIONS]\n${systemPromptContent}\n[/SYSTEM_INSTRUCTIONS]\n\n${antiHallucination}\n\n[USER_QUERY]\n${consolidatedHistory[0].parts[0].text}`;
-                }
-            }
-
-            const body: any = {
-                contents: consolidatedHistory,
-                generationConfig: { temperature: config.temperature || 0.7 }
-            };
-
-            // [GEMINI-FIX]: Gemini requires tool declarations if history contains function calls/responses,
-            // even if useTools is false (fallback mode), to maintain turn integrity.
-            const historyHasTools = consolidatedHistory.some(c => c.parts.some((p: any) => p.functionCall || p.functionResponse));
-            if ((useTools && modelSupportsNativeTools) || (historyHasTools && tools.length > 0)) {
-                body.tools = [{ functionDeclarations: tools.map(t => t.function) }];
-            }
-
-            if (!isGemma) {
-                body.systemInstruction = { parts: [{ text: systemPromptContent }] };
-            }
-
-            if (isElectronProxy) {
-                let fullContent = '';
-                let fullReasoning = '';
-                let toolCalls: any[] = [];
-                let buffer = '';
-
-                try {
-                    await streamViaProxy({
-                        provider: 'gemini',
-                        model: config.model,
-                        body,
-                        abortSignal,
-                        onChunk: (raw) => {
-                            buffer += raw;
-                            const lines = buffer.split('\n');
-                            buffer = lines.pop() || '';
-                            for (const line of lines) {
-                                const cleanLine = line.trim();
-                                if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
-                                try {
-                                    const parsed = JSON.parse(cleanLine.slice(6));
-                                    const parts = parsed.candidates?.[0]?.content?.parts;
-                                    if (parts && Array.isArray(parts)) {
-                                        parts.forEach((part: any) => {
-                                            if (part.text) {
-                                                fullContent += part.text;
-                                            }
-                                            if (part.thought || part.thought_content) {
-                                                fullReasoning += (part.thought || part.thought_content);
-                                                onStatus({ streamedReasoning: fullReasoning, phase: 'streaming' });
-                                            }
-                                            if (part.functionCall) {
-                                                toolCalls.push({
-                                                    id: 'tc-' + Math.random().toString(36).slice(2, 9),
-                                                    type: 'function',
-                                                    function: {
-                                                        name: part.functionCall.name,
-                                                        arguments: part.functionCall.args
-                                                    }
-                                                });
-                                            }
-                                        });
-                                        onStatus({ streamedText: fullContent, phase: 'streaming' });
-                                    }
-                                } catch { }
-                            }
-                        }
-                    });
-                } catch (err: any) {
-                    if ((err.message?.includes('400') || err.message?.includes('INVALID_ARGUMENT')) && useTools && modelSupportsNativeTools) {
-                        log('warn', 'Este modelo está siendo optimizado para el llamado y uso de herramientas');
-                        modelSupportsNativeTools = false;
-                        return streamModelRequest(messages, false);
-                    }
-                    throw err;
-                }
-                return { content: fullContent, toolCalls, reasoning: fullReasoning };
-            } else {
-                const response = await fetch(
-                    `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:streamGenerateContent?alt=sse&key=${config.apiKeys.gemini}`,
-                    {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(body),
-                        signal: abortSignal,
-                    }
-                );
-
-                if ((response.status === 400 || response.status === 422) && useTools && modelSupportsNativeTools) {
-                    log('warn', 'Este modelo está siendo optimizado para el llamado y uso de herramientas');
-                    modelSupportsNativeTools = false;
-                    return streamModelRequest(messages, false);
-                }
-
-                if (!response.ok) {
-                    const err = await response.json().catch(() => ({}));
-                    throw new Error(err.error?.message || `Gemini HTTP ${response.status}`);
-                }
-
-                let fullContent = '';
-                let fullReasoning = '';
-                let toolCalls: any[] = [];
-                let buffer = '';
-
-                const reader = response.body?.getReader();
-                const decoder = new TextDecoder();
-
-                if (reader) {
-                    while (true) {
-                        if (abortSignal.aborted) throw new DOMException('Aborted', 'AbortError');
-                        const { done, value } = await reader.read();
-                        if (done) break;
-
-                        buffer += decoder.decode(value, { stream: true });
-                        const lines = buffer.split('\n');
-                        buffer = lines.pop() || '';
-
-                        for (const line of lines) {
-                            const cleanLine = line.trim();
-                            if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
-                            try {
-                                const parsed = JSON.parse(cleanLine.slice(6));
-                                const parts = parsed.candidates?.[0]?.content?.parts;
-                                if (parts && Array.isArray(parts)) {
-                                    parts.forEach((part: any) => {
-                                        if (part.text) {
-                                            fullContent += part.text;
-                                        }
-                                        if (part.thought || part.thought_content) {
-                                            fullReasoning += (part.thought || part.thought_content);
-                                            onStatus({ streamedReasoning: fullReasoning, phase: 'streaming' });
-                                        }
-                                        if (part.functionCall) {
-                                            toolCalls.push({
-                                                id: 'tc-' + Math.random().toString(36).slice(2, 9),
-                                                type: 'function',
-                                                function: {
-                                                    name: part.functionCall.name,
-                                                    arguments: part.functionCall.args
-                                                }
-                                            });
-                                        }
-                                    });
-                                    onStatus({ streamedText: fullContent, phase: 'streaming' });
-                                }
-                            } catch { }
-                        }
-                    }
-                }
-                return { content: fullContent, toolCalls, reasoning: fullReasoning };
-            }
+            throw err;
         }
-
-        throw new Error(`Unsupported provider for Agent Loop: ${provider}`);
     }
 
     // OPTIMIZATION: Prepare historical context by summarizing past tool executions.
@@ -1409,6 +832,44 @@ export async function sendAgentMessage(
         }, {} as Record<string, any>);
         return `${toolName}|${JSON.stringify(sortedArgs)}`;
     }
+
+    /**
+ * Segments a text into thought and narrative blocks, detecting <think> tags.
+ */
+function segmentThoughtsAndNarrative(text: string, signatureRegex: RegExp): { type: 'thought' | 'answer', content: string }[] {
+    if (!text) return [];
+    
+    const results: { type: 'thought' | 'answer', content: string }[] = [];
+    
+    // Pattern to match <think> blocks
+    const thinkRegex = /<think>([\s\S]*?)<\/think>/gi;
+    let lastIdx = 0;
+    let match;
+    
+    while ((match = thinkRegex.exec(text)) !== null) {
+        // Text before the think block
+        const before = text.substring(lastIdx, match.index);
+        const cleanedBefore = cleanTechnicalNoise(before, signatureRegex);
+        if (cleanedBefore) results.push({ type: 'answer', content: cleanedBefore });
+        
+        // The think block itself
+        const thinkContent = match[1].trim();
+        if (thinkContent) results.push({ type: 'thought', content: thinkContent });
+        
+        lastIdx = thinkRegex.lastIndex;
+    }
+    
+    // Remaining text after last think block
+    const remaining = text.substring(lastIdx);
+    const cleanedRemaining = cleanTechnicalNoise(remaining, signatureRegex);
+    if (cleanedRemaining) {
+        // If it's the only block and it looks like reasoning (very short, protocol markers), mark it as thought? 
+        // No, keep it as answer but let the redundancy check handle it later.
+        results.push({ type: 'answer', content: cleanedRemaining });
+    }
+    
+    return results;
+}
 
     const MAX_RETRIES = 10;
     let iterations = 0;
@@ -1804,7 +1265,7 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
                 const hasSubstantialText = (content?.length || 0) > 15 || (nativeReasoning?.length || 0) > 15;
 
                 if (isJustSignature || hasSubstantialText) {
-                    onChunk(content || '', true, allBlocks);
+                    onChunk(content || '', false, allBlocks);
                     if (onFinalRawHistory) {
                         onFinalRawHistory([...agentMessages]);
                         memorySaved = true;
@@ -1838,7 +1299,7 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
                     continue;
                 }
             } else {
-                onChunk(content || '', true, allBlocks);
+                onChunk(content || '', false, allBlocks);
                 if (onFinalRawHistory) onFinalRawHistory([...agentMessages]);
                 localOnStatus({ phase: 'idle', elapsedMs: Date.now() - startTime });
                 break;
@@ -2301,43 +1762,49 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
         if (finalCallToProcess && !abortSignal.aborted && !turnHasFailure) {
             hasFinalAnswer = true;
             const args = finalCallToProcess.function.arguments;
-            // Canonical keys handled by normalizeArgKeys in toolCallNormalizer
             const textRaw = args.text || 'Tarea completada exitosamente.';
             const reasoning = args.reasoning || '';
 
-            // REDUNDANCY CHECK: If we have an existing block that matches textRaw, remove it to avoid duplication
-            const redundantIdx = mergedIterationBlocks.findIndex(b =>
-                (b.type === 'thought' || b.type === 'answer') &&
-                (b.content.trim() === textRaw.trim() || textRaw.trim().includes(b.content.trim()) || b.content.trim().includes(textRaw.trim()))
-            );
-            if (redundantIdx !== -1 && textRaw.length > 15) {
-                mergedIterationBlocks.splice(redundantIdx, 1);
-            }
+            // DYNAMIC DEDUPLICATION: Remove all blocks that are redundant with the final content
+            // We search in the entire 'allBlocks' array to prune previous segments.
+            allBlocks = allBlocks.filter(b => {
+                if (b.type !== 'thought' && b.type !== 'answer') return true;
+                const content = b.content.trim();
+                if (content.length < 10) return true; // Keep short utilitarian markers
+
+                // If block content is a subset of textRaw or reasoning, remove it
+                const isSubsetText = textRaw.includes(content);
+                const isSubsetReasoning = reasoning && reasoning.includes(content);
+                const isSupersetText = content.includes(textRaw);
+
+                const isRedundant = isSubsetText || isSubsetReasoning || (isSupersetText && textRaw.length > 50);
+                return !isRedundant;
+            });
 
             const text = formatFinalResponse(textRaw);
             let sources = args.sources || [];
 
-            // AUTO-SYNERGY: If the model didn't provide sources, we find them
             if (sources.length === 0) {
                 sources = autoExtractSources(actionHistory, agentMessages);
             }
 
+            // RENDERING: We reconstruct the turn blocks for the final answer
+            // 1. Add reasoning as a clean THOUGHT block (avoiding blockquotes)
+            if (reasoning && reasoning.trim()) {
+                allBlocks.push({ type: 'thought', content: reasoning.trim() });
+            }
+
+            // 2. Add the authoritative answer block
             let finalContent = text;
-
-            // Add reasoning if provided as a discrete parameter
-            if (reasoning) {
-                finalContent = `> **Conclusión:** ${reasoning}\n\n${finalContent}`;
-            }
-
             if (sources.length > 0) {
-                finalContent += '\n\n---\n**🧠 Bibliografía y Contexto:**\n' + sources.map((s: string) => `· ${s}`).join('\n');
+                const limitedSources = sources.slice(0, 10);
+                const moreCount = sources.length - 10;
+                finalContent += '\n\n---\n**🧠 Bibliografía y Contexto:**\n' + limitedSources.map((s: string) => `· ${s}`).join('\n');
+                if (moreCount > 0) finalContent += `\n*... y ${moreCount} fuentes más.*`;
             }
-
-            // RENDERING: Update blocks for immediate UI display
             allBlocks.push({ type: 'answer', content: finalContent });
 
-            // PERSISTENCE: 
-            // 1. Maintain tool-message integrity (Assistant Call -> Tool Response)
+            // PERSISTENCE Update
             agentMessages.push({ 
                 role: 'tool', 
                 tool_name: 'final_answer',
@@ -2346,9 +1813,9 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
                 tool_args: finalCallToProcess.function.arguments
             });
 
-            // 2. Overwrite content in the message history so it's not "empty" or just a tool call
             const lastAssistant = [...agentMessages].reverse().find(m => m.role === 'assistant');
             if (lastAssistant) {
+                // For persistence, we store the full content (text + bibliog)
                 lastAssistant.content = finalContent;
             }
 
@@ -2368,8 +1835,8 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
 
         onChunk(content, true, allBlocks);
         onStatus({ rawMessages: [...agentMessages] });
-        }
-    } catch (err) {
+    }
+} catch (err) {
         console.error("[Agent Loop Error]", err);
         log('error', `Agent Loop Error: ${err instanceof Error ? err.message : String(err)}`);
         throw err;

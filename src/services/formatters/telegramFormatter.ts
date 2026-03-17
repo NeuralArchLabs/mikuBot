@@ -44,17 +44,30 @@ function formatTelegramTable(lines: string[]): string {
     }
 
     // IF table is wide, use a structured List (Vertical Cards)
-    return data.map((row, rowIdx) => {
+    // Limit to top 5 results to avoid exceeding Telegram's 4096 char limit
+    const truncatedData = data.slice(0, 5);
+    const hasMore = data.length > 5;
+
+    let resultArr = truncatedData.map((row, rowIdx) => {
         const title = row[0] ? `<b>📌 ${row[0].toUpperCase()}</b>` : `<b>🔹 ELEMENTO ${rowIdx + 1}</b>`;
         const details = headers.map((h, i) => {
             if (i === 0) return null; // Skip first col as it's the title
             const isLast = i === headers.length - 1;
             const branch = isLast ? '└──' : '├──';
-            return `${branch} <i>${h}:</i> ${row[i] || 'N/A'}`;
+            // Truncate individual cell content if too long
+            const content = row[i] || 'N/A';
+            const cleanContent = content.length > 300 ? content.substring(0, 297) + '...' : content;
+            return `${branch} <i>${h}:</i> ${cleanContent}`;
         }).filter(Boolean).join('\n');
         
         return `${title}\n${details}`;
-    }).join('\n\n');
+    });
+
+    if (hasMore) {
+        resultArr.push(`<i>... y ${data.length - 5} resultados más (demasiado largo para Telegram).</i>`);
+    }
+
+    return resultArr.join('\n\n');
 }
 
 export function formatTelegramResponse(rawText: string): string {
@@ -92,7 +105,10 @@ export function formatTelegramResponse(rawText: string): string {
     if (inTable && tableLines.length > 0) outputLines.push(formatTelegramTable(tableLines));
     text = outputLines.join('\n');
 
-    // 2. Escape HTML special characters but keep allowed tags
+    // 2. Clear thinking blocks for Telegram (prevents "hidden" length issues)
+    text = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+
+    // 3. Escape HTML special characters but keep allowed tags
     text = text
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -111,6 +127,26 @@ export function formatTelegramResponse(rawText: string): string {
     // Bullet points (Standardize)
     text = text.replace(/^[\*\-] (.*)$/gm, '• $1');
     text = text.replace(/^(\d+)\. (.*)$/gm, '$1. $2');
+
+    // 4. Hard Limit Check (Telegram limit is 4096 chars)
+    // We target 4000 to be safe with HTML overhead
+    if (text.length > 4000) {
+        // Find a safe spot to truncate (avoiding breaking HTML tags if possible)
+        let truncated = text.substring(0, 3950);
+        
+        // Ensure we don't leave an unclosed tag at the very end
+        const tags = ['</b>', '</i>', '</code>', '</pre>', '</a>'];
+        tags.forEach(tag => {
+            const openTag = tag.replace('/', '');
+            const openCount = (truncated.match(new RegExp(openTag, 'g')) || []).length;
+            const closeCount = (truncated.match(new RegExp(tag, 'g')) || []).length;
+            if (openCount > closeCount) {
+                truncated += tag;
+            }
+        });
+
+        text = truncated + '\n\n<i>[Mensaje truncado por límite de Telegram...]</i>';
+    }
 
     return text.trim();
 }

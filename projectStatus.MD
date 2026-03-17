@@ -128,7 +128,7 @@ electron/
 | 19 | **Ruido en Scheduler Messaging** | ✅ Done | v1.9.1: Mensajes centrados, colapsados y con código de colores (Naranja/Índigo). |
 | 20 | **Seguimiento Agéntico (Amnesia)** | ✅ Done | v2.0.0: Implementado motor de auto-marcado turn-by-turn con pre-ticking de borrado y soporte para sinónimos en español. |
 | 21 | **Inestabilidad de Patch File** | ✅ Done | v2.0.0: Integrado `flexibleIncludes` para ignorar diferencias irrelevantes de caracteres (backticks, espacios) en parches. |
-| 22 | **Gestión de Librería Limitada** | ✅ Done | v2.1.0: Añadido **Renombrado Inline**, mejorada visibilidad de borrado y alineación visual de cabeceras. |
+| 22 | **Gestión de Librería Limitada** | ✅ Done | v2.1.0: Implementado **Renombrado Universal** (Markdown safe) en todos los targets, mejorada visibilidad de borrado y alineación visual de cabeceras. |
 | 23 | **Acceso Lento a Importación** | ✅ Done | v2.1.0: Botones de **Import/New** inyectados directamente en el header del Session Manager. |
 | 24 | **Conflicto Responsive Modal** | ✅ Done | v2.1.0: Aislamiento total de lógica CSS entre Sidebar (Grid/Hover) y Modal (Flex estable). |
 

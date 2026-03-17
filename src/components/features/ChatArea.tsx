@@ -527,7 +527,7 @@ export const ChatArea = ({
                                                                 return <MarkdownRenderer key={idx} content={block.content} />;
                                                             } else if (block.type === 'thought' || block.type === 'text') {
                                                                 const hasTools = msg.blocks!.some(b => b.type === 'tool_call');
-                                                                const forceCollapse = isOld || (hasTools && !debugMode);
+                                                                const forceCollapse = isOld || (hasTools && !debugMode) || block.type === 'thought';
                                                                 return <CollapsibleTextBlock key={idx} content={block.content} forceCollapsed={forceCollapse} isThought={block.type === 'thought'} />;
                                                             } else if (block.type === 'tool_call') {
                                                                 return <ToolBlock key={idx} block={block} isOld={isOld} />;
