@@ -32,24 +32,44 @@ export function formatFinalResponse(rawText: any): string {
     // 4. Clean up trailing whitespace on each line and handle stray spaces between newlines
     formatted = formatted.split('\n').map(line => line.trimEnd()).join('\n');
 
-    // 5. Collapse excessive vertical space (more than 2 newlines -> 2 newlines)
-    // This now handles cases with spaces between the newlines (e.g., \n  \n\n)
-    formatted = formatted.replace(/\n\s*\n\s*\n+/g, '\n\n');
+    // 5. Suppress literal "Tool Calls", role tags, and technical noise
+    formatted = formatted.replace(/Tool Calls:\s*\[[\s\S]*?\]/gi, '');
+    formatted = formatted.replace(/(?:^|\n)Tool Calls[:\s]*/gi, '\n');
+    formatted = formatted.replace(/\[\s*\{\s*"id":[\s\S]*?\}\s*\]/gi, '');
+    formatted = formatted.replace(/^(?:\[assistant\]|\[tool\]|\[user\]|\[system\])[:\s]*/gim, '');
+    formatted = formatted.replace(/^(?:\{"success":true,"data":.*\}|\[tool\].*)$/gim, '');
 
-    // 6. Ensure exactly one blank line before lists or headers if they are preceded by text
-    // Fixed: Avoid adding newlines if already present
-    formatted = formatted.replace(/([^\n])\n(?=[-*+]\s|#|\d+\.)/g, '$1\n\n');
-
-    // 7. Filter out noise artifacts (like trailing *** or ---) that some models add
-    formatted = formatted.split('\n')
-        .filter(line => {
-            const trimmed = line.trim();
-            if (trimmed === '***' || trimmed === '---' || (trimmed.length === 1 && (trimmed === '*' || trimmed === '-' || trimmed === '_'))) {
-                return false;
+    // 6. TABLE HEALING: If a table starts with a separator line (---|---), prepend a generic header
+    // to ensure valid markdown rendering.
+    const lines = formatted.split('\n');
+    const healedLines: string[] = [];
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        // Detects common table separator patterns (e.g. ---|---|--- or :---|---:)
+        const isSeparator = line.includes('|') && /^[|\s\-:]{3,}$/.test(line);
+        
+        if (isSeparator) {
+            const prev = healedLines[healedLines.length - 1]?.trim() || '';
+            const isPrevTableRow = prev.includes('|') && !/^[|\s\-:]{3,}$/.test(prev);
+            
+            if (!isPrevTableRow) {
+                healedLines.push('| Descripción | Estado | Resultado |'); // Prepend Header
             }
-            return true;
-        })
-        .join('\n');
+        }
+        healedLines.push(lines[i]);
+    }
+    formatted = healedLines.join('\n');
+
+    // 9. Ensure thematic breaks (---) have blank lines around them to render correctly as HR
+    formatted = formatted.replace(/([^\n])\n(-{3,}|_{3,}|={3,})\n/g, '$1\n\n$2\n\n');
+    formatted = formatted.replace(/\n(-{3,}|_{3,}|={3,})\n([^\n])/g, '\n\n$1\n\n$2');
+
+    // 10. Filter out thematic noise (strip leading/trailing separators)
+    formatted = formatted.replace(/^\s*[-*=_]{3,}\s*\n/i, '');
+    formatted = formatted.replace(/\n\s*[-*=_]{3,}\s*$/i, '');
+
+    // 11. Refine bibliography spacing
+    formatted = formatted.replace(/\n*\n---\n\n\*\*🧠 Bibliografía y Contexto:\*\*/g, '\n\n---\n\n**🧠 Bibliografía y Contexto:**');
 
     return formatted.trim();
 }

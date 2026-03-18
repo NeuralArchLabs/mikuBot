@@ -2,7 +2,7 @@
  * Core Agent Logic
  * Path: src/services/core/agent.ts
  */
-import { ToolCall, ToolResult, ToolDefinition, AppConfig, AgentStatus, AgentLogEntry, FileTarget, ApprovalMode } from '../../types';
+import { ToolCall, ToolResult, ToolDefinition, AppConfig, AgentStatus, AgentLogEntry, FileTarget, ApprovalMode, MessageBlock } from '../../types';
 import { PROTECTED_CORE_FILES, CONSOLE_ALLOWED_COMMANDS, CONSOLE_BLOCKED_PATTERNS } from '../../constants';
 import { validateToolArgs, safeFetch } from '../../utils';
 import { recoverToolCallsFromText, normalizeRawToolCall, RecoveredCall } from '../formatters/toolCallNormalizer';
@@ -640,7 +640,13 @@ function cleanTechnicalNoise(text: string, signatureRegex: RegExp): string {
         /^(?:Thinking Process|Neural Flow|Neural Core|Proceso de Razonamiento|Active Reasoning|Razonamiento Activo|Flujo Neural|Core de Miku|Razonamiento)[\s\S]*?(?={|\[|{{)/i,
         /^\s*(?:Active Reasoning|Razonamiento Activo|Razonamiento|Neural Core|Miku Core|READY|SUCCESS|ERROR|FAILURE|WEB_SEARCH|SEARCHING|ANALYZING|DONE|COMPLETED)\s*$/gim,
         /\[[x\s]\]\s*@?(?:CORE|EXTRA|WORKSPACE|TOOLS|LIBRARY)\/[^\s]*/gi,
-        /^(?:tool_call|web_search|read_file|update_file|patch_file|delete_file|run_console|add_scheduled_task|final_answer|list_files|search_files|read_url)[:\s]*/gim
+        /^(?:tool_call|web_search|read_file|update_file|patch_file|delete_file|run_console|add_scheduled_task|final_answer|list_files|search_files|read_url)[:\s]*/gim,
+        /Tool Calls:\s*\[[\s\S]*?\]/gi, 
+        /(?:^|\n)Tool Calls[:\s]*/gi,
+        /\[\s*\{\s*"id":[\s\S]*?\}\s*\]/gi,
+        /^(?:\[assistant\]|\[tool\]|\[user\]|\[system\])[:\s]*/gim,
+        /^\s*[-*=_]{3,}\s*\n/i, // Strip leading separator line
+        /\n\s*[-*=_]{3,}\s*$/i // Strip trailing separator line
     ];
     noisePatterns.forEach(p => s = s.replace(p, ''));
 
@@ -654,10 +660,38 @@ function cleanTechnicalNoise(text: string, signatureRegex: RegExp): string {
 /**
  * Segments a text into thought and narrative blocks, preserving <think> content.
  */
-function segmentThoughtsAndNarrative(text: string, signatureRegex: RegExp): { type: 'thought' | 'answer', content: string }[] {
-    const cleaned = cleanTechnicalNoise(text, signatureRegex);
-    if (!cleaned) return [];
-    return [{ type: 'answer', content: cleaned }];
+function segmentThoughtsAndNarrative(text: string, signatureRegex: RegExp): MessageBlock[] {
+    if (!text) return [];
+    
+    // Check for <think> tags
+    const thinkRegex = /<think>([\s\S]*?)(?:<\/think>|$)/gi;
+    const blocks: MessageBlock[] = [];
+    let lastIdx = 0;
+    let match;
+
+    while ((match = thinkRegex.exec(text)) !== null) {
+        // Text before the <think> tag
+        const preamble = text.substring(lastIdx, match.index);
+        if (preamble.trim()) {
+            const cleaned = cleanTechnicalNoise(preamble, signatureRegex);
+            if (cleaned) blocks.push({ type: 'answer', content: cleaned, isFromNarrative: true });
+        }
+        
+        // The thought content itself
+        if (match[1].trim()) {
+            blocks.push({ type: 'thought', content: match[1].trim() });
+        }
+        lastIdx = thinkRegex.lastIndex;
+    }
+
+    // Remaining text after last <think> tag
+    const remaining = text.substring(lastIdx);
+    if (remaining.trim()) {
+        const cleaned = cleanTechnicalNoise(remaining, signatureRegex);
+        if (cleaned) blocks.push({ type: 'answer', content: cleaned, isFromNarrative: true });
+    }
+
+    return blocks;
 }
 
 export async function sendAgentMessage(
@@ -692,18 +726,23 @@ export async function sendAgentMessage(
     };
 
     let modelSupportsNativeTools = true;
-    let allBlocks: any[] = [];
+    let allBlocks: MessageBlock[] = [];
 
     async function streamModelRequest(
         messages: any[],
         useTools: boolean,
+        customOnStatus?: (status: Partial<AgentStatus>) => void
     ): Promise<{ content: string; toolCalls: any[]; reasoning?: string }> {
         const provider = config.provider;
         const isElectronProxy = !!(window as any).electron?.apiStream;
 
         const options: ProviderOptions = {
             config,
-            onStatus,
+            onStatus: customOnStatus || onStatus,
+            onChunk: (chunk: string) => {
+                // Provider internally calls this, but bridgedOnStatus 
+                // in agent.ts will handle the actual UI bridging.
+            },
             abortSignal: abortSignal!,
             useTools: useTools && modelSupportsNativeTools,
             tools,
@@ -719,7 +758,7 @@ export async function sendAgentMessage(
             if (useTools && modelSupportsNativeTools && providerInstance.shouldFallback(err)) {
                 log('warn', `El modelo ${config.model} reportó un error con herramientas nativas. Activando fallback a extracción de texto.`);
                 modelSupportsNativeTools = false;
-                return streamModelRequest(messages, useTools);
+                return streamModelRequest(messages, useTools, customOnStatus);
             }
             throw err;
         }
@@ -833,44 +872,6 @@ export async function sendAgentMessage(
         return `${toolName}|${JSON.stringify(sortedArgs)}`;
     }
 
-    /**
- * Segments a text into thought and narrative blocks, detecting <think> tags.
- */
-function segmentThoughtsAndNarrative(text: string, signatureRegex: RegExp): { type: 'thought' | 'answer', content: string }[] {
-    if (!text) return [];
-    
-    const results: { type: 'thought' | 'answer', content: string }[] = [];
-    
-    // Pattern to match <think> blocks
-    const thinkRegex = /<think>([\s\S]*?)<\/think>/gi;
-    let lastIdx = 0;
-    let match;
-    
-    while ((match = thinkRegex.exec(text)) !== null) {
-        // Text before the think block
-        const before = text.substring(lastIdx, match.index);
-        const cleanedBefore = cleanTechnicalNoise(before, signatureRegex);
-        if (cleanedBefore) results.push({ type: 'answer', content: cleanedBefore });
-        
-        // The think block itself
-        const thinkContent = match[1].trim();
-        if (thinkContent) results.push({ type: 'thought', content: thinkContent });
-        
-        lastIdx = thinkRegex.lastIndex;
-    }
-    
-    // Remaining text after last think block
-    const remaining = text.substring(lastIdx);
-    const cleanedRemaining = cleanTechnicalNoise(remaining, signatureRegex);
-    if (cleanedRemaining) {
-        // If it's the only block and it looks like reasoning (very short, protocol markers), mark it as thought? 
-        // No, keep it as answer but let the redundancy check handle it later.
-        results.push({ type: 'answer', content: cleanedRemaining });
-    }
-    
-    return results;
-}
-
     const MAX_RETRIES = 10;
     let iterations = 0;
     let retries = 0;
@@ -881,9 +882,61 @@ function segmentThoughtsAndNarrative(text: string, signatureRegex: RegExp): { ty
     const missionTrigger = [...historicalContext].reverse().find(m => m.role === 'user')?.content || 'Sin objetivo definido.';
     let lastExecutionFeedback = 'Inicio de misión.';
 
-    // Proxy onStatus to always include feedback for visual synchronization
+    // Proxy onStatus to always include feedback for visual synchronization plus real-time streaming bridge
+    const signatureRegex = /\{\{?[\s\S]*?≈̼\^\.┬\.̼\^≈‿⟆[\s\S]*?\}\}?/;
     const localOnStatus = (status: Partial<AgentStatus>) => {
         onStatus({ ...status, lastExecutionFeedback });
+    };
+
+    let lastStreamUpdate = 0;
+    const bridgedOnStatus = (status: Partial<AgentStatus>) => {
+        localOnStatus(status);
+        
+        // STREAMING BRIDGE: If we are in the streaming phase, update the message bubble in real-time
+        if (status.phase === 'streaming' && (status.streamedText !== undefined || status.streamedReasoning !== undefined)) {
+            const now = Date.now();
+            if (now - lastStreamUpdate > 80) { // Throttled to ~12fps for UI performance
+                lastStreamUpdate = now;
+                
+                // Construct temporary blocks for real-time visualization
+                const tempIterationBlocks: MessageBlock[] = [];
+                
+                // 1. Handle Reasoning (Thought)
+                if (status.streamedReasoning && status.streamedReasoning.trim()) {
+                    tempIterationBlocks.push({ type: 'thought', content: status.streamedReasoning.trim() });
+                }
+                
+                // 2. Handle Narrative Text
+                if (status.streamedText) {
+                    const segmented = segmentThoughtsAndNarrative(status.streamedText, signatureRegex) as MessageBlock[];
+                    
+                    // EARLY-DETECT: If we see final_answer in the stream, treat BEFORE-text as thoughts
+                    const hasFinalInStream = status.streamedText.toLowerCase().includes('final_answer');
+                    if (hasFinalInStream) {
+                        segmented.forEach(b => {
+                            if (b.type === 'answer' && b.isFromNarrative) {
+                                // DE-DUPLICATION: If native reasoning already contains this text, skip converting it
+                                // This prevents double "Active Reasoning" blocks when models echo thoughts in narrative.
+                                const isDuplicate = status.streamedReasoning && 
+                                    (status.streamedReasoning.trim().includes(b.content.trim()) || 
+                                     b.content.trim().includes(status.streamedReasoning.trim()));
+
+                                if (!isDuplicate) {
+                                    b.type = 'thought';
+                                } else {
+                                    // If it is a duplicate, we mark it as empty/ignored to not show it twice
+                                    b.content = ''; 
+                                }
+                            }
+                        });
+                    }
+                    tempIterationBlocks.push(...segmented.filter(b => b.content.trim() !== ''));
+                }
+                
+                // Emit to App.tsx callback immediately
+                onChunk(status.streamedText || '', true, [...allBlocks, ...tempIterationBlocks]);
+            }
+        }
     };
 
     let memorySaved = false;
@@ -1001,7 +1054,7 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
 
         try {
             const messagesForModel = [...agentMessages];
-            const result = await streamModelRequest(messagesForModel, useTextExtraction);
+            const result = await streamModelRequest(messagesForModel, useTextExtraction, bridgedOnStatus);
             content = result.content;
             nativeToolCalls = result.toolCalls;
             nativeReasoning = result.reasoning;
@@ -1009,8 +1062,6 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
             if (err instanceof DOMException && err.name === 'AbortError') return;
             throw err;
         }
-
-        const signatureRegex = /\{\{?[\s\S]*?≈̼\^\.┬\.̼\^≈‿⟆[\s\S]*?\}\}?/;
 
         let finalToolCalls: ToolCall[] = [];
         let positionalCalls: RecoveredCall[] = [];
@@ -1087,7 +1138,7 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
         );
 
         // INTERLEAVED SEGMENTATION: Chronologically interleave text and tool blocks
-        const iterationBlocks: any[] = [];
+        const iterationBlocks: MessageBlock[] = [];
         
         // A0. Add Native Reasoning if present
         if (nativeReasoning && nativeReasoning.trim()) {
@@ -1101,7 +1152,7 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
         
         for (const rc of sortedPosCalls) {
             const rawSegment = (content || '').substring(curIdx, rc.start);
-            const segmentBlocks = segmentThoughtsAndNarrative(rawSegment, signatureRegex);
+            const segmentBlocks = segmentThoughtsAndNarrative(rawSegment, signatureRegex) as MessageBlock[];
             
             segmentBlocks.forEach(b => iterationBlocks.push(b));
 
@@ -1127,10 +1178,9 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
             if (!seenFpForInterleaving.has(fp)) {
                 seenFpForInterleaving.add(fp);
                 if (rc.toolCall.function.name === 'final_answer') {
-                    const finalTxt = args.text || args.respuesta || args.answer || args.content || '';
-                    if (finalTxt) {
-                        iterationBlocks.push({ type: 'answer', content: finalTxt });
-                    }
+                    // Skip adding to iterationBlocks here. 
+                    // We will handle the authoritative final_answer at the END of the turn
+                    // to avoid duplicates and ensure full formatting.
                 } else {
                     iterationBlocks.push({
                         type: 'tool_call',
@@ -1150,28 +1200,41 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
         }
 
         const finalRawSegment = (content || '').substring(curIdx);
-        const finalBlocks = segmentThoughtsAndNarrative(finalRawSegment, signatureRegex);
+        const finalBlocks = segmentThoughtsAndNarrative(finalRawSegment, signatureRegex) as MessageBlock[];
         
         if (finalBlocks.length > 0) {
             const isOnlyText = uniqueToolCalls.length === 0;
             if (isOnlyText) {
                 // In purely narrative turns, treat the last segment of cleaned text as an answer if not already tagged
-                finalBlocks.forEach(b => b.type = 'answer');
+                finalBlocks.forEach(b => {
+                    b.type = 'answer';
+                    b.isFromNarrative = true;
+                });
+            } else {
+                finalBlocks.forEach(b => {
+                    if (b.type === 'answer') {
+                        b.isFromNarrative = true;
+                    }
+                });
             }
             iterationBlocks.push(...finalBlocks);
         }
 
         // CONSOLIDATION: Merge consecutive thoughts and discard "Narrative Echoes"
-        const mergedIterationBlocks: any[] = [];
-        const turnHasFinalAnswer = uniqueToolCalls.some(tc => tc.function.name === 'final_answer');
-        const finalAnswerTextRaw = uniqueToolCalls.find(tc => tc.function.name === 'final_answer')?.function.arguments?.text || '';
+        const mergedIterationBlocks: MessageBlock[] = [];
+        const finalAnswerCallData = uniqueToolCalls.find(tc => tc.function.name === 'final_answer');
+        const finalAnswerArgs = finalAnswerCallData?.function.arguments || {};
+        const finalAnswerTextRaw = (finalAnswerArgs.text || finalAnswerArgs.respuesta || finalAnswerArgs.answer || finalAnswerArgs.content || '').trim();
+        const turnHasFinalAnswer = uniqueToolCalls.some(tc => tc.function.name === 'final_answer') && finalAnswerTextRaw.length > 0;
 
         iterationBlocks.forEach(block => {
-            // EKO Prevention: If this block is basically a copy of the final_answer text, skip it
-            if (turnHasFinalAnswer && block.type === 'answer' && block.content.length > 50) {
-                const similarity = block.content.includes(finalAnswerTextRaw.substring(0, 50)) || 
-                                   finalAnswerTextRaw.includes(block.content.substring(0, 50));
-                if (similarity) return; // Skip redundant narrative
+            // SMART REDIRECT: If we have a 'final_answer', we assume any text outside 
+            // the tool block is actually "Reasoning/Transcription" (Pensamiento) 
+            // rather than part of the actual final response. 
+            // We convert these narrative blocks into 'thought' blocks for cleaner UI wrapping.
+            if (turnHasFinalAnswer && block.type === 'answer' && block.isFromNarrative) {
+                block.type = 'thought';
+                block.isFromNarrative = false; // It's now a processed thought
             }
 
             const last = mergedIterationBlocks[mergedIterationBlocks.length - 1];
@@ -1184,14 +1247,21 @@ ${lastExecutionFeedback.includes('DATOS OBTENIDOS') ? '⚠️ RECOLECCIÓN: Usa 
             }
         });
 
+        // HISTORY CLEANUP: If the model is using final_answer, the text outside the tool 
+        // is usually a duplicate or noise. We clear it from history to keep context clean.
+        let historyContent = content || ' ';
+        if (turnHasFinalAnswer) {
+            historyContent = ' '; // Only the tool_call content will represent the answer in history
+        }
+
         agentMessages.push({
             role: 'assistant',
-            content: (nativeReasoning ? `<think>\n${nativeReasoning}\n</think>\n` : '') + (content || ' '),
-            tool_calls: uniqueToolCalls.length > 0 ? JSON.parse(JSON.stringify(uniqueToolCalls)) : undefined, // Deep copy to prevent reference clearing
+            content: (nativeReasoning ? `<think>\n${nativeReasoning}\n</think>\n` : '') + historyContent,
+            tool_calls: uniqueToolCalls.length > 0 ? JSON.parse(JSON.stringify(uniqueToolCalls)) : undefined,
         });
 
-        // DYNAMIC SYNC: Emit blocks early so thoughts & tools appear before execution
-        onChunk(content || '', false, [...allBlocks, ...mergedIterationBlocks]);
+        // DYNAMIC SYNC: Emit blocks using replace: true to ensure UI matches our current turn state exactly
+        onChunk(content || '', true, [...allBlocks, ...mergedIterationBlocks]);
         localOnStatus({ rawMessages: [...agentMessages] });
 
         // [ANTI-INTERFERENCE FIX]: If final_answer is detected, ensure protocol compliance
@@ -1762,24 +1832,8 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
         if (finalCallToProcess && !abortSignal.aborted && !turnHasFailure) {
             hasFinalAnswer = true;
             const args = finalCallToProcess.function.arguments;
-            const textRaw = args.text || 'Tarea completada exitosamente.';
+            const textRaw = args.text || args.respuesta || args.answer || args.content || 'Tarea completada exitosamente.';
             const reasoning = args.reasoning || '';
-
-            // DYNAMIC DEDUPLICATION: Remove all blocks that are redundant with the final content
-            // We search in the entire 'allBlocks' array to prune previous segments.
-            allBlocks = allBlocks.filter(b => {
-                if (b.type !== 'thought' && b.type !== 'answer') return true;
-                const content = b.content.trim();
-                if (content.length < 10) return true; // Keep short utilitarian markers
-
-                // If block content is a subset of textRaw or reasoning, remove it
-                const isSubsetText = textRaw.includes(content);
-                const isSubsetReasoning = reasoning && reasoning.includes(content);
-                const isSupersetText = content.includes(textRaw);
-
-                const isRedundant = isSubsetText || isSubsetReasoning || (isSupersetText && textRaw.length > 50);
-                return !isRedundant;
-            });
 
             const text = formatFinalResponse(textRaw);
             let sources = args.sources || [];
@@ -1799,9 +1853,22 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
             if (sources.length > 0) {
                 const limitedSources = sources.slice(0, 10);
                 const moreCount = sources.length - 10;
-                finalContent += '\n\n---\n**🧠 Bibliografía y Contexto:**\n' + limitedSources.map((s: string) => `· ${s}`).join('\n');
+                finalContent += '\n\n---\n\n**🧠 Bibliografía y Contexto:**\n' + limitedSources.map((s: string) => `· ${s}`).join('\n');
                 if (moreCount > 0) finalContent += `\n*... y ${moreCount} fuentes más.*`;
             }
+
+            // DE-DUPLICATION: If the final answer is practically the same as the narrative 
+            // that was converted to thoughts during streaming, we hide that thought block.
+            const normalizedFinal = finalContent.trim().toLowerCase();
+            allBlocks.forEach(b => {
+                if (b.type === 'thought') {
+                    const normB = b.content.trim().toLowerCase();
+                    if (normB === normalizedFinal || normalizedFinal.includes(normB) || normB.includes(normalizedFinal)) {
+                        b.content = ''; // This will be filtered out by onChunk emitters
+                    }
+                }
+            });
+
             allBlocks.push({ type: 'answer', content: finalContent });
 
             // PERSISTENCE Update
@@ -1819,7 +1886,7 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
                 lastAssistant.content = finalContent;
             }
 
-            onChunk(finalContent, true, allBlocks);
+            onChunk(finalContent, true, allBlocks.filter(b => b.content.trim() !== ''));
         }
 
         // All feedbacks are now integrated into tool roles to minimize narrative overhead
@@ -1835,8 +1902,8 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
 
         onChunk(content, true, allBlocks);
         onStatus({ rawMessages: [...agentMessages] });
-    }
-} catch (err) {
+        }
+    } catch (err) {
         console.error("[Agent Loop Error]", err);
         log('error', `Agent Loop Error: ${err instanceof Error ? err.message : String(err)}`);
         throw err;

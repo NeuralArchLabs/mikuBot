@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.9.6] - 2026-03-17
+### Fixed
+- **Ollama/Gemini Restoration (POO Core)**: Fully restored streaming and tool performance for non-SSE providers (Ollama) and cumulative providers (Gemini), reverting regressions from recent Z.AI optimizations.
+- **Gemma 3 Compatibility**: Re-implemented specialized history serialization and system-prompt injection for Gemma models which do not support native instructions or function calling via the Gemini API.
+- **Double Answer Suppression**: Added an intelligent filter in the agent loop to hide redundant narrative thought blocks when they match the final authoritative answer, preventing UI duplication.
+- **Thematic Break Scaling**: Enhanced `answerFormatter.ts` to ensure markdown horizontal rules (`---`) render correctly by enforcing proper spacing.
+- **Gemma Loop Integrity**: Fixed a crash where Gemma models would attempt to send native tool history, causing API errors (HTTP 400).
+- **Streaming Speed**: Optimized the internal delta-to-UI update loop to batch changes, restoring "instant" response feel for high-speed models like Gemma 3.
+
 ## [2.1.0] - 2026-03-16
 ### Added
 - **Session Manager Header Controls**: Integrated "Import" and "New Session" buttons directly into the Session Manager modal header for rapid access.

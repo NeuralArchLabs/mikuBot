@@ -171,10 +171,15 @@ ipcMain.handle('api-stream', async (event, { provider, model, body, ollamaUrl, s
             return { ok: false, error: `Unknown provider: ${provider}` };
         }
 
-        console.log(`[Main Process] API Stream (${provider}/${model}) -> ${url.split('?')[0]}`);
+        console.log(`[Main Process] Starting SSE Stream (${provider}/${model}) -> ${url.split('?')[0]}`);
 
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 120000); // 2 min timeout for streaming
+        const timeout = setTimeout(() => controller.abort(), 300000); // 5 min timeout for deep thinking
+
+        // Standard SSE headers to prevent buffering
+        headers['Accept'] = 'text/event-stream';
+        headers['Cache-Control'] = 'no-cache';
+        headers['Connection'] = 'keep-alive';
 
         try {
             const response = await fetch(url, {

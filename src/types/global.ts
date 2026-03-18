@@ -23,6 +23,9 @@ export interface MessageBlock {
     toolCall?: ToolCall;
     isCollapsed?: boolean;
     result?: ToolResult;
+    status?: 'success' | 'error' | 'pending';
+    isFromNarrative?: boolean;
+    isFromFinalTool?: boolean;
 }
 
 export interface Attachment {

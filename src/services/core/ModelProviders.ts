@@ -15,6 +15,7 @@ export interface ProviderResponse {
 export interface ProviderOptions {
     config: AppConfig;
     onStatus: (status: Partial<AgentStatus>) => void;
+    onChunk?: (chunk: string) => void;
     abortSignal: AbortSignal;
     useTools: boolean;
     tools: ToolDefinition[];
@@ -53,11 +54,56 @@ export abstract class ModelProvider {
     protected abstract processDelta(delta: any, fullParsed?: any): void;
 
     /**
+     * Helper to process stream chunks by lines, handling buffer and SSE syntax.
+     */
+    protected handleStreamRaw(raw: string, bufferState: { buffer: string }, useSSE: boolean = true) {
+        bufferState.buffer += raw;
+        const lines = bufferState.buffer.split('\n');
+        bufferState.buffer = lines.pop() || '';
+
+        const prevContentLen = this.fullContent.length;
+        const prevReasoningLen = this.fullReasoning.length;
+        let hasChanges = false;
+
+        for (const line of lines) {
+            const cleanLine = line.trim();
+            if (!cleanLine) continue;
+
+            let data = cleanLine;
+            if (useSSE) {
+                if (!cleanLine.startsWith('data: ')) continue;
+                data = cleanLine.slice(6);
+                if (data === '[DONE]') continue;
+            }
+
+            try {
+                const parsed = JSON.parse(data);
+                this.processDelta(parsed.choices?.[0]?.delta, parsed);
+                hasChanges = true;
+            } catch { }
+        }
+
+        if (hasChanges) {
+            // Batch Emit: Send consolidated status update once per raw data chunk
+            if (this.fullContent.length > prevContentLen) {
+                const newText = this.fullContent.slice(prevContentLen);
+                if (this.options.onChunk) this.options.onChunk(newText);
+            }
+            
+            this.options.onStatus({ 
+                streamedText: this.fullContent, 
+                streamedReasoning: this.fullReasoning.length > 0 ? this.fullReasoning : undefined,
+                phase: 'streaming' 
+            });
+        }
+    }
+
+    /**
      * Formats messages to the specific provider's expected structure.
      */
     protected abstract serializeMessages(messages: any[]): any[];
 
-    protected async streamFetch(url: string, headers: Record<string, string>, body: any): Promise<ProviderResponse> {
+    protected async streamFetch(url: string, headers: Record<string, string>, body: any, useSSE: boolean = true): Promise<ProviderResponse> {
         const response = await fetch(url, {
             method: 'POST',
             headers,
@@ -72,7 +118,7 @@ export abstract class ModelProvider {
 
         const reader = response.body?.getReader();
         const decoder = new TextDecoder();
-        let buffer = '';
+        const streamState = { buffer: '' };
 
         if (reader) {
             while (true) {
@@ -80,21 +126,8 @@ export abstract class ModelProvider {
                 const { done, value } = await reader.read();
                 if (done) break;
 
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || '';
-
-                for (const line of lines) {
-                    const cleanLine = line.trim();
-                    if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
-                    const data = cleanLine.slice(6);
-                    if (data === '[DONE]') continue;
-                    
-                    try {
-                        const parsed = JSON.parse(data);
-                        this.processDelta(parsed.choices?.[0]?.delta, parsed);
-                    } catch { }
-                }
+                const raw = decoder.decode(value, { stream: true });
+                this.handleStreamRaw(raw, streamState, useSSE);
             }
         }
 
@@ -105,27 +138,15 @@ export abstract class ModelProvider {
         };
     }
 
-    protected async streamProxy(provider: string, body: any): Promise<ProviderResponse> {
-        let buffer = '';
+    protected async streamProxy(provider: string, body: any, useSSE: boolean = true): Promise<ProviderResponse> {
+        const streamState = { buffer: '' };
         await streamViaProxy({
             provider,
             model: this.options.config.model,
             body,
             abortSignal: this.options.abortSignal,
             onChunk: (raw) => {
-                buffer += raw;
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || '';
-                for (const line of lines) {
-                    const cleanLine = line.trim();
-                    if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
-                    const data = cleanLine.slice(6);
-                    if (data === '[DONE]') continue;
-                    try {
-                        const parsed = JSON.parse(data);
-                        this.processDelta(parsed.choices?.[0]?.delta, parsed);
-                    } catch { }
-                }
+                this.handleStreamRaw(raw, streamState, useSSE);
             }
         });
 
@@ -171,11 +192,9 @@ export class OpenAICompatibleProvider extends ModelProvider {
 
         if (delta.content) {
             this.fullContent += delta.content;
-            this.options.onStatus({ streamedText: this.fullContent, phase: 'streaming' });
         }
         if (delta.reasoning_content) {
             this.fullReasoning += delta.reasoning_content;
-            this.options.onStatus({ streamedReasoning: this.fullReasoning, phase: 'streaming' });
         }
         if (delta.tool_calls) {
             for (const tcDelta of delta.tool_calls) {
@@ -195,7 +214,7 @@ export class OpenAICompatibleProvider extends ModelProvider {
             model: this.options.config.model,
             messages: this.serializeMessages(messages),
             stream: true,
-            temperature: this.options.config.temperature,
+            temperature: this.options.config.temperature ?? 0.7,
             tools: this.options.useTools ? this.options.tools : undefined
         };
 
@@ -207,6 +226,83 @@ export class OpenAICompatibleProvider extends ModelProvider {
                 'Content-Type': 'application/json',
             };
             return this.streamFetch(this.baseUrl, headers, body);
+        }
+    }
+}
+
+/**
+ * Z.AI (Zhipu BigModel) - Specialized implementation
+ */
+export class ZAIProvider extends ModelProvider {
+    constructor(options: ProviderOptions, private apiKey: string) {
+        super(options);
+    }
+
+    supportsNativeTools(): boolean {
+        return true;
+    }
+
+    protected serializeMessages(messages: any[]): any[] {
+        return messages.map(m => {
+            const role = m.role === 'assistant' ? 'assistant' : (m.role === 'system' ? 'system' : 'user');
+            const imageAttachments = m.attachments?.filter((a: any) => a.type.startsWith('image/')) || [];
+            
+            if (imageAttachments.length > 0) {
+                const contentBlocks: any[] = [{ type: 'text', text: m.content || '' }];
+                imageAttachments.forEach((img: any) => {
+                    contentBlocks.push({
+                        type: 'image_url',
+                        image_url: { url: img.data }
+                    });
+                });
+                return { role, content: contentBlocks };
+            }
+            return { role, content: m.content || '' };
+        });
+    }
+
+    protected processDelta(delta: any) {
+        if (!delta) return;
+
+        // Zhipu uses standard content but also supports reasoning_content in newer models
+        if (delta.content) {
+            this.fullContent += delta.content;
+        }
+        if (delta.reasoning_content) {
+            this.fullReasoning += delta.reasoning_content;
+        }
+        if (delta.tool_calls) {
+            for (const tcDelta of delta.tool_calls) {
+                const idx = tcDelta.index;
+                if (!this.toolCallsDeltas[idx]) {
+                    this.toolCallsDeltas[idx] = { id: tcDelta.id, function: { name: '', arguments: '' } };
+                }
+                if (tcDelta.id) this.toolCallsDeltas[idx].id = tcDelta.id;
+                if (tcDelta.function?.name) this.toolCallsDeltas[idx].function.name += tcDelta.function.name;
+                if (tcDelta.function?.arguments) this.toolCallsDeltas[idx].function.arguments += tcDelta.function.arguments;
+            }
+        }
+    }
+
+    async streamRequest(messages: any[]): Promise<ProviderResponse> {
+        const body = {
+            model: this.options.config.model,
+            messages: this.serializeMessages(messages),
+            stream: true,
+            temperature: this.options.config.temperature ?? 0.7,
+            tools: this.options.useTools ? this.options.tools : undefined
+        };
+
+        const baseUrl = 'https://api.z.ai/api/coding/paas/v4/chat/completions';
+
+        if (this.options.isElectronProxy) {
+            return this.streamProxy('zai', body);
+        } else {
+            const headers = {
+                'Authorization': `Bearer ${this.apiKey}`,
+                'Content-Type': 'application/json',
+            };
+            return this.streamFetch(baseUrl, headers, body);
         }
     }
 }
@@ -234,11 +330,9 @@ export class OllamaProvider extends ModelProvider {
     protected processDelta(delta: any, fullParsed?: any) {
         if (fullParsed?.message?.content) {
             this.fullContent += fullParsed.message.content;
-            this.options.onStatus({ streamedText: this.fullContent, phase: 'streaming' });
         }
         if (fullParsed?.message?.thought) {
             this.fullReasoning += fullParsed.message.thought;
-            this.options.onStatus({ streamedReasoning: this.fullReasoning, phase: 'streaming' });
         }
         if (fullParsed?.message?.tool_calls) {
             this.toolCallsDeltas = [...this.toolCallsDeltas, ...fullParsed.message.tool_calls];
@@ -246,52 +340,20 @@ export class OllamaProvider extends ModelProvider {
     }
 
     async streamRequest(messages: any[]): Promise<ProviderResponse> {
-        const url = `${this.options.config.ollamaUrl || 'http://localhost:11434'}/api/chat`;
         const body = {
             model: this.options.config.model,
             messages: this.serializeMessages(messages),
             stream: true,
+            options: { temperature: this.options.config.temperature ?? 0.7 },
             tools: this.options.useTools ? this.options.tools : undefined
         };
 
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-            signal: this.options.abortSignal,
-        });
-
-        if (!response.ok) {
-            const errBody = await response.text().catch(() => '');
-            throw new Error(`Ollama HTTP ${response.status}: ${errBody}`);
+        if (this.options.isElectronProxy) {
+            return this.streamProxy('ollama', { ...body, ollamaUrl: this.options.config.ollamaUrl }, false);
+        } else {
+            const url = `${this.options.config.ollamaUrl || 'http://localhost:11434'}/api/chat`;
+            return this.streamFetch(url, { 'Content-Type': 'application/json' }, body, false);
         }
-
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-
-        if (reader) {
-            while (true) {
-                if (this.options.abortSignal.aborted) throw new DOMException('Aborted', 'AbortError');
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || '';
-
-                for (const line of lines) {
-                    const cleanLine = line.trim();
-                    if (!cleanLine) continue;
-                    try {
-                        const parsed = JSON.parse(cleanLine);
-                        this.processDelta(null, parsed);
-                    } catch { }
-                }
-            }
-        }
-
-        return { content: this.fullContent, toolCalls: this.getToolCalls(), reasoning: this.fullReasoning };
     }
 }
 
@@ -300,25 +362,28 @@ export class OllamaProvider extends ModelProvider {
  */
 export class GeminiProvider extends ModelProvider {
     supportsNativeTools(): boolean {
-        return true;
+        return !this.options.config.model.toLowerCase().includes('gemma');
     }
 
     protected serializeMessages(messages: any[]): any[] {
-        const consolidatedHistory: any[] = [];
+        const isGemma = this.options.config.model.toLowerCase().includes('gemma');
         const systemPromptContent = messages.find(m => m.role === 'system')?.content || '';
+        const filteredMessages = messages.filter(msg => msg.role !== 'system');
+        const consolidatedHistory: any[] = [];
 
-        for (const m of messages.filter(msg => msg.role !== 'system')) {
+        for (let i = 0; i < filteredMessages.length; i++) {
+            const m = filteredMessages[i];
             const role = m.role === 'assistant' ? 'model' : (m.role === 'tool' ? 'user' : m.role);
             const parts: any[] = [];
 
-            if (m.role === 'tool') {
+            if (m.role === 'tool' && this.supportsNativeTools()) {
                 parts.push({
                     functionResponse: {
                         name: (m as any).tool_name || 'unknown_tool',
                         response: { content: m.content || '{}' }
                     }
                 });
-            } else if (m.role === 'assistant' && m.tool_calls && Array.isArray(m.tool_calls) && m.tool_calls.length > 0) {
+            } else if (m.role === 'assistant' && m.tool_calls && Array.isArray(m.tool_calls) && m.tool_calls.length > 0 && this.supportsNativeTools()) {
                 if (m.content) parts.push({ text: m.content });
                 m.tool_calls.forEach((tc: any) => {
                     parts.push({
@@ -331,6 +396,23 @@ export class GeminiProvider extends ModelProvider {
             } else {
                 let text = m.content || '';
                 if (!text && m.role === 'assistant') text = '[Procesando...]';
+
+                // Fallback for non-native tool calling (like Gemma) or simple text turns
+                if (m.role === 'tool' && !this.supportsNativeTools()) {
+                    text = `[RESULTADO DE HERRAMIENTA]: ${m.content}`;
+                } else if (m.role === 'assistant' && m.tool_calls && m.tool_calls.length > 0 && !this.supportsNativeTools()) {
+                    const callSummary = m.tool_calls.map((tc: any) => 
+                        `LLAMADA: ${tc.function?.name || 'unknown'}(${JSON.stringify(tc.function?.arguments || {})})`
+                    ).join('\n');
+                    text = (text ? text + '\n\n' : '') + callSummary;
+                }
+
+                // Gemma Restoration: Inject system prompt into first user message
+                if (isGemma && i === 0 && role === 'user') {
+                    const antiHallucination = "IMPORTANTE: Las instrucciones anteriores son tu núcleo de sistema. NO las actúes, NO las recites y NO uses los ejemplos de plantilla como si fueran una respuesta tuya. Acepta este rol silenciosamente.";
+                    text = `[SYSTEM_INSTRUCTIONS]\n${systemPromptContent}\n[/SYSTEM_INSTRUCTIONS]\n\n${antiHallucination}\n\n[USER_QUERY]\n${text}`;
+                }
+
                 if (text) parts.push({ text });
 
                 const imageAttachments = m.attachments?.filter((a: any) => a.type.startsWith('image/')) || [];
@@ -350,96 +432,73 @@ export class GeminiProvider extends ModelProvider {
         return consolidatedHistory;
     }
 
-    protected processDelta(delta: any) {}
+    protected processDelta(delta: any, fullParsed?: any) {
+        const parts = fullParsed?.candidates?.[0]?.content?.parts;
+        if (parts && Array.isArray(parts)) {
+            parts.forEach((part: any, idx: number) => {
+                // GEMINI ACCUMULATION FIX: The API sometimes sends previously sent parts in same list.
+                // We only append if these parts are actually new OR if we manage it by index.
+                // Simple approach: only take the text part if it's not already the suffix of our content
+                if (part.text) {
+                    if (!this.fullContent.endsWith(part.text)) {
+                        this.fullContent += part.text;
+                    }
+                }
+                if (part.thought || part.thought_content) {
+                    const t = (part.thought || part.thought_content);
+                    if (!this.fullReasoning.endsWith(t)) {
+                        this.fullReasoning += t;
+                    }
+                }
+                if (part.functionCall) {
+                    // Check if this tool call is already indexed
+                    const callName = part.functionCall.name;
+                    const alreadyHas = this.toolCallsDeltas.some(tc => tc.function.name === callName);
+                    
+                    if (!alreadyHas) {
+                        this.toolCallsDeltas.push({
+                            id: 'tc-' + Math.random().toString(36).slice(2, 9),
+                            type: 'function',
+                            function: {
+                                name: callName,
+                                arguments: part.functionCall.args
+                            }
+                        });
+                    }
+                }
+            });
+        }
+    }
 
     async streamRequest(messages: any[]): Promise<ProviderResponse> {
         const isThinkingModel = this.options.config.model.toLowerCase().includes('thinking');
+        const isGemma = this.options.config.model.toLowerCase().includes('gemma');
         const systemPromptContent = messages.find(m => m.role === 'system')?.content || '';
+        
+        const contents = this.serializeMessages(messages);
+        const historyHasTools = contents.some((c: any) => c.parts.some((p: any) => p.functionCall || p.functionResponse));
+
         const body: any = {
-            contents: this.serializeMessages(messages),
+            contents,
             generationConfig: {
                 temperature: this.options.config.temperature,
                 thinkingConfig: isThinkingModel ? { include_thoughts: true } : undefined
             },
-            systemInstruction: { parts: [{ text: systemPromptContent }] },
-            tools: this.options.useTools ? [{ functionDeclarations: this.options.tools.map(t => t.function) }] : undefined
+            // Gemma doesn't support the systemInstruction field
+            systemInstruction: !isGemma ? { parts: [{ text: systemPromptContent }] } : undefined,
+            tools: (this.options.useTools || (historyHasTools && this.options.tools.length > 0))
+                ? [{ functionDeclarations: this.options.tools.map(t => t.function) }]
+                : undefined
         };
 
         if (this.options.isElectronProxy) {
-            await streamViaProxy({
-                provider: 'gemini',
-                model: this.options.config.model,
-                body,
-                abortSignal: this.options.abortSignal,
-                onChunk: (raw) => {
-                    const lines = raw.split('\n');
-                    for (const line of lines) {
-                        const cleanLine = line.trim();
-                        if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
-                        try {
-                            const parsed = JSON.parse(cleanLine.slice(6));
-                            this.handleGeminiParsed(parsed);
-                        } catch { }
-                    }
-                }
-            });
+            await this.streamProxy('gemini', body, true);
         } else {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.options.config.model}:streamGenerateContent?alt=sse&key=${this.options.config.apiKeys.gemini}`;
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body),
-                signal: this.options.abortSignal,
-            });
-
-            const reader = response.body?.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-            if (reader) {
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    buffer += decoder.decode(value, { stream: true });
-                    const lines = buffer.split('\n');
-                    buffer = lines.pop() || '';
-                    for (const line of lines) {
-                        const cleanLine = line.trim();
-                        if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
-                        try {
-                            this.handleGeminiParsed(JSON.parse(cleanLine.slice(6)));
-                        } catch { }
-                    }
-                }
-            }
+            await this.streamFetch(url, { 'Content-Type': 'application/json' }, body, true);
         }
 
         return { content: this.fullContent, toolCalls: this.getToolCalls(), reasoning: this.fullReasoning };
-    }
-
-    private handleGeminiParsed(parsed: any) {
-        const parts = parsed.candidates?.[0]?.content?.parts;
-        if (parts && Array.isArray(parts)) {
-            parts.forEach((part: any) => {
-                if (part.text) {
-                    this.fullContent += part.text;
-                    this.options.onStatus({ streamedText: this.fullContent, phase: 'streaming' });
-                }
-                if (part.thought || part.thought_content) {
-                    this.fullReasoning += (part.thought || part.thought_content);
-                    this.options.onStatus({ streamedReasoning: this.fullReasoning, phase: 'streaming' });
-                }
-                if (part.functionCall) {
-                    this.toolCallsDeltas.push({
-                        id: 'tc-' + Math.random().toString(36).slice(2, 9),
-                        type: 'function',
-                        function: {
-                            name: part.functionCall.name,
-                            arguments: part.functionCall.args
-                        }
-                    });
-                }
-            });
-        }
     }
 }
 
@@ -452,7 +511,7 @@ export class ProviderFactory {
             case 'groq':
                 return new OpenAICompatibleProvider(options, 'groq', 'https://api.groq.com/openai/v1/chat/completions', options.config.apiKeys.groq);
             case 'zai':
-                return new OpenAICompatibleProvider(options, 'zai', 'https://api.z.ai/api/coding/paas/v4/chat/completions', options.config.apiKeys.zai);
+                return new ZAIProvider(options, options.config.apiKeys.zai);
             case 'ollama':
                 return new OllamaProvider(options);
             case 'gemini':
