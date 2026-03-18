@@ -14,11 +14,13 @@ import { ProviderFactory, ProviderOptions } from './ModelProviders';
 /**
  * Resolves the source and filename from a tool call.
  * Detects prefixes like @CORE/, @EXTRA/, @WORKSPACE/, @TOOLS/ in the filename.
+ * Also handles absolute system paths by mapping them to configured folder paths.
  */
-function resolvePathAndSource(filename: string, sourceArg?: string): { target: FileTarget, cleanFilename: string } {
+function resolvePathAndSource(filename: string, sourceArg?: string, config?: AppConfig): { target: FileTarget, cleanFilename: string } {
     let f = filename.trim();
     let target: FileTarget = 'workSpace';
 
+    // 1. Prefix Detection (Highest Priority)
     if (f.toUpperCase().startsWith('@CORE/')) {
         target = 'core';
         f = f.slice(6);
@@ -28,26 +30,54 @@ function resolvePathAndSource(filename: string, sourceArg?: string): { target: F
     } else if (f.toUpperCase().startsWith('@WORKSPACE/')) {
         target = 'workSpace';
         f = f.slice(11);
-    } else if (f.toUpperCase().startsWith('@SANDBOX/')) { // Backwards compat for old prompts
+    } else if (f.toUpperCase().startsWith('@SANDBOX/')) { // Backwards compat
         target = 'workSpace';
         f = f.slice(9);
     } else if (f.toUpperCase().startsWith('@TOOLS/')) {
         target = 'tools';
         f = f.slice(7);
-    } else if (sourceArg) {
-        if (sourceArg === 'core') target = 'core';
-        else if (sourceArg === 'library' || sourceArg === 'extra') target = 'extra';
-        else if (sourceArg === 'tools') target = 'tools';
-        else target = 'workSpace';
+    } 
+    // 2. Absolute Path Detection (via config)
+    else if (config?.folderPaths) {
+        const paths = config.folderPaths;
+        const normalizedF = f.replace(/\\/g, '/').toLowerCase();
+        
+        let found = false;
+        // Priority: core > tools > workSpace > extra
+        const targets: FileTarget[] = ['core', 'tools', 'workSpace', 'extra'];
+        for (const t of targets) {
+            const p = paths[t];
+            if (p) {
+                const normalizedP = p.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+                if (normalizedF.startsWith(normalizedP + '/')) {
+                    target = t;
+                    f = f.substring(p.length).replace(/^[/\\]+/, '');
+                    found = true;
+                    break;
+                }
+            }
+        }
+
+        // 3. Fallback to sourceArg if no absolute path found
+        if (!found && sourceArg) {
+            target = resolveSource(sourceArg);
+        }
+    }
+    // 4. Minimal Fallback
+    else if (sourceArg) {
+        target = resolveSource(sourceArg);
     }
 
     return { target, cleanFilename: f };
 }
 
 function resolveSource(source?: string): FileTarget {
-    if (source === 'core') return 'core';
-    if (source === 'library' || source === 'extra') return 'extra';
-    if (source === 'tools') return 'tools';
+    if (!source) return 'workSpace';
+    const s = source.toLowerCase().trim();
+    if (s === 'core' || s === 'nucleo' || s === 'núcleo' || s === 'identidad') return 'core';
+    if (s === 'library' || s === 'extra' || s === 'biblioteca' || s === 'librería' || s === 'libreria' || s === 'adicional') return 'extra';
+    if (s === 'tools' || s === 'herramientas' || s === 'scripts' || s === 'commands') return 'tools';
+    if (s === 'workspace' || s === 'trabajo' || s === 'local' || s === 'sandbox') return 'workSpace';
     return 'workSpace';
 }
 
@@ -112,7 +142,7 @@ export async function executeToolCall(
     try {
         switch (name) {
             case 'read_file': {
-                const { target, cleanFilename } = resolvePathAndSource(args.filename, args.source);
+                const { target, cleanFilename } = resolvePathAndSource(args.filename, args.source, config);
                 const staticPath = config.folderPaths?.[target];
                 const relPath = getRelativePath(target, cleanFilename);
                 const isElectron = !!(window as any).electron;
@@ -136,7 +166,7 @@ export async function executeToolCall(
 
             case 'update_file': {
                 if (!args.filename) return { success: false, error: 'Missing required parameter: filename.' };
-                const { target, cleanFilename } = resolvePathAndSource(args.filename, args.source);
+                const { target, cleanFilename } = resolvePathAndSource(args.filename, args.source, config);
                 
                 // Protection logic
                 const isProtected = PROTECTED_CORE_FILES.some(p => {
@@ -168,7 +198,7 @@ export async function executeToolCall(
                 if (!args.filename || (!args.find && !args.search && !args.patches)) {
                     return { success: false, error: 'Missing parameters: must provide either (find/search + replace) OR a "patches" array.' };
                 }
-                const { target, cleanFilename } = resolvePathAndSource(args.filename, args.source);
+                const { target, cleanFilename } = resolvePathAndSource(args.filename, args.source, config);
                 const staticPath = config.folderPaths?.[target];
                 const relPath = getRelativePath(target, cleanFilename);
                 const isElectron = !!(window as any).electron;
@@ -213,7 +243,7 @@ export async function executeToolCall(
             }
 
             case 'undo_patch': {
-                const { target, cleanFilename } = resolvePathAndSource(args.filename, args.source);
+                const { target, cleanFilename } = resolvePathAndSource(args.filename, args.source, config);
                 const staticPath = config.folderPaths?.[target];
                 const relPath = getRelativePath(target, cleanFilename);
                 const isElectron = !!(window as any).electron;
@@ -228,7 +258,7 @@ export async function executeToolCall(
             }
 
             case 'get_file_outline': {
-                 const { target, cleanFilename } = resolvePathAndSource(args.filename, args.source);
+                 const { target, cleanFilename } = resolvePathAndSource(args.filename, args.source, config);
                  const staticPath = config.folderPaths?.[target];
                  const relPath = getRelativePath(target, cleanFilename);
                  const isElectron = !!(window as any).electron;
@@ -244,8 +274,8 @@ export async function executeToolCall(
 
             case 'batch_operation': {
                 if ((window as any).electron?.batchOperation) {
-                    const { target: srcTarget, cleanFilename: srcFn } = resolvePathAndSource(args.source_path || args.filename || '', args.source);
-                    const { target: destTarget, cleanFilename: destFn } = resolvePathAndSource(args.destination_path || args.destination || '', args.source);
+                    const { target: srcTarget, cleanFilename: srcFn } = resolvePathAndSource(args.source_path || args.filename || '', args.source, config);
+                    const { target: destTarget, cleanFilename: destFn } = resolvePathAndSource(args.destination_path || args.destination || '', args.source, config);
                     
                     const result = await (window as any).electron.batchOperation({
                         operation: args.operation,
@@ -515,7 +545,7 @@ export async function executeToolCall(
                 if (!args.filename) {
                     return { success: false, error: 'Missing required parameter: filename.' };
                 }
-                const { target, cleanFilename } = resolvePathAndSource(args.filename, args.source);
+                const { target, cleanFilename } = resolvePathAndSource(args.filename, args.source, config);
                 const deleted = await deleteFileFn(cleanFilename, target);
                 if (deleted) {
                     const store = getFileStore(target, files, additionalFiles, workSpaceFiles, toolsFiles);

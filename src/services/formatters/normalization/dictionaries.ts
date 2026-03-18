@@ -649,11 +649,26 @@ export const VALUE_ALIASES: Record<string, Record<string, any>> = {
         'sandbox_folder': 'workSpace',
         'sandbox': 'workSpace',
         'principal': 'workSpace',
+        'workspace': 'workSpace',
+        'trabajo': 'workSpace',
+        
         'biblioteca': 'library',
         'librería': 'library',
+        'libreria': 'library',
+        'adicional': 'library',
+        'extra': 'library',
+        'library': 'library',
+
         'nucleo': 'core',
         'núcleo': 'core',
-        'identidad': 'core'
+        'identidad': 'core',
+        'core': 'core',
+
+        'tools': 'tools',
+        'herramientas': 'tools',
+        'scripts': 'tools',
+        'commands': 'tools',
+        'comandos': 'tools'
     },
     search_depth: {
         'básico': 'basic',

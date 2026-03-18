@@ -1177,14 +1177,15 @@ Para ver todas tus habilidades adicionales habilitadas y sus parámetros técnic
         setMessages(prev => [...prev, userMsg]);
         setInput('');
 
+        const effectiveMode = ctx.getEffectiveMode(currentState.agentMode);
         setIsLoading(true);
-        setAgentStatus({ ...createDefaultAgentStatus(), isInstructionMode: currentState.agentMode === 'agent' || forceToolMode });
+        setAgentStatus({ ...createDefaultAgentStatus(), isInstructionMode: effectiveMode === 'agent' });
 
         const modelMsgId = (Date.now() + 1).toString();
 
         // Use Agent Engine if we are in Agent mode OR if the Bolt/Task forced it.
         // Independent resolution via Context (OOP)
-        const useAgentEngine = ctx.shouldUseAgentEngine(currentState.agentMode);
+        const useAgentEngine = effectiveMode === 'agent';
 
         // Dynamic Model/Provider Selection (Safe pairing)
         const agentOverride = currentState.config.agentProvider && currentState.config.agentModel;
@@ -1227,7 +1228,7 @@ Para ver todas tus habilidades adicionales habilitadas y sus parámetros técnic
             chatHistoryLocal.push({ role: 'user', content: text, attachments: userAttachments });
 
             const isAgentLoop = useAgentEngine;
-            const isChatTools = currentState.agentMode === 'chat' && !forceToolMode;
+            const isChatTools = effectiveMode === 'chat';
 
             // Fetch Neural Skills (Dynamic Tools) - WITH CACHING
             let dynamicSkills: any[] = [];
