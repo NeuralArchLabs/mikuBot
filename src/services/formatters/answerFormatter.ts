@@ -43,15 +43,15 @@ export function formatFinalResponse(rawText: any): string {
     // 6. Heal malformed tables (add generic header if missing)
     formatted = healMalformedTables(formatted);
 
-    // 7. Replace horizontal rules with marker
+    // 7. Replace horizontal rules with marker (---, ***, ___)
     formatted = formatted.replace(/^\s*[-*_]{3,}\s*$/gm, '---DIVIDER---');
 
-    // 8. Filter leading/trailing dividers
+    // 8. Filter leading/trailing dividers (cleaner UI)
     formatted = formatted.replace(/^\s*---DIVIDER---\s*\n/i, '');
     formatted = formatted.replace(/\n\s*---DIVIDER---\s*$/i, '');
 
-    // 9. Refine bibliography spacing
-    formatted = formatted.replace(/\n*\n---\n\n\*\*🧠 Bibliografía y Contexto:\*\*/g, '\n\n---DIVIDER---\n\n**🧠 Bibliografía y Contexto:**');
+    // 9. Standardize bibliography spacing if the marker was detected
+    formatted = formatted.replace(/---DIVIDER---\s*\n+\*\*🧠 Bibliografía y Contexto:\*\*/g, '---DIVIDER---\n\n**🧠 Bibliografía y Contexto:**');
 
     return formatted.trim();
 }

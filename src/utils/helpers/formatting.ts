@@ -141,18 +141,23 @@ function convertListsToHtml(html: string): string {
         const trimmed = line.trim();
 
         // Match lists (allow indentation)
-        const ulMatch = line.match(/^(\s*)[\*\-] (.*)$/);
+        // Supported markers: *, -, •, ·
+        const ulMatch = line.match(/^(\s*)([\*\-\u2022\u00B7]) (.*)$/);
         const olMatch = line.match(/^(\s*)(\d+)\. (.*)$/);
+
+        // Handle ---DIVIDER--- as a list-closer but also a standalone block
+        const isDivider = trimmed === '---DIVIDER---';
 
         if (ulMatch || olMatch) {
             const isUl = !!ulMatch;
             const type = isUl ? 'ul' : 'ol';
-            const content = isUl ? ulMatch[2] : olMatch[3];
+            // Use correct match groups: 1=indent, 2=marker, 3=content
+            const content = isUl ? ulMatch[3] : olMatch[3];
             const indent = (isUl ? ulMatch[1] : olMatch[1]).length;
 
             if (currentList !== type) {
                 if (currentList) processed.push(`</${currentList}>`);
-                processed.push(`<${type} class="space-y-1.5 my-2 ${indent > 0 ? 'ml-6' : ''}">`);
+                processed.push(`<${type} class="space-y-1.5 my-3 ${indent > 0 ? 'ml-6' : ''}">`);
                 currentList = type;
             }
             processed.push(`<li class="ml-6 list-${isUl ? 'disc' : 'decimal'} list-outside marker:text-cyan-400/60 pl-1">${content}</li>`);
@@ -160,13 +165,21 @@ function convertListsToHtml(html: string): string {
             // Skip empty lines between list items
             continue;
         } else {
+            // Found a non-list line, close any open list
             if (currentList) {
                 processed.push(`</${currentList}>`);
                 currentList = null;
             }
-            if (trimmed) {
-                // Wrap non-tag lines in paragraph-like div
-                if (!trimmed.startsWith('<') || trimmed.startsWith('<code') || trimmed.startsWith('<strong') || trimmed.startsWith('<em')) {
+
+            if (isDivider) {
+                // Preserve divider marker on its own line (no paragraph wrapper)
+                processed.push('\n---DIVIDER---\n');
+            } else if (trimmed) {
+                // Wrap non-tag lines in paragraph-like div (except if they already start with a block tag)
+                const blockTags = ['<h1', '<h2', '<h3', '<pre', '<table', '<blockquote', '<div', '<details'];
+                const startsWithBlock = blockTags.some(tag => trimmed.startsWith(tag));
+
+                if (!startsWithBlock) {
                     processed.push(`<div class="mb-3 leading-loose">${trimmed}</div>`);
                 } else {
                     processed.push(line);

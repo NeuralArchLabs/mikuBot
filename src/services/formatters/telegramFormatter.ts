@@ -78,9 +78,7 @@ export function formatTelegramResponse(rawText: string): string {
     let text = formatFinalResponse(rawText);
 
     // 2. Clear thinking blocks
-    text = text.replace(/
-
-[\s\S]*?<\/think>/gi, '').trim();
+    text = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
 
     // 3. Process tables and replace dividers
     const lines = text.split('\n');
