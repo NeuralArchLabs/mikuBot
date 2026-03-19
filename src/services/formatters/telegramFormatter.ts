@@ -92,7 +92,7 @@ export function formatTelegramResponse(rawText: string): string {
 
         // Replace DIVIDER marker with Telegram separator
         if (trimmedLine === '---DIVIDER---') {
-            outputLines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            outputLines.push('━━━━━━━━━━━━━━━━━━━━━━━━');
             continue;
         }
 

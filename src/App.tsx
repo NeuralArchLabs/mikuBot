@@ -1218,6 +1218,7 @@ Para ver todas tus habilidades adicionales habilitadas y sus parámetros técnic
         abortControllerRef.current = ac;
 
         let finalAssistantText = '';
+        let finalHistory: any[] = [];
         let chatHistoryLocal: { role: string; content: string; attachments?: Attachment[] }[] = [];
 
         try {
@@ -1297,14 +1298,20 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                     finalAssistantText = replace ? chunk : finalAssistantText + chunk;
                     setMessages(prev => prev.map(m => m.id === modelMsgId ? { ...m, text: finalAssistantText, blocks: blocks || m.blocks } : m));
                 },
-                (p) => setAgentStatus(prev => ({ ...prev, ...p })),
+                (p) => {
+                    if (p.rawMessages) finalHistory = p.rawMessages;
+                    setAgentStatus(prev => ({ ...prev, ...p }));
+                },
                 (toolCall) => new Promise(resolve => setPendingToolApproval({ toolCall, resolve })),
                 async (task: any) => {
                     const newTask = neuralScheduler.addTask(task);
                     return newTask.id;
                 },
                 ac.signal,
-                (history) => setMessages(prev => prev.map(m => m.id === modelMsgId ? { ...m, rawHistory: history } : m)),
+                (history) => {
+                    finalHistory = history;
+                    setMessages(prev => prev.map(m => m.id === modelMsgId ? { ...m, rawHistory: history } : m));
+                },
                 true, // useTextExtraction (siempre encendido si hay herramientas)
                 useAgentEngine,
                 (currentState.safeMode || ctx.forceToolMode) && !ctx.isScheduled,
@@ -1314,10 +1321,12 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
             );
 
             if (ctx.isRemote && finalAssistantText) {
-                // Check if a tool already sent it
-                const wasSentByTool = agentStatus.rawMessages?.some(m =>
+                // Check in finalHistory (local variable, NOT stale state) if a tool already sent it
+                const wasSentByTool = finalHistory.some(m =>
                     m.role === 'assistant' &&
-                    m.tool_calls?.some((tc: any) => tc.function.name === 'send_telegram_message')
+                    m.tool_calls?.some((tc: any) => 
+                        tc.function.name === 'send_telegram_message'
+                    )
                 );
                 if (!wasSentByTool) sendToTelegramDirectly(finalAssistantText);
             }
