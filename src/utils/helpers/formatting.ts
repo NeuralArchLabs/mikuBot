@@ -57,11 +57,11 @@ export const toHtml = (md: string): string => {
     // 9. Blockquotes
     html = html.replace(/^&gt; (.+)$/gm, '<blockquote class="border-l-3 border-cyan-500/50 pl-3 italic text-slate-300 my-2 bg-cyan-500/5 py-1.5 pr-2 rounded-r">$1</blockquote>');
 
-    // 10. Replace DIVIDER marker with styled visual separator
-    html = html.replace(/---DIVIDER---/g, '<div class="divider-gradient"></div>');
-
-    // 11. Lists
+    // 10. Lists (must be done before DIVIDER to avoid breaking it)
     html = convertListsToHtml(html);
+
+    // 11. Replace DIVIDER marker with styled visual separator (after list processing)
+    html = html.replace(/---DIVIDER---/g, '<div class="divider-gradient"></div>');
 
     return html.trim();
 };
