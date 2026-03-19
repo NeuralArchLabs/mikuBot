@@ -1,7 +1,5 @@
-/**
- * Agent Services Barrel Export
- * Exports agent-related services
- */
-
-// Re-export existing agent service (will be migrated later)
-export * from '../../../services/core/agent';
+// Re-export agent modules for flexible consumption
+// Note: We DO NOT export ../agent here to avoid circular dependencies
+export * from './utils';
+export * from './tools';
+export * from './chat';
