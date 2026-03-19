@@ -1,0 +1,13 @@
+diff --git a/src/components/panels/SkillsPanel.tsx b/src/components/panels/SkillsPanel.tsx
+index 5f673b6..4a0c953 100644
+--- a/src/components/panels/SkillsPanel.tsx
++++ b/src/components/panels/SkillsPanel.tsx
+@@ -257,7 +257,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
+     return (
+         <div className="flex-1 overflow-hidden flex flex-col">
+             {/* Header - Buttons only on LG */}
+-            <div className="py-2 lg:py-2 border-b border-slate-800/50 bg-slate-900/40 shrink-0 px-4 lg:px-8 transform-gpu contain-paint">
++            <div className="py-2 lg:py-2 border-b border-slate-800/50 bg-slate-900/40 shrink-0 px-4 lg:px-8  contain-paint">
+                 <div className="flex items-center justify-between gap-4 w-full">
+                     <div className="flex items-center gap-3 min-w-0 mr-auto group lg:hidden">
+                         <div className="text-cyan-400 text-xl shrink-0 drop-shadow-[0_0_15px_rgba(6,182,212,0.4)] animate-title-slide">
