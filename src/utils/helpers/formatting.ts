@@ -4,44 +4,80 @@
  */
 
 /**
- * Converts Markdown to HTML with custom styling
+ * Converts normalized Markdown to HTML with custom styling.
+ *
+ * IMPORTANT: This expects text to be already normalized by formatFinalResponse().
+ * The DIVIDER marker should already be in place.
  */
 export const toHtml = (md: string): string => {
     if (!md) return '';
 
     let html = md;
 
-    // Code blocks (process first to avoid conflicts)
-
+    // 1. Protect details/summary tags during HTML escaping
     html = html
         .replace(/<details/g, '‹details')
         .replace(/<\/details>/g, '‹/details›')
         .replace(/<summary>/g, '‹summary›')
         .replace(/<\/summary>/g, '‹/summary›');
 
+    // 2. HTML escape (after protecting details tags)
     html = html
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
 
+    // 3. Restore details/summary tags
     html = html
         .replace(/‹details/g, '<details')
         .replace(/‹\/details›/g, '</details>')
         .replace(/‹summary›/g, '<summary>')
         .replace(/‹\/summary›/g, '</summary>');
 
-    // Code blocks
+    // 4. Code blocks
     html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre class="bg-black/30 p-3 rounded-lg my-2 overflow-x-auto border border-white/10"><code class="text-sm shadow-none">$2</code></pre>');
     html = html.replace(/`([^`\n]+)`/g, '<code class="bg-black/30 px-1.5 py-0.5 rounded text-amber-300 font-mono text-xs border border-white/10">$1</code>');
 
-    // Tables
+    // 5. Tables
+    html = convertTablesToHtml(html);
+
+    // 6. Headings
+    html = html.replace(/^### (.+)$/gm, '<h3 class="text-sm font-bold text-slate-100 mt-4 mb-2">$1</h3>');
+    html = html.replace(/^## (.+)$/gm, '<h2 class="text-md font-bold text-cyan-400 mt-5 mb-3 border-b border-white/10 pb-1">$1</h2>');
+    html = html.replace(/^# (.+)$/gm, '<h1 class="text-lg font-extrabold text-white mt-6 mb-4 border-b border-cyan-500/20 pb-1.5 shadow-sm">$1</h1>');
+
+    // 7. Bold and italic
+    html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong class="text-amber-300"><em>$1</em></strong>');
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="text-amber-400">$1</strong>');
+    html = html.replace(/\*(.+?)\*/g, '<em class="text-slate-300">$1</em>');
+
+    // 8. Links
+    html = convertLinksToHtml(html);
+
+    // 9. Blockquotes
+    html = html.replace(/^&gt; (.+)$/gm, '<blockquote class="border-l-3 border-cyan-500/50 pl-3 italic text-slate-300 my-2 bg-cyan-500/5 py-1.5 pr-2 rounded-r">$1</blockquote>');
+
+    // 10. Replace DIVIDER marker with styled visual separator
+    html = html.replace(/---DIVIDER---/g, '<div class="divider-gradient"></div>');
+
+    // 11. Lists
+    html = convertListsToHtml(html);
+
+    return html.trim();
+};
+
+/**
+ * Converts markdown tables to HTML with styling.
+ */
+function convertTablesToHtml(html: string): string {
     const lines = html.split('\n');
     let inTable = false;
     let tableHtml = '';
-    const outputLines = [];
+    const outputLines: string[] = [];
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
+
         if (line.startsWith('|') && line.includes('|')) {
             if (!inTable) {
                 inTable = true;
@@ -70,42 +106,34 @@ export const toHtml = (md: string): string => {
             outputLines.push(lines[i]);
         }
     }
+
     if (inTable) outputLines.push(tableHtml + '</tbody></table></div>');
-    html = outputLines.join('\n');
 
-    // Headlines (comfort margins + vibrant colors)
-    html = html.replace(/^### (.+)$/gm, '<h3 class="text-sm font-bold text-slate-100 mt-4 mb-2">$1</h3>');
-    html = html.replace(/^## (.+)$/gm, '<h2 class="text-md font-bold text-cyan-400 mt-5 mb-3 border-b border-white/10 pb-1">$1</h2>');
-    html = html.replace(/^# (.+)$/gm, '<h1 class="text-lg font-extrabold text-white mt-6 mb-4 border-b border-cyan-500/20 pb-1.5 shadow-sm">$1</h1>');
+    return outputLines.join('\n');
+}
 
-    // Bold/Italic
-    html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong class="text-amber-300"><em>$1</em></strong>');
-    html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="text-amber-400">$1</strong>');
-    html = html.replace(/\*(.+?)\*/g, '<em class="text-slate-300">$1</em>');
-
-    // Links and blockquotes
+/**
+ * Converts markdown links to HTML with URL sanitization.
+ */
+function convertLinksToHtml(html: string): string {
     const sanitizeUrl = (url: string): string => {
         const decoded = url.replace(/&amp;/g, '&');
         const trimmed = decoded.trim().toLowerCase();
         return (trimmed.startsWith('http:') || trimmed.startsWith('https:') || trimmed.startsWith('mailto:')) ? url : '';
     };
 
-    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => {
+    return html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => {
         const safe = sanitizeUrl(url);
         return safe ? `<a href="${safe}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors">${text}</a>` : text;
     });
+}
 
-    html = html.replace(/^&gt; (.+)$/gm, '<blockquote class="border-l-3 border-cyan-500/50 pl-3 italic text-slate-300 my-2 bg-cyan-500/5 py-1.5 pr-2 rounded-r">$1</blockquote>');
-
-    // Horizontal rules (thematic breaks) - Replace "---" and "---DIVIDER---" with styled visual separator
-    // First replace the DIVIDER marker (for consistency with formatter)
-    html = html.replace(/---DIVIDER---/g, '<div class="divider-gradient"></div>');
-    // Then replace any remaining standalone --- (in case it didn't go through formatFinalResponse)
-    // Must match lines that ONLY contain the separator (not list items or other text)
-    html = html.replace(/^[ \t]*[-*_]{3,}[ \t]*$/gm, '<div class="divider-gradient"></div>');
-
+/**
+ * Converts markdown lists (ul/ol) to HTML with styling.
+ */
+function convertListsToHtml(html: string): string {
     const contentLines = html.split('\n');
-    const processed = [];
+    const processed: string[] = [];
     let currentList: 'ul' | 'ol' | null = null;
 
     for (let i = 0; i < contentLines.length; i++) {
@@ -129,7 +157,7 @@ export const toHtml = (md: string): string => {
             }
             processed.push(`<li class="ml-6 list-${isUl ? 'disc' : 'decimal'} list-outside marker:text-cyan-400/60 pl-1">${content}</li>`);
         } else if (trimmed === "" && i < contentLines.length - 1 && (contentLines[i+1].match(/^(\s*)[\*\-] /) || contentLines[i+1].match(/^(\s*)\d+\. /))) {
-            // Skip empty lines between list items to keep them together
+            // Skip empty lines between list items
             continue;
         } else {
             if (currentList) {
@@ -137,7 +165,7 @@ export const toHtml = (md: string): string => {
                 currentList = null;
             }
             if (trimmed) {
-                // If it's not a tag already, wrap in paragraph-like div for better spacing control
+                // Wrap non-tag lines in paragraph-like div
                 if (!trimmed.startsWith('<') || trimmed.startsWith('<code') || trimmed.startsWith('<strong') || trimmed.startsWith('<em')) {
                     processed.push(`<div class="mb-3 leading-loose">${trimmed}</div>`);
                 } else {
@@ -146,10 +174,11 @@ export const toHtml = (md: string): string => {
             }
         }
     }
+
     if (currentList) processed.push(`</${currentList}>`);
 
-    return processed.join('').trim();
-};
+    return processed.join('');
+}
 
 /**
  * Formats date to locale string

@@ -1,75 +1,85 @@
 /**
  * ──────────────────────────────────────────────────────────────────────
- *  Final Answer Formatter — Context Injection & Cleanup Script
+ *  Text Normalizer — Cleanup and Preprocessing
  * ──────────────────────────────────────────────────────────────────────
- * 
- *  This script is independent of the main agent logic. It is specifically
- *  designed to catch and format the "final_answer" response from the model,
- *  ensuring that newlines (\n), markdown artifacts, and escaped characters
- *  are rendered correctly in the UI.
+ *
+ *  This module normalizes raw text from the model by:
+ *  - Fixing line endings and escaped characters
+ *  - Cleaning technical noise (Tool Calls, role tags, JSON artifacts)
+ *  - Replacing markdown horizontal rules with markers
+ *  - Healing malformed tables (missing headers)
  * ──────────────────────────────────────────────────────────────────────
  */
 
 /**
- * Formats the final response text to ensure proper rendering of newlines and markdown.
- * Specifically targets artifacts common in local LLM tool outputs.
+ * Normalizes raw text from the model for rendering.
+ * This is the SINGLE SOURCE for text normalization.
  */
 export function formatFinalResponse(rawText: any): string {
     if (!rawText) return '';
 
     let formatted = typeof rawText === 'string' ? rawText : JSON.stringify(rawText, null, 2);
 
-    // 1. Normalize line endings (Handle Windows \r\n and ensure they are just \n)
+    // 1. Normalize line endings
     formatted = formatted.replace(/\r\n/g, '\n');
 
-    // 2. Unescape literal \n strings if they escaped double-parsing
+    // 2. Unescape literal \n strings
     formatted = formatted.replace(/\\n/g, '\n');
 
-    // 3. Fix double escaping of quotes and tabs
+    // 3. Fix double escaping
     formatted = formatted.replace(/\\t/g, '    ');
     formatted = formatted.replace(/\\"/g, '"');
 
-    // 4. Clean up trailing whitespace on each line and handle stray spaces between newlines
+    // 4. Trim trailing whitespace
     formatted = formatted.split('\n').map(line => line.trimEnd()).join('\n');
 
-    // 5. Suppress literal "Tool Calls", role tags, and technical noise
+    // 5. Clean technical noise (Tool Calls, role tags, JSON artifacts)
     formatted = formatted.replace(/Tool Calls:\s*\[[\s\S]*?\]/gi, '');
     formatted = formatted.replace(/(?:^|\n)Tool Calls[:\s]*/gi, '\n');
     formatted = formatted.replace(/\[\s*\{\s*"id":[\s\S]*?\}\s*\]/gi, '');
     formatted = formatted.replace(/^(?:\[assistant\]|\[tool\]|\[user\]|\[system\])[:\s]*/gim, '');
     formatted = formatted.replace(/^(?:\{"success":true,"data":.*\}|\[tool\].*)$/gim, '');
 
-    // 6. TABLE HEALING: If a table starts with a separator line (---|---), prepend a generic header
-    // to ensure valid markdown rendering.
-    const lines = formatted.split('\n');
+    // 6. Heal malformed tables (add generic header if missing)
+    formatted = healMalformedTables(formatted);
+
+    // 7. Replace horizontal rules with marker
+    formatted = formatted.replace(/^\s*[-*_]{3,}\s*$/gm, '---DIVIDER---');
+
+    // 8. Filter leading/trailing dividers
+    formatted = formatted.replace(/^\s*---DIVIDER---\s*\n/i, '');
+    formatted = formatted.replace(/\n\s*---DIVIDER---\s*$/i, '');
+
+    // 9. Refine bibliography spacing
+    formatted = formatted.replace(/\n*\n---\n\n\*\*🧠 Bibliografía y Contexto:\*\*/g, '\n\n---DIVIDER---\n\n**🧠 Bibliografía y Contexto:**');
+
+    return formatted.trim();
+}
+
+/**
+ * Detects and heals malformed tables that start with a separator line.
+ * Adds a generic header if the table starts directly with the separator.
+ */
+function healMalformedTables(text: string): string {
+    const lines = text.split('\n');
     const healedLines: string[] = [];
+
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
-        // Detects common table separator patterns (e.g. ---|---|--- or :---|---:)
+        // Detect table separator pattern (e.g., ---|---|---)
         const isSeparator = line.includes('|') && /^[|\s\-:]{3,}$/.test(line);
-        
+
         if (isSeparator) {
             const prev = healedLines[healedLines.length - 1]?.trim() || '';
             const isPrevTableRow = prev.includes('|') && !/^[|\s\-:]{3,}$/.test(prev);
-            
+
             if (!isPrevTableRow) {
-                healedLines.push('| Descripción | Estado | Resultado |'); // Prepend Header
+                // Prepend generic header before the separator
+                healedLines.push('| Descripción | Estado | Resultado |');
             }
         }
         healedLines.push(lines[i]);
     }
-    formatted = healedLines.join('\n');
 
-    // 9. Replace thematic breaks (---) with styled visual separators
-    // Replace standalone --- with a styled div marker that will be processed by the renderer
-    formatted = formatted.replace(/^\s*[-*_]{3,}\s*$/gm, '---DIVIDER---');
-
-    // 10. Filter out thematic noise (strip leading/trailing separators)
-    formatted = formatted.replace(/^\s*---DIVIDER---\s*\n/i, '');
-    formatted = formatted.replace(/\n\s*---DIVIDER---\s*$/i, '');
-
-    // 11. Refine bibliography spacing
-    formatted = formatted.replace(/\n*\n---\n\n\*\*🧠 Bibliografía y Contexto:\*\*/g, '\n\n---DIVIDER---\n\n**🧠 Bibliografía y Contexto:**');
-
-    return formatted.trim();
+    return healedLines.join('\n');
 }
