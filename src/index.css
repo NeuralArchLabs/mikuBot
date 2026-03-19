@@ -31,9 +31,52 @@
   line-height: 1.5;
 }
 
-.markdown-body ul, 
+.markdown-body ul,
 .markdown-body ol {
   margin-bottom: 0.5em;
+  margin-left: 1.5em;
+  padding-left: 0.5em;
+}
+
+.markdown-body ul {
+  list-style-type: disc;
+  list-style-position: outside;
+}
+
+.markdown-body ol {
+  list-style-type: decimal;
+  list-style-position: outside;
+}
+
+.markdown-body li {
+  margin-bottom: 0.25em;
+  line-height: 1.5;
+  display: list-item;
+  list-style-position: outside;
+  padding-left: 0.5rem;
+}
+
+/* Ensure list markers are visible */
+.markdown-body li::marker {
+  color: rgba(96, 165, 250, 0.7);
+  font-size: 0.9em;
+}
+
+/* Fix for list items with custom marker classes */
+.list-disc {
+  list-style-type: disc;
+}
+
+.list-decimal {
+  list-style-type: decimal;
+}
+
+.list-outside {
+  list-style-position: outside;
+}
+
+.marker\:text-cyan-400\/60 ::marker {
+  color: rgba(96, 165, 250, 0.6);
 }
 
 .markdown-body h1 {
@@ -1575,4 +1618,59 @@
 /* Utility classes */
 .contain-paint {
   contain: paint;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   MARKDOWN HORIZONTAL RULE (Thematic Break) — Visual Separator
+   ────────────────────────────────────────────────────────────────────── */
+.divider-gradient {
+  position: relative;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(148, 163, 184, 0.3) 20%,
+    rgba(96, 165, 250, 0.6) 50%,
+    rgba(168, 85, 247, 0.4) 80%,
+    transparent 100%
+  );
+  opacity: 0.8;
+  overflow: visible;
+}
+
+.divider-gradient::before,
+.divider-gradient::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  top: 50%;
+  transform: translateY(-50%);
+  filter: blur(1px);
+}
+
+.divider-gradient::before {
+  left: 0;
+  background: rgba(96, 165, 250, 0.5);
+  box-shadow: 0 0 8px rgba(96, 165, 250, 0.6);
+}
+
+.divider-gradient::after {
+  right: 0;
+  background: rgba(168, 85, 247, 0.4);
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.5);
+}
+
+/* Hover effect for the divider */
+.divider-gradient:hover {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(148, 163, 184, 0.5) 20%,
+    rgba(96, 165, 250, 0.9) 50%,
+    rgba(168, 85, 247, 0.7) 80%,
+    transparent 100%
+  );
+  transition: background 0.3s ease;
 }

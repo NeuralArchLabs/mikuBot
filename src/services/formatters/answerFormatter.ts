@@ -60,16 +60,16 @@ export function formatFinalResponse(rawText: any): string {
     }
     formatted = healedLines.join('\n');
 
-    // 9. Ensure thematic breaks (---) have blank lines around them to render correctly as HR
-    formatted = formatted.replace(/([^\n])\n(-{3,}|_{3,}|={3,})\n/g, '$1\n\n$2\n\n');
-    formatted = formatted.replace(/\n(-{3,}|_{3,}|={3,})\n([^\n])/g, '\n\n$1\n\n$2');
+    // 9. Replace thematic breaks (---) with styled visual separators
+    // Replace standalone --- with a styled div marker that will be processed by the renderer
+    formatted = formatted.replace(/^\s*[-*_]{3,}\s*$/gm, '---DIVIDER---');
 
     // 10. Filter out thematic noise (strip leading/trailing separators)
-    formatted = formatted.replace(/^\s*[-*=_]{3,}\s*\n/i, '');
-    formatted = formatted.replace(/\n\s*[-*=_]{3,}\s*$/i, '');
+    formatted = formatted.replace(/^\s*---DIVIDER---\s*\n/i, '');
+    formatted = formatted.replace(/\n\s*---DIVIDER---\s*$/i, '');
 
     // 11. Refine bibliography spacing
-    formatted = formatted.replace(/\n*\n---\n\n\*\*🧠 Bibliografía y Contexto:\*\*/g, '\n\n---\n\n**🧠 Bibliografía y Contexto:**');
+    formatted = formatted.replace(/\n*\n---\n\n\*\*🧠 Bibliografía y Contexto:\*\*/g, '\n\n---DIVIDER---\n\n**🧠 Bibliografía y Contexto:**');
 
     return formatted.trim();
 }

@@ -1883,7 +1883,7 @@ Si necesitas realizar más acciones, emite la llamada JSON correspondiente. NO r
             if (sources.length > 0) {
                 const limitedSources = sources.slice(0, 10);
                 const moreCount = sources.length - 10;
-                finalContent += '\n\n---\n\n**🧠 Bibliografía y Contexto:**\n' + limitedSources.map((s: string) => `· ${s}`).join('\n');
+                finalContent += '\n\n---DIVIDER---\n\n**🧠 Bibliografía y Contexto:**\n' + limitedSources.map((s: string) => `· ${s}`).join('\n');
                 if (moreCount > 0) finalContent += `\n*... y ${moreCount} fuentes más.*`;
             }
 

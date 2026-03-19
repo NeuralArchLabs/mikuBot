@@ -84,9 +84,11 @@ export function formatTelegramResponse(rawText: string): string {
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
 
-        // Filter out horizontal rules (*** or ---) and stray markers that clutter the view
+        // Replace horizontal rules (*** or ---) with visual separators for Telegram
         const trimmedLine = line.trim();
         if (trimmedLine === '***' || trimmedLine === '---' || trimmedLine === '*' || trimmedLine === '-') {
+            // Add a styled separator for Telegram
+            outputLines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
             continue;
         }
 
