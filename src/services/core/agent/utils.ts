@@ -10,8 +10,8 @@ import { FileTarget, AppConfig } from '../../../types';
  * Detects prefixes like @CORE/, @EXTRA/, @WORKSPACE/, @TOOLS/ in the filename.
  * Also handles absolute system paths by mapping them to configured folder paths.
  */
-export function resolvePathAndSource(filename: string, sourceArg?: string, config?: AppConfig): { target: FileTarget, cleanFilename: string } {
-    let f = filename.trim();
+export function resolvePathAndSource(filename: string | undefined, sourceArg?: string, config?: AppConfig): { target: FileTarget, cleanFilename: string } {
+    let f = (filename || '').trim();
     let target: FileTarget = 'workSpace';
 
     // 1. Prefix Detection (Highest Priority)

@@ -436,11 +436,13 @@ export async function sendAgentMessage(
                     actionHistory.push(`${tc.function.name}(${JSON.stringify(tc.function.arguments)})`);
                     agentMessages.push({ role: 'tool', tool_name: tc.function.name, content: JSON.stringify(res), tool_call_id: tc.id, tool_args: tc.function.arguments });
                     
-                    // Update Local State
-                    const { target, cleanFilename: cf } = resolvePathAndSource(tc.function.arguments.filename, tc.function.arguments.source);
-                    const store = getFileStore(target, currentFiles, currentAdditional, currentWorkSpace, currentTools);
-                    if (tc.function.name === 'update_file') store[cf] = tc.function.arguments.content;
-                    if (tc.function.name === 'delete_file') delete store[cf];
+                    // Update Local State (Only for persistent file operations)
+                    if (tc.function.name === 'update_file' || tc.function.name === 'delete_file') {
+                        const { target, cleanFilename: cf } = resolvePathAndSource(tc.function.arguments.filename || '', tc.function.arguments.source);
+                        const store = getFileStore(target, currentFiles, currentAdditional, currentWorkSpace, currentTools);
+                        if (tc.function.name === 'update_file') store[cf] = tc.function.arguments.content;
+                        if (tc.function.name === 'delete_file') delete store[cf];
+                    }
                 }
                 onChunk("", false, allBlocks);
             }
@@ -468,6 +470,7 @@ export async function sendAgentMessage(
         log('error', `Agent Loop Error: ${err instanceof Error ? err.message : String(err)}`);
         throw err;
     } finally {
+        onStatus({ phase: 'idle' });
         if (onFinalRawHistory) onFinalRawHistory([...agentMessages]);
     }
 }

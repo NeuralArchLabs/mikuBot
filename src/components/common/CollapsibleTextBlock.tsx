@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { MarkdownRenderer, Icon } from './Common';
 
 interface CollapsibleTextBlockProps {
     content: string;
-    forceCollapsed?: boolean;
+    forceCollapse?: boolean;
     isThought?: boolean;
 }
 
@@ -11,64 +11,87 @@ interface CollapsibleTextBlockProps {
 
 interface ContentRendererProps {
     content: string;
+    onHeightChange?: (height: number) => void;
 }
-
 /**
  * Standard content display without animations.
  */
-const StaticRenderer: React.FC<ContentRendererProps> = ({ content }) => (
-    <div className="animate-in fade-in duration-500">
-        <MarkdownRenderer content={content} />
-    </div>
-);
+const StaticRenderer: React.FC<ContentRendererProps> = ({ content, onHeightChange }) => {
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (ref.current && onHeightChange) {
+            const observer = new ResizeObserver(entries => {
+                onHeightChange(entries[0].target.clientHeight);
+            });
+            observer.observe(ref.current);
+            return () => observer.disconnect();
+        }
+    }, [onHeightChange]);
+
+    return (
+        <div ref={ref} className="animate-in fade-in duration-500">
+            <MarkdownRenderer content={content} />
+        </div>
+    );
+};
 
 /**
  * Streaming content display that reveals text over time.
- * Used for "Thought" blocks to simulate real-time processing.
+ * Optimized to NOT reset animation when content appends (streaming).
  */
-const StreamingRenderer: React.FC<ContentRendererProps> = ({ content }) => {
+const StreamingRenderer: React.FC<ContentRendererProps> = ({ content, onHeightChange }) => {
     const [visibleContent, setVisibleContent] = useState('');
-    
-    React.useEffect(() => {
-        const words = content.split(' ');
-        let index = 0;
-        let currentText = '';
-        
+    const [isFinished, setIsFinished] = useState(false);
+    const cursorChar = '\u00A0\u258c';
+    const ref = useRef<HTMLDivElement>(null);
+    const typedLengthRef = useRef(0);
+
+    useEffect(() => {
+        if (ref.current && onHeightChange) {
+            const observer = new ResizeObserver(entries => {
+                onHeightChange(entries[0].target.clientHeight);
+            });
+            observer.observe(ref.current);
+            return () => observer.disconnect();
+        }
+    }, [onHeightChange]);
+
+    useEffect(() => {
         const interval = setInterval(() => {
-            if (index < words.length) {
-                currentText += (index === 0 ? '' : ' ') + words[index];
-                setVisibleContent(currentText);
-                index++;
+            if (typedLengthRef.current < content.length) {
+                // If the new content is significantly ahead, we jump forward but keep typing
+                typedLengthRef.current++;
+                setVisibleContent(content.substring(0, typedLengthRef.current));
+                setIsFinished(false);
             } else {
+                setIsFinished(true);
                 clearInterval(interval);
             }
-        }, 12); // Slightly faster for smoother feel
+        }, 12); 
         
         return () => clearInterval(interval);
     }, [content]);
 
     return (
-        <div className="relative animate-in fade-in duration-300">
-            <MarkdownRenderer content={visibleContent} />
-            {visibleContent.length < content.length && (
-                <span className="inline-block w-1.5 h-3.5 bg-blue-500/60 ml-1 animate-pulse rounded-sm align-middle" />
-            )}
+        <div ref={ref} className="relative animate-in fade-in duration-300">
+            <MarkdownRenderer content={visibleContent + (!isFinished ? cursorChar : '')} />
         </div>
     );
 };
 
 // ── Main Component ──────────────────────────────────────────────────
 
-export const CollapsibleTextBlock: React.FC<CollapsibleTextBlockProps> = ({ content, forceCollapsed, isThought }) => {
-    const [isCollapsed, setIsCollapsed] = useState(forceCollapsed !== undefined ? forceCollapsed : (isThought || false));
+export const CollapsibleTextBlock: React.FC<CollapsibleTextBlockProps> = ({ content, forceCollapse, isThought }) => {
+    const [isCollapsed, setIsCollapsed] = useState(forceCollapse !== undefined ? forceCollapse : (isThought || false));
     const hasInteractedRef = React.useRef(false);
 
     // Auto-collapse logic: Only force if user hasn't manually toggled it
     React.useEffect(() => {
-        if (forceCollapsed !== undefined && !hasInteractedRef.current) {
-            setIsCollapsed(forceCollapsed);
+        if (forceCollapse !== undefined && !hasInteractedRef.current) {
+            setIsCollapsed(forceCollapse);
         }
-    }, [forceCollapsed]);
+    }, [forceCollapse]);
 
     // PRE-PROCESSING: Remove <think> tags if they exist to avoid NESTED collapsibles from MarkdownRenderer
     const cleanContent = React.useMemo(() => {
@@ -86,16 +109,34 @@ export const CollapsibleTextBlock: React.FC<CollapsibleTextBlockProps> = ({ cont
         ? cleanContent.substring(0, 80).replace(/[\n\r]/g, ' ') + '...'
         : cleanContent.replace(/[\n\r]/g, ' ');
 
-    return (
-        <div className="relative group/text-block mb-3 pl-6 transition-all duration-300">
-            {/* Neural connector line (Thread trace) */}
-            <div className={`absolute left-[5px] top-0 bottom-[-15px] w-0.5 transition-all duration-700 ${isCollapsed ? 'bg-slate-700/20' : 'bg-gradient-to-b from-blue-500/80 via-purple-500/40 to-transparent shadow-[0_0_8px_rgba(59,130,246,0.2)]'}`}></div>
+    const [dotOffset, setDotOffset] = useState(0);
 
-            {/* Neural focal point (Node) */}
-            <div className={`absolute left-[2.5px] top-2.5 w-1.5 h-1.5 rounded-full transition-all duration-500 z-10 ${isCollapsed ? 'bg-slate-700 border border-slate-600' : 'bg-blue-400 border border-blue-200 shadow-[0_0_12px_rgba(96,165,250,0.8)] animate-pulse'}`}></div>
+    const handleHeightUpdate = useCallback((h: number) => {
+        setDotOffset(h + 12);
+    }, []);
+
+    return (
+        <div className={`relative group/text-block mb-3 pl-6 transition-all duration-300 ${isCollapsed ? 'w-full max-w-3xl' : 'w-full h-auto'}`}>
+            {/* Neural connector line (Thread trace) */}
+            <div 
+                className={`absolute left-[5px] top-0 bottom-[-15px] w-0.5 transition-all duration-700 ${isCollapsed ? 'bg-slate-700/20' : 'shadow-[0_0_8px_rgba(59,130,246,0.2)]'}`}
+                style={{
+                    background: isCollapsed 
+                        ? 'rgba(51, 65, 85, 0.2)' 
+                        : 'linear-gradient(to bottom, transparent 0%, rgba(59, 130, 246, 0.8) 15%, rgba(139, 92, 246, 0.4) 50%, transparent 100%)'
+                }}
+            ></div>
+
+            {/* Neural focal point (Node) with dynamic positioning */}
+            <div 
+                className={`absolute left-[2.5px] top-[14px] w-1.5 h-1.5 rounded-full z-20 transition-all duration-300 ease-out ${isCollapsed ? 'bg-slate-700 border border-slate-600' : 'bg-blue-400 border border-blue-200 shadow-[0_0_12px_rgba(96,165,250,0.8)] animate-pulse'}`}
+                style={{ 
+                    transform: isCollapsed ? 'none' : `translateY(${dotOffset}px)`
+                }}
+            ></div>
 
             {isCollapsed ? (
-                /* COLLAPSED: Single integrated reasoning bar */
+                /* COLLAPSED ... */
                 <button
                     onClick={handleToggle}
                     className="w-full text-left cursor-pointer group/inner relative bg-slate-900/40 hover:bg-slate-800/80 border border-white/5 hover:border-blue-500/30 rounded-xl p-3 py-2 text-[11px] text-slate-400 transition-all flex items-center gap-4 shadow-lg focus:outline-none focus:ring-1 focus:ring-blue-500/20"
@@ -108,7 +149,9 @@ export const CollapsibleTextBlock: React.FC<CollapsibleTextBlockProps> = ({ cont
                     <span className="truncate opacity-50 group-hover/inner:opacity-100 font-mono tracking-tight transition-opacity flex-1">
                         {summary}
                     </span>
-                    <Icon name="chevron-down" className="text-[10px] opacity-40 group-hover/inner:opacity-100 transition-all transform group-hover/inner:translate-y-0.5" />
+                    <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
+                        <Icon name="chevron-down" className="text-[10px] opacity-40 group-hover/inner:opacity-100 transition-all transform group-hover/inner:translate-y-0.5" />
+                    </div>
                 </button>
             ) : (
                 /* EXPANDED: Full view with integrated header */
@@ -127,9 +170,9 @@ export const CollapsibleTextBlock: React.FC<CollapsibleTextBlockProps> = ({ cont
                     </div>
                     <div className={`text-[13px] sm:text-[14px] leading-relaxed text-slate-300 rounded-2xl p-4 overflow-hidden transition-[background-color,transform] duration-500 ${isThought ? 'bg-blue-500/[0.03] border border-blue-500/10 shadow-[inner_0_0_20px_rgba(59,130,246,0.01)]' : 'bg-white/[0.01] border border-white/5'}`}>
                         {isThought ? (
-                            <StreamingRenderer content={cleanContent} />
+                            <StreamingRenderer content={cleanContent} onHeightChange={handleHeightUpdate} />
                         ) : (
-                            <StaticRenderer content={cleanContent} />
+                            <StaticRenderer content={cleanContent} onHeightChange={handleHeightUpdate} />
                         )}
                     </div>
                 </div>

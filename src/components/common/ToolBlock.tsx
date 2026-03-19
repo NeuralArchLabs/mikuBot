@@ -82,15 +82,6 @@ export const ToolBlock: React.FC<ToolBlockProps> = ({ block, isOld }) => {
         ? friendlySummary.substring(0, 80) + '...'
         : friendlySummary;
 
-    useEffect(() => {
-        if (isExpanded && result && !isTyping && displayText === '') {
-            startTyping();
-        } else if (!isExpanded) {
-            setDisplayText('');
-            setIsTyping(false);
-        }
-    }, [isExpanded, result]);
-
     const startTyping = () => {
         setIsTyping(true);
         let currentPos = 0;
@@ -111,88 +102,99 @@ export const ToolBlock: React.FC<ToolBlockProps> = ({ block, isOld }) => {
         return () => clearInterval(timer);
     };
 
+    useEffect(() => {
+        if (isExpanded && result && !isTyping && displayText === '') {
+            return startTyping();
+        } else if (!isExpanded) {
+            setDisplayText('');
+            setIsTyping(false);
+        }
+    }, [isExpanded, result]);
+
     return (
-        <div className={`tool-block ${isExpanded ? 'shadow-xl' : ''}`}>
-            {/* Header: Fixed size */}
-            <div
-                className="tool-block-header"
-                onClick={() => setIsExpanded(!isExpanded)}
-            >
-                <div className="flex items-center gap-2">
-                    <div className={isSuccess ? 'tool-icon-success' : hasError ? 'tool-icon-error' : 'tool-icon-pending'}>
-                        <IconComp name={isSuccess ? 'check-circle' : hasError ? 'exclamation-triangle' : 'cog'} className={isPending ? 'animate-spin' : ''} />
+        <div className={`relative mb-3 pl-6 transition-all duration-300 ${isExpanded ? 'w-full' : 'w-full max-w-3xl'}`}>
+            <div className={`tool-block overflow-hidden transition-all duration-300 ${isExpanded ? 'shadow-xl' : 'border border-slate-700/50'}`}>
+                {/* Consolidated Header / Summary Strip */}
+                <div
+                    className={`tool-block-header flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors hover:bg-white/[0.02] ${isExpanded ? 'bg-slate-800/40 border-b border-white/5' : ''}`}
+                    onClick={() => setIsExpanded(!isExpanded)}
+                >
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className={isSuccess ? 'tool-icon-success' : hasError ? 'tool-icon-error' : 'tool-icon-pending'}>
+                            <IconComp name={isSuccess ? 'check-circle' : hasError ? 'exclamation-triangle' : 'cog'} className={isPending ? 'animate-spin' : ''} />
+                        </div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                            {toolCall.function.name}
+                        </span>
+                        {isSuccess && <span className="text-[9px] text-emerald-500/50 font-mono font-bold ml-1 hidden sm:inline">READY</span>}
                     </div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                        {toolCall.function.name}
-                    </span>
-                    {isSuccess && <span className="text-[9px] text-emerald-500/50 font-mono font-bold ml-1">READY</span>}
-                </div>
-                <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''} text-slate-600`}>
-                    <IconComp name="chevron-down" />
-                </div>
-            </div>
 
-            {/* Summary Area: Dynamic Font Size */}
-            <div className={`tool-summary-container px-4 py-3 bg-slate-800/20 border-t border-slate-700/30 ${isExpanded ? 'pb-1' : ''}`}>
-                <div className={`result-text-dynamic flex items-start gap-3 
-                    ${isExpanded ? 'result-text-small text-slate-400' : 'result-text-large'}
-                    ${isSuccess ? 'text-emerald-400' : hasError ? 'text-rose-400' : 'text-slate-500 italic'}
-                `}>
                     {!isExpanded && (
-                        <div className="mt-1 opacity-60">
-                            <IconComp name={isSuccess ? 'check' : hasError ? 'times' : 'sync-alt'} className={isPending ? 'animate-spin' : ''} />
-                        </div>
+                        <>
+                            <div className="w-px h-3 bg-white/10 flex-shrink-0" />
+                            <span className={`text-[11px] truncate flex-1 font-mono tracking-tight ${isSuccess ? 'text-emerald-400/80' : hasError ? 'text-rose-400/80' : 'text-slate-500 italic'}`}>
+                                {truncatedText}
+                            </span>
+                        </>
                     )}
-                    <span className={isExpanded ? '' : 'truncate'}>
-                        {isExpanded ? (isTyping ? displayText : fullResultText) : truncatedText}
-                        {isTyping && <span className="typing-cursor"></span>}
-                    </span>
+
+                    <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''} text-slate-600 flex-shrink-0 ml-auto flex items-center justify-center w-5 h-5`}>
+                        <IconComp name="chevron-down" className="text-[10px]" />
+                    </div>
                 </div>
-            </div>
 
-            {/* Details Area: Typing JSON and Args */}
-            {isExpanded && (
-                <div className="tool-block-content bg-slate-900/40 p-3 pt-0 space-y-4 animate-in fade-in duration-500">
-                    <div className="space-y-2">
-                        <div className="text-[9px] text-slate-600 uppercase tracking-widest font-bold flex items-center gap-1">
-                            <IconComp name="stream" /> Execution Log
-                        </div>
-                        <div className="text-[10px] text-slate-500 font-mono leading-relaxed bg-black/20 p-2 rounded-lg border border-white/5">
-                            Status: {isSuccess ? 'SUCCESS' : hasError ? 'ERROR' : 'PENDING'}<br />
-                            Timestamp: {new Date().toLocaleTimeString()}<br />
-                            ID: {toolCall.id}
-                        </div>
+                {/* Inline Summary for Expanded State */}
+                {isExpanded && (
+                    <div className={`px-4 py-3 bg-slate-800/10 border-b border-white/5 font-medium ${isSuccess ? 'text-emerald-400' : hasError ? 'text-rose-400' : 'text-slate-500 italic'} text-[12px] sm:text-[13px] leading-relaxed`}>
+                         <IconComp name="info-circle" className="mr-2 opacity-50" />
+                         {friendlySummary}
                     </div>
+                )}
 
-                    <div className="space-y-2">
-                        <div className="text-[9px] text-slate-600 uppercase tracking-widest font-bold flex items-center gap-1">
-                            <IconComp name="code" /> Arguments
-                        </div>
-                        <pre className="custom-scrollbar overflow-y-auto max-h-32 p-3 bg-black/40 rounded-lg text-[10px] whitespace-pre-wrap break-all text-indigo-300/60 border border-white/5 shadow-inner">
-                            {JSON.stringify(toolCall.function.arguments, null, 2)}
-                        </pre>
-                    </div>
-
-                    {result && (
+                {/* Details Area: Typing JSON and Args */}
+                {isExpanded && (
+                    <div className="tool-block-content bg-slate-900/40 p-3 pt-4 space-y-4 animate-in fade-in duration-500">
                         <div className="space-y-2">
-                            <div className={`text-[9px] uppercase tracking-widest font-bold flex items-center justify-between gap-1 ${isSuccess ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                <div className="flex items-center gap-1">
-                                    <IconComp name={isSuccess ? 'check-double' : 'exclamation-triangle'} /> Detailed Response
-                                </div>
-                                {isSuccess && result.data?.engine === 'searXena' && (
-                                    <div className="text-[8px] font-black text-slate-600 bg-slate-800/40 px-2 py-0.5 rounded border border-slate-800 tracking-[0.2em] animate-in fade-in slide-in-from-right-2 duration-700">
-                                        POWERED BY <span className="text-blue-500/60">searXena</span>
-                                    </div>
-                                )}
+                            <div className="text-[9px] text-slate-600 uppercase tracking-widest font-bold flex items-center gap-1">
+                                <IconComp name="stream" /> Execution Log
                             </div>
-                            <pre className={`custom-scrollbar overflow-y-auto max-h-60 p-3 bg-black/40 rounded-lg text-[10px] whitespace-pre-wrap break-all border transition-colors duration-500 ${isSuccess ? 'text-emerald-400/70 border-emerald-500/10' : 'text-rose-400/70 border-rose-500/10'}`}>
-                                {isTyping ? displayText : JSON.stringify(result.data || result.error, null, 2)}
-                                {!isTyping && !isSuccess && hasError && <span className="block mt-2 text-rose-500/50 italic font-sans">// System encountered an exception.</span>}
+                            <div className="text-[10px] text-slate-500 font-mono leading-relaxed bg-black/20 p-2 rounded-lg border border-white/5">
+                                Status: {isSuccess ? 'SUCCESS' : hasError ? 'ERROR' : 'PENDING'}<br />
+                                Timestamp: {new Date().toLocaleTimeString()}<br />
+                                ID: {toolCall.id}
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <div className="text-[9px] text-slate-600 uppercase tracking-widest font-bold flex items-center gap-1">
+                                <IconComp name="code" /> Arguments
+                            </div>
+                            <pre className="custom-scrollbar overflow-y-auto max-h-32 p-3 bg-black/40 rounded-lg text-[10px] whitespace-pre-wrap break-all text-indigo-300/60 border border-white/5 shadow-inner">
+                                {JSON.stringify(toolCall.function.arguments, null, 2)}
                             </pre>
                         </div>
-                    )}
-                </div>
-            )}
+
+                        {result && (
+                            <div className="space-y-2">
+                                <div className={`text-[9px] uppercase tracking-widest font-bold flex items-center justify-between gap-1 ${isSuccess ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                    <div className="flex items-center gap-1">
+                                        <IconComp name={isSuccess ? 'check-double' : 'exclamation-triangle'} /> Detailed Response
+                                    </div>
+                                    {isSuccess && result.data?.engine === 'searXena' && (
+                                        <div className="text-[8px] font-black text-slate-600 bg-slate-800/40 px-2 py-0.5 rounded border border-slate-800 tracking-[0.2em] animate-in fade-in slide-in-from-right-2 duration-700">
+                                            POWERED BY <span className="text-blue-500/60">searXena</span>
+                                        </div>
+                                    )}
+                                </div>
+                                <pre className={`custom-scrollbar overflow-y-auto max-h-60 p-3 bg-black/40 rounded-lg text-[10px] whitespace-pre-wrap break-all border transition-colors duration-500 ${isSuccess ? 'text-emerald-400/70 border-emerald-500/10' : 'text-rose-400/70 border-rose-500/10'}`}>
+                                    {isTyping ? displayText : JSON.stringify(result.data || result.error, null, 2)}
+                                    {!isTyping && !isSuccess && hasError && <span className="block mt-2 text-rose-500/50 italic font-sans">// System encountered an exception.</span>}
+                                </pre>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
