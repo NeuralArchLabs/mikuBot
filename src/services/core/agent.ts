@@ -21,7 +21,8 @@ import {
 import { validateToolArgs, safeFetch } from '../../utils';
 import { recoverToolCallsFromText, normalizeRawToolCall, RecoveredCall } from '../formatters/toolCallNormalizer';
 import { formatFinalResponse } from '../formatters/answerFormatter';
-import { ProviderFactory, ProviderOptions } from './ModelProviders';
+import type { ProviderOptions } from './ModelProviders';
+
 
 // Modular Imports (The Rewire)
 import { 
@@ -91,6 +92,7 @@ export async function sendAgentMessage(
             isElectronProxy
         };
 
+        const { ProviderFactory } = await import('./ModelProviders');
         const providerInstance = ProviderFactory.create(provider, options);
         
         try {
