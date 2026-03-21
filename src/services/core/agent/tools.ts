@@ -175,19 +175,32 @@ export async function executeToolCall(
             case 'list_files': {
                 const target = resolveSource(args.source);
                 const subDir = args.directory || args.path || "";
-                const store = getFileStore(target, files, additionalFiles, workSpaceFiles, toolsFiles);
                 
+                // Native Branch (Electron)
+                if (target === 'workSpace' && (window as any).electron?.listFilesNative) {
+                    const result = await (window as any).electron.listFilesNative({ directory: subDir, recursive: !!args.recursive });
+                    if (result.ok) {
+                        return { success: true, data: { files: result.results, count: result.results.length, source: target, filtered_by: subDir || 'all' } };
+                    }
+                }
+
+                // Memory Fallback
+                const store = getFileStore(target, files, additionalFiles, workSpaceFiles, toolsFiles);
                 let fileList = Object.keys(store).map(f => ({
                     name: f,
                     size: (store[f] || '').length
                 }));
 
                 if (subDir) {
-                    const normalizedSub = subDir.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
-                    fileList = fileList.filter(f => 
-                        f.name.startsWith(normalizedSub + '/') || 
-                        f.name === normalizedSub
-                    );
+                    // Fix: strip '.' or './' prefixes which prevent matching workspace files stored as simple relative paths
+                    const normalizedSub = subDir.replace(/\\/g, '/').replace(/^\.[/\\]*/, '').replace(/^\/+|\/+$/g, '');
+                    
+                    if (normalizedSub) {
+                        fileList = fileList.filter(f => 
+                            f.name.startsWith(normalizedSub + '/') || 
+                            f.name === normalizedSub
+                        );
+                    }
                 }
 
                 return { success: true, data: { files: fileList, count: fileList.length, source: target, filtered_by: subDir || 'all' } };

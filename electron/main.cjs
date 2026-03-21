@@ -1683,6 +1683,15 @@ ipcMain.handle('agent:batch-operation', async (event, data) => {
     }
 });
 
+ipcMain.handle('agent:list-files', async (event, data) => {
+    try {
+        const results = await agentActions.handleListFiles(currentWorkspacePath, data);
+        return { ok: true, results };
+    } catch (e) {
+        return { ok: false, error: e.message };
+    }
+});
+
 ipcMain.handle('agent:search-files', async (event, data) => {
     try {
         const results = await agentActions.handleSearchFilesNative(currentWorkspacePath, data);

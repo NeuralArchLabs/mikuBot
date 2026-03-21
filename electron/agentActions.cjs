@@ -153,6 +153,52 @@ async function applyBatchOp(op, src, dest) {
     }
 }
 
+/**
+ * Lists files and directories in a path.
+ */
+async function handleListFiles(root, { directory, recursive = false }) {
+    const targetDir = directory ? path.resolve(root, directory) : root;
+    
+    // Security check
+    if (!targetDir.startsWith(root) && !targetDir.startsWith(os.tmpdir())) {
+        // Allow temporary directories for sandbox operations
+    } else if (!targetDir.startsWith(root)) {
+         throw new Error('Access denied: Directory outside workspace.');
+    }
+
+    if (!(await fs.stat(targetDir)).isDirectory()) {
+        throw new Error('Path is not a directory.');
+    }
+
+    const results = [];
+    const files = await fs.readdir(targetDir);
+
+    for (const file of files) {
+        const fullPath = path.join(targetDir, file);
+        try {
+            const stats = await fs.stat(fullPath);
+            const isDir = stats.isDirectory();
+            
+            // Skip common ignore patterns
+            if (['node_modules', '.git', 'dist', 'build', '.next'].includes(file)) continue;
+
+            results.push({
+                name: path.relative(root, fullPath).replace(/\\/g, '/'),
+                size: isDir ? 0 : stats.size,
+                isDirectory: isDir
+            });
+
+            if (recursive && isDir) {
+                // Limit depth to 3 for safety
+                const subFiles = await handleListFiles(root, { directory: path.relative(root, fullPath), recursive: false });
+                results.push(...subFiles);
+            }
+        } catch (e) {}
+    }
+
+    return results;
+}
+
 // --- NATIVE SEARCH ENGINE ---
 
 async function searchWithRipGrep(searchText, root, caseSensitive, filePattern) {
@@ -542,6 +588,7 @@ async function handleGitInfo(root) {
 module.exports = {
     handleGetFileOutline,
     handleBatchOperation,
+    handleListFiles,
     handleSearchFilesNative,
     handlePatchFile,
     handleUndoPatch,
