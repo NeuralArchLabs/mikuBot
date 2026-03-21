@@ -68,11 +68,12 @@ function formatTelegramTable(lines: string[]): string {
 }
 
 /**
- * Formats text for Telegram output.
+ * Formats text for Telegram output, splitting it into multiple chunks if it exceeds the limit.
  * Calls formatFinalResponse() first, then applies Telegram-specific formatting.
+ * Returns an array of formatted strings (chunks).
  */
-export function formatTelegramResponse(rawText: string): string {
-    if (!rawText) return '';
+export function formatTelegramResponse(rawText: string): string[] {
+    if (!rawText) return [];
 
     // 1. Normalize text (single source of truth for cleanup)
     let text = formatFinalResponse(rawText);
@@ -141,23 +142,45 @@ export function formatTelegramResponse(rawText: string): string {
     text = text.replace(/^[\*\-] (.*)$/gm, '• $1');
     text = text.replace(/^(\d+)\. (.*)$/gm, '$1. $2');
 
-    // 6. Enforce Telegram 4096 character limit (target 4000 for safety)
-    if (text.length > 4000) {
-        let truncated = text.substring(0, 3950);
+    // 6. Split into chunks if necessary (Telegram limit is 4096)
+    const MAX_LIMIT = 4000;
+    if (text.length <= MAX_LIMIT) return [text.trim()];
 
-        // Ensure no unclosed tags
-        const tags = ['</b>', '</i>', '</code>', '</pre>', '</a>'];
-        tags.forEach(tag => {
-            const openTag = tag.replace('/', '');
-            const openCount = (truncated.match(new RegExp(openTag, 'g')) || []).length;
-            const closeCount = (truncated.match(new RegExp(tag, 'g')) || []).length;
+    const chunks: string[] = [];
+    let currentText = text;
+
+    while (currentText.length > 0) {
+        if (currentText.length <= MAX_LIMIT) {
+            chunks.push(currentText.trim());
+            break;
+        }
+
+        // Find a good split point (preferably a newline)
+        let splitIdx = currentText.lastIndexOf('\n', MAX_LIMIT);
+        if (splitIdx === -1) splitIdx = MAX_LIMIT;
+
+        let chunk = currentText.substring(0, splitIdx).trim();
+        
+        // Ensure no unclosed tags in the chunk
+        const tags = [
+            { open: '<b>', close: '</b>' },
+            { open: '<i>', close: '</i>' },
+            { open: '<code>', close: '</code>' },
+            { open: '<pre>', close: '</pre>' },
+            { open: '<a ', close: '</a>' }
+        ];
+
+        tags.forEach(t => {
+            const openCount = (chunk.match(new RegExp(t.open, 'g')) || []).length;
+            const closeCount = (chunk.match(new RegExp(t.close, 'g')) || []).length;
             if (openCount > closeCount) {
-                truncated += tag;
+                chunk += t.close;
             }
         });
 
-        text = truncated + '\n\n<i>[Mensaje truncado por límite de Telegram...]</i>';
+        chunks.push(chunk);
+        currentText = currentText.substring(splitIdx).trim();
     }
 
-    return text.trim();
+    return chunks;
 }

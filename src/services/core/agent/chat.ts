@@ -9,7 +9,7 @@ import { TOOL_NAME_ALIASES } from '../../formatters/normalization/dictionaries';
 /**
  * Cleans technical noise, protocol echoes, and JSON fragments from segments.
  */
-export function cleanTechnicalNoise(text: string, signatureRegex: RegExp): string {
+export function cleanTechnicalNoise(text: string, signatureRegex?: RegExp): string {
     let s = (text || '').trim();
     if (!s) return '';
 
@@ -35,7 +35,12 @@ export function cleanTechnicalNoise(text: string, signatureRegex: RegExp): strin
     s = s.replace(/^\s*[\}\],]+\s*$/gm, '');
     s = s.replace(/[\}\],]+\s*$/g, '');
 
-    // 3. ELIMINAR ECOS DEL PROTOCOLO Y LOGS TÉCNICOS
+    // 3. ELIMINAR BLOQUES DE IDENTIDAD (Soul signature) para evitar duplicados en narrativa
+    // Si se pasa un regex específico, lo usamos; si no, usamos el patrón universal
+    const sigPattern = signatureRegex || /\{\{?[\s\S]*?[🌅🌌🌑✨⚡🧩🧠🌊🔥🔋].*?\}\}?/g;
+    s = s.replace(sigPattern, '');
+
+    // 4. ELIMINAR ECOS DEL PROTOCOLO Y LOGS TÉCNICOS
     const noisePatterns = [
         /^(?:I apologize|My apologies|You are right|You are correct)[\s\S]*?(?={|\[|{{)/i,
         /^(?:Thinking Process|Neural Flow|Neural Core|Proceso de Razonamiento|Active Reasoning|Razonamiento Activo|Flujo Neural|Core de Miku|Razonamiento)[\s\S]*?(?={|\[|{{)/i,
@@ -51,7 +56,7 @@ export function cleanTechnicalNoise(text: string, signatureRegex: RegExp): strin
     ];
     noisePatterns.forEach(p => s = s.replace(p, ''));
 
-    // 4. LIMPIEZA DE CERCAS Y ESPACIOS SOBRANTES
+    // 5. LIMPIEZA DE CERCAS Y ESPACIOS SOBRANTES
     s = s.replace(/```(?:json|JSON)?/gi, '');
     s = s.replace(/```/g, '');
 
@@ -169,12 +174,14 @@ export async function applyBatchTaskTicking(
     if (toolCalls.length === 0) return { modified: false, turnAutoTasks };
     
     const findTaskStore = () => {
-        const coreKey = Object.keys(currentFiles).find(k => k.toLowerCase() === 'tasks.md');
-        if (coreKey) return { store: currentFiles, target: 'core' as FileTarget, key: coreKey };
-        const wsKey = Object.keys(currentWorkSpace).find(k => k.toLowerCase() === 'tasks.md');
-        if (wsKey) return { store: currentWorkSpace, target: 'workSpace' as FileTarget, key: wsKey };
+        // Enforce STRICT predefined route: @CORE/tasks.md
+        const keys = Object.keys(currentFiles);
+        const taskKey = keys.find(k => k.toLowerCase() === 'tasks.md');
+        if (taskKey) return { store: currentFiles, target: 'core' as FileTarget, key: taskKey };
         return null;
     };
+
+
 
     const taskInfo = findTaskStore();
     if (!taskInfo) return { modified: false, turnAutoTasks };

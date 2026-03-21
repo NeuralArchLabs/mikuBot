@@ -337,23 +337,42 @@ export async function executeToolCall(
                 }
 
                 try {
-                    const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            chat_id: chatId,
-                            text: formatTelegramResponse(args.text),
-                            parse_mode: 'HTML' // Allow some basic formatting
-                        })
-                    });
+                    const token = config.telegramBotToken;
+                    const chunks = formatTelegramResponse(args.text);
+                    
+                    if (chunks.length === 0) return { success: false, error: 'Empty message content.' };
 
-                    const data = await response.json();
+                    let lastMessageId = 0;
+                    for (let i = 0; i < chunks.length; i++) {
+                        const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                chat_id: chatId,
+                                text: chunks[i],
+                                parse_mode: 'HTML'
+                            })
+                        });
 
-                    if (!data.ok) {
-                        return { success: false, error: `Telegram API Error: ${data.description || 'Unknown error'}` };
+                        const data = await response.json();
+                        if (!data.ok) {
+                            return { success: false, error: `Telegram API Error [Part ${i+1}]: ${data.description || 'Unknown error'}` };
+                        }
+                        lastMessageId = data.result.message_id;
+                        
+                        // Small delay between chunks if multiple
+                        if (chunks.length > 1 && i < chunks.length - 1) {
+                            await new Promise(r => setTimeout(r, 300));
+                        }
                     }
 
-                    return { success: true, data: { message: 'Message sent successfully to Telegram.', message_id: data.result.message_id } };
+                    return { 
+                        success: true, 
+                        data: { 
+                            message: chunks.length > 1 ? `Message sent in ${chunks.length} parts.` : 'Message sent successfully.', 
+                            message_id: lastMessageId 
+                        } 
+                    };
                 } catch (e) {
                     return { success: false, error: `Failed to connect to Telegram API: ${e instanceof Error ? e.message : String(e)}` };
                 }

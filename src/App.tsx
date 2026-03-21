@@ -1011,23 +1011,33 @@ Para ver todas tus habilidades adicionales habilitadas y sus parámetros técnic
             askAlert("⚠️ [Acción Cancelada]\n\nSe intentó enviar un mensaje a Telegram (ej. Tarea Programada), pero faltan las credenciales. Configura el 'Bot Token' y el 'Chat ID' en los ajustes.");
             return;
         }
-        fetch(`https://api.telegram.org/bot${state.config.telegramBotToken}/sendMessage`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                chat_id: state.config.telegramChatId,
-                text: formatTelegramResponse(text),
-                parse_mode: 'HTML'
-            })
-        })
-            .then(async (res) => {
-                if (!res.ok) {
-                    const errData = await res.json().catch(() => ({}));
-                    console.error("Telegram API Error:", errData);
-                    askAlert(`⚠️ [Error de Telegram]\n\nFallo al enviar mensaje: ${errData.description || res.statusText}\nVerifica que tu Bot Token y Chat ID sean correctos.`);
-                }
-            })
-            .catch(err => console.error("Remote response error:", err));
+
+        const chunks = formatTelegramResponse(text);
+        
+        // Use a simple loop to send chunks sequentially
+        // For production, a more robust queue/retry might be better, but this handles simple multi-part
+        chunks.forEach((chunk, index) => {
+            // Slight delay between messages to ensure order in Telegram
+            setTimeout(() => {
+                fetch(`https://api.telegram.org/bot${state.config.telegramBotToken}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: state.config.telegramChatId,
+                        text: chunk,
+                        parse_mode: 'HTML'
+                    })
+                })
+                    .then(async (res) => {
+                        if (!res.ok) {
+                            const errData = await res.json().catch(() => ({}));
+                            console.error("Telegram API Error:", errData);
+                            askAlert(`⚠️ [Error de Telegram - Parte ${index + 1}]\n\nFallo al enviar mensaje: ${errData.description || res.statusText}`);
+                        }
+                    })
+                    .catch(err => console.error("Remote response error:", err));
+            }, index * 300); // 300ms delay between messages
+        });
     }, [state.config.telegramBotToken, state.config.telegramChatId, askAlert]);
 
     // Keep sendToTelegram ref up-to-date for scheduler

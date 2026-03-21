@@ -57,6 +57,43 @@ function saveWorkspacePath(folderPath) {
     }
 }
 
+/**
+ * Safe Atomic Write Helper
+ * Prevents 0-byte or corrupted files on crash/IO error.
+ */
+function safeWriteJSON(filePath, data) {
+    const tempPath = `${filePath}.tmp`;
+    try {
+        const json = JSON.stringify(data, null, 4);
+        if (!json || json === '{}' && Object.keys(data).length > 0) {
+            throw new Error(`Data validation failed for ${filePath}. Possible memory corruption.`);
+        }
+        
+        fs.writeFileSync(tempPath, json, 'utf8');
+        
+        // Verify written file exists and is not empty
+        const stats = fs.statSync(tempPath);
+        if (stats.size === 0) {
+            throw new Error(`Written temp file ${tempPath} is empty. Aborting swap.`);
+        }
+
+        // Atomic swap
+        try {
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+            }
+        } catch (err) { /* In case of permission issues, rename might still work or overwrite */ }
+        
+        fs.renameSync(tempPath, filePath);
+        return { ok: true };
+    } catch (error) {
+        console.error(`[Main Process] Failed atomic write to ${filePath}:`, error.message);
+        if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+        return { ok: false, error: error.message };
+    }
+}
+
+
 // Global path state
 // Robust Fallback: In production, prioritize User Data directory over App Path to avoid common environment conflicts
 let currentWorkspacePath = getStoredWorkspacePath() || (app.isPackaged ? path.join(app.getPath('userData'), 'default-workspace') : process.cwd());
@@ -436,9 +473,11 @@ ipcMain.handle('save-settings', async (event, settings) => {
     try {
         const configPath = getEffectivePaths().config;
         console.log('Saving settings to:', configPath);
-        fs.writeFileSync(configPath, JSON.stringify(settings, null, 4), 'utf8');
+        const result = safeWriteJSON(configPath, settings);
+        if (!result.ok) throw new Error(result.error);
 
         // React to system settings immediately
+
         if (settings.config) {
             if (settings.config.autoLaunch !== undefined) {
                 updateAutoLaunch(settings.config.autoLaunch);
@@ -526,9 +565,9 @@ ipcMain.handle('save-session', async (event, session) => {
         const sessionsDir = getEffectivePaths().sessions;
         if (!fs.existsSync(sessionsDir)) fs.mkdirSync(sessionsDir, { recursive: true });
         const filePath = path.join(sessionsDir, `${session.id}.json`);
-        fs.writeFileSync(filePath, JSON.stringify(session, null, 4), 'utf8');
-        return { ok: true };
+        return safeWriteJSON(filePath, session);
     } catch (error) {
+        console.error(`[Main Process] Error in save-session:`, error.message);
         return { ok: false, error: error.message };
     }
 });

@@ -10,6 +10,7 @@ export interface ProviderResponse {
     content: string;
     toolCalls: any[];
     reasoning?: string;
+    finishReason?: string;
 }
 
 export interface ProviderOptions {
@@ -26,6 +27,7 @@ export abstract class ModelProvider {
     protected fullContent = '';
     protected fullReasoning = '';
     protected toolCallsDeltas: any[] = [];
+    protected lastFinishReason = '';
 
     constructor(protected options: ProviderOptions) {}
 
@@ -134,7 +136,8 @@ export abstract class ModelProvider {
         return {
             content: this.fullContent,
             toolCalls: this.getToolCalls(),
-            reasoning: this.fullReasoning
+            reasoning: this.fullReasoning,
+            finishReason: this.lastFinishReason
         };
     }
 
@@ -153,7 +156,8 @@ export abstract class ModelProvider {
         return {
             content: this.fullContent,
             toolCalls: this.getToolCalls(),
-            reasoning: this.fullReasoning
+            reasoning: this.fullReasoning,
+            finishReason: this.lastFinishReason
         };
     }
 }
@@ -172,6 +176,27 @@ export class OpenAICompatibleProvider extends ModelProvider {
 
     protected serializeMessages(messages: any[]): any[] {
         return messages.map(m => {
+            const res: any = { role: m.role };
+            
+            // Handle tool call history (assistant message that made the calls)
+            if (m.role === 'assistant' && m.tool_calls && m.tool_calls.length > 0) {
+                res.tool_calls = m.tool_calls.map((tc: any) => ({
+                    id: tc.id,
+                    type: 'function',
+                    function: {
+                        name: tc.function.name,
+                        arguments: typeof tc.function.arguments === 'string' ? tc.function.arguments : JSON.stringify(tc.function.arguments)
+                    }
+                }));
+            }
+
+            // Handle tool response history
+            if (m.role === 'tool') {
+                res.tool_call_id = m.tool_call_id;
+                res.content = m.content || '{}';
+                return res;
+            }
+
             const imageAttachments = m.attachments?.filter((a: any) => a.type.startsWith('image/')) || [];
             if (imageAttachments.length > 0) {
                 const contentBlocks: any[] = [{ type: 'text', text: m.content || '' }];
@@ -181,22 +206,22 @@ export class OpenAICompatibleProvider extends ModelProvider {
                         image_url: { url: img.data }
                     });
                 });
-                return { role: m.role, content: contentBlocks };
+                res.content = contentBlocks;
+            } else {
+                res.content = m.content || '';
             }
-            return { role: m.role, content: m.content || '' };
+            return res;
         });
     }
 
-    protected processDelta(delta: any) {
-        if (!delta) return;
+    protected processDelta(delta: any, fullParsed?: any) {
+        if (!delta && !fullParsed) return;
+        const fr = fullParsed?.choices?.[0]?.finish_reason;
+        if (fr) this.lastFinishReason = fr;
 
-        if (delta.content) {
-            this.fullContent += delta.content;
-        }
-        if (delta.reasoning_content) {
-            this.fullReasoning += delta.reasoning_content;
-        }
-        if (delta.tool_calls) {
+        if (delta?.content) this.fullContent += delta.content;
+        if (delta?.reasoning_content) this.fullReasoning += delta.reasoning_content;
+        if (delta?.tool_calls) {
             for (const tcDelta of delta.tool_calls) {
                 const idx = tcDelta.index;
                 if (!this.toolCallsDeltas[idx]) {
@@ -215,6 +240,7 @@ export class OpenAICompatibleProvider extends ModelProvider {
             messages: this.serializeMessages(messages),
             stream: true,
             temperature: this.options.config.temperature ?? 0.7,
+            max_tokens: this.options.config.maxOutputTokens || 32768,
             tools: this.options.useTools ? this.options.tools : undefined
         };
 
@@ -244,39 +270,43 @@ export class ZAIProvider extends ModelProvider {
 
     protected serializeMessages(messages: any[]): any[] {
         return messages.map(m => {
-            const role = m.role === 'assistant' ? 'assistant' : (m.role === 'system' ? 'system' : 'user');
+            const role = (m.role === 'assistant') ? 'assistant' : 
+                         (m.role === 'system' ? 'system' : 
+                         (m.role === 'tool' ? 'tool' : 'user'));
+            const res: any = { role };
+            if (m.role === 'assistant' && m.tool_calls?.length) {
+                res.tool_calls = m.tool_calls.map((tc: any) => ({
+                    id: tc.id, type: 'function',
+                    function: { name: tc.function.name, arguments: typeof tc.function.arguments === 'string' ? tc.function.arguments : JSON.stringify(tc.function.arguments) }
+                }));
+            }
+            if (m.role === 'tool') {
+                res.tool_call_id = m.tool_call_id;
+                res.content = m.content || '{}';
+                return res;
+            }
             const imageAttachments = m.attachments?.filter((a: any) => a.type.startsWith('image/')) || [];
-            
             if (imageAttachments.length > 0) {
                 const contentBlocks: any[] = [{ type: 'text', text: m.content || '' }];
-                imageAttachments.forEach((img: any) => {
-                    contentBlocks.push({
-                        type: 'image_url',
-                        image_url: { url: img.data }
-                    });
-                });
-                return { role, content: contentBlocks };
+                imageAttachments.forEach((img: any) => contentBlocks.push({ type: 'image_url', image_url: { url: img.data } }));
+                res.content = contentBlocks;
+            } else {
+                res.content = m.content || '';
             }
-            return { role, content: m.content || '' };
+            return res;
         });
     }
 
-    protected processDelta(delta: any) {
-        if (!delta) return;
-
-        // Zhipu uses standard content but also supports reasoning_content in newer models
-        if (delta.content) {
-            this.fullContent += delta.content;
-        }
-        if (delta.reasoning_content) {
-            this.fullReasoning += delta.reasoning_content;
-        }
-        if (delta.tool_calls) {
+    protected processDelta(delta: any, fullParsed?: any) {
+        if (!delta && !fullParsed) return;
+        const fr = fullParsed?.choices?.[0]?.finish_reason;
+        if (fr) this.lastFinishReason = fr;
+        if (delta?.content) this.fullContent += delta.content;
+        if (delta?.reasoning_content) this.fullReasoning += delta.reasoning_content;
+        if (delta?.tool_calls) {
             for (const tcDelta of delta.tool_calls) {
                 const idx = tcDelta.index;
-                if (!this.toolCallsDeltas[idx]) {
-                    this.toolCallsDeltas[idx] = { id: tcDelta.id, function: { name: '', arguments: '' } };
-                }
+                if (!this.toolCallsDeltas[idx]) this.toolCallsDeltas[idx] = { id: tcDelta.id, function: { name: '', arguments: '' } };
                 if (tcDelta.id) this.toolCallsDeltas[idx].id = tcDelta.id;
                 if (tcDelta.function?.name) this.toolCallsDeltas[idx].function.name += tcDelta.function.name;
                 if (tcDelta.function?.arguments) this.toolCallsDeltas[idx].function.arguments += tcDelta.function.arguments;
@@ -290,18 +320,14 @@ export class ZAIProvider extends ModelProvider {
             messages: this.serializeMessages(messages),
             stream: true,
             temperature: this.options.config.temperature ?? 0.7,
+            max_tokens: this.options.config.maxOutputTokens || 32768,
             tools: this.options.useTools ? this.options.tools : undefined
         };
-
         const baseUrl = 'https://api.z.ai/api/coding/paas/v4/chat/completions';
-
         if (this.options.isElectronProxy) {
             return this.streamProxy('zai', body);
         } else {
-            const headers = {
-                'Authorization': `Bearer ${this.apiKey}`,
-                'Content-Type': 'application/json',
-            };
+            const headers = { 'Authorization': `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' };
             return this.streamFetch(baseUrl, headers, body);
         }
     }
@@ -433,6 +459,12 @@ export class GeminiProvider extends ModelProvider {
     }
 
     protected processDelta(delta: any, fullParsed?: any) {
+        // Capture finish reason (Gemini format)
+        const fr = fullParsed?.candidates?.[0]?.finishReason;
+        if (fr && fr !== 'FINISH_REASON_UNSPECIFIED') {
+            this.lastFinishReason = fr;
+        }
+
         const parts = fullParsed?.candidates?.[0]?.content?.parts;
         if (parts && Array.isArray(parts)) {
             parts.forEach((part: any, idx: number) => {
@@ -481,7 +513,9 @@ export class GeminiProvider extends ModelProvider {
         const body: any = {
             contents,
             generationConfig: {
-                temperature: this.options.config.temperature,
+                temperature: this.options.config.temperature ?? 0.7,
+                maxOutputTokens: this.options.config.maxOutputTokens || 128000, // Updated max_tokens for Gemini
+                responseMimeType: isThinkingModel ? 'text/plain' : 'application/json',
                 thinkingConfig: isThinkingModel ? { include_thoughts: true } : undefined
             },
             // Gemma doesn't support the systemInstruction field
@@ -498,7 +532,7 @@ export class GeminiProvider extends ModelProvider {
             await this.streamFetch(url, { 'Content-Type': 'application/json' }, body, true);
         }
 
-        return { content: this.fullContent, toolCalls: this.getToolCalls(), reasoning: this.fullReasoning };
+        return { content: this.fullContent, toolCalls: this.getToolCalls(), reasoning: this.fullReasoning, finishReason: this.lastFinishReason };
     }
 }
 

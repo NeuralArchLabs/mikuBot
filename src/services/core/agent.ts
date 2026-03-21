@@ -76,7 +76,7 @@ export async function sendAgentMessage(
         messages: any[],
         useTools: boolean,
         customOnStatus?: (status: Partial<AgentStatus>) => void
-    ): Promise<{ content: string; toolCalls: any[]; reasoning?: string }> {
+    ): Promise<{ content: string; toolCalls: any[]; reasoning?: string; finishReason?: string }> {
         const provider = config.provider;
         const isElectronProxy = !!(window as any).electron?.apiStream;
 
@@ -178,6 +178,16 @@ export async function sendAgentMessage(
     let lastExecutionFeedback = 'Inicio de misión.';
     const signatureRegex = /\{\{?[\s\S]*?⫪╠╝\^\.⫫\.╠╝\^⫪┐⌵[\s\S]*?\}\}?/;
 
+    // Strict System Task Discovery (Predefined Route: @CORE/tasks.md)
+    const getSystemTasks = () => {
+        // Find TASKS.md strictly in the CORE store
+        const keys = Object.keys(currentFiles);
+        const taskKey = keys.find(k => k.toLowerCase() === 'tasks.md');
+        if (taskKey) return { content: currentFiles[taskKey], filename: taskKey };
+        return null;
+    };
+
+
     const localOnStatus = (status: Partial<AgentStatus>) => {
         onStatus({ ...status, lastExecutionFeedback });
     };
@@ -199,20 +209,20 @@ export async function sendAgentMessage(
                     if (hasFinalInStream) {
                         segmented.forEach(b => {
                             if (b.type === 'answer' && b.isFromNarrative) {
-                                const isDuplicate = status.streamedReasoning && 
-                                    (status.streamedReasoning.trim().includes(b.content.trim()) || 
-                                     b.content.trim().includes(status.streamedReasoning.trim()));
-                                if (!isDuplicate) b.type = 'thought';
-                                else b.content = ''; 
+                                b.type = 'thought'; // Hide narrative text that usually precedes tool calls
                             }
                         });
                     }
-                    tempIterationBlocks.push(...segmented.filter(b => b.content.trim() !== ''));
+                    tempIterationBlocks.push(...segmented);
                 }
-                onChunk(status.streamedText || '', true, [...allBlocks, ...tempIterationBlocks]);
+                // Call with chunk text as empty or already summarized to avoid App.tsx re-concatenating
+                // app.tsx does: finalAssistantText = replace ? chunk : finalAssistantText + chunk;
+                // Since streamedText is the TOTAL accumulated, we MUST use replace=true to avoid internal duplication
+                onChunk(status.streamedText || '', true, [...allBlocks, ...tempIterationBlocks.filter(b => b.content.trim() !== '')]);
             }
         }
     };
+
 
     let memorySaved = false;
 
@@ -230,18 +240,12 @@ export async function sendAgentMessage(
             let tasksContent = '';
             let successfulCalls: ToolCall[] = [];
 
-            // System Prompt Refresh
+            // System Prompt Refresh (Strict Protocol: @CORE/tasks.md)
             if (isAgentMode || isInstructionMode) {
-                const findTaskContent = () => {
-                    const stores = [currentFiles, currentWorkSpace];
-                    for (const store of stores) {
-                        const keys = Object.keys(store);
-                        const taskKey = keys.find(k => k.toLowerCase() === 'tasks.md');
-                        if (taskKey) return store[taskKey];
-                    }
-                    return null;
-                };
-                tasksContent = findTaskContent() || '';
+                const taskMatch = getSystemTasks();
+                tasksContent = taskMatch?.content || '';
+
+                
                 const taskLines = tasksContent.trim() ? tasksContent.split('\n') : [];
                 const lastDone = taskLines.filter(l => l.includes('[x]')).pop()?.trim() || 'Ninguna (Inicio)';
                 let nextTodo = 'Analizar y ejecutar (Tarea Simple) o Planificar (Tarea Compleja)';
@@ -250,6 +254,7 @@ export async function sendAgentMessage(
                     if (foundTodo) nextTodo = foundTodo;
                     else nextTodo = 'Finalización / Limpieza';
                 }
+
                 const autoTaskInfo = turnAutoTasks.length > 0 ? `\n✨ AUTO-SINC: Tareas tachadas automáticamente: ${turnAutoTasks.join(', ')}` : "";
                 const unplannedInfo = (successfulCalls.length > 0 && turnAutoTasks.length === 0 && tasksContent.includes('[ ]')) 
                     ? "\n⚠️ NOTA: Has realizado acciones que no parecen coincidir con ninguna tarea pendiente en tu plan." : "";
@@ -291,6 +296,11 @@ export async function sendAgentMessage(
                 content = res.content;
                 nativeToolCalls = res.toolCalls;
                 nativeReasoning = res.reasoning;
+
+                // DETECT TRUNCATION (Loop Protection & Continuity)
+                if (res.finishReason === 'length' || res.finishReason === 'MAX_TOKENS') {
+                    lastExecutionFeedback = "⚠️ LÍMITE DE SALIDA: Has alcanzado el número máximo de tokens por respuesta. No has podido terminar de emitir tu mensaje. Por favor, continúa desde donde te quedaste, simplifica si es necesario y cierra con final_answer cuando tu misión esté completa.";
+                }
             } catch (err) {
                 if (err instanceof DOMException && err.name === 'AbortError') return;
                 throw err;
@@ -380,15 +390,26 @@ export async function sendAgentMessage(
 
             const finalAnswerCall = uniqueToolCalls.find(tc => tc.function.name === 'final_answer');
             if (finalAnswerCall && isAgentMode) {
-                const hasTasks = Object.keys(currentFiles).some(k => k.toLowerCase() === 'tasks.md') || Object.keys(currentWorkSpace).some(k => k.toLowerCase() === 'tasks.md');
-                const pending = tasksContent.split('\n').filter(l => l.trim().startsWith('- [ ]')).length;
-                if (hasTasks && pending > 0) {
-                    const nudge = `⚠️ BLOQUEO DE PROTOCOLO: Aún tienes ${pending} tareas pendientes en TASKS.md.`;
+                // Protocol check MUST be strict: @CORE/tasks.md
+                const taskMatch = getSystemTasks();
+                const pending = (taskMatch?.content || '').split('\n').filter(l => l.trim().startsWith('- [ ]')).length;
+
+                
+                // Deadlock protection: If there's a delete_file for tasks.md in this TURN, allow final_answer
+                const willDeleteTasks = uniqueToolCalls.some(tc => 
+                    tc.function.name === 'delete_file' && 
+                    (tc.function.arguments.filename || '').toLowerCase().includes('tasks.md')
+                );
+
+                if (taskMatch && pending > 0 && !willDeleteTasks) {
+                    const nudge = `⚠️ BLOQUEO DE PROTOCOLO: Aún tienes ${pending} tareas pendientes en TASKS.md. Debes tachar todas las tareas con [x] antes de finalizar, o borrar el archivo si ya no es necesario.`;
                     agentMessages.push({ role: 'tool', tool_name: 'final_answer', content: nudge, tool_call_id: finalAnswerCall.id, tool_args: finalAnswerCall.function.arguments });
                     uniqueToolCalls.length = 0;
+                    lastExecutionFeedback = nudge;
                     continue;
                 }
             }
+
 
             allBlocks = [...allBlocks, ...mergedBlocks];
             if (uniqueToolCalls.length === 0) {
@@ -399,9 +420,11 @@ export async function sendAgentMessage(
                         continue;
                     }
                 }
-                onChunk(content || '', false, allBlocks);
+                // Refresh blocks without appending more text
+                onChunk('', false, allBlocks);
                 break;
             }
+
 
             // TOOL EXECUTION
             localOnStatus({ phase: 'tool_calling' });
@@ -446,11 +469,19 @@ export async function sendAgentMessage(
                         if (tc.function.name === 'delete_file') delete store[cf];
                     }
                 }
-                onChunk("", false, allBlocks);
+            }
+
+            // [State Awareness Refresh] Correctly update feedback for the NEXT loop iteration
+            const lastCall = successfulCalls[successfulCalls.length - 1] || uniqueToolCalls[0];
+            if (lastCall) {
+                const actionDesc = `${lastCall.function.name}`;
+                lastExecutionFeedback = `[Turno ${iterations}] Ejecutado: ${actionDesc} -> ${turnHasFailure ? 'Hubo errores' : 'Éxito'}`;
             }
 
             const { turnAutoTasks: autoT } = await applyBatchTaskTicking([...successfulCalls, ...(finalAnswerCall ? [finalAnswerCall] : [])], currentFiles, currentWorkSpace, saveFileFn, (m) => log('info', m));
             turnAutoTasks = autoT;
+
+
 
             if (finalAnswerCall && !turnHasFailure) {
                 const args = finalAnswerCall.function.arguments;

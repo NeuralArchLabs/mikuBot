@@ -30,7 +30,6 @@ Turno Actual: 1
 
 [FOCO_DE_OPERACIÓN]
 Resultado Anterior: Inicio
-Tarea Completada: Ninguna
 Siguiente Acción: crear TASKS.md
 [/FOCO_DE_OPERACIÓN]
 

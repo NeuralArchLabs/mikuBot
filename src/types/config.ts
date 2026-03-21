@@ -55,6 +55,7 @@ export interface AppConfig {
     autoLaunch?: boolean;
     minimizeToTray?: boolean;
     voskModelPath?: string;
+    maxOutputTokens?: number;
 }
 
 /** Application State */
