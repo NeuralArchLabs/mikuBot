@@ -621,7 +621,8 @@ export function recoverToolCallsFromText(
         const escaped = keyCandidate.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         // Match: /^final_answer:\s*(.*)/ or /final_answer:\s*(.*)/
         // Search in workingText
-        const bareRe = new RegExp(`(?:^|\\n)(${escaped})\\s*[:=]\\s*([\\s\\S]*?)(?=\\n[a-z0-9_]+\\s*[:=]|\\n[^\\s]|$)`, 'gi');
+        const escapedKeys = bareKeys.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+        const bareRe = new RegExp(`(?:^|\\n)(${escaped})\\s*[:=]\\s*([\\s\\S]*?)(?=\\n\\s*(?:${escapedKeys})\\s*[:=]|$)`, 'gi');
         let m;
         while ((m = bareRe.exec(workingText)) !== null) {
             const rawName = m[1];
@@ -764,10 +765,10 @@ function reconstructFromNarrative(text: string, tools: ToolDefinition[]): { call
                 if (alias.length < 3) continue;
 
                 // Improved Regex: capture quotes (handling escapes) or allow unquoted values until common delimiters
-                // 1. (["'])(?:\\.|[^\1])*?\1  -> Quoted string with escape support
-                // 2. (\\[[\\s\\S]*?\\])      -> JSON-like array
-                // 3. ([\\s\\S]*?)(?=\\s*[,}\\n]\\s*[a-zA-Z0-9_]+[:=]|\\s*[}\\n]|$) -> Unquoted text until next key or end
-                const argRe = new RegExp(`["']?${alias}["']?\\s*[:=]\\s*(?:(["'])([\\s\\S]*?)\\1|(\\[[\\s\\S]*?\\])|([\\s\\S]*?)(?=\\s*[,}\\n]\\s*[a-zA-Z0-9_]+[:=]|\\s*[}\\n]|$))`, 'gi');
+                // 1. (["'])([\\s\\S]*?)(?:\\1|$)  -> Quoted string with escape support (resilient to unclosed quotes at EOF)
+                // 2. (\\[[\\s\\S]*?(?:\\]|$))      -> JSON-like array (resilient)
+                // 3. ([\\s\\S]*?)(?=\\s*[,}]\\s*[a-zA-Z0-9_]+[:=]|\\s*\\}|$) -> Unquoted text until next key, }, or EOF. NO \n stops!
+                const argRe = new RegExp(`["']?${alias}["']?\\s*[:=]\\s*(?:(["'])([\\s\\S]*?)(?:\\1|$)|(\\[[\\s\\S]*?(?:\\]|$))|([\\s\\S]*?)(?=\\s*[,}]\\s*[a-zA-Z0-9_]+[:=]|\\s*\\}|$))`, 'gi');
                 let argMatch;
                 while ((argMatch = argRe.exec(textToScan)) !== null) {
                     let value: any = argMatch[2] || argMatch[3] || argMatch[4];
