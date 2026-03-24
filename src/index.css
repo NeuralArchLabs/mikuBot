@@ -1620,26 +1620,41 @@
   contain: paint;
 }
 
-/* ──────────────────────────────────────────────────────────────────────
-   MARKDOWN HORIZONTAL RULE (Thematic Break) — Visual Separator
-   ────────────────────────────────────────────────────────────────────── */
-.divider-gradient {
-  position: relative;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(148, 163, 184, 0.3) 20%,
-    rgba(96, 165, 250, 0.6) 50%,
-    rgba(168, 85, 247, 0.4) 80%,
-    transparent 100%
-  );
-  opacity: 0.8;
+.divider-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
   overflow: visible;
 }
 
-.divider-gradient::before,
-.divider-gradient::after {
+.divider-line {
+  position: relative;
+  height: 1px;
+  width: 0%; /* Default 0 width for the animation start */
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(148, 163, 184, 0.4) 15%,
+    rgba(96, 165, 250, 0.7) 50%,
+    rgba(168, 85, 247, 0.5) 85%,
+    transparent 100%
+  );
+  opacity: 0;
+  transition: width 1s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.8s ease-in;
+  /* Glowing line effect */
+  box-shadow: 0 0 4px rgba(96, 165, 250, 0.3);
+}
+
+.divider-container.is-visible .divider-line {
+  width: 100%;
+  opacity: 1;
+}
+
+.divider-line::before,
+.divider-line::after {
   content: '';
   position: absolute;
   width: 8px;
@@ -1648,29 +1663,23 @@
   top: 50%;
   transform: translateY(-50%);
   filter: blur(1px);
+  opacity: 0; /* Fade in with the line */
+  transition: opacity 1.2s ease-in;
 }
 
-.divider-gradient::before {
-  left: 0;
-  background: rgba(96, 165, 250, 0.5);
-  box-shadow: 0 0 8px rgba(96, 165, 250, 0.6);
+.divider-container.is-visible .divider-line::before,
+.divider-container.is-visible .divider-line::after {
+  opacity: 1;
 }
 
-.divider-gradient::after {
-  right: 0;
-  background: rgba(168, 85, 247, 0.4);
-  box-shadow: 0 0 8px rgba(168, 85, 247, 0.5);
+.divider-line::before {
+  left: -2px;
+  background: rgba(96, 165, 250, 0.6);
+  box-shadow: 0 0 10px rgba(96, 165, 250, 0.8);
 }
 
-/* Hover effect for the divider */
-.divider-gradient:hover {
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(148, 163, 184, 0.5) 20%,
-    rgba(96, 165, 250, 0.9) 50%,
-    rgba(168, 85, 247, 0.7) 80%,
-    transparent 100%
-  );
-  transition: background 0.3s ease;
+.divider-line::after {
+  right: -2px;
+  background: rgba(168, 85, 247, 0.6);
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.8);
 }

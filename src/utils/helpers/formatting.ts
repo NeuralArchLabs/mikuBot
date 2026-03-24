@@ -61,7 +61,7 @@ export const toHtml = (md: string): string => {
     html = convertListsToHtml(html);
 
     // 11. Replace DIVIDER marker with styled visual separator (after list processing)
-    html = html.replace(/---DIVIDER---/g, '<div class="divider-gradient"></div>');
+    html = html.replace(/---DIVIDER---/g, '<div class="divider-container"><div class="divider-line"></div></div>');
 
     return html.trim();
 };
