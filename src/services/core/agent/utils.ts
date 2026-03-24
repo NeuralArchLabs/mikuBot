@@ -37,27 +37,37 @@ export function resolvePathAndSource(filename: string | undefined, sourceArg?: s
     // 1.5 Naked Prefix Interception (Fallback for when agents don't explicitly pass source or @)
     else if (!sourceArg) {
         const normalized = f.replace(/\\/g, '/').toLowerCase();
+        
+        const applyPrefixFix = (targetId: FileTarget, prefix: string, len: number) => {
+            target = targetId;
+            f = f.substring(len);
+            // If the user's folderPaths configuration does not naturally end with this subfolder,
+            // we must prepended it back to prevent files dumping into the root workspace!
+            if (config?.folderPaths?.[targetId]) {
+                const staticP = config.folderPaths[targetId].replace(/\\/g, '/').toLowerCase();
+                if (!staticP.endsWith(`/${prefix}`) && !staticP.endsWith(`\\${prefix}`)) {
+                    f = `${prefix}/` + f;
+                }
+            }
+        };
+
         if (normalized.startsWith('library/')) {
-            target = 'extra';
-            f = f.substring(8);
+            applyPrefixFix('extra', 'library', 8);
         } else if (normalized === 'library') {
             target = 'extra';
             f = '';
         } else if (normalized.startsWith('core/')) {
-            target = 'core';
-            f = f.substring(5);
+            applyPrefixFix('core', 'core', 5);
         } else if (normalized === 'core') {
             target = 'core';
             f = '';
         } else if (normalized.startsWith('commands/')) {
-            target = 'tools';
-            f = f.substring(9);
+            applyPrefixFix('tools', 'commands', 9);
         } else if (normalized === 'commands') {
             target = 'tools';
             f = '';
         } else if (normalized.startsWith('workspace/')) {
-            target = 'workSpace';
-            f = f.substring(10);
+            applyPrefixFix('workSpace', 'workspace', 10);
         } else if (normalized === 'workspace') {
             target = 'workSpace';
             f = '';
