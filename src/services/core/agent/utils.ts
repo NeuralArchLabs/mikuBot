@@ -18,9 +18,12 @@ export function resolvePathAndSource(filename: string | undefined, sourceArg?: s
     if (f.toUpperCase().startsWith('@CORE/')) {
         target = 'core';
         f = f.slice(6);
-    } else if (f.toUpperCase().startsWith('@EXTRA/') || f.toUpperCase().startsWith('@LIBRARY/')) {
+    } else if (f.toUpperCase().startsWith('@EXTRA/')) {
         target = 'extra';
         f = f.slice(7);
+    } else if (f.toUpperCase().startsWith('@LIBRARY/')) {
+        target = 'extra';
+        f = f.slice(9);
     } else if (f.toUpperCase().startsWith('@WORKSPACE/')) {
         target = 'workSpace';
         f = f.slice(11);

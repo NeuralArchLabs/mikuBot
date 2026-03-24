@@ -1676,7 +1676,8 @@ ipcMain.handle('agent:get-file-outline', async (event, { path: relPath }) => {
 
 ipcMain.handle('agent:batch-operation', async (event, data) => {
     try {
-        const result = await agentActions.handleBatchOperation(currentWorkspacePath, data);
+        const root = data.rootPath || currentWorkspacePath;
+        const result = await agentActions.handleBatchOperation(root, data);
         return { ok: true, result };
     } catch (e) {
         return { ok: false, error: e.message };
@@ -1685,7 +1686,8 @@ ipcMain.handle('agent:batch-operation', async (event, data) => {
 
 ipcMain.handle('agent:list-files', async (event, data) => {
     try {
-        const results = await agentActions.handleListFiles(currentWorkspacePath, data);
+        const root = data.rootPath || currentWorkspacePath;
+        const results = await agentActions.handleListFiles(root, data);
         return { ok: true, results };
     } catch (e) {
         return { ok: false, error: e.message };
@@ -1694,7 +1696,8 @@ ipcMain.handle('agent:list-files', async (event, data) => {
 
 ipcMain.handle('agent:search-files', async (event, data) => {
     try {
-        const results = await agentActions.handleSearchFilesNative(currentWorkspacePath, data);
+        const root = data.rootPath || currentWorkspacePath;
+        const results = await agentActions.handleSearchFilesNative(root, data);
         return { ok: true, results };
     } catch (e) {
         return { ok: false, error: e.message };

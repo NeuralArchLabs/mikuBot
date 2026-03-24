@@ -31,6 +31,7 @@ export async function executeToolCall(
                 const isElectron = !!(window as any).electron;
                 const finalPath = (isElectron && staticPath) ? `${staticPath}/${cleanFilename}` : relPath;
 
+                let nativeError = '';
                 if (isElectron && (window as any).electron?.agentReadFile) {
                     const result = await (window as any).electron.agentReadFile({ path: finalPath });
                     if (result.ok) {
@@ -177,8 +178,11 @@ export async function executeToolCall(
                 const subDir = args.directory || args.path || "";
                 
                 // Native Branch (Electron)
-                if (target === 'workSpace' && (window as any).electron?.listFilesNative) {
-                    const result = await (window as any).electron.listFilesNative({ directory: subDir, recursive: !!args.recursive });
+                const isElectron = !!(window as any).electron;
+                const staticPath = config.folderPaths?.[target];
+
+                if (isElectron && staticPath && (window as any).electron?.listFilesNative) {
+                    const result = await (window as any).electron.listFilesNative({ rootPath: staticPath, directory: subDir, recursive: !!args.recursive });
                     if (result.ok) {
                         return { success: true, data: { files: result.results, count: result.results.length, source: target, filtered_by: subDir || 'all' } };
                     }
@@ -207,18 +211,21 @@ export async function executeToolCall(
             }
 
             case 'search_files': {
-                if ((window as any).electron?.searchFilesNative) {
-                    const target = resolveSource(args.source);
+                const target = resolveSource(args.source);
+                const isElectron = !!(window as any).electron;
+                const staticPath = config.folderPaths?.[target];
+
+                if (isElectron && staticPath && (window as any).electron?.searchFilesNative) {
                     const result = await (window as any).electron.searchFilesNative({
+                        rootPath: staticPath,
                         searchText: args.query,
                         caseSensitive: args.caseSensitive || false,
                         filePattern: args.filePattern,
-                        searchPath: args.searchPath ? `${getRelativePath(target, '')}/${args.searchPath}` : getRelativePath(target, '')
+                        searchPath: args.searchPath ? args.searchPath : ''
                     });
                     if (result.ok) return { success: true, data: { query: args.query, matches: result.results, count: result.results.length, source: target } };
                 }
                 // Fallback
-                const target = resolveSource(args.source);
                 const store = getFileStore(target, files, additionalFiles, workSpaceFiles, toolsFiles);
                 const query = args.query.toLowerCase();
                 const matches: { filename: string; lines: string[] }[] = [];
