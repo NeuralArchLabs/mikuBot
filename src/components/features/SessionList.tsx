@@ -15,51 +15,57 @@ interface SessionListProps {
     onExpand?: () => void;
     isModal?: boolean;
     askConfirm: (msg: string, position?: 'left' | 'right' | 'center') => Promise<boolean>;
+    hideList?: boolean;
 }
 
-export const SessionList = React.memo(({ sessions, loading, currentSessionId, onSelect, onDelete, onNew, onExport, onImport, onExpand, isModal, askConfirm }: SessionListProps) => {
+export const SessionList = React.memo(({ sessions, loading, currentSessionId, onSelect, onDelete, onNew, onExport, onImport, onExpand, isModal, askConfirm, hideList }: SessionListProps) => {
 
     return (
         <div className="flex flex-col h-full">
             {!isModal && (
-                <>
-                    <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-2" />
-                    <div className="flex items-center justify-between">
+                <div className={`${hideList ? 'mb-0' : 'mb-3'}`}>
+                    <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-3" />
+                    <div className="flex items-center justify-between px-1">
                         {onExpand ? (
                             <button
                                 onClick={onExpand}
-                                className="text-[10px] font-bold text-slate-500 hover:text-blue-400 uppercase tracking-widest flex items-center gap-1 transition-colors group p-1 -ml-1 cursor-pointer"
+                                className="text-[10px] font-extrabold text-slate-500 hover:text-blue-400 uppercase tracking-[0.18em] flex items-center gap-1.5 transition-colors group cursor-pointer"
                                 title="Expand Sessions Viewer"
                             >
-                                <Icon name="expand-arrows-alt" className="opacity-0 group-hover:opacity-100 transition-all group-hover:scale-110" />
+                                <Icon name="history" className="text-[9px] opacity-30 group-hover:opacity-100 group-hover:scale-110" />
                                 Neural Sessions
                             </button>
                         ) : (
-                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Neural Sessions</label>
+                            <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-[0.18em] flex items-center gap-1.5">
+                                <Icon name="history" className="text-[9px] opacity-30" />
+                                Neural Sessions
+                            </label>
                         )}
-                        <div className="flex items-center gap-1">
-                            <button
-                                onClick={onImport}
-                                className="w-7 h-7 flex items-center justify-center text-indigo-400 hover:bg-indigo-400/10 rounded-md transition-all"
-                                title="Import Session"
-                            >
-                                <Icon name="download" className="text-[11px]" />
-                            </button>
-                            <button
-                                onClick={onNew}
-                                className="w-7 h-7 flex items-center justify-center text-blue-400 hover:bg-blue-400/10 rounded-md transition-all"
-                                title="New Session"
-                            >
-                                <Icon name="plus" className="text-[11px]" />
-                            </button>
-                        </div>
+                        {!hideList && (
+                             <div className="flex items-center gap-1.5">
+                                <button
+                                    onClick={onImport}
+                                    className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-indigo-400 hover:bg-indigo-400/10 rounded-lg transition-all"
+                                    title="Import Session"
+                                >
+                                    <Icon name="download" className="text-[10px]" />
+                                </button>
+                                <button
+                                    onClick={onNew}
+                                    className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-all"
+                                    title="New Session"
+                                >
+                                    <Icon name="plus" className="text-[10px]" />
+                                </button>
+                            </div>
+                        )}
                     </div>
-
-                    <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mt-2 mb-2" />
-                </>
+                    {!hideList && <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mt-3 mb-1" />}
+                </div>
             )}
 
-            <div className={`flex-1 overflow-y-auto custom-scrollbar pr-1 ${isModal ? 'space-y-2' : 'space-y-1'}`}>
+            {!hideList && (
+                <div className={`flex-1 overflow-y-auto custom-scrollbar pr-1 ${isModal ? 'space-y-2' : 'space-y-1'}`}>
                 {loading && sessions.length === 0 ? (
                     <div className="text-center py-4 text-slate-600 animate-pulse">
                         <Icon name="spinner" className="animate-spin mb-1" />
@@ -164,7 +170,8 @@ export const SessionList = React.memo(({ sessions, loading, currentSessionId, on
                         );
                     })
                 )}
-            </div>
+                </div>
+            )}
         </div>
     );
 });

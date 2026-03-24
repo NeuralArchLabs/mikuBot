@@ -122,6 +122,7 @@ export interface AppState {
     activeTab: 'chat' | 'cortex' | 'commands' | 'settings' | 'skills';
     selectedFile: string;
     isLibraryExpanded: boolean;
+    libraryEditFile: string | null;
     unsavedChanges: Record<string, string>;
     agentMode: AgentMode;
     sessionId: string | null;

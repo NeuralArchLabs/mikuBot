@@ -22,6 +22,8 @@ interface LibraryManagerProps {
     onRename: (oldName: string, newName: string) => Promise<boolean>;
     askConfirm: (msg: string, position?: 'left' | 'right' | 'center') => Promise<boolean>;
     config: AppConfig;
+    editFileRequested?: string | null;
+    onClearEditRequest?: () => void;
 }
 
 export const LibraryManager = ({
@@ -35,7 +37,9 @@ export const LibraryManager = ({
     onDelete,
     onRename,
     askConfirm,
-    config
+    config,
+    editFileRequested,
+    onClearEditRequest
 }: LibraryManagerProps) => {
     const [isClosing, setIsClosing] = useState(false);
     const [viewFile, setViewFile] = useState<string | null>(null);
@@ -63,6 +67,15 @@ export const LibraryManager = ({
         };
         if (showBlueprints) loadBlueprints();
     }, [showBlueprints, config.folderPaths?.tools]);
+ 
+    useEffect(() => {
+        if (isOpen && editFileRequested && files[editFileRequested]) {
+            setViewFile(editFileRequested);
+            setEditMode(true);
+            setEditContent(files[editFileRequested]);
+            onClearEditRequest?.();
+        }
+    }, [isOpen, editFileRequested, files, onClearEditRequest]);
 
     const filteredFiles = useMemo(() => {
         const entries = Object.keys(files).sort();

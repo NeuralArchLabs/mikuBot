@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.9.7] - 2026-03-24
+### Added
+- **Rapid Document Creation (+)**: Integrated a '+' button in the Context Library header that creates a new documented and immediately opens the Library Manager in edit mode.
+- **Deep-Linking Library Editor**: Added a new edit request state to enable seamless transitions from the sidebar to the full-screen library editor.
+
+### Changed
+- **Vertical Sidebar Breakpoint**: Implemented a responsive vertical collapse for sidebar sections when viewport height is below 650px. Sections now transform into compact, interactive tabs.
+- **Asymmetric Gradient Aesthetics**: Refined section separators and primary borders with non-linear gradients for a more professional neural look.
+- **Unified Indigo Accents**: Standardized library hover states to Indigo-400 for structural visual consistency.
+
+### Fixed
+- **Library Overflow**: Resolved layout breakage in the Context Library when viewing long file lists in small viewports.
+
 ## [1.9.6] - 2026-03-17
 ### Fixed
 - **Ollama/Gemini Restoration (POO Core)**: Fully restored streaming and tool performance for non-SSE providers (Ollama) and cumulative providers (Gemini), reverting regressions from recent Z.AI optimizations.

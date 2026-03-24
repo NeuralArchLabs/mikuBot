@@ -1,4 +1,4 @@
-# 🟢 MikuCentral Project Status (v1.4.0)
+# 🟢 MikuCentral Project Status (v1.9.7)
 **Last Update:** 2026-03-23 | **Status:** Stable / High Performance
 
 ## 🏗️ Core Architecture
@@ -53,6 +53,13 @@ The `OnboardingWizard.tsx` ensures the initial environment is set correctly. By 
   - **Thematic Breaks (`---`):** Transformed into `<div class="divider-container">`. It triggers an outward "laser-draw" effect where two glowing dots trace from the `center` to the edges (`width: 0` to `width: 100%`) when scrolled into view. Padding is compressed to `0.5rem` for spatial optimization.
   - **Blockquotes (`> text`):** Features an HTML-aware JavaScript typewriter engine directly in the Observer. It locks the `minHeight` before clearing innerHTML (to prevent scroll jitter) and types text out frame-by-frame. Critically, it accurately parses tags (`isTag` logic) to prevent breaking inline HTML (`<strong>`, links) during the print stream.
 - **Vite Build Optimization:** Memory warnings (500kB chunks) are neutralized via Manual Chunk Splitting (`vite.config.ts`), partitioning `react` and `react-dom` into a distinct `vendor` pool. Empty chunk warnings typical to FontAwesome assets were successfully mitigated.
+56: 
+57: ### 5. Quick Workflow & UX Refinement (v1.9.7)
+58: - **Rapid Document Creation (+):** Integrated a '+' button in the Context Library header that creates a new documented and immediately opens the Library Manager in edit mode.
+59: - **Deep-Linking Library Editor:** The `LibraryManager` now supports external edit requests via `libraryEditFile` state, enabling seamless transitions from the sidebar.
+60: - **Vertical Sidebar Breakpoint:** Implemented a responsive vertical collapse for sidebar sections when height < 650px, transforming them into compact, interactive tabs.
+61: - **Asymmetric Gradient Aesthetics:** Refined section separators and primary sidebar borders with non-linear gradients (fast fade-in, long fade-out) for a professional neural look.
+62: - **Indigo Accents:** Standardized library hover states to Indigo-400 to match minimized mobile icons for visual consistency.
 
 ## ⚠️ Internal Peculiarities & Developer Notes
 - **Memory Store vs Native**: Tools prioritize native disk operations (`agentReadFile`, etc.). Memory store serves as a secondary fallback for remote/web-view modes.

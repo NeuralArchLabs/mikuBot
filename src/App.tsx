@@ -39,6 +39,7 @@ export const App = () => {
         activeTab: 'chat' as const,
         selectedFile: '',
         isLibraryExpanded: false,
+        libraryEditFile: null,
         unsavedChanges: {},
         agentMode: 'chat' as AgentMode,
         sessionId: null,
@@ -662,7 +663,10 @@ export const App = () => {
 
     const createFile = async (name: string, type: FileTarget) => {
         if (!name.endsWith('.md')) name += '.md';
-        await saveFile(name, '# New File', type);
+        const ok = await saveFile(name, '# New File', type);
+        if (ok && type === 'extra') {
+            setState(prev => ({ ...prev, isLibraryExpanded: true, libraryEditFile: name }));
+        }
     };
 
     const handleSelectFolder = async (type: FileTarget) => {
@@ -1597,9 +1601,11 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                 onRename={(oldN, newN) => renameFile(oldN, newN, 'extra')}
                 askConfirm={askConfirm}
                 config={state.config}
+                editFileRequested={state.libraryEditFile}
+                onClearEditRequest={() => setState(p => ({ ...p, libraryEditFile: null }))}
             />
             <Sidebar
-                state={{ ...state, askConfirm, onSelectSession, onDeleteSession, onNewSession, onExportSession, onImportSession, onDeleteFile: (n: string, t: FileTarget) => deleteFile(n, t) } as any}
+                state={{ ...state, askConfirm, onSelectSession, onDeleteSession, onNewSession, onExportSession, onImportSession, onDeleteFile: (n: string, t: FileTarget) => deleteFile(n, t), onAddFile: (n: string, t: FileTarget) => createFile(n, t) } as any}
                 sessions={sessions}
                 loadingSessions={loadingSessions}
                 setState={setState}

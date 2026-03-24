@@ -11,6 +11,7 @@ interface SidebarProps {
         onExportSession: (id: string) => void;
         onImportSession: () => void;
         onDeleteFile: (name: string, target: 'core' | 'extra' | 'workSpace' | 'tools') => Promise<boolean>;
+        onAddFile: (name: string, target: 'core' | 'extra' | 'workSpace' | 'tools') => Promise<void>;
         askConfirm: (msg: string, position?: 'left' | 'right' | 'center') => Promise<boolean>;
     };
     sessions: SessionMetadata[];
@@ -20,8 +21,17 @@ interface SidebarProps {
     triggerNeuralEgg?: number;
 }
 export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState, onClear, triggerNeuralEgg }: SidebarProps) => {
-    const [sessionModalOpen, setSessionModalOpen] = useState(false);
+     const [sessionModalOpen, setSessionModalOpen] = useState(false);
     const [isClosing, setIsClosing] = useState(false);
+    const [windowHeight, setWindowHeight] = useState(window.innerHeight);
+
+    React.useEffect(() => {
+        const handleResize = () => setWindowHeight(window.innerHeight);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    const isCompactMode = windowHeight < 650;
 
     const handleClose = () => {
         setIsClosing(true);
@@ -159,21 +169,24 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
 
     return (
         <>
-            <div className="bg-slate-900 border-r border-slate-700 flex flex-col h-full shadow-xl z-30 w-16 lg:w-68 flex-shrink-0 transition-all duration-300 overflow-hidden custom-scrollbar miku-sidebar-isolate">
+            <div className="bg-slate-900 flex flex-col h-full shadow-xl z-30 w-16 lg:w-68 flex-shrink-0 transition-all duration-300 relative overflow-hidden custom-scrollbar miku-sidebar-isolate">
+                {/* Vertical Gradient Border (Fade in from top) */}
+                <div className="absolute right-0 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-slate-700/50 via-[8%] to-slate-700/50 pointer-events-none" />
+                
                 {/* Top Section: Logo & Main Nav */}
-                <div className="flex-none p-3 lg:p-6 pb-2">
-                    <div className="flex items-center justify-center lg:justify-start gap-3 mb-6 group cursor-default h-10 overflow-visible w-full px-1">
+                <div className="flex-none p-3 lg:p-6 pb-0 flex flex-col h-full lg:h-auto">
+                    <div className="flex items-center justify-center lg:justify-start gap-3 mb-8 group cursor-default h-10 overflow-visible w-full px-1">
                         <div
                             className="w-10 h-10 rounded-xl bg-slate-800 flex flex-shrink-0 items-center justify-center shadow-md group-hover:scale-110 active:scale-95 transition-all duration-300 overflow-hidden border border-slate-700/50 cursor-pointer relative z-10"
                             onClick={triggerEasterEgg}
                         >
                             <img src="./mikuBotICON.png" alt="Miku Logo" className="w-full h-full object-cover shadow-inner" />
                         </div>
-                        <div className="hidden lg:block overflow-hidden text-ellipsis">
-                            <h1 className={`font-black text-lg text-white tracking-tighter leading-tight whitespace-nowrap overflow-hidden text-ellipsis transition-all duration-300 ${isAnimatingEgg ? 'text-blue-400 font-mono text-sm' : ''}`}>
+                        <div className="hidden lg:block overflow-hidden">
+                            <h1 className={`font-bold text-lg text-white tracking-tight leading-tight whitespace-nowrap overflow-hidden text-ellipsis transition-all duration-300 ${isAnimatingEgg ? 'text-blue-400 font-mono text-sm' : ''}`}>
                                 {displayName}
                             </h1>
-                            <div className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em] leading-tight mt-0.5">Neural Hub</div>
+                            <div className="text-[11px] text-slate-500/80 font-bold uppercase tracking-[0.2em] leading-tight mt-0.5">v1.9.7</div>
                         </div>
                     </div>
 
@@ -188,110 +201,134 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                             <button
                                 key={tab.id}
                                 onClick={() => setState(prev => ({ ...prev, activeTab: tab.id as any, selectedFile: '' }))}
-                                className={`w-full flex items-center justify-center lg:justify-start gap-4 px-0 lg:px-4 py-3 rounded-xl transition-all duration-200 group border active:scale-95 ${state.activeTab === tab.id
-                                    ? 'bg-slate-800 text-white shadow-lg border-slate-700'
-                                    : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                                className={`w-full flex items-center justify-center lg:justify-start gap-4 px-0 lg:px-4 py-3.5 rounded-xl transition-all duration-200 group border active:scale-95 ${state.activeTab === tab.id
+                                    ? 'bg-slate-800 text-white shadow-md border-slate-700'
+                                    : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
                                     }`}
                             >
                                 <Icon name={tab.icon} className={`text-2xl lg:text-lg flex-shrink-0 ${state.activeTab === tab.id ? tab.color : 'group-hover:text-slate-300'} transition-colors`} />
-                                <span className="hidden lg:inline text-sm font-bold tracking-tight whitespace-nowrap">{tab.label}</span>
+                                <span className="hidden lg:inline text-base font-bold tracking-tight whitespace-nowrap">{tab.label}</span>
                                 {state.activeTab === tab.id && (
-                                    <div className={`hidden lg:block ml-auto w-1 h-1 rounded-full flex-shrink-0 ${tab.color.replace('text', 'bg')} shadow-glow`} />
+                                    <div className={`hidden lg:block ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0 ${tab.color.replace('text', 'bg')} shadow-glow`} />
                                 )}
                             </button>
                         ))}
                     </nav>
 
-                    {/* Mobile Hidden Content Toggle */}
-                    <div className="lg:hidden h-px bg-slate-800/50 my-4" />
-                    <nav className="lg:hidden space-y-3">
+                    {/* Mobile Contents Toggle (Bottom Fixed on Mobile) */}
+                    <div className="lg:hidden mt-auto pt-6 space-y-3 pb-8">
+                         <div className="h-px bg-slate-800/50 mb-6" />
                          <button
                             onClick={() => setSessionModalOpen(true)}
-                            className="w-10 h-10 mx-auto flex items-center justify-center rounded-xl bg-slate-800/40 border border-slate-700/50 text-slate-400 active:scale-90"
+                            className="w-10 h-10 mx-auto flex items-center justify-center rounded-xl bg-slate-800/40 border border-slate-700/50 text-slate-400 hover:text-blue-400 hover:bg-blue-400/10 hover:border-blue-500/20 transition-all active:scale-90"
+                            title="Neural Sessions"
                         >
                             <Icon name="history" />
                         </button>
                         <button
                             onClick={() => setState(p => ({ ...p, isLibraryExpanded: true }))}
-                            className="w-10 h-10 mx-auto flex items-center justify-center rounded-xl bg-slate-800/40 border border-slate-700/50 text-slate-400 active:scale-90"
+                            className="w-10 h-10 mx-auto flex items-center justify-center rounded-xl bg-slate-800/40 border border-slate-700/50 text-slate-400 hover:text-indigo-400 hover:bg-indigo-400/10 hover:border-indigo-500/20 transition-all active:scale-90"
+                            title="Context Library"
                         >
                             <Icon name="book" />
                         </button>
-                    </nav>
+                    </div>
                 </div>
 
-                {/* Bottom Dynamic Section (Sessions + Library) */}
-                <div className="flex-1 hidden lg:flex flex-col min-h-0 overflow-hidden border-t border-slate-800/50">
+                {/* Bottom Balanced Section (Sessions + Library - Desktop Only) */}
+                <div className="flex-1 hidden lg:flex flex-col min-h-0 overflow-hidden">
                     
-                    {/* Neural Sessions - Takes more space */}
-                    <div className="flex-[1.5] flex flex-col min-h-[160px] overflow-hidden px-5 py-4">
-                        <SessionList
-                            sessions={sessions}
-                            loading={loadingSessions}
-                            currentSessionId={state.sessionId}
-                            onSelect={(id) => (state as any).onSelectSession(id)}
-                            onDelete={(id) => (state as any).onDeleteSession(id)}
-                            onNew={() => (state as any).onNewSession()}
-                            onExport={(id) => (state as any).onExportSession(id)}
-                            onImport={() => (state as any).onImportSession()}
-                            onExpand={() => setSessionModalOpen(true)}
-                            askConfirm={state.askConfirm}
-                        />
+                    {/* Neural Sessions - Dynamic Growth or Compact Tab */}
+                    <div className={`${isCompactMode ? 'flex-none h-14' : 'flex-[1.2] min-h-[140px]'} flex flex-col overflow-hidden px-5 pt-0 transition-all duration-300`}>
+                        <div className={isCompactMode ? 'hover:bg-blue-500/5 rounded-xl transition-all cursor-pointer' : ''} onClick={isCompactMode ? () => setSessionModalOpen(true) : undefined}>
+                            <SessionList
+                                sessions={sessions}
+                                loading={loadingSessions}
+                                currentSessionId={state.sessionId}
+                                onSelect={(id) => (state as any).onSelectSession(id)}
+                                onDelete={(id) => (state as any).onDeleteSession(id)}
+                                onNew={() => (state as any).onNewSession()}
+                                onExport={(id) => (state as any).onExportSession(id)}
+                                onImport={() => (state as any).onImportSession()}
+                                onExpand={() => setSessionModalOpen(true)}
+                                askConfirm={state.askConfirm}
+                                hideList={isCompactMode}
+                            />
+                        </div>
                     </div>
 
-                    {/* Context Library - Fixed bottom position with clear separation */}
-                    <div className="flex-none flex flex-col bg-slate-950/20 border-t border-slate-800/40 shadow-[0_-10px_15px_-5px_rgba(0,0,0,0.3)]">
-                        <div className="px-5 py-2">
-                             <div className="flex items-center justify-between mb-1">
-                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Context Library</label>
+                    {/* Context Library - Balanced (flex-1) or Compact Tab */}
+                    <div className={`${isCompactMode ? 'flex-none h-14' : 'flex-1 min-h-0'} flex flex-col border-t border-slate-800/40 shadow-[0_-10px_15px_-5px_rgba(0,0,0,0.3)] transition-all duration-300`}>
+                        <div 
+                            className={`px-5 py-3 flex-1 flex flex-col min-h-0 ${isCompactMode ? 'hover:bg-slate-800/40 cursor-pointer rounded-xl mx-2 my-1' : ''}`}
+                            onClick={isCompactMode ? () => setState(p => ({ ...p, isLibraryExpanded: true })) : undefined}
+                        >
+                             <div className="flex items-center justify-between flex-none mb-2">
                                 <button
                                     onClick={() => setState(prev => ({ ...prev, isLibraryExpanded: true }))}
-                                    className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors p-1 px-2 cursor-pointer group"
+                                    className="text-[10px] font-extrabold text-slate-500 hover:text-indigo-400 uppercase tracking-[0.18em] flex items-center gap-1.5 transition-colors group cursor-pointer"
+                                    title="Expand Library Viewer"
                                 >
-                                    <Icon name="expand-alt" className="group-hover:scale-110 transition-transform" />
+                                    <Icon name="book" className="text-[9px] opacity-30 group-hover:opacity-100 transition-all" />
+                                    Context Library
                                 </button>
-                            </div>
-
-                            <div className="max-h-[180px] min-h-[60px] overflow-y-auto custom-scrollbar space-y-1 pb-3">
-                                {Object.keys(state.additionalFiles || {}).length === 0 ? (
-                                    <div className="text-center py-4 px-2 border border-dashed border-slate-800/50 rounded-xl bg-slate-800/5">
-                                        <p className="text-[9px] text-slate-700 italic">Vault is empty</p>
-                                    </div>
-                                ) : (
-                                    Object.keys(state.additionalFiles || {}).map(filename => {
-                                        const isSelected = (state.selectedLibraryFiles || []).includes(filename);
-                                        return (
-                                            <div key={filename} className="group relative">
-                                                <button
-                                                    onClick={() => setState(prev => {
-                                                        const current = prev.selectedLibraryFiles || [];
-                                                        const updated = isSelected ? current.filter(f => f !== filename) : [...current, filename];
-                                                        return { ...prev, selectedLibraryFiles: updated };
-                                                    })}
-                                                    className={`w-full text-left px-2 py-1.5 rounded-lg text-[11px] font-mono truncate flex items-center gap-2 transition-all border ${isSelected
-                                                        ? 'bg-blue-600/10 text-blue-300 border-blue-500/20 shadow-sm'
-                                                        : 'border-transparent text-slate-500 hover:text-slate-300 hover:bg-slate-800/60'
-                                                        }`}
-                                                >
-                                                    <Icon name={isSelected ? 'check-circle' : 'circle'} className={`flex-shrink-0 text-[10px] ${isSelected ? 'text-blue-400' : 'text-slate-700'}`} />
-                                                    <span className="truncate pr-6">{filename}</span>
-                                                </button>
-                                                <button
-                                                    onClick={async (e) => {
-                                                        e.stopPropagation();
-                                                        if (await state.askConfirm(`Delete ${filename}?`, 'right')) {
-                                                            await state.onDeleteFile(filename, 'extra');
-                                                        }
-                                                    }}
-                                                    className="absolute right-1 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all rounded-md hover:bg-red-400/10"
-                                                >
-                                                    <Icon name="times" className="text-[10px]" />
-                                                </button>
-                                            </div>
-                                        );
-                                    })
+                                {!isCompactMode && (
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); (state as any).onAddFile(`Doc_${Date.now()}.md`, 'extra'); }}
+                                        className="text-slate-500 hover:text-indigo-400 transition-colors p-1 px-2 cursor-pointer group"
+                                        title="New Context Document"
+                                    >
+                                        <Icon name="plus" className="text-[10px] group-hover:scale-110 transition-transform" />
+                                    </button>
                                 )}
-                            </div>
+                             </div>
+                            <div className="h-px bg-gradient-to-r from-transparent via-slate-700/50 via-[5%] to-transparent flex-none" />
+ 
+                            {!isCompactMode && (
+                                <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1 pb-3 min-h-0">
+                                    {Object.keys(state.additionalFiles || {}).length === 0 ? (
+                                        <div className="text-center py-6 px-2 border border-dashed border-slate-800/50 rounded-xl bg-slate-800/10">
+                                            <p className="text-[9px] text-slate-600 italic">No cortex expansion</p>
+                                        </div>
+                                    ) : (
+                                        Object.keys(state.additionalFiles || {}).map(filename => {
+                                            const isSelected = (state.selectedLibraryFiles || []).includes(filename);
+                                            return (
+                                                <div key={filename} className="group relative">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setState(prev => {
+                                                                const current = prev.selectedLibraryFiles || [];
+                                                                const updated = isSelected ? current.filter(f => f !== filename) : [...current, filename];
+                                                                return { ...prev, selectedLibraryFiles: updated };
+                                                            });
+                                                        }}
+                                                        className={`w-full text-left px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-[11px] font-mono truncate flex items-center gap-2.5 transition-all border ${isSelected
+                                                            ? 'bg-blue-600/15 text-blue-300 border-blue-500/30'
+                                                            : 'border-transparent text-slate-500 hover:text-slate-200 hover:bg-slate-800/60'
+                                                            }`}
+                                                    >
+                                                        <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${isSelected ? 'bg-blue-400 shadow-glow' : 'bg-slate-700'}`} />
+                                                        <span className="truncate pr-5">{filename}</span>
+                                                    </button>
+                                                    <button
+                                                        onClick={async (e) => {
+                                                            e.stopPropagation();
+                                                            if (await state.askConfirm(`Delete ${filename}?`, 'right')) {
+                                                                await state.onDeleteFile(filename, 'extra');
+                                                            }
+                                                        }}
+                                                        className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all rounded-lg hover:bg-red-400/10"
+                                                    >
+                                                        <Icon name="times" className="text-[9px]" />
+                                                    </button>
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
