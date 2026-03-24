@@ -1837,42 +1837,58 @@ function createWindow() {
     });
 }
 
-app.whenReady().then(async () => {
-    // Proactive engine detection
-    const isRunning = await checkPort8000();
-    if (isRunning) {
-        console.log('[Main Process] searXena detected as ALREADY RUNNING on port 8000.');
-    } else {
-        console.log('[Main Process] searXena engine is currently STOPPED.');
-    }
-    
-    createWindow();
-    startSearXena();
-    app.on('activate', () => {
-        if (BrowserWindow.getAllWindows().length === 0) {
-            createWindow();
-        } else if (mainWin) {
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+    console.log('[Main Process] Duplicate instance detected. Quitting to protect GPU/DB cache.');
+    app.quit();
+} else {
+    app.on('second-instance', (event, commandLine, workingDirectory) => {
+        // Someone tried to run a second instance, we should focus our window.
+        if (mainWin) {
+            if (mainWin.isMinimized()) mainWin.restore();
             mainWin.show();
+            mainWin.focus();
         }
     });
-});
 
-app.on('before-quit', () => {
-    isQuitting = true;
-    stopSearXenaSync(); // Use sync version to ensure it happens before exit
-});
+    app.whenReady().then(async () => {
+        // Proactive engine detection
+        const isRunning = await checkPort8000();
+        if (isRunning) {
+            console.log('[Main Process] searXena detected as ALREADY RUNNING on port 8000.');
+        } else {
+            console.log('[Main Process] searXena engine is currently STOPPED.');
+        }
+        
+        createWindow();
+        startSearXena();
+        app.on('activate', () => {
+            if (BrowserWindow.getAllWindows().length === 0) {
+                createWindow();
+            } else if (mainWin) {
+                mainWin.show();
+            }
+        });
+    });
 
-app.on('will-quit', () => {
-    stopSearXenaSync(); // Fallback double-check
-});
+    app.on('before-quit', () => {
+        isQuitting = true;
+        stopSearXenaSync(); // Use sync version to ensure it happens before exit
+    });
 
-// Windows/Process level emergency cleanup
-process.on('exit', () => {
-    stopSearXenaSync();
-});
+    app.on('will-quit', () => {
+        stopSearXenaSync(); // Fallback double-check
+    });
 
-app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-        app.quit();
-    }
-});
+    // Windows/Process level emergency cleanup
+    process.on('exit', () => {
+        stopSearXenaSync();
+    });
+
+    app.on('window-all-closed', () => {
+        if (process.platform !== 'darwin') {
+            app.quit();
+        }
+    });
+}
