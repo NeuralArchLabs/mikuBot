@@ -205,14 +205,6 @@ export async function sendAgentMessage(
                 }
                 if (status.streamedText) {
                     const segmented = segmentThoughtsAndNarrative(status.streamedText, signatureRegex);
-                    const hasFinalInStream = status.streamedText.toLowerCase().includes('final_answer');
-                    if (hasFinalInStream) {
-                        segmented.forEach(b => {
-                            if (b.type === 'answer' && b.isFromNarrative) {
-                                b.type = 'thought'; // Hide narrative text that usually precedes tool calls
-                            }
-                        });
-                    }
                     tempIterationBlocks.push(...segmented);
                 }
                 // Call with chunk text as empty or already summarized to avoid App.tsx re-concatenating
@@ -371,10 +363,9 @@ export async function sendAgentMessage(
             const finalBlocks = segmentThoughtsAndNarrative((content || '').substring(curIdx), signatureRegex);
             iterationBlocks.push(...finalBlocks);
 
-            const mergedBlocks: MessageBlock[] = [];
             const turnHasFinal = uniqueToolCalls.some(tc => tc.function.name === 'final_answer');
+            const mergedBlocks: MessageBlock[] = [];
             iterationBlocks.forEach(block => {
-                if (turnHasFinal && block.type === 'answer' && block.isFromNarrative) block.type = 'thought';
                 const last = mergedBlocks[mergedBlocks.length - 1];
                 if (last && last.type === 'thought' && block.type === 'thought') last.content += `\n\n${block.content}`;
                 else if (block.content?.trim()) mergedBlocks.push(block);
