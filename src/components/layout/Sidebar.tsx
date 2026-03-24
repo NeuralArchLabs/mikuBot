@@ -159,24 +159,23 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
 
     return (
         <>
-            <div className="bg-slate-900 border-r border-slate-700 flex flex-col h-full shadow-xl z-30 w-16 lg:w-68 flex-shrink-0 transition-all duration-300 overflow-y-auto overflow-x-hidden custom-scrollbar miku-sidebar-isolate">
-                <div className="p-3 lg:p-6">
-                    <div className="flex items-center justify-center lg:justify-start gap-3 mb-8 group cursor-default h-10 overflow-visible w-full px-1">
+            <div className="bg-slate-900 border-r border-slate-700 flex flex-col h-full shadow-xl z-30 w-16 lg:w-68 flex-shrink-0 transition-all duration-300 overflow-hidden custom-scrollbar miku-sidebar-isolate">
+                {/* Top Section: Logo & Main Nav */}
+                <div className="flex-none p-3 lg:p-6 pb-2">
+                    <div className="flex items-center justify-center lg:justify-start gap-3 mb-6 group cursor-default h-10 overflow-visible w-full px-1">
                         <div
                             className="w-10 h-10 rounded-xl bg-slate-800 flex flex-shrink-0 items-center justify-center shadow-md group-hover:scale-110 active:scale-95 transition-all duration-300 overflow-hidden border border-slate-700/50 cursor-pointer relative z-10"
                             onClick={triggerEasterEgg}
                         >
                             <img src="./mikuBotICON.png" alt="Miku Logo" className="w-full h-full object-cover shadow-inner" />
                         </div>
-                        <div className="hidden lg:block overflow-hidden">
-                            <h1 className={`font-bold text-lg text-white tracking-tight leading-tight whitespace-nowrap overflow-hidden text-ellipsis transition-all duration-300 ${isAnimatingEgg ? 'text-blue-400 font-mono text-sm' : ''}`}>
+                        <div className="hidden lg:block overflow-hidden text-ellipsis">
+                            <h1 className={`font-black text-lg text-white tracking-tighter leading-tight whitespace-nowrap overflow-hidden text-ellipsis transition-all duration-300 ${isAnimatingEgg ? 'text-blue-400 font-mono text-sm' : ''}`}>
                                 {displayName}
                             </h1>
-                            <div className="text-[11px] text-slate-500/80 font-bold uppercase tracking-[0.2em] leading-tight mt-0.5">v1.9.6</div>
+                            <div className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em] leading-tight mt-0.5">Neural Hub</div>
                         </div>
                     </div>
-
-                    <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-6" />
 
                     <nav className="space-y-1">
                         {[
@@ -189,49 +188,43 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                             <button
                                 key={tab.id}
                                 onClick={() => setState(prev => ({ ...prev, activeTab: tab.id as any, selectedFile: '' }))}
-                                className={`w-full flex items-center justify-center lg:justify-start gap-4 px-0 lg:px-4 py-3.5 rounded-xl transition-all duration-200 group border active:scale-95 ${state.activeTab === tab.id
-                                    ? 'bg-slate-800 text-white shadow-md border-slate-700'
-                                    : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                                className={`w-full flex items-center justify-center lg:justify-start gap-4 px-0 lg:px-4 py-3 rounded-xl transition-all duration-200 group border active:scale-95 ${state.activeTab === tab.id
+                                    ? 'bg-slate-800 text-white shadow-lg border-slate-700'
+                                    : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
                                     }`}
                             >
                                 <Icon name={tab.icon} className={`text-2xl lg:text-lg flex-shrink-0 ${state.activeTab === tab.id ? tab.color : 'group-hover:text-slate-300'} transition-colors`} />
-                                <span className="hidden lg:inline text-base font-bold tracking-tight whitespace-nowrap">{tab.label}</span>
+                                <span className="hidden lg:inline text-sm font-bold tracking-tight whitespace-nowrap">{tab.label}</span>
                                 {state.activeTab === tab.id && (
-                                    <div className={`hidden lg:block ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0 ${tab.color.replace('text', 'bg')} shadow-glow`} />
+                                    <div className={`hidden lg:block ml-auto w-1 h-1 rounded-full flex-shrink-0 ${tab.color.replace('text', 'bg')} shadow-glow`} />
                                 )}
                             </button>
                         ))}
                     </nav>
 
-                    {/* Collapsed Sidebar Separator */}
-                    <div className="lg:hidden h-px bg-gradient-to-r from-transparent via-white/10 to-transparent my-4" />
-
-                    <nav className="space-y-1">
-                        {/* Mobile Sessions Button */}
-                        <button
+                    {/* Mobile Hidden Content Toggle */}
+                    <div className="lg:hidden h-px bg-slate-800/50 my-4" />
+                    <nav className="lg:hidden space-y-3">
+                         <button
                             onClick={() => setSessionModalOpen(true)}
-                            className={`w-10 h-10 mx-auto flex items-center justify-center lg:hidden rounded-full transition-all duration-300 group bg-slate-800/40 border border-slate-700/50 active:scale-90 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 hover:border-blue-500/30 hover:shadow-[0_0_15px_rgba(59,130,246,0.2)] cursor-pointer mt-2`}
-                            title="Neural Sessions"
+                            className="w-10 h-10 mx-auto flex items-center justify-center rounded-xl bg-slate-800/40 border border-slate-700/50 text-slate-400 active:scale-90"
                         >
-                            <Icon name="history" className={`text-xl flex-shrink-0 transition-colors pointer-events-none`} />
+                            <Icon name="history" />
                         </button>
-
-                        {/* Mobile Library Separator */}
-                        <div className="lg:hidden h-px bg-gradient-to-r from-transparent via-white/5 to-transparent my-3" />
-
-                        {/* Mobile Context Library Button */}
                         <button
-                            onClick={() => setState(prev => ({ ...prev, isLibraryExpanded: true }))}
-                            className={`w-10 h-10 mx-auto flex items-center justify-center lg:hidden rounded-full transition-all duration-300 group bg-slate-800/40 border border-slate-700/50 active:scale-90 text-slate-400 hover:text-pink-400 hover:bg-pink-500/10 hover:border-pink-500/30 hover:shadow-[0_0_15px_rgba(236,72,153,0.2)] cursor-pointer`}
-                            title="Context Library"
+                            onClick={() => setState(p => ({ ...p, isLibraryExpanded: true }))}
+                            className="w-10 h-10 mx-auto flex items-center justify-center rounded-xl bg-slate-800/40 border border-slate-700/50 text-slate-400 active:scale-90"
                         >
-                            <Icon name="book" className={`text-xl flex-shrink-0 transition-colors pointer-events-none`} />
+                            <Icon name="book" />
                         </button>
                     </nav>
                 </div>
 
-                <div className="flex-1 overflow-hidden hidden lg:flex flex-col min-h-0">
-                    <div className="px-5 py-4 flex-1 flex flex-col min-h-0">
+                {/* Bottom Dynamic Section (Sessions + Library) */}
+                <div className="flex-1 hidden lg:flex flex-col min-h-0 overflow-hidden border-t border-slate-800/50">
+                    
+                    {/* Neural Sessions - Takes more space */}
+                    <div className="flex-[1.5] flex flex-col min-h-[160px] overflow-hidden px-5 py-4">
                         <SessionList
                             sessions={sessions}
                             loading={loadingSessions}
@@ -246,71 +239,60 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                         />
                     </div>
 
-
-                    <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-                    <div className="px-5 py-2.5 bg-slate-900/60">
-                        <div className="flex items-center justify-between">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-2">Context Library</label>
-                            <button
-                                onClick={() => setState(prev => ({ ...prev, isLibraryExpanded: true }))}
-                                className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors -mr-2 p-2 px-3 cursor-pointer group"
-                            >
-                                <Icon name="expand-alt" className="group-hover:scale-110 transition-transform" /> Manage
-                            </button>
-                        </div>
-                        <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mt-1.5 mb-1" />
-
-                        {Object.keys(state.additionalFiles || {}).length === 0 ? (
-                            <div className="text-center py-3 px-2 border border-dashed border-slate-700 rounded-xl bg-slate-800/10">
-                                <p className="text-[10px] text-slate-600 mb-2">No cortex expansion</p>
-                                <div
-                                    className="text-[10px] text-blue-400 hover:text-blue-300 cursor-pointer flex items-center justify-center gap-1 font-medium"
-                                    onClick={() => setState(prev => ({ ...prev, activeTab: 'settings' }))}
+                    {/* Context Library - Fixed bottom position with clear separation */}
+                    <div className="flex-none flex flex-col bg-slate-950/20 border-t border-slate-800/40 shadow-[0_-10px_15px_-5px_rgba(0,0,0,0.3)]">
+                        <div className="px-5 py-2">
+                             <div className="flex items-center justify-between mb-1">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Context Library</label>
+                                <button
+                                    onClick={() => setState(prev => ({ ...prev, isLibraryExpanded: true }))}
+                                    className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors p-1 px-2 cursor-pointer group"
                                 >
-                                    <Icon name="plus-circle" /> Link Data
-                                </div>
+                                    <Icon name="expand-alt" className="group-hover:scale-110 transition-transform" />
+                                </button>
                             </div>
-                        ) : (
-                            <div className="context-library-container space-y-1 max-h-64 lg:max-h-[22rem] overflow-y-auto custom-scrollbar">
-                                {Object.keys(state.additionalFiles || {}).map(filename => {
-                                    const isSelected = (state.selectedLibraryFiles || []).includes(filename);
-                                    return (
-                                        <div key={filename} className="context-library-item group relative">
-                                            <button
-                                                onClick={() => {
-                                                    setState(prev => {
+
+                            <div className="max-h-[180px] min-h-[60px] overflow-y-auto custom-scrollbar space-y-1 pb-3">
+                                {Object.keys(state.additionalFiles || {}).length === 0 ? (
+                                    <div className="text-center py-4 px-2 border border-dashed border-slate-800/50 rounded-xl bg-slate-800/5">
+                                        <p className="text-[9px] text-slate-700 italic">Vault is empty</p>
+                                    </div>
+                                ) : (
+                                    Object.keys(state.additionalFiles || {}).map(filename => {
+                                        const isSelected = (state.selectedLibraryFiles || []).includes(filename);
+                                        return (
+                                            <div key={filename} className="group relative">
+                                                <button
+                                                    onClick={() => setState(prev => {
                                                         const current = prev.selectedLibraryFiles || [];
-                                                        const updated = isSelected
-                                                            ? current.filter(f => f !== filename)
-                                                            : [...current, filename];
+                                                        const updated = isSelected ? current.filter(f => f !== filename) : [...current, filename];
                                                         return { ...prev, selectedLibraryFiles: updated };
-                                                    });
-                                                }}
-                                                className={`w-full text-left px-2 py-1.5 rounded-lg text-xs font-mono truncate flex items-center gap-2 transition-colors border active:scale-95 ${isSelected
-                                                    ? 'bg-blue-900/20 text-blue-300 border-blue-700/30'
-                                                    : 'border-transparent text-slate-500 hover:text-slate-300 hover:bg-slate-800'
-                                                    }`}
-                                            >
-                                                <Icon name={isSelected ? 'check-circle' : 'circle'} className="flex-shrink-0 text-[10px]" />
-                                                <span className="truncate pr-6">{filename}</span>
-                                            </button>
-                                            <button
-                                                onClick={async (e) => {
-                                                    e.stopPropagation();
-                                                    if (await state.askConfirm(`Permanently delete ${filename} from Context Library?`, 'right')) {
-                                                        await state.onDeleteFile(filename, 'extra');
-                                                    }
-                                                }}
-                                                className="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all rounded-md hover:bg-red-500/10"
-                                                title="Delete file"
-                                            >
-                                                <Icon name="times" className="text-[10px]" />
-                                            </button>
-                                        </div>
-                                    );
-                                })}
+                                                    })}
+                                                    className={`w-full text-left px-2 py-1.5 rounded-lg text-[11px] font-mono truncate flex items-center gap-2 transition-all border ${isSelected
+                                                        ? 'bg-blue-600/10 text-blue-300 border-blue-500/20 shadow-sm'
+                                                        : 'border-transparent text-slate-500 hover:text-slate-300 hover:bg-slate-800/60'
+                                                        }`}
+                                                >
+                                                    <Icon name={isSelected ? 'check-circle' : 'circle'} className={`flex-shrink-0 text-[10px] ${isSelected ? 'text-blue-400' : 'text-slate-700'}`} />
+                                                    <span className="truncate pr-6">{filename}</span>
+                                                </button>
+                                                <button
+                                                    onClick={async (e) => {
+                                                        e.stopPropagation();
+                                                        if (await state.askConfirm(`Delete ${filename}?`, 'right')) {
+                                                            await state.onDeleteFile(filename, 'extra');
+                                                        }
+                                                    }}
+                                                    className="absolute right-1 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all rounded-md hover:bg-red-400/10"
+                                                >
+                                                    <Icon name="times" className="text-[10px]" />
+                                                </button>
+                                            </div>
+                                        );
+                                    })
+                                )}
                             </div>
-                        )}
+                        </div>
                     </div>
                 </div>
             </div>
