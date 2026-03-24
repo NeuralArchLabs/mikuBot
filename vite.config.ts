@@ -32,8 +32,7 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks: {
-            vendor: ['react', 'react-dom'],
-            icons: ['@fortawesome/fontawesome-free']
+            vendor: ['react', 'react-dom']
           }
         }
       }
