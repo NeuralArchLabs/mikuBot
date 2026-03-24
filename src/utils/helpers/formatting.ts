@@ -72,44 +72,80 @@ export const toHtml = (md: string): string => {
 function convertTablesToHtml(html: string): string {
     const lines = html.split('\n');
     let inTable = false;
-    let tableHtml = '';
+    let currentTable: string[][] = [];
     const outputLines: string[] = [];
+    let inPre = false;
 
     for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
+        const line = lines[i];
+        
+        // Guard flag to prevent parsing shell commands with pipes as tables inside code blocks
+        if (line.includes('<pre')) inPre = true;
 
-        if (line.startsWith('|') && line.includes('|')) {
+        const trimmed = line.trim();
+        const isTableRow = !inPre && trimmed.includes('|') && (inTable || trimmed.startsWith('|'));
+
+        if (isTableRow) {
             if (!inTable) {
                 inTable = true;
-                tableHtml = '<div class="overflow-x-auto my-4"><table class="min-w-full divide-y divide-white/10 border border-white/10 rounded-lg overflow-hidden">';
+                currentTable = [];
             }
-
-            const cells = line.split('|').filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
-            if (line.match(/^[|:\-\s]+$/)) continue; // Skip separator line
-
-            if (!tableHtml.includes('<thead>')) {
-                tableHtml += '<thead class="bg-white/5"><tr>';
-                cells.forEach(c => tableHtml += `<th class="px-4 py-2 text-left text-xs font-bold text-slate-300 uppercase tracking-wider">${c.trim()}</th>`);
-                tableHtml += '</tr></thead><tbody class="divide-y divide-white/5">';
-            } else {
-                tableHtml += '<tr class="hover:bg-white/5 transition-colors">';
-                cells.forEach(c => tableHtml += `<td class="px-4 py-2 text-sm text-slate-300 border-x border-white/5">${c.trim()}</td>`);
-                tableHtml += '</tr>';
+            if (trimmed.match(/^[|:\-\s]+$/)) {
+                if (line.includes('</pre>')) inPre = false;
+                continue; 
             }
+            
+            const cleanLine = trimmed.replace(/^\|/, '').replace(/\|$/, '');
+            const cells = cleanLine.split('|').map(c => c.trim());
+            currentTable.push(cells);
         } else {
             if (inTable) {
-                tableHtml += '</tbody></table></div>';
-                outputLines.push(tableHtml);
+                outputLines.push(renderTable(currentTable));
                 inTable = false;
-                tableHtml = '';
+                currentTable = [];
             }
-            outputLines.push(lines[i]);
+            outputLines.push(line);
         }
+
+        if (line.includes('</pre>')) inPre = false;
     }
 
-    if (inTable) outputLines.push(tableHtml + '</tbody></table></div>');
+    if (inTable) outputLines.push(renderTable(currentTable));
 
     return outputLines.join('\n');
+}
+
+function renderTable(rows: string[][]): string {
+    if (rows.length === 0) return '';
+    
+    // Auto-heal column count: find the maximum width used in either header or data rows
+    let maxCols = 0;
+    rows.forEach(r => { if (r.length > maxCols) maxCols = r.length; });
+
+    let html = '<div class="overflow-x-auto my-4"><table class="min-w-full divide-y divide-white/10 border border-white/10 rounded-lg overflow-hidden">';
+    
+    // Auto-Grid Header
+    html += '<thead class="bg-white/5"><tr>';
+    const headerRow = rows[0];
+    for (let i = 0; i < maxCols; i++) {
+        const cellText = headerRow[i] || '&nbsp;';
+        html += `<th class="px-4 py-2 text-left text-xs font-bold text-slate-300 uppercase tracking-wider">${cellText}</th>`;
+    }
+    html += '</tr></thead><tbody class="divide-y divide-white/5">';
+
+    // Auto-Grid Body
+    for (let r = 1; r < rows.length; r++) {
+        html += '<tr class="hover:bg-white/5 transition-colors">';
+        const row = rows[r];
+        for (let c = 0; c < maxCols; c++) {
+            const cellText = row[c] || '&nbsp;';
+            html += `<td class="px-4 py-2 text-sm text-slate-300 border-x border-white/5">${cellText}</td>`;
+        }
+        html += '</tr>';
+    }
+
+    html += '</tbody></table></div>';
+    return html;
 }
 
 /**
