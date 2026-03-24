@@ -174,9 +174,27 @@ export async function executeToolCall(
             }
 
             case 'list_files': {
-                const target = resolveSource(args.source);
-                const subDir = args.directory || args.path || "";
+                let target = resolveSource(args.source);
+                let subDir = args.directory || args.path || "";
                 
+                // Smart naked prefix remap (if source not specified)
+                if (!args.source && subDir) {
+                    const normalizedSub = subDir.replace(/\\/g, '/').toLowerCase();
+                    if (normalizedSub === 'library' || normalizedSub.startsWith('library/')) {
+                        target = 'extra';
+                        subDir = subDir.substring(7).replace(/^[/\\]+/, '');
+                    } else if (normalizedSub === 'core' || normalizedSub.startsWith('core/')) {
+                        target = 'core';
+                        subDir = subDir.substring(4).replace(/^[/\\]+/, '');
+                    } else if (normalizedSub === 'commands' || normalizedSub.startsWith('commands/')) {
+                        target = 'tools';
+                        subDir = subDir.substring(8).replace(/^[/\\]+/, '');
+                    } else if (normalizedSub === 'workspace' || normalizedSub.startsWith('workspace/')) {
+                        target = 'workSpace';
+                        subDir = subDir.substring(9).replace(/^[/\\]+/, '');
+                    }
+                }
+
                 // Native Branch (Electron)
                 const isElectron = !!(window as any).electron;
                 const staticPath = config.folderPaths?.[target];
@@ -211,7 +229,26 @@ export async function executeToolCall(
             }
 
             case 'search_files': {
-                const target = resolveSource(args.source);
+                let target = resolveSource(args.source);
+                let searchPath = args.searchPath ? args.searchPath : '';
+
+                if (!args.source && searchPath) {
+                    const normalizedSub = searchPath.replace(/\\/g, '/').toLowerCase();
+                    if (normalizedSub === 'library' || normalizedSub.startsWith('library/')) {
+                        target = 'extra';
+                        searchPath = searchPath.substring(7).replace(/^[/\\]+/, '');
+                    } else if (normalizedSub === 'core' || normalizedSub.startsWith('core/')) {
+                        target = 'core';
+                        searchPath = searchPath.substring(4).replace(/^[/\\]+/, '');
+                    } else if (normalizedSub === 'commands' || normalizedSub.startsWith('commands/')) {
+                        target = 'tools';
+                        searchPath = searchPath.substring(8).replace(/^[/\\]+/, '');
+                    } else if (normalizedSub === 'workspace' || normalizedSub.startsWith('workspace/')) {
+                        target = 'workSpace';
+                        searchPath = searchPath.substring(9).replace(/^[/\\]+/, '');
+                    }
+                }
+
                 const isElectron = !!(window as any).electron;
                 const staticPath = config.folderPaths?.[target];
 
@@ -221,7 +258,7 @@ export async function executeToolCall(
                         searchText: args.query,
                         caseSensitive: args.caseSensitive || false,
                         filePattern: args.filePattern,
-                        searchPath: args.searchPath ? args.searchPath : ''
+                        searchPath: searchPath
                     });
                     if (result.ok) return { success: true, data: { query: args.query, matches: result.results, count: result.results.length, source: target } };
                 }

@@ -34,6 +34,36 @@ export function resolvePathAndSource(filename: string | undefined, sourceArg?: s
         target = 'tools';
         f = f.slice(7);
     } 
+    // 1.5 Naked Prefix Interception (Fallback for when agents don't explicitly pass source or @)
+    else if (!sourceArg) {
+        const normalized = f.replace(/\\/g, '/').toLowerCase();
+        if (normalized.startsWith('library/')) {
+            target = 'extra';
+            f = f.substring(8);
+        } else if (normalized === 'library') {
+            target = 'extra';
+            f = '';
+        } else if (normalized.startsWith('core/')) {
+            target = 'core';
+            f = f.substring(5);
+        } else if (normalized === 'core') {
+            target = 'core';
+            f = '';
+        } else if (normalized.startsWith('commands/')) {
+            target = 'tools';
+            f = f.substring(9);
+        } else if (normalized === 'commands') {
+            target = 'tools';
+            f = '';
+        } else if (normalized.startsWith('workspace/')) {
+            target = 'workSpace';
+            f = f.substring(10);
+        } else if (normalized === 'workspace') {
+            target = 'workSpace';
+            f = '';
+        }
+    }
+    
     // 2. Absolute Path Detection (via config)
     else if (config?.folderPaths) {
         const paths = config.folderPaths;
