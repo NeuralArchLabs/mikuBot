@@ -46,6 +46,14 @@ The `OnboardingWizard.tsx` ensures the initial environment is set correctly. By 
 - `.../workspace`
 - `.../library`
 
+### 4. UI Rendering & Markdown Engine Resiliency
+- **Table Auto-Healing:** The `convertTablesToHtml` parser was refactored with a 2D-array engine. It no longer fails on missing `|` pipes or unmatched header columns. It measures Max Width dynamically and fills missing data with `&nbsp;` to ensure UI stability against LLM hallucinations. Guarded by `inPre` to avoid misinterpreting ASCII inside `<pre>` blocks.
+- **Dynamic Viewport Animations (`Common.tsx`):**
+  - Uses an integrated `IntersectionObserver` attached to generated Markdown blocks.
+  - **Thematic Breaks (`---`):** Transformed into `<div class="divider-container">`. It triggers an outward "laser-draw" effect where two glowing dots trace from the `center` to the edges (`width: 0` to `width: 100%`) when scrolled into view. Padding is compressed to `0.5rem` for spatial optimization.
+  - **Blockquotes (`> text`):** Features an HTML-aware JavaScript typewriter engine directly in the Observer. It locks the `minHeight` before clearing innerHTML (to prevent scroll jitter) and types text out frame-by-frame. Critically, it accurately parses tags (`isTag` logic) to prevent breaking inline HTML (`<strong>`, links) during the print stream.
+- **Vite Build Optimization:** Memory warnings (500kB chunks) are neutralized via Manual Chunk Splitting (`vite.config.ts`), partitioning `react` and `react-dom` into a distinct `vendor` pool. Empty chunk warnings typical to FontAwesome assets were successfully mitigated.
+
 ## ⚠️ Internal Peculiarities & Developer Notes
 - **Memory Store vs Native**: Tools prioritize native disk operations (`agentReadFile`, etc.). Memory store serves as a secondary fallback for remote/web-view modes.
 - **Path Stripping**: All filenames are normalized (backslash to forward-slash) and have leading slashes removed before resolution.
