@@ -1,22 +1,26 @@
 @import "tailwindcss";
 
-/* Custom Scrollbar overrides if not handled by Tailwind */
+/* Custom Scrollbar Modern & Minimalist */
 .custom-scrollbar::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 5px;
+  height: 5px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.5);
+  background: transparent;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(51, 65, 85, 0.5);
-  border-radius: 4px;
+  background: rgba(71, 85, 105, 0.4);
+  border-radius: 20px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(71, 85, 105, 0.8);
+  background: rgba(96, 165, 250, 0.6);
+  border: 1px solid transparent;
+  background-clip: padding-box;
 }
 
 /* Markdown Styles overrides (Tailwind typography plugin usage recommended instead but keeping existing custom styles) */
