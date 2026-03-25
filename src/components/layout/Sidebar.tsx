@@ -194,30 +194,49 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                         </div>
                     </div>
 
-                    <nav className="space-y-1">
-                        {[
-                            { id: 'chat', label: 'Neural Chat', icon: 'comments', color: 'text-blue-400' },
-                            { id: 'cortex', label: 'Cortex Editor', icon: 'project-diagram', color: 'text-indigo-400' },
-                            { id: 'commands', label: 'Command Editor', icon: 'bolt', color: 'text-amber-400' },
-                            { id: 'scheduler', label: 'Neural Tasks', icon: 'clock', color: 'text-cyan-400' },
-                            { id: 'settings', label: 'Control Room', icon: 'cog', color: 'text-purple-400' }
-                        ].map(tab => (
-                            <button
-                                key={tab.id}
-                                onClick={() => setState(prev => ({ ...prev, activeTab: tab.id as any, selectedFile: '' }))}
-                                className={`w-full flex items-center justify-center lg:justify-start gap-4 px-0 lg:px-4 py-3.5 rounded-xl transition-all duration-200 group premium-button ${state.activeTab === tab.id
-                                    ? 'bg-slate-800 text-white shadow-md border-slate-700/50'
-                                    : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                                    }`}
-                                title={tab.label}
-                            >
-                                <Icon name={tab.icon} className={`text-2xl lg:text-lg flex-shrink-0 ${state.activeTab === tab.id ? tab.color : 'group-hover:text-slate-300'} transition-colors`} />
-                                <span className="hidden lg:inline text-base font-bold tracking-tight whitespace-nowrap">{tab.label}</span>
-                                {state.activeTab === tab.id && (
-                                    <div className={`hidden lg:block ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0 ${tab.color.replace('text', 'bg')} shadow-glow`} />
-                                )}
-                            </button>
-                        ))}
+                    <nav className="space-y-1 relative">
+                        {/* Dynamic Sliding Indicator Dot Wrapper */}
+                        {(() => {
+                            const navTabs = [
+                                { id: 'chat', label: 'Neural Chat', icon: 'comments', color: 'text-blue-400', bg: 'bg-blue-400', hex: '#60a5fa' },
+                                { id: 'cortex', label: 'Cortex Editor', icon: 'project-diagram', color: 'text-indigo-400', bg: 'bg-indigo-400', hex: '#818cf8' },
+                                { id: 'commands', label: 'Command Editor', icon: 'bolt', color: 'text-amber-400', bg: 'bg-amber-400', hex: '#fbbf24' },
+                                { id: 'scheduler', label: 'Neural Tasks', icon: 'clock', color: 'text-cyan-400', bg: 'bg-cyan-400', hex: '#22d3ee' },
+                                { id: 'settings', label: 'Control Room', icon: 'cog', color: 'text-purple-400', bg: 'bg-purple-400', hex: '#c084fc' }
+                            ];
+                            const activeIndex = navTabs.findIndex(t => t.id === state.activeTab);
+                            const activeTab = navTabs[activeIndex] || navTabs[0];
+
+                            return (
+                                <>
+                                    {/* The sliding carriage that holds the dot */}
+                                    <div 
+                                        className="hidden lg:block absolute right-0 left-0 w-full h-[53px] pointer-events-none z-30 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+                                        style={{ transform: `translateY(${activeIndex * 57}px)` }}
+                                    >
+                                        <div 
+                                            className="absolute right-4 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full shadow-glow transition-colors duration-500"
+                                            style={{ backgroundColor: activeTab.hex }}
+                                        />
+                                    </div>
+
+                                    {navTabs.map(tab => (
+                                        <button
+                                            key={tab.id}
+                                            onClick={() => setState(prev => ({ ...prev, activeTab: tab.id as any, selectedFile: '' }))}
+                                            className={`w-full h-[53px] flex items-center justify-center lg:justify-start gap-4 px-3 lg:px-4 rounded-xl transition-all duration-200 group premium-button ${state.activeTab === tab.id
+                                                ? 'bg-slate-800 text-white shadow-md border-slate-700/50'
+                                                : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                                                }`}
+                                            title={tab.label}
+                                        >
+                                            <Icon name={tab.icon} className={`text-2xl lg:text-lg flex-shrink-0 ${state.activeTab === tab.id ? tab.color : 'group-hover:text-slate-300'} transition-colors`} />
+                                            <span className="hidden lg:inline-block flex-1 text-left text-base font-bold tracking-tight truncate whitespace-nowrap">{tab.label}</span>
+                                        </button>
+                                    ))}
+                                </>
+                            );
+                        })()}
                     </nav>
 
                     {/* Mobile Contents Toggle (Bottom Fixed on Mobile) */}
@@ -290,7 +309,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                             <div className="h-px bg-gradient-to-r from-transparent via-slate-700/50 via-[5%] to-transparent flex-none" />
  
                             {!isCompactMode && (
-                                <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1 pb-3 min-h-0">
+                                <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1 pt-3 pb-3 min-h-0">
                                     {Object.keys(state.additionalFiles || {}).length === 0 ? (
                                         <div className="text-center py-6 px-2 border border-dashed border-slate-800/50 rounded-xl bg-slate-800/10">
                                             <p className="text-[9px] text-slate-600 italic">No cortex expansion</p>

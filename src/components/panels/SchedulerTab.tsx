@@ -221,8 +221,8 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
                             setView(tab.id);
                         }}
                         className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${view === tab.id
-                            ? 'bg-cyan-600/90 text-white shadow-lg shadow-cyan-900/40 ring-1 ring-white/20'
-                            : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                            ? 'bg-cyan-500/10 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.15)] border border-cyan-500/30 ring-1 ring-cyan-500/20'
+                            : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 border border-transparent'
                             }`}
                     >
                         <Icon name={tab.icon} /> {tab.label}

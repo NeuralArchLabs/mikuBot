@@ -65,7 +65,7 @@ export const SessionList = React.memo(({ sessions, loading, currentSessionId, on
             )}
 
             {!hideList && (
-                <div className={`flex-1 overflow-y-auto custom-scrollbar pr-1 ${isModal ? 'space-y-2' : 'space-y-1'} pb-2 mb-4`}>
+                <div className={`flex-1 overflow-y-auto custom-scrollbar pr-1 pt-2 ${isModal ? 'space-y-2' : 'space-y-1'} pb-2 mb-4`}>
                 {loading && sessions.length === 0 ? (
                     <div className="text-center py-4 text-slate-600 animate-pulse">
                         <Icon name="spinner" className="animate-spin mb-1" />
