@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.9.9] - 2026-03-25
+### Changed
+- **Native searXena API Integration**: Refactored the `run-search` and `run-extract` IPC handlers to communicate directly with the searXena FastAPI server (port 8000) via Node.js `http`. This eliminates dependencies on broken Python bridge scripts (`search.py`, `extract.py`) and missing libraries (`requests`, `trafilatura`).
+- **Multi-byte Character Support**: Optimized API requests to use `Buffer.byteLength` for `Content-Length` headers, ensuring stable searches for queries containing accents (e.g., "San Andrés"), emojis, or special characters.
+- **Robust Engine Detection**: Updated `searxena:status` to prioritize active port checks over file-system presence, enabling seamless linking with manually started engine instances.
+
+### Fixed
+- **Engine Environment Recovery**: Restored the missing Python virtual environment (`local/py3`) in the `engine/searxena` directory to fix UI status detection and auto-start capabilities.
+- **Extraction Logic Migration**: Successfully migrated the `read_url` tool to use searXena's native **O-ZEN Engine** extraction endpoint, replacing the deprecated external trafilatura bridge.
+
 ## [1.9.8] - 2026-03-24
 ### Fixed
 - **Session Corruption during Crashes**: Integrated `fsyncSync` into `safeWriteJSON` to ensure data is physically written to the disk platter, preventing 0-byte files during OS/hardware interruptions.

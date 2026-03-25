@@ -277,7 +277,7 @@ async function startSearXena() {
     // Proactive check to avoid port conflicts if engine is already running (e.g. from previous crash)
     const isBusy = await checkPort8000();
     if (isBusy) {
-        console.log('[Main Process] searXena detected as already active on port 8000. No start needed.');
+        console.log('[Main Process] searXena detected as already active on port 8000. Linking with existing instance.');
         return { ok: true, status: 'already_running' };
     }
 
@@ -1068,58 +1068,97 @@ ipcMain.handle('run-console', async (event, { command, args, cwd }) => {
 });
 
 ipcMain.handle('run-search', async (event, { query }) => {
-    const { execFile } = require('child_process');
-    const pythonExe = ENGINE_PYTHON;
-    const searchScript = path.join(resourcesPath, 'engine', 'search.py');
-
     return new Promise((resolve) => {
-        console.log(`[Main Process] Internal Search: "${query}"`);
-        execFile(pythonExe, [searchScript, query], (error, stdout, stderr) => {
-            if (error) {
-                console.error('[Main Process] Search Error:', error);
-                return resolve({ ok: false, error: error.message });
-            }
-            try {
-                const match = stdout.match(/\{[\s\S]*\}/);
-                if (!match) {
-                    console.error('[Main Process] No JSON found in search output:', stdout);
-                    return resolve({ ok: false, error: 'Internal search engine returned invalid data' });
+        console.log(`[Main Process] Native Search (API): "${query}"`);
+        const http = require('http');
+        const data = JSON.stringify({ query: query, limit: 10 });
+        
+        const options = {
+            hostname: '127.0.0.1',
+            port: 8000,
+            path: '/api/v1/search',
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(data)
+            },
+            timeout: 10000
+        };
+
+        const req = http.request(options, (res) => {
+            let body = '';
+            res.on('data', (chunk) => body += chunk);
+            res.on('end', () => {
+                if (res.statusCode === 200) {
+                    try {
+                        const parsed = JSON.parse(body);
+                        resolve({ ok: true, data: parsed });
+                    } catch (e) {
+                        resolve({ ok: false, error: 'Failed to parse search results' });
+                    }
+                } else {
+                    resolve({ ok: false, error: `Search engine returned status ${res.statusCode}` });
                 }
-                const data = JSON.parse(match[0]);
-                resolve({ ok: true, data });
-            } catch (e) {
-                console.error('[Main Process] Search JSON Parse Error:', e, stdout);
-                resolve({ ok: false, error: 'Failed to process search results' });
-            }
+            });
         });
+
+        req.on('error', (e) => {
+            console.error('[Main Process] Search API Error:', e);
+            resolve({ ok: false, error: 'El motor searXena no responde en el puerto 8000. Asegúrate de iniciarlo.' });
+        });
+
+        req.on('timeout', () => {
+            req.destroy();
+            resolve({ ok: false, error: 'Timeout waiting for search engine' });
+        });
+
+        req.write(data);
+        req.end();
     });
 });
 
 ipcMain.handle('run-extract', async (event, { url }) => {
-    const { execFile } = require('child_process');
-    const pythonExe = path.join(resourcesPath, 'engine', 'python', 'python.exe');
-    const extractScript = path.join(resourcesPath, 'engine', 'extract.py');
-
     return new Promise((resolve) => {
-        console.log(`[Main Process] Internal Extraction: "${url}"`);
-        execFile(ENGINE_PYTHON, [extractScript, url], (error, stdout, stderr) => {
-            if (error) {
-                console.error('[Main Process] Extraction Error:', error);
-                return resolve({ ok: false, error: error.message });
-            }
-            try {
-                const match = stdout.match(/\{[\s\S]*\}/);
-                if (!match) {
-                    console.error('[Main Process] No JSON found in extraction output:', stdout);
-                    return resolve({ ok: false, error: 'Internal extraction engine returned invalid data' });
+        console.log(`[Main Process] Native Extract (API): "${url}"`);
+        const http = require('http');
+        const data = JSON.stringify({ url: url });
+        
+        const options = {
+            hostname: '127.0.0.1',
+            port: 8000,
+            path: '/api/v1/extract',
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(data)
+            },
+            timeout: 15000
+        };
+
+        const req = http.request(options, (res) => {
+            let body = '';
+            res.on('data', (chunk) => body += chunk);
+            res.on('end', () => {
+                if (res.statusCode === 200) {
+                    try {
+                        const parsed = JSON.parse(body);
+                        resolve({ ok: true, data: parsed });
+                    } catch (e) {
+                        resolve({ ok: false, error: 'Failed to parse extraction results' });
+                    }
+                } else {
+                    resolve({ ok: false, error: `Extraction engine returned status ${res.statusCode}` });
                 }
-                const data = JSON.parse(match[0]);
-                resolve({ ok: true, data });
-            } catch (e) {
-                console.error('[Main Process] Extraction JSON Parse Error:', e, stdout);
-                resolve({ ok: false, error: 'Failed to process extraction results' });
-            }
+            });
         });
+
+        req.on('error', (e) => {
+            console.error('[Main Process] Extraction API Error:', e);
+            resolve({ ok: false, error: 'El motor de extracción no responde. Asegúrate de que searXena esté al día.' });
+        });
+
+        req.write(data);
+        req.end();
     });
 });
 
