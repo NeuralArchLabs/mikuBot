@@ -177,7 +177,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                 <div className="flex-none p-3 lg:p-6 pb-0 flex flex-col h-full lg:h-auto">
                     <div className="flex items-center justify-center lg:justify-start gap-3 mb-8 group cursor-default h-10 overflow-visible w-full px-1 relative">
                         <div
-                            className="w-10 h-10 rounded-xl bg-slate-800 flex flex-shrink-0 items-center justify-center shadow-md group-hover:scale-110 active:scale-95 transition-all duration-300 overflow-hidden border border-slate-700/50 cursor-pointer relative z-10"
+                            className="w-10 h-10 rounded-xl bg-slate-800 flex flex-shrink-0 items-center justify-center shadow-md group-hover:scale-110 active:scale-95 transition-all duration-300 overflow-hidden border border-slate-700/50 cursor-pointer relative z-10 premium-button"
                             onClick={triggerEasterEgg}
                         >
                             <img src="./mikuBotICON.png" alt="Miku Logo" className="w-full h-full object-cover shadow-inner" />
@@ -205,8 +205,8 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                             <button
                                 key={tab.id}
                                 onClick={() => setState(prev => ({ ...prev, activeTab: tab.id as any, selectedFile: '' }))}
-                                className={`w-full flex items-center justify-center lg:justify-start gap-4 px-0 lg:px-4 py-3.5 rounded-xl transition-all duration-200 group border active:scale-95 ${state.activeTab === tab.id
-                                    ? 'bg-slate-800 text-white shadow-md border-slate-700'
+                                className={`w-full flex items-center justify-center lg:justify-start gap-4 px-0 lg:px-4 py-3.5 rounded-xl transition-all duration-200 group premium-button ${state.activeTab === tab.id
+                                    ? 'bg-slate-800 text-white shadow-md border-slate-700/50'
                                     : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
                                     }`}
                                 title={tab.label}
@@ -311,7 +311,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                                         }}
                                                         className={`w-full text-left px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-[11px] font-mono truncate flex items-center gap-2.5 transition-all border ${isSelected
                                                             ? 'bg-blue-600/15 text-blue-300 border-blue-500/30'
-                                                            : 'border-transparent text-slate-500 hover:text-slate-200 hover:bg-slate-800/60'
+                                                            : 'premium-card !bg-transparent !border-transparent text-slate-500 hover:text-slate-200 hover:bg-slate-800/60'
                                                             }`}
                                                     >
                                                         <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${isSelected ? 'bg-blue-400 shadow-glow' : 'bg-slate-700'}`} />
@@ -344,9 +344,9 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
             {sessionModalOpen && (
                 <div className={`fixed inset-0 z-[120] flex items-center justify-center p-4 transition-opacity duration-300 ${isClosing ? 'opacity-0' : 'opacity-100'}`}>
                     <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-sm" onClick={handleClose} />
-                    <div className={`relative w-full max-w-2xl bg-slate-950 border border-slate-700 shadow-2xl flex flex-col rounded-2xl overflow-hidden h-[85vh] sm:h-[75vh] ${isClosing ? 'animate-macos-shrink-left' : 'animate-macos-expand-left'}`}>
+                    <div className={`relative w-full max-w-2xl premium-panel shadow-2xl flex flex-col overflow-hidden h-[85vh] sm:h-[75vh] ${isClosing ? 'animate-macos-shrink-left' : 'animate-macos-expand-left'}`}>
                         {/* Header */}
-                        <div className="h-16 flex items-center justify-between px-6 border-b border-slate-800 bg-slate-900">
+                        <div className="h-16 flex items-center justify-between px-6 border-b border-white/5 bg-slate-900/40 backdrop-blur-md">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
                                     <Icon name="history" className="text-xl" />

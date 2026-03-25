@@ -175,28 +175,28 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                                 <Icon name="at" className="text-cyan-500" />
                                                 Email Identity
                                             </label>
-                                            <input
-                                                id="email-identity"
-                                                type="email"
-                                                placeholder="your@email.com"
-                                                value={skillConfig.email || ''}
-                                                onChange={(e) => handleUpdateSkillConfig('gmail_imap', 'email', e.target.value)}
-                                                className="w-full bg-slate-950/40 border border-slate-800/60 rounded-xl px-4 py-3 text-sm text-slate-200 focus:ring-2 focus:ring-cyan-500/20 focus:outline-none transition-all placeholder:text-slate-700"
-                                            />
+                                                <input
+                                                    id="email-identity"
+                                                    type="email"
+                                                    placeholder="your@email.com"
+                                                    value={skillConfig.email || ''}
+                                                    onChange={(e) => handleUpdateSkillConfig('gmail_imap', 'email', e.target.value)}
+                                                    className="w-full premium-input rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none transition-all placeholder:text-slate-700"
+                                                />
                                         </div>
                                         <div className="space-y-3">
                                             <label htmlFor="app-password" className="text-xs lg:text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
                                                 <Icon name="key" className="text-amber-500" />
                                                 App Password
                                             </label>
-                                            <input
-                                                id="app-password"
-                                                type="password"
-                                                placeholder="••••••••••••"
-                                                value={skillConfig.app_password || ''}
-                                                onChange={(e) => handleUpdateSkillConfig('gmail_imap', 'app_password', e.target.value)}
-                                                className="w-full bg-slate-950/40 border border-slate-800/60 rounded-xl px-4 py-3 text-sm text-slate-200 focus:ring-2 focus:ring-amber-500/20 focus:outline-none transition-all placeholder:text-slate-700"
-                                            />
+                                                <input
+                                                    id="app-password"
+                                                    type="password"
+                                                    placeholder="••••••••••••"
+                                                    value={skillConfig.app_password || ''}
+                                                    onChange={(e) => handleUpdateSkillConfig('gmail_imap', 'app_password', e.target.value)}
+                                                    className="w-full premium-input rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none transition-all placeholder:text-slate-700"
+                                                />
                                         </div>
                                     </>
                                 ) : (
@@ -245,7 +245,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                 value={editorContent}
                                 onChange={(e) => setEditorContent(e.target.value)}
                                 placeholder="// Awaiting instructions..."
-                                className="flex-1 bg-slate-950/80 rounded-xl lg:rounded-2xl p-5 font-mono text-[11px] lg:text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-cyan-500/10 border border-slate-800/50 resize-none custom-scrollbar shadow-2xl"
+                                className="flex-1 premium-input rounded-xl lg:rounded-2xl p-5 font-mono text-[11px] lg:text-sm text-slate-300 focus:outline-none resize-none custom-scrollbar shadow-2xl"
                                 spellCheck={false}
                             />
                         </div>
@@ -313,10 +313,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                     <div className="relative">
                                         <button
                                             onClick={() => setActiveSkill(skill.name === activeSkill && window.innerWidth < 1024 ? null : skill.name)}
-                                            className={`w-full p-4 lg:p-2.5 xl:p-4 rounded-2xl flex items-center transition-all duration-500 text-left border group relative overflow-hidden ${activeSkill === skill.name
-                                                ? 'bg-gradient-to-br from-cyan-500/10 to-blue-600/5 border-cyan-500/40 shadow-[0_0_30px_rgba(6,182,212,0.1)] ring-1 ring-cyan-400/20'
-                                                : 'bg-slate-900/30 border-slate-800/40 text-slate-400 hover:bg-slate-800/30 hover:border-slate-700'
-                                                } ${isDisabled ? 'opacity-50' : ''}`}
+                                            className={`w-full p-4 lg:p-2.5 xl:p-4 rounded-2xl flex items-center text-left border group relative overflow-hidden premium-card premium-cyan transition-all duration-500 ${activeSkill === skill.name ? 'active border-cyan-500/40 shadow-glow-cyan ring-1 ring-cyan-400/20' : 'text-slate-400 opacity-70'} ${isDisabled ? 'opacity-30' : ''}`}
                                             title={`Select ${skill.name} skill`}
                                         >
                                             <div className="flex items-center gap-3 min-w-0 relative z-10 w-full">
@@ -364,7 +361,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                 </div>
 
                 {/* Standalone Editor for Desktop View */}
-                <div className="hidden lg:flex flex-1 bg-slate-900/40 rounded-3xl xl:rounded-[2.5rem] border border-slate-800/50 flex-col overflow-hidden min-w-0 shadow-2xl">
+                <div className="hidden lg:flex flex-1 premium-panel flex-col overflow-hidden min-w-0 shadow-2xl">
                     {currentSkill ? (
                         renderEditorContent()
                     ) : (

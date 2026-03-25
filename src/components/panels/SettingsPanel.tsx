@@ -313,7 +313,7 @@ export const SettingsPanel = ({
                             </label>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                 {/* WorkSpace */}
-                                <div className="bg-slate-900/60 p-5 rounded-2xl border border-emerald-500/20 shadow-xl relative overflow-hidden group hover:border-emerald-500/40 transition-colors transform-gpu">
+                                <div className="premium-card premium-emerald p-5 relative overflow-hidden group transition-all duration-500 transform-gpu">
                                     <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none transform-gpu" />
 
                                     {/* Native Explorer Link - Absolute Corner */}
@@ -332,7 +332,7 @@ export const SettingsPanel = ({
                                     )}
 
                                     <div className="flex items-center gap-4 md:gap-3 xl:gap-4 mb-5 md:mb-4 xl:mb-5">
-                                        <div className="w-14 h-14 md:w-12 md:h-12 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex flex-shrink-0 items-center justify-center shadow-inner transition-all">
+                                        <div className="w-14 h-14 md:w-12 md:h-12 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rounded-2xl bg-emerald-500/10 border border-transparent group-hover:border-emerald-500/30 text-emerald-400 flex flex-shrink-0 items-center justify-center shadow-inner premium-transition">
                                             <Icon name="box" className="text-3xl md:text-xl lg:text-lg xl:text-xl transition-all" />
                                         </div>
                                         <div className="truncate flex-1">
@@ -346,14 +346,14 @@ export const SettingsPanel = ({
                                     <button
                                         onClick={onWorkSpaceSelect}
                                         disabled={syncing}
-                                        className="w-full py-2.5 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 rounded-xl text-xs font-bold tracking-wider uppercase transition-all flex items-center justify-center gap-2 border border-emerald-500/30"
+                                        className="w-full py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase flex items-center justify-center gap-2 border premium-button premium-emphasis premium-emerald text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20"
                                     >
                                         {syncing ? <Icon name="sync fa-spin" /> : <Icon name="folder-open" />} Select
                                     </button>
                                 </div>
 
                                 {/* Core Identity */}
-                                <div className="bg-slate-900/60 p-5 rounded-2xl border border-indigo-500/20 shadow-xl relative overflow-hidden group hover:border-indigo-500/40 transition-colors transform-gpu">
+                                <div className="premium-card premium-indigo p-5 relative overflow-hidden group transition-all duration-500 transform-gpu">
                                     <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none transform-gpu" />
 
                                     {/* Native Explorer Link - Absolute Corner */}
@@ -372,7 +372,7 @@ export const SettingsPanel = ({
                                     )}
 
                                     <div className="flex items-center gap-4 md:gap-3 xl:gap-4 mb-5 md:mb-4 xl:mb-5">
-                                        <div className="w-14 h-14 md:w-12 md:h-12 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex flex-shrink-0 items-center justify-center shadow-inner transition-all">
+                                        <div className="w-14 h-14 md:w-12 md:h-12 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rounded-2xl bg-indigo-500/10 border border-transparent group-hover:border-indigo-500/30 text-indigo-400 flex flex-shrink-0 items-center justify-center shadow-inner premium-transition">
                                             <Icon name="hdd" className="text-3xl md:text-xl lg:text-lg xl:text-xl transition-all" />
                                         </div>
                                         <div className="truncate flex-1">
@@ -386,14 +386,14 @@ export const SettingsPanel = ({
                                     <button
                                         onClick={onCoreSelect}
                                         disabled={syncing}
-                                        className="w-full py-2.5 bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 rounded-xl text-xs font-bold tracking-wider uppercase transition-all flex items-center justify-center gap-2 border border-indigo-500/30"
+                                        className="w-full py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase flex items-center justify-center gap-2 border premium-button premium-emphasis premium-indigo text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20"
                                     >
                                         {syncing ? <Icon name="sync fa-spin" /> : <Icon name="folder-open" />} Select
                                     </button>
                                 </div>
 
                                 {/* Library */}
-                                <div className="bg-slate-900/60 p-5 rounded-2xl border border-pink-500/20 shadow-xl relative overflow-hidden group hover:border-pink-500/40 transition-colors transform-gpu">
+                                <div className="premium-card premium-pink p-5 relative overflow-hidden group transition-all duration-500 transform-gpu">
                                     <div className="absolute top-0 right-0 w-24 h-24 bg-pink-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none transform-gpu" />
 
                                     {/* Native Explorer Link - Absolute Corner */}
@@ -412,7 +412,7 @@ export const SettingsPanel = ({
                                     )}
 
                                     <div className="flex items-center gap-4 md:gap-3 xl:gap-4 mb-5 md:mb-4 xl:mb-5">
-                                        <div className="w-14 h-14 md:w-12 md:h-12 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rounded-2xl bg-pink-500/10 border border-pink-500/20 text-pink-400 flex flex-shrink-0 items-center justify-center shadow-inner transition-all">
+                                        <div className="w-14 h-14 md:w-12 md:h-12 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rounded-2xl bg-pink-500/10 border border-transparent group-hover:border-pink-500/30 text-pink-400 flex flex-shrink-0 items-center justify-center shadow-inner premium-transition">
                                             <Icon name="book" className="text-3xl md:text-xl lg:text-lg xl:text-xl transition-all" />
                                         </div>
                                         <div className="truncate flex-1">
@@ -426,14 +426,14 @@ export const SettingsPanel = ({
                                     <button
                                         onClick={onExtraSelect}
                                         disabled={syncing}
-                                        className="w-full py-2.5 bg-pink-600/10 hover:bg-pink-600/20 text-pink-400 rounded-xl text-xs font-bold tracking-wider uppercase transition-all flex items-center justify-center gap-2 border border-pink-500/30"
+                                        className="w-full py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase flex items-center justify-center gap-2 border premium-button premium-emphasis premium-pink text-pink-400 bg-pink-500/10 hover:bg-pink-500/20"
                                     >
                                         {syncing ? <Icon name="sync fa-spin" /> : <Icon name="folder-plus" />} Select
                                     </button>
                                 </div>
 
                                 {/* Command Engine */}
-                                <div className="bg-slate-900/60 p-5 rounded-2xl border border-amber-500/20 shadow-xl relative overflow-hidden group hover:border-amber-500/40 transition-colors transform-gpu">
+                                <div className="premium-card premium-amber p-5 relative overflow-hidden group transition-all duration-500 transform-gpu">
                                     <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none transform-gpu" />
 
                                     {/* Native Explorer Link - Absolute Corner */}
@@ -452,7 +452,7 @@ export const SettingsPanel = ({
                                     )}
 
                                     <div className="flex items-center gap-4 md:gap-3 xl:gap-4 mb-5 md:mb-4 xl:mb-5">
-                                        <div className="w-14 h-14 md:w-12 md:h-12 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex flex-shrink-0 items-center justify-center shadow-inner transition-all">
+                                        <div className="w-14 h-14 md:w-12 md:h-12 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rounded-2xl bg-amber-500/10 border border-transparent group-hover:border-amber-500/30 text-amber-400 flex flex-shrink-0 items-center justify-center shadow-inner premium-transition">
                                             <Icon name="bolt" className="text-3xl md:text-xl lg:text-lg xl:text-xl transition-all" />
                                         </div>
                                         <div className="truncate flex-1">
@@ -466,7 +466,7 @@ export const SettingsPanel = ({
                                     <button
                                         onClick={onToolsSelect}
                                         disabled={syncing}
-                                        className="w-full py-2.5 bg-amber-600/10 hover:bg-amber-600/20 text-amber-400 rounded-xl text-xs font-bold tracking-wider uppercase transition-all flex items-center justify-center gap-2 border border-amber-500/30"
+                                        className="w-full py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase flex items-center justify-center gap-2 border premium-button premium-emphasis premium-amber text-amber-500 bg-amber-500/10 hover:bg-amber-500/20"
                                     >
                                         {syncing ? <Icon name="sync fa-spin" /> : <Icon name="folder-open" />} Select
                                     </button>
@@ -484,20 +484,20 @@ export const SettingsPanel = ({
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {/* Chat Configuration Card */}
-                                <div className="bg-slate-900/40 rounded-3xl p-6 border border-blue-500/20 shadow-2xl relative overflow-hidden transform-gpu">
-                                    <div className="absolute top-0 right-0 w-full h-1 bg-gradient-to-r from-blue-600 to-cyan-400 opacity-50" />
+                                <div className="premium-card premium-blue rounded-[2rem] p-6 shadow-2xl relative overflow-hidden transform-gpu group">
+                                    <div className="absolute top-0 right-0 w-full h-1 bg-gradient-to-r from-blue-600 to-cyan-400 opacity-0 group-hover:opacity-50 transition-all duration-700" />
 
                                     <div className="flex items-center justify-between mb-6">
                                         <div className="flex items-center gap-3">
-                                            <div className="bg-blue-500/20 p-2 rounded-xl text-blue-400 ring-1 ring-blue-500/50">
+                                            <div className="bg-blue-500/20 p-2 rounded-xl text-blue-400 border border-transparent group-hover:border-blue-500/40 premium-transition">
                                                 <Icon name="comments" className="text-xl mx-0.5" />
                                             </div>
                                             <span className="font-black text-white tracking-tight text-lg">Chat Runtime</span>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <div
-                                                className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all shadow-md border ${(config.chatProvider === 'ollama' ? (models['ollama'] || []).length > 0 : !!config.apiKeys[config.chatProvider || 'gemini'])
-                                                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]'
+                                                className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all shadow-md border premium-emphasis ${(config.chatProvider === 'ollama' ? (models['ollama'] || []).length > 0 : !!config.apiKeys[config.chatProvider || 'gemini'])
+                                                    ? 'premium-emerald bg-emerald-500/10 text-emerald-400'
                                                     : 'bg-slate-800/80 text-slate-500 border-white/5'
                                                     }`}
                                                 title={
@@ -511,7 +511,7 @@ export const SettingsPanel = ({
                                             <button
                                                 onClick={() => onTestConnection(config.chatProvider)}
                                                 disabled={loadingModels[config.chatProvider || 'groq']}
-                                                className="h-8 px-3 bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/30 text-blue-400 rounded-xl transition-all flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-wider"
+                                                className="h-8 px-3 bg-blue-600/10 hover:bg-blue-600/20 border-transparent text-blue-400 rounded-xl transition-all flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-wider premium-button premium-emphasis premium-blue"
                                                 title="Sync models for Chat Provider"
                                             >
                                                 {loadingModels[config.chatProvider || 'groq'] ? <Icon name="sync fa-spin" /> : <Icon name="sync" />} Sync
@@ -522,7 +522,7 @@ export const SettingsPanel = ({
                                     <div className="space-y-5">
                                         <div>
                                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block ml-1">Routing Provider</label>
-                                            <div className="flex gap-2 bg-black/20 p-1.5 rounded-2xl border border-white/5">
+                                            <div className="flex gap-2 premium-card !bg-black/20 p-1.5 rounded-2xl border border-white/5">
                                                 {(Object.keys(PROVIDERS) as Provider[]).map(pId => {
                                                     const isSelected = config.chatProvider === pId;
                                                     return (
@@ -561,7 +561,7 @@ export const SettingsPanel = ({
                                                     value={config.chatModel}
                                                     onChange={(e) => updateConfig('chatModel', e.target.value)}
                                                     title="Active Model for Chat"
-                                                    className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-4 py-3.5 text-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50 appearance-none shadow-inner"
+                                                    className="w-full premium-input rounded-xl px-4 py-3.5 text-slate-200 text-xs font-medium focus:outline-none appearance-none shadow-inner"
                                                 >
                                                     <option value="">Select Target Architecture...</option>
                                                     {(models[config.chatProvider || 'groq'] || []).map(m => (
@@ -577,20 +577,20 @@ export const SettingsPanel = ({
                                 </div>
 
                                 {/* Agent Configuration Card */}
-                                <div className="bg-slate-900/40 rounded-3xl p-6 border border-purple-500/20 shadow-2xl relative overflow-hidden transform-gpu">
-                                    <div className="absolute top-0 right-0 w-full h-1 bg-gradient-to-r from-purple-600 to-pink-500 opacity-50" />
+                                <div className="premium-card premium-purple rounded-[2rem] p-6 shadow-2xl relative overflow-hidden transform-gpu group">
+                                    <div className="absolute top-0 right-0 w-full h-1 bg-gradient-to-r from-purple-600 to-pink-500 opacity-0 group-hover:opacity-50 transition-all duration-700" />
 
                                     <div className="flex items-center justify-between mb-6">
                                         <div className="flex items-center gap-3">
-                                            <div className="bg-purple-500/20 p-2 rounded-xl text-purple-400 ring-1 ring-purple-500/50">
+                                            <div className="bg-purple-500/20 p-2 rounded-xl text-purple-400 border border-transparent group-hover:border-purple-500/40 premium-transition">
                                                 <Icon name="bolt" className="text-xl mx-1" />
                                             </div>
                                             <span className="font-black text-white tracking-tight text-lg">Agent Runtime</span>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <div
-                                                className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all shadow-md border ${(config.agentProvider === 'ollama' ? (models['ollama'] || []).length > 0 : !!config.apiKeys[config.agentProvider || 'groq'])
-                                                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]'
+                                                className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all shadow-md border premium-emphasis ${(config.agentProvider === 'ollama' ? (models['ollama'] || []).length > 0 : !!config.apiKeys[config.agentProvider || 'groq'])
+                                                    ? 'premium-emerald bg-emerald-500/10 text-emerald-400'
                                                     : 'bg-slate-800/80 text-slate-500 border-white/5'
                                                     }`}
                                                 title={
@@ -604,7 +604,7 @@ export const SettingsPanel = ({
                                             <button
                                                 onClick={() => onTestConnection(config.agentProvider)}
                                                 disabled={loadingModels[config.agentProvider || 'groq']}
-                                                className="h-8 px-3 bg-purple-600/10 hover:bg-purple-600/20 border border-purple-500/30 text-purple-400 rounded-xl transition-all flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-wider"
+                                                className="h-8 px-3 bg-purple-600/10 hover:bg-purple-600/20 border-transparent text-purple-400 rounded-xl transition-all flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-wider premium-button premium-emphasis premium-purple"
                                                 title="Sync models for Agent Provider"
                                             >
                                                 {loadingModels[config.agentProvider || 'groq'] ? <Icon name="sync fa-spin" /> : <Icon name="sync" />} Sync
@@ -615,7 +615,7 @@ export const SettingsPanel = ({
                                     <div className="space-y-5">
                                         <div>
                                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block ml-1">Routing Provider</label>
-                                            <div className="flex gap-2 bg-black/20 p-1.5 rounded-2xl border border-white/5">
+                                            <div className="flex gap-2 premium-card !bg-black/20 p-1.5 rounded-2xl border border-white/5">
                                                 {(Object.keys(PROVIDERS) as Provider[]).map(pId => {
                                                     const isSelected = config.agentProvider === pId;
                                                     return (
@@ -654,7 +654,7 @@ export const SettingsPanel = ({
                                                     value={config.agentModel}
                                                     onChange={(e) => updateConfig('agentModel', e.target.value)}
                                                     title="Active Model for Agent Actions"
-                                                    className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-4 py-3.5 text-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/50 appearance-none shadow-inner"
+                                                    className="w-full premium-input rounded-xl px-4 py-3.5 text-slate-200 text-xs font-medium focus:outline-none appearance-none shadow-inner"
                                                 >
                                                     <option value="">Select Target Architecture...</option>
                                                     {(models[config.agentProvider || 'groq'] || []).map(m => (
@@ -679,7 +679,7 @@ export const SettingsPanel = ({
                                 <Icon name="shield-alt" className="text-amber-500" /> Neural Security & Main Engine Settings
                             </label>
 
-                            <div className="bg-slate-900/80 rounded-3xl p-8 border border-amber-700/30 shadow-[0_0_40px_rgba(251,191,36,0.05)] space-y-6 relative overflow-hidden transform-gpu">
+                            <div className="premium-panel p-8 shadow-[0_0_40px_rgba(251,191,36,0.05)] space-y-6 relative overflow-hidden transform-gpu">
                                 <div className="absolute -top-32 -right-32 w-80 h-80 bg-amber-600/10 blur-3xl rounded-full transform-gpu" />
                                 <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-orange-600/10 blur-3xl rounded-full transform-gpu" />
 
@@ -713,7 +713,7 @@ export const SettingsPanel = ({
                                                         value={config.provider}
                                                         onChange={(e) => updateConfig('provider', e.target.value as Provider)}
                                                         title="Master Fallback Provider"
-                                                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-slate-300 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-slate-500"
+                                                        className="w-full premium-input rounded-xl px-4 py-3 text-slate-300 text-xs font-medium focus:outline-none"
                                                     >
                                                         {(Object.keys(PROVIDERS) as Provider[]).map(pId => (
                                                             <option key={pId} value={pId}>{PROVIDERS[pId].name} Provider</option>
@@ -725,7 +725,7 @@ export const SettingsPanel = ({
                                                         value={config.model}
                                                         onChange={(e) => updateConfig('model', e.target.value)}
                                                         title="Master Fallback Model"
-                                                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-slate-300 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-slate-500 appearance-none"
+                                                        className="w-full premium-input rounded-xl px-4 py-3 text-slate-300 text-xs font-medium focus:outline-none appearance-none"
                                                     >
                                                         <option value="">Master Model Fallback...</option>
                                                         {(models[config.provider] || []).map(m => (
@@ -747,10 +747,10 @@ export const SettingsPanel = ({
                                     </div>
 
                                     {/* Keys */}
-                                    <div className="md:col-span-7 bg-black/40 rounded-2xl p-5 border border-white/5 flex flex-col">
+                                    <div className="md:col-span-7 premium-card p-5 border transition-all duration-700 flex flex-col">
                                         <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Key Management</h4>
 
-                                        <div className="flex gap-2 bg-slate-900 p-1.5 rounded-xl border border-white/5 mb-4">
+                                        <div className="flex gap-2 premium-card !bg-slate-900/60 p-1.5 rounded-xl mb-4">
                                             {(Object.keys(PROVIDERS) as Provider[]).map(pId => (
                                                 <button
                                                     key={pId}
@@ -765,7 +765,7 @@ export const SettingsPanel = ({
 
                                         <div className="flex-1 flex flex-col justify-center">
                                             <div className="relative flex items-center group">
-                                                <div className="absolute left-6 text-slate-500 flex items-center justify-center">
+                                                <div className="absolute left-6 text-blue-400/60 flex items-center justify-center">
                                                     <Icon name={editingProvider === 'ollama' ? 'link' : 'key'} />
                                                 </div>
                                                 <input
@@ -781,7 +781,7 @@ export const SettingsPanel = ({
                                                         }
                                                     }}
                                                     placeholder={editingProvider === 'ollama' ? "http://localhost:11434" : `Bearer Token for ${PROVIDERS[editingProvider].name}`}
-                                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-14 pr-16 py-3.5 text-blue-200 font-mono text-xs text-center focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-slate-600 placeholder:tracking-wider placeholder:text-center"
+                                                    className="w-full premium-input rounded-xl pl-14 pr-16 py-3.5 text-blue-200 font-mono text-xs text-center focus:outline-none transition-all placeholder:text-slate-600 placeholder:tracking-wider placeholder:text-center"
                                                 />
                                                 <div className="absolute right-4 flex items-center gap-1">
                                                     {editingProvider !== 'ollama' && (
@@ -797,7 +797,7 @@ export const SettingsPanel = ({
                                                 </div>
                                             </div>
 
-                                            <div className="mt-6 flex flex-col gap-3 p-4 bg-slate-900/50 rounded-xl border border-white/5">
+                                            <div className="mt-6 flex flex-col gap-3 p-4 premium-card !bg-slate-900/30">
                                                 <div className="flex justify-between items-center">
                                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                                                         <Icon name="thermometer-half" /> Inference Temperature
@@ -827,7 +827,7 @@ export const SettingsPanel = ({
 
                                 {/* Telegram Protocol */}
                                 <div className="grid grid-cols-1 md:grid-cols-12 gap-6 relative z-10 pt-2">
-                                    <div className="md:col-span-12 bg-black/40 rounded-2xl p-5 border border-white/5 flex flex-col md:flex-row gap-6">
+                                    <div className="md:col-span-12 premium-card premium-blue p-5 flex flex-col md:flex-row gap-6">
                                         <div className="md:w-1/3">
                                             <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-2 flex items-center gap-2">
                                                 <Icon name="paper-plane" /> Telegram Protocol
@@ -838,7 +838,7 @@ export const SettingsPanel = ({
                                             <div>
                                                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block ml-1">Bot Token</label>
                                                 <div className="relative">
-                                                    <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500">
+                                                    <div className="absolute left-5 top-1/2 -translate-y-1/2 text-blue-400/60">
                                                         <Icon name="key" />
                                                     </div>
                                                     <input
@@ -846,14 +846,14 @@ export const SettingsPanel = ({
                                                         value={config.telegramBotToken || ''}
                                                         onChange={(e) => updateConfig('telegramBotToken', e.target.value)}
                                                         placeholder="123456789:ABCDE..."
-                                                        className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-12 pr-4 py-3 text-blue-200 font-mono text-xs focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-slate-700 placeholder:tracking-widest"
+                                                        className="w-full premium-input rounded-xl pl-12 pr-4 py-3 text-blue-200 font-mono text-xs focus:outline-none transition-all placeholder:text-slate-700 placeholder:tracking-widest"
                                                     />
                                                 </div>
                                             </div>
                                             <div>
                                                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block ml-1">Allowed Chat ID (Admin)</label>
                                                 <div className="relative">
-                                                    <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500">
+                                                    <div className="absolute left-5 top-1/2 -translate-y-1/2 text-blue-400/60">
                                                         <Icon name="user-shield" />
                                                     </div>
                                                     <input
@@ -861,7 +861,7 @@ export const SettingsPanel = ({
                                                         value={config.telegramChatId || ''}
                                                         onChange={(e) => updateConfig('telegramChatId', e.target.value)}
                                                         placeholder="Your numeric Chat ID"
-                                                        className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-12 pr-4 py-3 text-blue-200 font-mono text-xs focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-slate-700 placeholder:tracking-widest"
+                                                        className="w-full premium-input rounded-xl pl-12 pr-4 py-3 text-blue-200 font-mono text-xs focus:outline-none transition-all placeholder:text-slate-700 placeholder:tracking-widest"
                                                     />
                                                 </div>
                                             </div>
@@ -878,7 +878,7 @@ export const SettingsPanel = ({
                                     <Icon name="microphone" className="text-emerald-400" /> Vosk Recognition Engine
                                 </label>
 
-                                <div className="bg-slate-900/60 rounded-3xl p-8 border border-emerald-500/20 shadow-xl relative overflow-hidden group">
+                                <div className="premium-card premium-emerald p-8 relative overflow-hidden group">
                                     <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-emerald-500/10 transition-colors" />
 
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 relative z-10">
@@ -899,11 +899,11 @@ export const SettingsPanel = ({
                                                             <button
                                                                 onClick={() => handleDownloadModel(lang as any)}
                                                                 disabled={isDownloaded || isDownloading}
-                                                                className={`flex-1 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-3 border ${isDownloaded
-                                                                    ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 cursor-default'
+                                                                className={`flex-1 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-3 border premium-button premium-emphasis ${isDownloaded
+                                                                    ? 'premium-emerald !bg-emerald-500/10 text-emerald-400 cursor-default'
                                                                     : isDownloading
-                                                                        ? 'bg-blue-600/20 border-blue-500/50 text-blue-400'
-                                                                        : 'bg-white/5 hover:bg-white/10 border-white/10 text-slate-300'
+                                                                        ? 'premium-blue !bg-blue-600/20 text-blue-400'
+                                                                        : 'premium-indigo !bg-white/5 text-slate-300'
                                                                     }`}
                                                             >
                                                                 <Icon name={isDownloaded ? "check-circle" : isDownloading ? "sync fa-spin" : "download"} />
@@ -922,7 +922,7 @@ export const SettingsPanel = ({
                                                     value={config.voskModelPath || ''}
                                                     onChange={(e) => updateConfig('voskModelPath', e.target.value)}
                                                     title="Seleccionar modelo de voz"
-                                                    className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-4 py-3.5 text-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/50 appearance-none shadow-inner"
+                                                    className="w-full premium-input rounded-xl px-4 py-3.5 text-slate-200 text-xs font-medium focus:outline-none appearance-none shadow-inner"
                                                 >
                                                     <option value="">Ninguno (Voz Desactivada)</option>
                                                     {localModels.map(m => (
@@ -933,7 +933,6 @@ export const SettingsPanel = ({
                                                     <Icon name="chevron-down" />
                                                 </div>
                                             </div>
-
                                         </div>
                                     </div>
                                 </div>
@@ -944,100 +943,158 @@ export const SettingsPanel = ({
                                     <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
                                         <Icon name="search" className="text-blue-400" /> Web Search Engine
                                     </label>
-                                    
                                 </div>
 
-                                <div className="bg-slate-900/60 rounded-3xl p-8 border border-blue-500/20 shadow-xl relative overflow-hidden group">
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-blue-500/10 transition-colors" />
+                                <div className="premium-card premium-searxena p-8 relative overflow-hidden group">
+                                    {/* Muted background gradient */}
+                                    <div className="absolute inset-0 pointer-events-none" style={{ background: 'var(--sx-bg-radial)' }} />
+                                    
+                                    {/* Scattered Random Paw Prints (Visible on Hover - Exclusive to empty-neutral zones) */}
+                                    <div className="absolute inset-0 pointer-events-none z-0">
+                                        <svg className="w-full h-full opacity-30">
+                                            <defs>
+                                                <linearGradient id="ozenGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                                    <stop offset="0%" stopColor="#818cf8" />
+                                                    <stop offset="50%" stopColor="#c084fc" />
+                                                    <stop offset="100%" stopColor="#e879f9" />
+                                                </linearGradient>
+                                                <g id="ozen-paw-scatter">
+                                                    <path d="M 0,-1 C -3,-1 -5,1 -5,4 C -5,7 -1,9 0,9 C 1,9 5,7 5,4 C 5,1 3,-1 0,-1 Z" fill="url(#ozenGrad)" />
+                                                    <circle cx="-6" cy="-4" r="2.5" fill="url(#ozenGrad)" />
+                                                    <circle cx="-2" cy="-8" r="2.5" fill="url(#ozenGrad)" />
+                                                    <circle cx="2" cy="-8" r="2.5" fill="url(#ozenGrad)" />
+                                                    <circle cx="6" cy="-4" r="2.5" fill="url(#ozenGrad)" />
+                                                </g>
+                                            </defs>
+                                            {/* Areas away from text/buttons: Top Right, Far right, and Bottom Right around the footer */}
+                                            <use href="#ozen-paw-scatter" className="xena-paw" style={{ animationDelay: '0.1s' }} x="90%" y="15%" transform="scale(0.3) rotate(-15)" />
+                                            <use href="#ozen-paw-scatter" className="xena-paw" style={{ animationDelay: '0.9s' }} x="95%" y="25%" transform="scale(0.25) rotate(20)" />
+                                            <use href="#ozen-paw-scatter" className="xena-paw" style={{ animationDelay: '0.4s' }} x="75%" y="10%" transform="scale(0.3) rotate(45)" />
+                                            <use href="#ozen-paw-scatter" className="xena-paw" style={{ animationDelay: '1.2s' }} x="50%" y="90%" transform="scale(0.35) rotate(10)" />
+                                            <use href="#ozen-paw-scatter" className="xena-paw" style={{ animationDelay: '1.5s' }} x="90%" y="85%" transform="scale(0.4) rotate(-20)" />
+                                        </svg>
+                                    </div>
 
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 relative z-10">
-                                        <div className="space-y-4">
-                                            <h3 className="text-lg font-black text-white tracking-tight">Motor de Búsqueda Privado (searXena)</h3>
-                                            <p className="text-xs text-slate-400 leading-relaxed">
-                                                Miku utiliza el motor nativo searXena para realizar búsquedas web de forma privada. El motor se ejecuta de forma soberana en tu Windows.
-                                            </p>
-                                            <div className="flex flex-wrap items-center gap-3 mt-1">
-                                                <a 
-                                                    href="http://127.0.0.1:8000" 
-                                                    target="_blank" 
-                                                    rel="noopener noreferrer"
-                                                    className="inline-flex items-center gap-2 text-[10px] font-bold text-cyan-400 hover:text-cyan-300 transition-colors bg-cyan-400/10 px-3 py-1.5 rounded-lg border border-cyan-400/20"
-                                                >
-                                                    <Icon name="external-link-alt" />
-                                                    Abrir Buscador Directamente
-                                                </a>
+                                        <div className="space-y-6 relative h-full flex flex-col">
+                                            <div className="space-y-5">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center premium-transition text-indigo-400">
+                                                        <Icon name="search" className="text-xl" />
+                                                    </div>
+                                                    <h3 className="text-xl font-black text-white tracking-tight uppercase">searXena Engine</h3>
+                                                </div>
+                                                
+                                                <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
+                                                    Soberanía total sobre tus búsquedas. El motor nativo <span className="text-indigo-400 font-bold">searXena</span> se ejecuta localmente sin rastreadores ni publicidad.
+                                                </p>
+                                                
+                                                <div className="flex flex-wrap items-center gap-3 pt-2">
+                                                    <a 
+                                                        href="http://127.0.0.1:8000" 
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-2 text-[10px] font-black text-slate-300 hover:text-white px-5 py-2.5 rounded-xl border border-white/5 hover:border-indigo-500/40 transition-all uppercase tracking-widest bg-white/5 hover:bg-white/10 premium-button"
+                                                    >
+                                                        <Icon name="external-link-alt" />
+                                                        Abrir Buscador
+                                                    </a>
+                                                </div>
                                             </div>
 
-                                            <div className="flex flex-col gap-4 mt-2">
+                                            {/* Vertical Spacer - Captures the 'empty space' to center the mascot */}
+                                            <div className="flex-1 relative min-h-[60px]">
+                                                {/* Mascot Layer - Centered in the spacer without pushing layout */}
+                                                <div className="absolute inset-0 flex items-center justify-center lg:justify-start pointer-events-none select-none z-0">
+                                                    <div className="w-28 h-28 md:w-32 md:h-32 opacity-15 group-hover:opacity-100 group-hover:scale-110 transition-all duration-1000">
+                                                        <svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" className="w-full h-full filter drop-shadow-[0_0_20px_rgba(129,140,248,0.2)]">
+                                                            <g transform="translate(80, 80)">
+                                                                <text x="0" y="-2" textAnchor="middle" dominantBaseline="central" fontSize="52" fontWeight="700" fill="url(#ozenGrad)"
+                                                                    style={{ fontFamily: "'-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Inter', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif" }}>
+                                                                    V<tspan className="xena-eye" dy="-2.5">•</tspan>
+                                                                    <tspan style={{ opacity: 0 }}>ᴥ</tspan>
+                                                                    <tspan className="xena-eye" dy="0">•</tspan>V
+                                                                </text>
+                                                                <text className="xena-nose" x="0" y="6" textAnchor="middle" dominantBaseline="central" fontSize="52" fontWeight="700" fill="url(#ozenGrad)"
+                                                                    style={{ fontFamily: "'-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Inter', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif" }}>
+                                                                    ᴥ
+                                                                </text>
+                                                            </g>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex flex-col gap-4 mt-auto relative z-10">
                                                 <div className="flex items-center gap-3">
-                                                    <div className={`w-3 h-3 rounded-full ${searxenaStatus.installed ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-red-500/50'}`} />
-                                                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
-                                                        {searxenaStatus.installed ? 'Motor Detectado' : 'Motor No Encontrado'}
+                                                    <div className={`w-2 h-2 rounded-full ${searxenaStatus.installed ? 'bg-indigo-400 shadow-[0_0_8px_rgba(129,140,248,0.4)]' : 'bg-slate-700'}`} />
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] transition-all">
+                                                        {searxenaStatus.installed ? 'Motor Detectado' : 'Soberanía Desactivada'}
                                                     </span>
                                                 </div>
                                                 <div className="flex items-center gap-3">
-                                                    <div className={`w-3 h-3 rounded-full ${searxenaStatus.running ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-red-500/50'}`} />
-                                                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
-                                                        {searxenaStatus.running ? 'En Ejecución (Puerto 8000)' : 'Detenido'}
+                                                    <div className={`w-2 h-2 rounded-full ${searxenaStatus.running ? 'bg-purple-400 shadow-[0_0_8px_rgba(192,132,252,0.4)]' : 'bg-slate-700'}`} />
+                                                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em]">
+                                                        {searxenaStatus.running ? 'Servicio Activo (8000)' : 'Servicio Detenido'}
                                                     </span>
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <div className="flex flex-col justify-center">
+                                        <div className="flex flex-col justify-center space-y-4">
                                             <button
                                                 onClick={handleStartSearXena}
                                                 disabled={startingSearxena || (searxenaStatus.installed && searxenaStatus.running)}
-                                                className={`w-full py-4 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 border shadow-lg ${startingSearxena
-                                                    ? 'bg-blue-600/20 border-blue-500/50 text-blue-400'
+                                                className={`w-full py-5 rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-4 border shadow-2xl premium-button premium-emphasis ${startingSearxena
+                                                    ? 'premium-blue !bg-blue-600/20 text-blue-400 border-blue-500/20'
                                                     : searxenaStatus.installed && searxenaStatus.running
-                                                        ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 cursor-default'
-                                                        : 'bg-blue-600 hover:bg-blue-500 border-blue-400 text-white shadow-blue-900/20'
+                                                        ? 'premium-indigo !bg-indigo-500/10 text-indigo-400 cursor-default border-indigo-500/20 shadow-indigo-500/10'
+                                                        : 'premium-indigo !bg-indigo-950/80 hover:!bg-indigo-900/80 text-white shadow-indigo-900/40 border-indigo-500/20'
                                                     }`}
                                             >
-                                                <Icon name={startingSearxena ? "sync fa-spin" : (!searxenaStatus.envReady ? "magic" : "play")} />
-                                                {startingSearxena ? (searxenaStatus.envReady ? 'Iniciando...' : 'Instalando...') : searxenaStatus.running ? 'Motor Activo' : (!searxenaStatus.envReady ? 'Instalar y Arrancar' : 'Arrancar searXena')}
+                                                <Icon name={startingSearxena ? "sync fa-spin" : (!searxenaStatus.envReady ? "magic" : "rocket")} className="text-base" />
+                                                {startingSearxena ? (searxenaStatus.envReady ? 'Desplegando...' : 'Configurando...') : searxenaStatus.running ? 'Motor Activo' : (!searxenaStatus.envReady ? 'Arrancar Motor' : 'Arrancar Motor')}
                                             </button>
                                             
-                                            <div className="mt-4 p-4 rounded-xl bg-slate-950/40 border border-white/5 space-y-3">
+                                            <div className="p-5 rounded-2xl bg-black/40 border border-white/5 space-y-4 backdrop-blur-sm">
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
-                                                        <div className={`w-2 h-2 rounded-full ${searxenaStatus.installed ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-slate-700'}`} />
-                                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Código Motor</span>
+                                                        <div className={`w-2 h-2 rounded-full ${searxenaStatus.installed ? 'bg-[#818cf8] shadow-[0_0_8px_rgba(129,140,248,0.4)]' : 'bg-slate-700'}`} />
+                                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Nervio Central</span>
                                                     </div>
-                                                    <span className="text-[9px] font-mono text-slate-500">{searxenaStatus.installed ? 'DETECTADO' : 'MISSING'}</span>
+                                                    <span className="text-[9px] font-mono text-indigo-400/80 uppercase">{searxenaStatus.installed ? 'ONLINE' : 'MISSING'}</span>
                                                 </div>
 
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
-                                                        <div className={`w-2 h-2 rounded-full ${searxenaStatus.envReady ? 'bg-emerald-500' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]'}`} />
-                                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Entorno Python</span>
+                                                        <div className={`w-2 h-2 rounded-full ${searxenaStatus.envReady ? 'bg-[#c084fc] shadow-[0_0_8px_rgba(192,132,252,0.4)]' : 'bg-amber-500/40 shadow-[0_0_8px_rgba(245,158,11,0.2)]'}`} />
+                                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Entorno Neural</span>
                                                     </div>
-                                                    <span className="text-[9px] font-mono text-slate-500">{searxenaStatus.envReady ? 'LISTO' : 'REQUIERE SETUP'}</span>
+                                                    <span className="text-[9px] font-mono text-purple-400/80 uppercase">{searxenaStatus.envReady ? 'READY' : 'SETUP REQUIRED'}</span>
                                                 </div>
                                                 
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
-                                                        <div className={`w-2 h-2 rounded-full ${searxenaStatus.running ? 'bg-emerald-500 animate-pulse' : 'bg-slate-700'}`} />
-                                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Estado</span>
+                                                        <div className={`w-2 h-2 rounded-full ${searxenaStatus.running ? 'bg-[#e879f9] shadow-[0_0_8px_rgba(232,121,249,0.5)] animate-pulse' : 'bg-slate-700'}`} />
+                                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Inercia</span>
                                                     </div>
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="text-[9px] font-mono text-slate-500">{searxenaStatus.running ? 'RUNNING' : 'STOPPED'}</span>
+                                                    <div className="flex items-center gap-2">
                                                         {searxenaStatus.running && (
                                                             <button 
                                                                 onClick={handleStopSearXena}
-                                                                title="Detener searXena"
-                                                                className="w-6 h-6 flex items-center justify-center rounded-md bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-all border border-rose-500/20 active:scale-90"
+                                                                title="Interrumpir Proceso"
+                                                                className="w-6 h-6 flex items-center justify-center rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-all border border-rose-500/20 active:scale-90"
                                                             >
-                                                                <Icon name="stop" className="text-[8px]" />
+                                                                <Icon name="power-off" className="text-[9px]" />
                                                             </button>
                                                         )}
+                                                        <span className="text-[9px] font-mono text-pink-400/80 uppercase min-w-[50px] text-right">{searxenaStatus.running ? 'ACTIVE' : 'IDLE'}</span>
                                                     </div>
                                                 </div>
                                             </div>
                                             
-                                            <p className="text-[9px] text-slate-600 mt-2 text-center px-4 leading-tight font-medium italic">
-                                                {searxenaStatus.installed ? 'Control nativo de proceso habilitado.' : 'Motor no detectado en la ruta de desarrollo.'}
+                                            <p className="text-[8px] text-slate-600 px-4 leading-tight font-black uppercase tracking-[0.1em] text-center opacity-70">
+                                                {searxenaStatus.installed ? '» PROCESAMIENTO SOBERANO HABILITADO' : '» MOTOR FUERA DE LÍNEA'}
                                             </p>
 
                                             {searxenaStatus.installed && (
@@ -1045,11 +1102,11 @@ export const SettingsPanel = ({
                                                     <button
                                                         onClick={handleUpdateSearXenaEnv}
                                                         disabled={updatingSearxena || searxenaStatus.running}
-                                                        className={`w-full py-2.5 rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 border ${updatingSearxena
-                                                            ? 'bg-amber-500/10 border-amber-500/30 text-amber-500 cursor-wait'
+                                                        className={`w-full py-2.5 rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 premium-button ${updatingSearxena
+                                                            ? 'premium-blue !bg-blue-600/20 text-blue-400'
                                                             : searxenaStatus.running
-                                                                ? 'bg-slate-800/50 border-slate-700/30 text-slate-500 cursor-not-allowed opacity-50'
-                                                                : 'bg-slate-800/80 hover:bg-slate-700 border-slate-700/50 text-slate-300 hover:text-white'
+                                                                ? 'premium-indigo !bg-slate-800/50 text-slate-500 cursor-not-allowed opacity-50'
+                                                                : 'premium-indigo !bg-slate-800/20 text-slate-400'
                                                             }`}
                                                         title={searxenaStatus.running ? "Detén el motor antes de actualizar" : "Sincronizar librerías de Python"}
                                                     >
@@ -1073,14 +1130,14 @@ export const SettingsPanel = ({
                                 <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
                                     <Icon name="cog" className="text-slate-400" /> System Behavior & OS Integration
                                 </label>
-                                <div className="bg-slate-900/60 rounded-3xl p-8 border border-white/5 shadow-xl relative overflow-hidden group">
+                                <div className="premium-card p-8 transition-all duration-700 relative overflow-hidden group">
                                     <div className="absolute top-0 right-0 w-32 h-32 bg-slate-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-slate-500/10 transition-colors" />
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
                                         {/* Auto Launch */}
-                                        <div className="flex items-center justify-between p-4 bg-black/20 rounded-2xl border border-white/5 hover:border-blue-500/20 transition-all">
+                                        <div className="flex items-center justify-between p-4 bg-black/20 rounded-2xl border border-transparent hover:border-blue-500/20 transition-all group/sw">
                                             <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center">
+                                                <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-transparent group-hover/sw:border-blue-500/30 text-blue-400 flex items-center justify-center premium-transition">
                                                     <Icon name="rocket" />
                                                 </div>
                                                 <div>
@@ -1090,17 +1147,17 @@ export const SettingsPanel = ({
                                             </div>
                                             <button
                                                 onClick={() => updateConfig('autoLaunch', !config.autoLaunch)}
-                                                className={`w-12 h-6 rounded-full transition-all relative ${config.autoLaunch ? 'bg-blue-600' : 'bg-slate-700'}`}
+                                                className={`premium-switch w-12 h-6 rounded-full relative ${config.autoLaunch ? 'bg-blue-600' : 'bg-slate-700'}`}
                                                 title={config.autoLaunch ? "Desactivar inicio con Windows" : "Activar inicio con Windows"}
                                             >
-                                                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-md transition-all ${config.autoLaunch ? 'left-7' : 'left-1'}`} />
+                                                <div className={`premium-switch-knob absolute top-1 w-4 h-4 rounded-full bg-white shadow-md ${config.autoLaunch ? 'left-7' : 'left-1'}`} />
                                             </button>
                                         </div>
 
                                         {/* Minimize to Tray */}
-                                        <div className="flex items-center justify-between p-4 bg-black/20 rounded-2xl border border-white/5 hover:border-indigo-500/20 transition-all">
+                                        <div className="flex items-center justify-between p-4 bg-black/20 rounded-2xl border border-transparent hover:border-indigo-500/20 transition-all group/sw">
                                             <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center">
+                                                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-transparent group-hover/sw:border-indigo-500/30 text-indigo-400 flex items-center justify-center premium-transition">
                                                     <Icon name="window-minimize" />
                                                 </div>
                                                 <div>
@@ -1110,10 +1167,10 @@ export const SettingsPanel = ({
                                             </div>
                                             <button
                                                 onClick={() => updateConfig('minimizeToTray', !config.minimizeToTray)}
-                                                className={`w-12 h-6 rounded-full transition-all relative ${config.minimizeToTray ? 'bg-indigo-600' : 'bg-slate-700'}`}
+                                                className={`premium-switch w-12 h-6 rounded-full relative ${config.minimizeToTray ? 'bg-indigo-600' : 'bg-slate-700'}`}
                                                 title={config.minimizeToTray ? "Desactivar minimizado a bandeja" : "Activar minimizado a bandeja"}
                                             >
-                                                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-md transition-all ${config.minimizeToTray ? 'left-7' : 'left-1'}`} />
+                                                <div className={`premium-switch-knob absolute top-1 w-4 h-4 rounded-full bg-white shadow-md ${config.minimizeToTray ? 'left-7' : 'left-1'}`} />
                                             </button>
                                         </div>
                                     </div>
@@ -1128,7 +1185,7 @@ export const SettingsPanel = ({
                                     <Icon name="tools" className="text-cyan-400" /> Neural Maintenance & Backup
                                 </label>
 
-                                <div className="bg-slate-900/60 rounded-3xl p-8 border border-cyan-700/30 shadow-xl space-y-6 relative overflow-hidden group">
+                                <div className="premium-card premium-cyan p-8 space-y-6 relative overflow-hidden group">
                                     <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-cyan-500/10 transition-colors" />
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
@@ -1146,7 +1203,7 @@ export const SettingsPanel = ({
                                                     if (res.ok) await askAlert(`✅ Respaldo Creado\n\nEl archivo se ha guardado en:\n${res.path}`);
                                                     else if (!res.canceled) await askAlert(`❌ Error al crear respaldo: ${res.error}`);
                                                 }}
-                                                className="py-4 bg-cyan-600/10 hover:bg-cyan-600/20 text-cyan-400 rounded-2xl text-xs font-black uppercase tracking-widest transition-all flex flex-col items-center justify-center gap-2 border border-cyan-500/30 shadow-lg group/btn"
+                                                className="py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all flex flex-col items-center justify-center gap-2 border shadow-lg group/btn premium-button premium-emphasis premium-cyan bg-cyan-600/10 text-cyan-400"
                                             >
                                                 <Icon name="archive" className="text-xl group-hover/btn:scale-110 transition-transform" />
                                                 <span>Exportar Backup</span>
@@ -1166,7 +1223,7 @@ export const SettingsPanel = ({
                                                         await askAlert(`❌ Error al importar respaldo: ${res.error}`);
                                                     }
                                                 }}
-                                                className="py-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-2xl text-xs font-black uppercase tracking-widest transition-all flex flex-col items-center justify-center gap-2 border border-white/5 shadow-lg group/btn"
+                                                className="py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all flex flex-col items-center justify-center gap-2 border shadow-lg group/btn premium-button premium-emphasis premium-indigo bg-slate-800 text-slate-300"
                                             >
                                                 <Icon name="cloud-upload-alt" className="text-xl group-hover/btn:scale-110 transition-transform" />
                                                 <span>Restaurar Copia</span>
@@ -1201,7 +1258,7 @@ export const SettingsPanel = ({
 
                                 <button
                                     onClick={onSaveGlobal}
-                                    className={`pointer-events-auto h-12 bg-slate-950/20 hover:bg-slate-900/40 border border-white/5 hover:border-blue-500/20 text-slate-500 hover:text-blue-200 rounded-full transition-all duration-700 ease-in-out flex items-center justify-center shadow-[0_10px_40px_rgba(0,0,0,0.3)] backdrop-blur-2xl group relative overflow-hidden active:scale-95 px-0 ${isAtBottom ? 'w-36 px-6' : 'w-12 group-hover:w-36 group-hover:px-6'}`}
+                                    className={`pointer-events-auto h-12 bg-slate-950/20 hover:bg-slate-900/40 border border-white/5 hover:border-blue-500/20 text-slate-500 hover:text-blue-200 rounded-full transition-all duration-700 ease-in-out flex items-center justify-center shadow-[0_10px_40px_rgba(0,0,0,0.3)] backdrop-blur-2xl group relative overflow-hidden premium-button px-0 ${isAtBottom ? 'w-36 px-6' : 'w-12 group-hover:w-36 group-hover:px-6'}`}
                                     title="Save All Global Settings"
                                 >
                                     {/* Liquid Shine Effect */}
