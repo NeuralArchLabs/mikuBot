@@ -234,6 +234,11 @@ function setPreview(el) {
     document.getElementById('preview-url').innerText = url;
     document.getElementById('preview-icon').src = icon;
     document.getElementById('preview-link').href = url;
+    
+    const readerLink = document.getElementById('preview-reader-link');
+    if (readerLink) {
+        readerLink.href = `/extract?url=${encodeURIComponent(url)}`;
+    }
 
     // Manejar preview de imagen grande
     const fullImg = el.getAttribute('data-full-img');

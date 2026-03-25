@@ -8,6 +8,8 @@ interface SkillsPanelProps {
     onSaveTools: (name: string, content: string) => Promise<boolean>;
     updateConfig: (updates: Partial<AppConfig>) => void;
     onSaveGlobal: () => void;
+    showBlueprints: boolean;
+    setShowBlueprints: (show: boolean) => void;
 }
 
 interface Skill {
@@ -33,14 +35,13 @@ interface SkillBlueprint {
     entryContent: string;
 }
 
-export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, onSaveTools, updateConfig, onSaveGlobal }) => {
+export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, onSaveTools, updateConfig, onSaveGlobal, showBlueprints, setShowBlueprints }) => {
     const [skills, setSkills] = useState<Skill[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeSkill, setActiveSkill] = useState<string | null>(null);
     const [editMode, setEditMode] = useState<'config' | 'code'>('config');
     const [activeFile, setActiveFile] = useState<string>('manifest.json');
     const [editorContent, setEditorContent] = useState<string>('');
-    const [showBlueprints, setShowBlueprints] = useState(false);
     const [isSavingCode, setIsSavingCode] = useState(false);
     const [blueprints, setBlueprints] = useState<SkillBlueprint[]>([]);
 
@@ -256,40 +257,8 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
 
     return (
         <div className="flex-1 overflow-hidden flex flex-col">
-            {/* Header - Buttons only on LG */}
-            <div className="py-2 lg:py-2 border-b border-slate-800/50 bg-slate-900/40 shrink-0 px-4 lg:px-8  contain-paint">
-                <div className="flex items-center justify-between gap-4 w-full">
-                    <div className="flex items-center gap-3 min-w-0 mr-auto group lg:hidden">
-                        <div className="text-cyan-400 text-xl shrink-0 drop-shadow-[0_0_15px_rgba(6,182,212,0.4)] animate-title-slide">
-                            <Icon name="puzzle-piece" />
-                        </div>
-                        <div className="min-w-0">
-                            <h2 className="text-xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-teal-400 text-shadow-premium select-none animate-title-slide">
-                                Neural Skills
-                            </h2>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={() => setShowBlueprints(!showBlueprints)}
-                            className="px-4 lg:px-6 py-2.5 bg-slate-900/60 hover:bg-slate-800 text-slate-300 rounded-xl font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all border border-slate-700/50 text-xs lg:text-sm hover:scale-105 active:scale-95"
-                        >
-                            <Icon name="plus" />
-                            <span className="hidden lg:inline">New Directive</span>
-                        </button>
-                        <button
-                            onClick={onSaveGlobal}
-                            className="btn-halo px-4 lg:hidden py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-[0_0_30px_rgba(6,182,212,0.3)] text-xs lg:text-sm hover:scale-105 active:scale-95 group/sync"
-                        >
-                            <Icon name="sync" className="group-hover/sync:rotate-180 transition-transform duration-500" />
-                            <span className="lg:hidden">Sync</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
             {/* Content Area */}
-            <div className="flex-1 overflow-y-auto lg:overflow-hidden w-full lg:flex lg:flex-row p-3 lg:p-6 gap-6 relative custom-scrollbar">
+            <div className="flex-1 overflow-y-auto lg:overflow-hidden w-full lg:flex lg:flex-row p-3 lg:p-1.5 xl:p-8 gap-2 xl:gap-6 relative custom-scrollbar">
                 {/* Blueprints Overlay */}
                 {showBlueprints && (
                     <div className="fixed lg:absolute inset-0 z-[100] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 lg:p-12">
@@ -330,7 +299,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                 )}
 
                 {/* Vertical Skills List */}
-                <div className="w-full lg:w-72 shrink-0 flex flex-col gap-4 lg:pr-4 lg:overflow-y-auto custom-scrollbar">
+                <div className="w-full lg:w-52 xl:w-72 shrink-0 flex flex-col gap-3 lg:gap-2 xl:gap-4 lg:pr-2 xl:pr-4 lg:overflow-y-auto custom-scrollbar">
                     <h3 className="text-[11px] font-semibold text-slate-600 uppercase tracking-[0.3em] px-4 mb-2">Synaptic Repository</h3>
                     {loading ? (
                         <div className="space-y-4">
@@ -344,7 +313,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                     <div className="relative">
                                         <button
                                             onClick={() => setActiveSkill(skill.name === activeSkill && window.innerWidth < 1024 ? null : skill.name)}
-                                            className={`w-full p-4 rounded-2xl flex items-center transition-all duration-500 text-left border group relative overflow-hidden ${activeSkill === skill.name
+                                            className={`w-full p-4 lg:p-2.5 xl:p-4 rounded-2xl flex items-center transition-all duration-500 text-left border group relative overflow-hidden ${activeSkill === skill.name
                                                 ? 'bg-gradient-to-br from-cyan-500/10 to-blue-600/5 border-cyan-500/40 shadow-[0_0_30px_rgba(6,182,212,0.1)] ring-1 ring-cyan-400/20'
                                                 : 'bg-slate-900/30 border-slate-800/40 text-slate-400 hover:bg-slate-800/30 hover:border-slate-700'
                                                 } ${isDisabled ? 'opacity-50' : ''}`}
@@ -354,8 +323,8 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                                 <div className={`p-2.5 rounded-xl text-base shrink-0 transition-all duration-500 ${activeSkill === skill.name ? 'bg-cyan-500 text-black scale-110 shadow-[0_0_15px_rgba(6,182,212,0.5)]' : 'bg-slate-800 text-slate-400 group-hover:text-slate-200'}`}>
                                                     <Icon name={skill.name.includes('gmail') ? 'envelope' : skill.name.includes('search') ? 'globe' : 'terminal'} />
                                                 </div>
-                                                <div className="flex flex-col min-w-0 flex-1">
-                                                    <span className={`font-semibold text-xs uppercase tracking-wide transition-colors duration-500 ${activeSkill === skill.name ? 'text-white' : 'text-slate-400'}`}>{skill.name}</span>
+                                                <div className="flex flex-col min-w-0 flex-1 pr-10">
+                                                    <span className={`font-semibold text-xs uppercase tracking-tight truncate transition-colors duration-500 ${activeSkill === skill.name ? 'text-white' : 'text-slate-400'}`}>{skill.name}</span>
                                                     <span className="text-[9px] text-slate-600 font-medium uppercase tracking-widest mt-0.5 truncate">{skill.__folderName}</span>
                                                 </div>
                                             </div>
@@ -395,7 +364,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                 </div>
 
                 {/* Standalone Editor for Desktop View */}
-                <div className="hidden lg:flex flex-1 bg-slate-900/40 rounded-[2.5rem] border border-slate-800/50 flex-col overflow-hidden min-w-0 shadow-2xl">
+                <div className="hidden lg:flex flex-1 bg-slate-900/40 rounded-3xl xl:rounded-[2.5rem] border border-slate-800/50 flex-col overflow-hidden min-w-0 shadow-2xl">
                     {currentSkill ? (
                         renderEditorContent()
                     ) : (

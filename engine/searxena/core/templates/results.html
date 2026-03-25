@@ -7,6 +7,7 @@
     <title>{{ query }} - searXena</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css?v=3.6">
+    <link rel="icon" type="image/jpeg" href="/static/favIcon.jpg">
     <meta name="referrer" content="no-referrer">
 </head>
 
@@ -249,7 +250,13 @@
                                     rel="noopener noreferrer nofollow">{{ result.title|safe }}</a>
                             </div>
                         </div>
-                        <div class="result-url" title="{{ result.url }}">{{ result.url }}</div>
+                        <div class="result-url-line">
+                            <span class="result-url-text" title="{{ result.url }}">{{ result.url }}</span>
+                            <a href="/extract?url={{ result.url | urlencode }}" class="reader-link-badge" title="{{ {'en': 'Reader Mode', 'zh': '阅读模式'}.get(lang, 'Modo Lectura') }}">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                                <span>{{ {'en': 'Read', 'zh': '阅读'}.get(lang, 'Leer') }}</span>
+                            </a>
+                        </div>
 
                         {% if result.price %}
                         <div class="general-price-tag">
@@ -343,6 +350,7 @@
                     <p id="preview-content" class="preview-content-text"></p>
                     <div class="preview-actions">
                         <a id="preview-link" href="#" target="_blank" class="preview-btn-main">{{ {'en': 'Visit Website', 'zh': '访问网站'}.get(lang, 'Visitar Sitio Web') }}</a>
+                        <a id="preview-reader-link" href="#" class="preview-btn-reader">{{ {'en': 'Reader Mode', 'zh': 'Modo Lectura'}.get(lang, 'Modo Lectura') }}</a>
                     </div>
                 </div>
 

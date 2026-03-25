@@ -1,0 +1,34 @@
+O-ZEN Engine License & Copyright Notice
+=======================================
+
+The O-ZEN Engine is a core component of the searXena project.
+
+This software is distributed under the GNU Affero General Public License v3.0 
+(AGPLv3) as part of the searXena ecosystem.
+
+Copyright (c) 2026 searXena Project Contributors.
+
+-------------------------------------------------------------------------------
+LICENSE SUMMARY:
+-------------------------------------------------------------------------------
+By using, modifying, or redistributing the O-ZEN Engine, you are bound by the 
+terms of the GNU AGPLv3. This means that:
+1. You must provide the source code of any modifications publicly if you offer 
+   the software as a service through a network.
+2. You must maintain all copyright and license notices including the 
+   attributions below.
+3. Any derivative works MUST also be licensed under the GNU AGPLv3.
+
+-------------------------------------------------------------------------------
+LEGAL ATTRIBUTION:
+-------------------------------------------------------------------------------
+The O-ZEN Engine is a derivative work, distilled and modified from the 
+Trafilatura project (Copyright (c) 2018-present Adrien Barbaresi). 
+
+As per the permissions granted by the original Apache License 2.0, the 
+integrated components are now redistributed under the GNU AGPLv3 terms within 
+searXena to ensure the highest standards of user sovereignty and copyleft 
+protection for the entire suite.
+
+For the full text of the AGPLv3 license, please refer to the LICENSE file in 
+the root directory of searXena.

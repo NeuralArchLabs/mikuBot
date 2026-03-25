@@ -7,6 +7,7 @@
     <title>{{ {'en': 'Preferences', 'zh': '偏好设置'}.get(lang, 'Preferencias') }} - searXena</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css?v=3.7">
+    <link rel="icon" type="image/jpeg" href="/static/favIcon.jpg">
     <meta name="referrer" content="no-referrer">
 
     <!-- Animación de ojos parpadeantes para el logo estático -->
@@ -111,8 +112,8 @@
                     <div class="setting-row">
                         <div class="setting-info">
                             <h3>{{ {'en': 'Search Language', 'zh': '搜索语言'}.get(lang, 'Idioma de búsqueda') }}</h3>
-                            <p>{{ {'en': 'Prioritize results in this language.', 'zh': '优先显示此语言的结果。'}.get(lang,
-                                'Priorizar resultados en este idioma.') }}</p>
+                            <p>{{ {'en': 'Prioritize results in this language (Changes the app language).', 'zh': '优先显示此语言的结果 (同时更改应用语言)。'}.get(lang,
+                                'Priorizar resultados en este idioma (Cambia el idioma de la app).') }}</p>
                         </div>
                         <select name="language" class="select-custom" title="Seleccionar idioma">
                             <option value="es" {% if general.get('default_lang', 'es' )=='es' %}selected{% endif %}>
@@ -197,6 +198,7 @@
                             <li><b>Privacy-Enhanced Delivery:</b> Images, favicons, and results are delivered through a
                                 local proxy to ensure user anonymity.</li>
                             <li><b>Direct Media Delivery (DMD):</b> High-trust, non-profit sources like Wikipedia or Wikimedia are prioritized for direct loading to optimize performance, as they strictly do not use commercial trackers.</li>
+                            <li><b>O-ZEN Engine:</b> High-performance content extraction engine (Reader Mode) built-in for distraction-free, clean reading experiences.</li>
                             <li><b>Privacy Zero-Logs:</b> We implement a strict zero-persistence policy. No history, no
                                 search profiles, no cookies.</li>
                             <li><b>Upstream Integration:</b> searXena acts as a neutral interface that aggregates and
@@ -215,6 +217,7 @@
                             <li><b>本地主权:</b> 100% 在您的硬件上执行。无云端，无中央服务器，无遥测。</li>
                             <li><b>AI 探索器 (Tool Calling):</b> 原生 JSON API，旨在为大语言模型 (LLM) 提供干净、结构化的数据以进行实时研究。</li>
                             <li><b>隐私增强交付:</b> 图像、网页图标和结果通过本地代理过滤，以确保用户匿名。</li>
+                             <li><b>O-ZEN Engine:</b> 内置高性能内容提取引擎（阅读模式），打造无干扰的纯净阅读体验。</li>
                             <li><b>零日志隐私:</b> 我们执行严格的零持久化策略。无历史记录，无搜索画像，无 Cookie。</li>
                             <li><b>上游集成:</b> searXena 作为一个中立接口，汇总并匿名化来自全球引擎的公开信号，尊重这些商业平台的技术价值。</li>
                             <li><b>中立体验与建议:</b> searXena 专注于中立且私密的搜索环境。如果您需要基于跟踪算法的个性化和便捷功能，我们建议您直接使用商业搜索平台。</li>
@@ -236,6 +239,7 @@
                             <li><b>Entrega Protegida:</b> Imágenes, favicons y resultados se procesan a través de
                                 un proxy local para garantizar el anonimato del usuario.</li>
                             <li><b>Aceleración de Activos de Confianza (Direct Media):</b> Fuentes de infraestructura pública como Wikipedia o Wikimedia se cargan directamente para optimizar el rendimiento, garantizando la ausencia de rastreadores comerciales.</li>
+                             <li><b>O-ZEN Engine:</b> Motor de extracción de contenido de alto rendimiento (Reader Mode) integrado directamente para una lectura limpia y sin distracciones.</li>
                             <li><b>Privacidad Sin Registros:</b> Implementamos una política estricta de cero
                                 persistencia. Sin historial, sin perfiles, sin cookies.</li>
                             <li><b>Integración Upstream:</b> searXena funciona como una interfaz unificada que agrega y

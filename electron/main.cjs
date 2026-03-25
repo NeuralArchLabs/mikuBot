@@ -65,12 +65,16 @@ function safeWriteJSON(filePath, data) {
     const tempPath = `${filePath}.tmp`;
     try {
         const json = JSON.stringify(data, null, 4);
-        if (!json || json === '{}' && Object.keys(data).length > 0) {
+        if (!json || (json === '{}' && Object.keys(data).length > 0)) {
             throw new Error(`Data validation failed for ${filePath}. Possible memory corruption.`);
         }
         
-        fs.writeFileSync(tempPath, json, 'utf8');
+        const fd = fs.openSync(tempPath, 'w');
+        fs.writeSync(fd, json, 0, 'utf8');
+        fs.fsyncSync(fd);
+        fs.closeSync(fd);
         
+        // NO UNLINK FIRST, RENAME HANDLES IT ATOMICALLY IF SAME DRIVE
         // Verify written file exists and is not empty
         const stats = fs.statSync(tempPath);
         if (stats.size === 0) {
@@ -78,12 +82,6 @@ function safeWriteJSON(filePath, data) {
         }
 
         // Atomic swap
-        try {
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
-            }
-        } catch (err) { /* In case of permission issues, rename might still work or overwrite */ }
-        
         fs.renameSync(tempPath, filePath);
         return { ok: true };
     } catch (error) {
@@ -533,7 +531,9 @@ ipcMain.handle('get-sessions', async () => {
                         messageCount: session.messages?.length || 0
                     };
                 } catch (e) {
-                    console.warn(`[Main Process] Skipping corrupted session file: ${f}`, e.message);
+                    // Proactive cleanup: If file is 0 bytes or unreadable, remove it to prevent UI clutter
+                    console.warn(`[Main Process] Clearing corrupted session: ${f}`, e.message);
+                    try { fs.unlinkSync(path.join(sessionsDir, f)); } catch { }
                     return null;
                 }
             })

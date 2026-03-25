@@ -3,11 +3,20 @@
     🌎 <b>English</b> | <a href="README.md">Versión en Español</a> | <a href="README.zh.md">中文</a>
   </p>
 
-  <img src="https://img.shields.io/badge/Sear-Xena-6a00ff?style=for-the-badge&logo=search&logoColor=white" alt="searXena Logo"/>
-  <h1>searXena</h1>
+  <img src="core/static/searxena-banner-v2.svg" alt="searXena Logo" width="600"/>
 
   <p>
-    An agile, local, and 100% native metasearch engine for Windows. Built as a high-performance bridge between LLMs (autonomous AI systems) and the real-time web, ensuring tracking mitigation and privacy.
+    **Search locally, search privately, search the old way.**
+
+  <p>
+    <img src="https://img.shields.io/badge/O--ZEN_Engine-2.0.0-6a00ff?style=for-the-badge&logoColor=white" alt="O-ZEN Engine"/>
+    <img src="https://img.shields.io/badge/Windows-Native-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Windows Native"/>
+    <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI"/>
+    <img src="https://img.shields.io/badge/AI_Infra-Zero_API_Keys-ff9b00?style=for-the-badge" alt="AI Infra"/>
+    <img src="https://img.shields.io/badge/License-AGPLv3-blueviolet?style=for-the-badge" alt="AGPLv3"/>
+  </p>
+
+An agile native metasearch engine and high-performance data infrastructure built to reclaim the useful web. Designed for humans who want relevance without ads and for AI agents that need to explore the internet without the friction of commercial API keys and their associated costs.
   </p>
   
   <p>
@@ -39,16 +48,18 @@ searXena leverages modern and ultra-lightweight technologies to enable hyper-flu
 - **Web Server:** [Uvicorn](https://www.uvicorn.org/) (Native ASGI support).
 - **Network Processing:** `httpx` for parallel and asynchronous HTTP/2 requests with ultra-low latency.
 - **Frontend / Rendering:** [Jinja2](https://jinja.palletsprojects.com/) coupled with Vanilla JavaScript (zero frameworks like React) and Pure CSS3 ensuring instant speed.
-- **Structured Scraping:** `lxml` and `BeautifulSoup4` coupled with modular selectors for DOM analysis.
+- **Extraction Engine:** `O-ZEN Engine` (Native extraction core - AGPLv3).
+- **DOM Processors:** `lxml` and `selectolax` coupled with modular selectors.
 
 ## ✨ Main Features
 
-* 🚀 **Asynchronous Parallel Metasearch:** A single query from you triggers dozens of asynchronous requests to global engines (Google, Bing, DuckDuckGo, Brave, GitHub, Wikipedia, MDN, NPM, etc.), consolidating them in less than 1 second.
+* 🚀 **Asynchronous Parallel Metasearch:** A single query from you triggers dozens of asynchronous requests to multiple global engines and information sources, consolidating them in less than 1 second.
 * 🤖 **AI-First Integration:** Native JSON formatting and pre-built Tools schemas, ready to connect your LLM deployment to the internet without overheads or unnecessary HTML scraping.
 * 🛡️ **Privacy Protection:** Acts as a neutral interface between the user and the global web. Promotes anonymity by transparently centralizing requests through its own network engine.
 * 📦 **100% Native on Windows:** Zero complex dependencies. Just clone, install the libraries with `pip`, run the main `.py` file, and you have a private search engine minimizing external telemetry hosted locally on your system.
 * 📱 **Modern and Dynamic UI/UX:** Fluid animations, ultra-refined dark mode ("Space Violet"), responsive interface, and categorically separated into tabs (General, IT/Science, Maps, Videos, Images).
-* 🌎 **Consolidated Rich Snippets:** Enriched reading consolidating data from Wikipedia or Wikidata in quick-consumption side boxes ("Infoboxes") in the style of major commercial engines.
+* 🌎 **Consolidated Rich Snippets:** Enriched reading consolidating data from Wikipedia or Wikidata in quick-consumption side boxes ("Infoboxes").
+* 🧘 **O-ZEN Engine (Reader Mode):** Built-in industrial extraction core (AGPLv3) for reading articles and technical documentation without ads or intrusive scripts.
 
 ## 🥊 Why We Have No Rival on Windows (searXena vs The Rest)
 
@@ -63,12 +74,17 @@ Historically, open-source metasearch engines focused on privacy (like SearXNG or
 | **Startup Time** | Slow (Starts Docker Engine, then boots the stack) | **Instantaneous** (Less than a second) |
 | **Installation Experience** | Complex, sysadmin commands oriented to Linux | **Simple** (One-click `.ps1` auto-setup script) |
 | **LLM Tool Calling** | External community adapters required | **Native JSON API** built from day one |
+| **Data Extraction (RAG)** | Noisy HTML scraping (external) | **O-ZEN Engine** native (LLM-ready reader mode) |
 
 Unless you want to rent a VPS in the cloud, searXena is the only logical, viable, and high-performance answer for the demanding Windows user who desires *in-house* data sovereignty.
 
-## 🤖 Artificial Intelligence and Agents
+## 🤖 Artificial Intelligence and Agents: Zero API Keys, Zero Friction
 
-searXena is not just an interface for humans; it is a **search infrastructure optimized for the AI era**. We have designed the engine to serve as real-time "eyes" for your Large Language Models (LLMs).
+searXena eliminates web access barriers for Artificial Intelligence development:
+
+*   **Goodbye to API Keys:** Forget about managing multiple API keys or dynamic subscription quotas. searXena is your own infinite search node.
+*   **Zero Cost per Query:** Scale your agents and RAG systems without worrying about the bill at the end of the month.
+*   **Industrial-Grade Data:** Delivers a clean, structured data stream designed to be processed by LLMs. We have designed the engine to serve as real-time "eyes" for your Large Language Models (LLMs).
 
 *   **Internet Exploration for AI:** Provides a clean, structured data stream that allows agents to navigate and research the web without the friction of visual rendering.
 *   **Native Tool Calling:** Core-level compatibility with the OpenAI/Anthropic "Functions" standard.
@@ -101,9 +117,11 @@ Through the `/api/v1/search` route, your assistant can automate queries and rece
 * **AI-Ready Endpoints:**
   * `GET /api/v1/tools_schema`: Returns a literal `function_declarations` schema directly injectable into your LLM with all available enabled parameters.
   * `POST /api/v1/search`: Communication webhook that executes the search and returns deep analytical metadata.
-* **Anti-Hallucination Smart Ranking:** The heuristic filter processes the returns in favor of the agent; under the "IT" category, it hides advertising sites from the LLM and feeds it directly from StackOverflow, MDN Web Docs, and substantial GitHub repositories.
+* **Anti-Hallucination Smart Ranking:** The heuristic filter processes the returns in favor of the agent; under the "IT" category, it hides advertising sites from the LLM and feeds it directly from official technical documentation and substantial open-source repositories.
 
 > **Building a RAG Agent?** Take a deep look at the payloads, pre-built headers, and System Prompt recommendations hosted in the [**AI Integration Guide**](AI_INTEGRATION_GUIDE.md) included in this official repository.
+>
+> 🚀 **Coming Soon:** searXena will be included by default in our project in development **mikuBot Dashboard**, a personal AI assistant focused on the general public, also open source and coming soon.
 
 ## 🚀 Installation and Usage (Local Mode)
 
@@ -124,13 +142,14 @@ Through the `/api/v1/search` route, your assistant can automate queries and rece
    ```powershell
    .\run.ps1
    ```
-Open your browser (Brave, Edge, Firefox) and enter directly into `http://127.0.0.1:8000`. searXena is now ready to mask you.
+Open your personal or trusted browser and enter directly into `http://127.0.0.1:8000`. searXena is now ready to mask you.
 
 ## ⚖️ License and Legal Disclaimer
 
 *   **License:** This project is free software, distributed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
-*   **Credits:** All technical base knowledge for modeling extraction module classes and heuristic derivations morally belongs to the maintainers of [Searx](https://github.com/searx/searx) and [SearXNG](https://github.com/searxng/searxng).
-*   **Information Sources:** searXena acts as a public signal aggregator. We recognize and respect the immense indexing work and technological value provided by the various supported external search engines (Google, Bing, DuckDuckGo, etc.). This software functions as a tool for visualizing and anonymizing public data for the end user.
+*   **Engine Credits:** The **O-ZEN Engine** extraction motor is a native component of searXena designed to ensure user data sovereignty and professional copyleft compliance.
+*   **Acknowledgments:** We recognize the technical foundation established by the SearXNG ecosystem, whose privacy standards have inspired this native architecture.
+*   **Information Sources:** searXena acts as a public signal aggregator. We recognize and respect the immense indexing work and technological value provided by the various external search engines. This software functions as a tool for visualizing and anonymizing public data for the end user.
 *   **Educational and Research Use:** searXena is provided solely for research and personal use purposes. The developer does not promote nor is responsible for the use of this tool to violate third-party Terms of Service. searXena provides a neutral search experience; if you require the personalization and conveniences based on tracking algorithms, we recommend using commercial search platforms directly.
 
 **LEGAL NOTICE:** searXena is distributed "AS IS", without warranties of any kind. The user assumes all legal responsibility derived from the use of the software, including compliance with local laws and contracts with external data providers. The developer is not responsible for IP blocks, third-party legal actions, or any other damages resulting from the use of this code.

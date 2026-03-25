@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.9.8] - 2026-03-24
+### Fixed
+- **Session Corruption during Crashes**: Integrated `fsyncSync` into `safeWriteJSON` to ensure data is physically written to the disk platter, preventing 0-byte files during OS/hardware interruptions.
+- **Corrupted Session Auto-Cleanup**: Enhanced `get-sessions` to proactively identify and remove 0-byte or unreadable session files from disk, maintaining UI integrity.
+- **Atomic Persistence Reliability**: Refactored the file-saving bridge to use native file descriptors for guaranteed write completion.
+
+### Changed
+- **Version Bump**: Global application version updated to v1.9.8.
+
 ## [1.9.7] - 2026-03-24
 ### Added
 - **Rapid Document Creation (+)**: Integrated a '+' button in the Context Library header that creates a new documented and immediately opens the Library Manager in edit mode.

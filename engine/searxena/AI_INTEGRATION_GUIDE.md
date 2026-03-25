@@ -1,79 +1,68 @@
-# searXena AI Integration Guide
+# searXena AI Integration Guide: High-Performance Data Infrastructure
 
-Esta guía documenta cómo los Modelos de Inteligencia Artificial (LLMs, Agentes, Asistentes de Código) pueden interactuar con **searXena** de manera nativa mediante herramientas (Tool Calling) y su API en formato JSON.
+This guide documents how Artificial Intelligence Models (LLMs, Agents, Code Assistants) can interact with **searXena** natively using tool calling and its JSON API.
 
-## Endpoints Disponibles
+## 🚀 The Advantage: Zero Friction, Zero API Keys
 
-searXena provee dos nuevos endpoints bajo la ruta `/api/v1/` diseñados estrictamente para respuestas estructuradas sin componentes de Front-End (HTML/CSS):
+Historically, providing real-time web access to an AI agent involved managing commercial search providers, credit limits, and subscription tiers. **searXena changes this paradigm**:
 
-### 1. Obtener el Esquema de Herramienta (`GET /api/v1/tools_schema`)
+1.  **Stop Managing Keys:** You no longer need to manage multiple API keys or secret rotations.
+2.  **Infinite Scaling:** Since it runs on your own hardware, you don't pay per query. Scale your research to thousands of requests without hitting commercial bills.
+3.  **Local Latency:** Data processing happens on your node, delivering structured signals directly to your agent.
 
-Devuelve un objeto JSON alineado a los estándares de OpenAI, Anthropic y Gemini para la definición de funciones.
+## Available Endpoints
 
-**Uso de ejemplo:**
+searXena provides structured endpoints under the `/api/v1/` path designed strictly for JSON responses without any HTML/CSS overhead:
+
+### 1. Tool Schema (`GET /api/v1/tools_schema`)
+
+Returns a JSON object aligned with OpenAI, Anthropic, and Gemini standards for tool/function definitions.
+
+**Example usage:**
 ```bash
 curl -X GET http://localhost:8000/api/v1/tools_schema
 ```
 
-### 2. Ejecutar la Búsqueda Estructurada (`POST /api/v1/search`)
+### 2. Structured Search (`POST /api/v1/search`)
 
-Este es el endpoint donde el LLM enviará su "Tool Call". Devuelve un objeto con los resultados y metadatos de contexto.
+This is the endpoint where your LLM will send its "Tool Call". It returns an object with results and context metadata.
 
-**Headers:** `Content-Type: application/json`
+**Request Body Parameters:**
 
-**Cuerpo de la Petición:**
-
-| Parámetro         | Tipo       | Requerido | Descripción |
+| Parameter         | Type       | Required | Description |
 |-------------------|------------|-----------|-------------|
-| `query`           | `string`   | **Sí**    | La consulta o pregunta a buscar. |
+| `query`           | `string`   | **Yes**   | The search query. |
 | `category`        | `string`   | No        | `general` (default), `it`, `news`, `shopping`, `images`, `videos`. |
-| `pageno`          | `integer`  | No        | Número de página. Default `1`. |
-| `language`        | `string`   | No        | ISO code: `es`, `en`, `it`, `fr`, `de`, `zh`, `pt`, `ja`. |
-| `include_engines` | `string[]` | No        | Lista blanca de motores (ej. `["google", "duckduckgo"]`). |
-| `exclude_engines` | `string[]` | No        | Lista negra de motores. |
-| `limit`           | `integer`  | No        | Máximo de resultados. Default `10`. |
+| `pageno`          | `integer`  | No        | Page number. Default `1`. |
+| `language`        | `string`   | No        | ISO code: `es`, `en`, `zh`, etc. |
+| `limit`           | `integer`  | No        | Maximum results. Default `10`. |
 
-**Ejemplo de Respuesta Estructurada:**
-```json
-{
-  "results": [
-    {
-      "title": "What's New In Python 3.12",
-      "url": "https://docs.python.org/3/whatsnew/3.12.html",
-      "content": "This article explains the new features in Python 3.12...",
-      "source": "google"
-    }
-  ],
-  "meta": {
-    "total_found": 35,
-    "limit_applied": 1,
-    "has_more": true,
-    "suggestion": "Hay 35 resultados en total. Estás viendo 1. Para ver más, aumenta el parámetro 'limit'."
-  }
-}
-```
+## Agent Recommendations (System Prompt)
 
-## Recomendaciones para Agentes (System Prompt)
+To optimize the use of searXena, instruct your model with the following:
 
-Para optimizar el uso de searXena, instruye a tu modelo con lo siguiente:
+1.  **Content Extraction (O-ZEN Engine):** searXena uses the native **O-ZEN** engine to process web content, removing ads and visual noise to deliver only relevant information to your model.
+2.  **Categorical Precision:** Use `category: "it"` for technical topics and `category: "news"` for recent events.
+3.  **Context Management:** Observe the `meta.has_more` property. If you need to go deeper, re-run the search by increasing the `limit` or `pageno`.
+4.  **Anti-Hallucination Ranking:** searXena's heuristic filter prioritizes high-quality sources (e.g., documentation, wikis, community repositories) and hides marketing-heavy results.
 
-1.  **Prioriza Consultas Simples:** Envía solo el campo `query` si no hay necesidades especiales para ahorrar latencia.
-2.  **Uso de Categorías:** Usa `category: "it"` para temas técnicos y `category: "shopping"` para productos.
-3.  **Gestión de Contexto (Metadata):** Observa la propiedad `meta.has_more`. Si necesitas profundizar, re-lanza la búsqueda aumentando el `limit`.
-4.  **Lógica de Ranking Unificada:** searXena filtra automáticamente el ruido. En la categoría `it`, se priorizan fuentes de alta curación (**HackerNews, Wikipedia, StackOverflow**) y se ocultan repositorios vacíos o PDFs densos de ArXiv/GitHub/NPM.
-5.  **Respuestas Directas:** Los "Infoboxes" aparecen como el primer elemento en categorías generales. Úsalos como respuesta prioritaria.
-
-## Integración Rápida (Python)
+## Quick Integration (Python)
 
 ```python
 import httpx
 
-def search_ai(query: str, category: str = "general", limit: int = 10, language: str = None):
+def search_locally(query: str, category: str = "general", limit: int = 10):
     url = "http://localhost:8000/api/v1/search"
-    payload = {"query": query, "category": category, "limit": limit, "language": language}
+    payload = {"query": query, "category": category, "limit": limit}
+    # No API Key needed! Just your local searXena instance.
     return httpx.post(url, json=payload).json()
 
-# Ejemplo: Búsqueda técnica curada en inglés
-results = search_ai("FastAPI async patterns", category="it", language="en")
-print(f"Top Result: {results['results'][0]['title']}")
+# Example: Technical research for an AI Agent
+results = search_locally("Agentic workflows best practices", category="it")
+print(f"Agent's Context: {results['results'][0]['content']}")
 ```
+
+---
+<div align="center">
+  Empowering local intelligence with private web data.
+</div>

@@ -357,6 +357,54 @@ class EngineManager:
             
         return True
 
+    def _clean_title(self, title, url=""):
+        """Limpia títulares ruidosos, breadcrumbs y redundancias de dominio."""
+        if not title: return ""
+        import re
+        
+        # 1. Quitar URLs crudas
+        title = re.sub(r'https?://[^\s]+', '', title).strip()
+        
+        # 2. Detectar concatenaciones de dominio al inicio (ej: Tripadvisorwww.tripadvisor.com)
+        if url:
+            from urllib.parse import urlparse
+            try:
+                parsed = urlparse(url)
+                netloc = parsed.netloc.lower()
+                domain = netloc.replace('www.', '')
+                if domain:
+                    # Si el dominio aparece pegado al inicio del título, lo quitamos junto con lo que tenga antes
+                    domain_clean = domain.split('.')[0] # ej: tripadvisor
+                    # Patrones comunes de Google/Bing: "NombreSitiodomain.com > ..."
+                    # Buscamos el dominio o la parte principal del dominio
+                    patterns = [
+                        rf'^.*?(?:www\.)?{re.escape(domain)}[\s>»›\|\-:]*',
+                        rf'^.*?{re.escape(netloc)}[\s>»›\|\-:]*',
+                        rf'^[A-Z][a-z]+(?:www\.)?{re.escape(domain_clean)}\.[a-z]{{2,}}[\s>»›\|\-:]*',
+                        rf'^{re.escape(domain_clean.capitalize())}(?:www\.)?{re.escape(domain)}[\s>»›\|\-:]*',
+                    ]
+                    for p in patterns:
+                        new_title = re.sub(p, '', title, flags=re.I).strip()
+                        if new_title and len(new_title) < len(title):
+                            title = new_title
+                            break
+            except: pass
+
+        # 3. Limpiar Breadcrumbs y prefijos ruidosos
+        # "Inicio > ..." o "> > > ..." o "https://..."
+        title = re.sub(r'^[^\w\s]*[\s>»›\|\-]{1,}', '', title).strip()
+        title = re.sub(r'^[a-z0-9]+\.[a-z]{2,5}\s+[>»›\|\-]\s+', '', title, flags=re.I).strip()
+        
+        # 4. Quitar redundancias de "domain.com" al final si ya hay contenido
+        if len(title) > 20:
+             title = re.sub(r'[\s\|\-:]+[a-z0-9-]+\.[a-z]{2,5}$', '', title, flags=re.I).strip()
+
+        # 5. Colapsar espacios y caracteres duplicados de puntuación
+        title = re.sub(r'\s+', ' ', title)
+        title = re.sub(r'([>»›\|\-:])\1+', r'\1', title)
+        
+        return title or "Resultado"
+
     def process_and_rank(self, results_groups, category="general", query=""):
         score_map = defaultdict(lambda: {"title": "", "url": "", "content": "", "score": 0.0, "sources": set(), "engine_positions": []})
         infoboxes = [] # Resultados destacados (Wiki, Calculadora, OSM)
@@ -370,6 +418,9 @@ class EngineManager:
             for position, res in enumerate(results):
                 # 1. Extraer INFOTOOLS (Respuestas Destacadas Reales)
                 if res.get("template") == "infobox.html":
+                    # Limpiamos el título del infobox también
+                    res['title'] = self._clean_title(res.get('title', ''), res.get('url', ''))
+                    
                     # VALIDACIÓN DE RELEVANCIA PARA INFOBOXES
                     # Evitar mostrar infoboxes de "coincidencia parcial" como destacados
                     # Ejemplo: Query "openclaw" vs Título "Claw (videojuego)" -> No es match perfecto.
@@ -424,7 +475,10 @@ class EngineManager:
                 item = score_map[clean_url]
                 
                 # Preservar el título más limpio y descripción más rica
-                if not item["title"] or (len(res.get('content', '')) > len(item.get('content', '')) and len(res.get('title', '')) > 5):
+                res_title = self._clean_title(res.get('title', ''), raw_url)
+                res['title'] = res_title
+                
+                if not item["title"] or (len(res.get('content', '')) > len(item.get('content', '')) and len(res_title) > 5):
                     for key, val in res.items():
                         if key not in ["score", "sources", "engine_positions"]:
                             item[key] = val

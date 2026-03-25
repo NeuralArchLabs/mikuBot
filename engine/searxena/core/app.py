@@ -10,23 +10,26 @@ import json
 from engine_manager import EngineManager
 import engines.suggestions as suggestions
 
-from urllib.parse import quote_plus, urlparse
+from urllib.parse import quote_plus, urlparse, unquote
 import re
+from extractor import OZENExtractor
 
 from contextlib import asynccontextmanager
 
 # Configuración de base
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Inicializar EngineManager con persistencia
+# Inicializar EngineManager con persistencia y Extractor
 manager = EngineManager(BASE_DIR)
+extractor = OZENExtractor(cache_ttl=manager.settings.get("general", {}).get("cache_ttl", 600))
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: El manager ya se inicializa arriba, pero podríamos moverlo aquí si quisiéramos
+    # Startup
     yield
-    # Shutdown: Cerrar conexiones abiertas y limpiar tareas
+    # Shutdown
     await manager.close()
+    await extractor.close()
 
 app = FastAPI(title="searXena", lifespan=lifespan)
 
@@ -39,7 +42,7 @@ templates.env.filters["urlencode"] = lambda s: quote_plus(str(s)) if s else ""
 @app.get("/")
 async def index(request: Request):
     lang = manager.settings.get("general", {}).get("default_lang", "es")
-    return templates.TemplateResponse("index.html", {"request": request, "lang": lang})
+    return templates.TemplateResponse(request, "index.html", {"lang": lang})
 
 @app.get("/robots.txt")
 async def robots():
@@ -65,8 +68,7 @@ async def get_settings(request: Request):
             "weight": module.WEIGHT
         })
     general_settings = manager.settings.get("general", {})
-    return templates.TemplateResponse("settings.html", {
-        "request": request, 
+    return templates.TemplateResponse(request, "settings.html", {
         "engines": engine_list,
         "general": general_settings,
         "lang": manager.settings.get("general", {}).get("default_lang", "es")
@@ -247,8 +249,7 @@ async def search(request: Request):
     ]
     random_tip = random.choice(tips_pool).get(lang, tips_pool[0]['en'])
 
-    response = templates.TemplateResponse("results.html", {
-        "request": request, 
+    response = templates.TemplateResponse(request, "results.html", {
         "query": q, 
         "results": full_results,
         "related_searches": related_searches,
@@ -349,6 +350,42 @@ async def api_tools_schema():
         }
       }
     }
+
+@app.get("/extract")
+async def extract_view(request: Request, url: str):
+    """Vista de 'Modo Lectura' para un artículo."""
+    if not url:
+        return RedirectResponse(url="/")
+        
+    try:
+        data = await extractor.extract(url)
+        if "error" in data:
+            return templates.TemplateResponse(request, "error.html", {
+                "error": data["error"],
+                "url": url,
+                "lang": manager.settings.get("general", {}).get("default_lang", "es")
+            })
+            
+        return templates.TemplateResponse(request, "reader.html", {
+            "data": data,
+            "url": url,
+            "lang": manager.settings.get("general", {}).get("default_lang", "es")
+        })
+    except Exception as e:
+        import traceback
+        error_msg = f"{type(e).__name__}: {str(e)}\n{traceback.format_exc()}"
+        print(f"Extraction error: {error_msg}")
+        return templates.TemplateResponse(request, "error.html", {
+            "error": f"Internal Extractor Error: {str(e)}",
+            "url": url,
+            "lang": manager.settings.get("general", {}).get("default_lang", "es")
+        })
+
+@app.post("/api/v1/extract")
+async def api_extract(url: str = Body(..., embed=True)):
+    """API para extraer contenido de una URL (JSON)."""
+    data = await extractor.extract(url)
+    return JSONResponse(data)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info")

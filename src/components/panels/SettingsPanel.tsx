@@ -71,6 +71,7 @@ export const SettingsPanel = ({
     const [searxenaStatus, setSearxenaStatus] = useState<{ installed: boolean, envReady: boolean, running: boolean }>({ installed: false, envReady: false, running: false });
     const [startingSearxena, setStartingSearxena] = useState(false);
     const [updatingSearxena, setUpdatingSearxena] = useState(false);
+    const [showSkillsBlueprints, setShowSkillsBlueprints] = useState(false);
 
     const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
         // Toggle the floating button when having scrolled past the top header
@@ -184,22 +185,23 @@ export const SettingsPanel = ({
     const currentProvider = PROVIDERS[config.provider];
 
     return (
-        <div className="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar relative" onScroll={handleScroll}>
+        <div className={`flex-1 ${settingsTab === 'skills' ? 'lg:overflow-hidden pb-2' : 'overflow-y-auto pb-8'} p-4 md:p-8 pt-6 md:pt-10 custom-scrollbar relative`} onScroll={handleScroll}>
             {/* Subdued ambient glow background */}
             <div className="absolute top-0 left-1/4 w-1/2 h-96 bg-blue-600/10 blur-[120px] pointer-events-none rounded-full transform-gpu" />
             <div className="absolute bottom-0 right-1/4 w-1/3 h-64 bg-purple-600/10 blur-[100px] pointer-events-none rounded-full transform-gpu" />
 
-            <div className={`mx-auto relative z-10 transition-all duration-700 ease-in-out transform-gpu ${settingsTab === 'skills' ? 'max-w-6xl px-2 lg:px-4 space-y-0' : 'max-w-4xl space-y-10'}`}>
+            <div className={`mx-auto w-full relative z-10 transition-all duration-700 ease-in-out ${settingsTab === 'skills' ? 'max-w-7xl px-2 lg:px-4 space-y-0' : 'max-w-4xl space-y-10'}`}>
 
                 {/* ── Shared Macro-Tab Header ─────────────────────────── */}
-                <div className={`flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-4 border-b border-slate-800/50 relative transform-gpu contain-paint transition-all duration-500`}>
-                    <div className="grid grid-cols-2 items-start lg:flex lg:items-baseline gap-2 md:gap-3 lg:gap-6 w-full lg:w-auto">
+                <div className={`flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-4 relative transition-all duration-500 ease-in-out`}>
+                    <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-slate-800/80 to-transparent" />
+                    <div className="flex flex-col sm:flex-row items-baseline lg:flex lg:items-baseline gap-2 md:gap-3 lg:gap-2 xl:gap-8 w-full lg:w-auto">
                         {/* Core System Tab Title */}
                         <button
                             onClick={() => setSettingsTab('core')}
                             className={`text-left transition-all duration-300 group ${settingsTab === 'core' ? '' : 'opacity-35 hover:opacity-60'}`}
                         >
-                            <h2 className={`text-2xl md:text-3xl font-black tracking-tighter select-none ${settingsTab === 'core' ? 'text-white text-shadow-premium animate-title-slide' : 'text-slate-400 group-hover:text-slate-200 transition-all duration-300'}`}>
+                            <h2 className={`text-2xl md:text-3xl lg:text-xl xl:text-3xl font-black tracking-tighter select-none ${settingsTab === 'core' ? 'text-white text-shadow-premium animate-title-slide' : 'text-slate-400 group-hover:text-slate-200 transition-all duration-300'}`}>
                                 Core System
                             </h2>
                             {settingsTab === 'core' && (
@@ -208,19 +210,19 @@ export const SettingsPanel = ({
                         </button>
 
                         {/* Separator */}
-                        <div className="hidden lg:block w-px h-12 flex-shrink-0 self-center rounded-full bg-gradient-to-b from-transparent via-cyan-400/30 to-transparent" />
+                        <div className="hidden xl:block w-px h-12 flex-shrink-0 self-center rounded-full bg-gradient-to-b from-transparent via-cyan-400/30 to-transparent" />
 
                         {/* Neural Skills Tab Title */}
                         <button
                             onClick={() => setSettingsTab('skills')}
                             className={`text-left transition-all duration-300 group ${settingsTab === 'skills' ? '' : 'opacity-35 hover:opacity-60'}`}
                         >
-                            <h2 className={`text-2xl md:text-3xl font-black tracking-tighter select-none flex items-center gap-2 ${settingsTab === 'skills' ? 'text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-teal-400 text-shadow-premium animate-title-slide' : 'text-slate-400 group-hover:text-slate-200 transition-all duration-300'}`}>
+                            <h2 className={`text-2xl md:text-3xl lg:text-xl xl:text-3xl font-black tracking-tighter select-none flex items-center gap-2 ${settingsTab === 'skills' ? 'text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-teal-400 text-shadow-premium animate-title-slide' : 'text-slate-400 group-hover:text-slate-200 transition-all duration-300'}`}>
                                 <Icon name="puzzle-piece" className={`text-lg ${settingsTab === 'skills' ? 'text-cyan-400' : 'text-slate-500 group-hover:text-slate-300'}`} />
                                 Neural Skills
                             </h2>
                             {settingsTab === 'skills' && (
-                                <p className="text-cyan-500/60 text-[10px] md:text-xs font-bold tracking-widest uppercase select-none mt-0.5 animate-title-slide">Synaptic Core Architecture</p>
+                                <p className="text-cyan-500/60 text-[9px] md:text-xs font-bold tracking-widest uppercase select-none mt-0.5 animate-title-slide hidden sm:block">Synaptic Core Architecture</p>
                             )}
                         </button>
                     </div>
@@ -258,13 +260,26 @@ export const SettingsPanel = ({
                     )}
 
                     {settingsTab === 'skills' && (
-                        <div className="hidden lg:flex lg:flex-row lg:items-center bg-slate-900/40 p-2 md:p-3 rounded-2xl border border-white/5 shadow-xl flex-shrink-0 w-auto animate-in fade-in slide-in-from-top-1 duration-700">
+                        <div className="grid grid-cols-2 lg:flex lg:flex-row lg:items-center bg-slate-900/40 p-1.5 md:p-2 xl:p-3 rounded-2xl border border-white/5 shadow-xl flex-shrink-0 w-full lg:w-auto animate-in fade-in slide-in-from-top-1 duration-700 gap-1.5 xl:gap-3 transition-all duration-500 ease-in-out">
+                             <button
+                                onClick={() => setShowSkillsBlueprints(!showSkillsBlueprints)}
+                                className={`w-full lg:w-11 min-[1150px]:w-auto h-11 xl:h-auto py-3 px-3 lg:px-4 xl:px-6 rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-widest transition-all duration-500 ease-in-out flex items-center justify-center gap-2 border hover:scale-105 active:scale-95 ${
+                                    showSkillsBlueprints 
+                                    ? 'bg-cyan-500 text-black border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.4)]' 
+                                    : 'bg-slate-800/50 text-slate-300 border-slate-700/50 hover:bg-slate-800 hover:text-white'
+                                }`}
+                                title="New Directive"
+                            >
+                                <Icon name="plus" />
+                                <span className="inline lg:hidden min-[1150px]:inline transition-all duration-500">New Directive</span>
+                            </button>
                              <button
                                 onClick={onSaveGlobal}
-                                className="btn-halo w-auto py-3 px-6 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-extrabold uppercase tracking-widest transition-all shadow-[0_0_30px_rgba(6,182,212,0.3)] flex items-center justify-center gap-2 border border-cyan-500/30 hover:scale-105 active:scale-95 group/sync"
+                                className="btn-halo w-full lg:w-11 min-[1150px]:w-auto h-11 xl:h-auto py-3 px-3 lg:px-4 xl:px-6 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-widest transition-all duration-500 ease-in-out shadow-[0_0_30px_rgba(6,182,212,0.3)] flex items-center justify-center gap-2 border border-cyan-500/30 hover:scale-105 active:scale-95 group/sync"
+                                title="Save Sync"
                             >
                                 <Icon name="sync" className="group-hover/sync:rotate-180 transition-transform duration-500" />
-                                <span className="inline">Save Sync</span>
+                                <span className="inline lg:hidden min-[1150px]:inline transition-all duration-500">Save Sync</span>
                             </button>
                         </div>
                     )}
@@ -273,13 +288,15 @@ export const SettingsPanel = ({
                 {/* ── Skills Tab ───────────────────────────────────── */}
                 {
                     settingsTab === 'skills' && (
-                        <div className="animate-in fade-in zoom-in-95 slide-in-from-top-4 duration-700 overflow-hidden flex flex-col min-h-[600px] h-[calc(100vh-320px)] lg:h-[calc(100vh-280px)]">
+                        <div className="animate-in fade-in zoom-in-95 duration-200 flex flex-col h-auto lg:h-[calc(100vh-145px)]">
                             <SkillsPanel
                                 config={config}
                                 toolsFiles={toolsFiles}
                                 onSaveTools={onSaveTools}
                                 updateConfig={onUpdatePartialConfig}
                                 onSaveGlobal={onSaveGlobal}
+                                showBlueprints={showSkillsBlueprints}
+                                setShowBlueprints={setShowSkillsBlueprints}
                             />
                         </div>
                     )

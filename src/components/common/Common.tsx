@@ -46,7 +46,7 @@ const MarkdownRendererBase = ({ content }: { content: string }) => {
                                     if (fullHtml[cursor] === '>') inTag = false;
                                     cursor++;
                                     if (!inTag) {
-                                        el.innerHTML = currentHtml + '<span class="inline-block w-[6px] h-[14px] ml-1 bg-cyan-400/80 animate-pulse align-middle rounded-sm shadow-[0_0_8px_rgba(34,211,238,0.6)]"></span>';
+                                        el.innerHTML = currentHtml + '<span class="inline-block w-[4px] h-[13px] ml-0.5 bg-cyan-400/80 animate-pulse rounded-sm shadow-[0_0_8px_rgba(34,211,238,0.6)] translate-y-[1px]"></span>';
                                     }
                                 }, 8);
                             }
@@ -69,7 +69,6 @@ const MarkdownRendererBase = ({ content }: { content: string }) => {
         animatedElements.forEach((el) => {
             if (el.tagName === 'BLOCKQUOTE' && !el.hasAttribute('data-original-html')) {
                 const htmlEl = el as HTMLElement;
-                htmlEl.style.minHeight = `${htmlEl.clientHeight}px`;
                 htmlEl.setAttribute('data-original-html', htmlEl.innerHTML);
                 htmlEl.innerHTML = ''; 
             }

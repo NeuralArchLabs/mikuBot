@@ -175,7 +175,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                 
                 {/* Top Section: Logo & Main Nav */}
                 <div className="flex-none p-3 lg:p-6 pb-0 flex flex-col h-full lg:h-auto">
-                    <div className="flex items-center justify-center lg:justify-start gap-3 mb-8 group cursor-default h-10 overflow-visible w-full px-1">
+                    <div className="flex items-center justify-center lg:justify-start gap-3 mb-8 group cursor-default h-10 overflow-visible w-full px-1 relative">
                         <div
                             className="w-10 h-10 rounded-xl bg-slate-800 flex flex-shrink-0 items-center justify-center shadow-md group-hover:scale-110 active:scale-95 transition-all duration-300 overflow-hidden border border-slate-700/50 cursor-pointer relative z-10"
                             onClick={triggerEasterEgg}
@@ -186,7 +186,11 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                             <h1 className={`font-bold text-lg text-white tracking-tight leading-tight whitespace-nowrap overflow-hidden text-ellipsis transition-all duration-300 ${isAnimatingEgg ? 'text-blue-400 font-mono text-sm' : ''}`}>
                                 {displayName}
                             </h1>
-                            <div className="text-[11px] text-slate-500/80 font-bold uppercase tracking-[0.2em] leading-tight mt-0.5">v1.9.7</div>
+                            <div className="text-[11px] text-slate-500/80 font-bold uppercase tracking-[0.2em] leading-tight mt-0.5">v1.9.8</div>
+                        </div>
+                        {/* Glowy aesthetic separator (absolute, no displacement) */}
+                        <div className="absolute left-4 right-4 h-px bg-gradient-to-r from-transparent via-slate-700/40 to-transparent -bottom-4 pointer-events-none">
+                            <div className="absolute inset-0 h-full bg-gradient-to-r from-transparent via-blue-400/10 to-transparent blur-[2px] opacity-50" />
                         </div>
                     </div>
 
@@ -205,6 +209,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                     ? 'bg-slate-800 text-white shadow-md border-slate-700'
                                     : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
                                     }`}
+                                title={tab.label}
                             >
                                 <Icon name={tab.icon} className={`text-2xl lg:text-lg flex-shrink-0 ${state.activeTab === tab.id ? tab.color : 'group-hover:text-slate-300'} transition-colors`} />
                                 <span className="hidden lg:inline text-base font-bold tracking-tight whitespace-nowrap">{tab.label}</span>
@@ -240,7 +245,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                     
                     {/* Neural Sessions - Dynamic Growth or Compact Tab */}
                     <div className={`${isCompactMode ? 'flex-none h-14' : 'flex-[1.2] min-h-[140px]'} flex flex-col overflow-hidden px-5 pt-0 transition-all duration-300`}>
-                        <div className={isCompactMode ? 'hover:bg-blue-500/5 rounded-xl transition-all cursor-pointer' : ''} onClick={isCompactMode ? () => setSessionModalOpen(true) : undefined}>
+                        <div className={`${isCompactMode ? 'hover:bg-blue-500/5 rounded-xl transition-all cursor-pointer h-full' : 'flex-1 min-h-0'}`} onClick={isCompactMode ? () => setSessionModalOpen(true) : undefined}>
                             <SessionList
                                 sessions={sessions}
                                 loading={loadingSessions}
@@ -320,6 +325,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                                             }
                                                         }}
                                                         className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all rounded-lg hover:bg-red-400/10"
+                                                        title={`Delete ${filename}`}
                                                     >
                                                         <Icon name="times" className="text-[9px]" />
                                                     </button>

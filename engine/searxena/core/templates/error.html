@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="{{ lang or 'es' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error de Extracción | searXena</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/jpeg" href="/static/favIcon.jpg">
+    <style>
+        body { background: #0a0a0c; color: #f1f5f9; font-family: 'Outfit', sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin:0; }
+        .error-card { background: rgba(255, 255, 255, 0.05); padding: 40px; border-radius: 20px; text-align: center; border: 1px solid rgba(255, 255, 255, 0.1); max-width: 500px; }
+        h1 { color: #ff4d4d; margin-bottom: 20px; }
+        p { color: #94a3b8; line-height: 1.6; margin-bottom: 30px; }
+        .btn { display: inline-block; background: #ff4d4d; color: white; text-decoration: none; padding: 12px 25px; border-radius: 10px; font-weight: 700; transition: 0.3s; }
+        .btn:hover { transform: scale(1.05); filter: brightness(1.1); }
+        .url-text { font-family: monospace; font-size: 0.8rem; background: #000; padding: 10px; border-radius: 8px; margin-bottom: 20px; word-break: break-all; }
+    </style>
+</head>
+<body>
+    <div class="error-card">
+        <h1>Ouch! Ha ocurrido un error</h1>
+        <p>No hemos podido extraer el contenido de la página solicitada. Puede que el sitio esté protegido contra scraping o que la URL sea inválida.</p>
+        <div class="url-text">{{ url }}</div>
+        <p>Error: {{ error }}</p>
+        <a href="{{ url }}" target="_blank" class="btn">Abrir sitio original</a>
+        <br><br>
+        <a href="javascript:history.back()" style="color:#94a3b8; text-decoration:none;">← Volver atrás</a>
+    </div>
+</body>
+</html>
