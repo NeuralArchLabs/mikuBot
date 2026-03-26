@@ -1,5 +1,5 @@
-# 🟢 MikuCentral Project Status (v2.1.1)
-**Last Update:** 2026-03-25 | **Status:** Stable / Enhanced Awareness
+# 🟢 MikuCentral Project Status (v2.0.0)
+**Last Update:** 2026-03-25 | **Status:** Stable / High Performance / Temporal Aware
 
 ## 🏗️ Core Architecture
 MikuCentral is a hybrid AI interface combining a **Vite/React** frontend with an **Electron** backend.
@@ -66,11 +66,12 @@ The `OnboardingWizard.tsx` ensures the initial environment is set correctly. By 
 - **Self-Healing Session List**: Added proactive cleanup in the `get-sessions` handler to remove unreadable/corrupted files, preventing UI clutter.
 - **Native Descriptor Writing**: Refactored the file-saving bridge to use native file descriptors for guaranteed write completion.
 
-### 7. Temporal Awareness & UX Refinement (v2.1.1)
-- **Session Timestamping**: Injected formatted timestamps (`[DD/MM HH:mm]`) into historical messages, providing the model with accurate session-long temporal context.
-- **Desktop Scroll Experience**: Re-engineered scrollbars (10px width + active/hover states) and implemented smart auto-scroll to follow output during streaming if user is near the bottom.
-- **Output Sanitization**: The `answerFormatter` now filters out the injected timestamps from the model's final response, ensuring a clean UI and Telegram experience.
-- **Stable Tool Timestamps**: Tool execution blocks now lock to a static "Executed" timestamp once the process reaches its final state (success or error).
+### 7. Temporal Awareness & UX Polish (v2.0.0)
+- **Temporal Message Injections**: Integrated `[DD/MM HH:mm]` timestamps into the user message history sent to the LLM. This provides the model with session-long awareness without bloating its own response history.
+- **UI Metadata Separation**: Timestamps are displayed in the bubble headers and raw neural logs, keeping chat content clean.
+- **Smart Scrollbars**: Increased width to 10px with active/hover states for better accessibility. Added `scroll-behavior: smooth` for a premium feel.
+- **Execution Log Locking**: Tool execution summaries now capture static `startTime` and `endTime` to prevent the "running clock" render artifact.
+- **Icon Consistency**: Restored the original rotating gear (`cog`) as the tool execution indicator.
 
 ## ⚠️ Internal Peculiarities & Developer Notes
 - **Memory Store vs Native**: Tools prioritize native disk operations (`agentReadFile`, etc.). Memory store serves as a secondary fallback for remote/web-view modes.

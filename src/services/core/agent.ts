@@ -110,7 +110,8 @@ export async function sendAgentMessage(
     // --- TOKEN OPTIMIZATION / HISTORICAL CONTEXT ---
     const historicalContext = chatMessages.map(m => {
         const msg = { ...m } as any;
-        if (m.timestamp) {
+        // Inject timestamp ONLY for user messages for temporal reference
+        if (msg.role === 'user' && m.timestamp) {
             const ts = new Date(m.timestamp).toLocaleString('es-ES', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '');
             msg.content = `[${ts}] ${msg.content || ''}`;
         }

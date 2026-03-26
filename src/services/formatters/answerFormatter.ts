@@ -53,15 +53,12 @@ export function formatFinalResponse(rawText: any): string {
     // 9. Standardize bibliography spacing if the marker was detected
     formatted = formatted.replace(/---DIVIDER---\s*\n+\*\*🧠 Bibliografía y Contexto:\*\*/g, '---DIVIDER---\n\n**🧠 Bibliografía y Contexto:**');
 
-    // 10. Clean injected timestamps [DD/MM HH:mm] (Prevents redundancy with the UI headers)
-    formatted = formatted.replace(/^\[\d{2}\/\d{2} \d{2}:\d{2}\]\s*/gm, '');
-
-    // 11. Defensive Deduplication: Fix massive duplication from AI stream/filtering bugs
+    // 10. Defensive Deduplication: Fix massive duplication from AI stream/filtering bugs
     const linesArr = formatted.split('\n');
     const uniqueLines: string[] = [];
     for (let i = 0; i < linesArr.length; i++) {
         const line = linesArr[i];
-        if (line.trim() && line === linesArr[i + 1]) {
+        if (line.trim() && line === linesArr[i+1]) {
             // Skip if next line is exactly the same
             continue;
         }

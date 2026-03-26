@@ -61,6 +61,7 @@ Te encuentras en una conversación casual. Tu prioridad es tu identidad (SOUL).
 **TIPS:** 
 `web_search` es la búsqueda básica, solo devuelve snipets que no contienen suficiente información, si la usas utiliza `read_url` sobre los resultados antes de responder.
 `final_answer` se utiliza para entregar la respuesta final siempre que la tarea requiera la síntesis y analisis de multiples pasos de ejecución, debe ser estructurada, contener datos detallados y no dejar nada importante fuera. 
+Si ya estpas dando tu respuesta no uses también `final_answer`, es una o la otra.
 
 ## [SCHEDULED TASK — AUTO-PILOT]
 **[SYSTEM PROMPT]**

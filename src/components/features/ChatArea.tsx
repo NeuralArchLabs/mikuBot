@@ -395,6 +395,11 @@ export const ChatArea = ({
                                                     m.role === 'tool' ? 'cog' : 'user'
                                         } />
                                         [{m.role}]
+                                        {m.timestamp && (
+                                            <span className="ml-auto opacity-30 font-normal text-[9px] tabular-nums">
+                                                {new Date(m.timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="text-slate-400 leading-relaxed whitespace-pre-wrap break-all border-l-2 border-white/10 pl-4">
                                         {m.content || '[Empty Body]'}

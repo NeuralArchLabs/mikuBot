@@ -1,17 +1,15 @@
 # Changelog
 
-## [2.1.1] - 2026-03-25
+## [2.0.0] - 2026-03-25
 ### Added
-- **Temporal Awareness Injection**: The agent now receives a formatted timestamp (`[DD/MM HH:mm]`) at the beginning of every historical message, providing a precise session timeline without bloating the system prompt.
-- **Improved Auto-Scroll Logic**: Refined the chat area's behavior to intelligently follow streaming content when the user is near the bottom, while respecting manual scroll positions.
-
-### Changed
-- **Scrollbar Accessibility**: Increased scrollbar width to 10px and added high-contrast hover/active states to improve desktop usability.
-- **Smooth Content Transitions**: Added `scroll-behavior: smooth` to the primary chat container for more fluid navigation.
-- **Fixed Execution Timestamps**: Tool blocks now capture and display a static "Executed" time upon completion, replacing the volatile render-time clock.
+- **Temporal Awareness**: Injected formatted timestamps (`[DD/MM HH:mm]`) into user message history for the AI agent, providing session-long temporal context.
+- **UI Metadata Refinement**: Implemented external timestamps for chat bubbles (not part of content) and displayed them in the raw neural logs viewer.
+- **Enhanced Scrollbars**: Increased scrollbar width and added active/hover states for better accessibility on desktop environments.
+- **Improved Auto-scroll**: Optimized the chat container to follow streaming output more reliably while respecting user manual scrolling.
 
 ### Fixed
-- **Timestamp Leakage**: Implemented a filtering layer in `answerFormatter.ts` to strip injected timestamps from the model's output before rendering or sending via Telegram.
+- **Tool Execution Indicators**: Restored the original rotating gear (`cog`) as the tool execution block's activity indicator, ensuring consistent visual feedback.
+- **Clock Volatility**: Fixed the "running clock" effect in the tool execution summary by capturing and locking individual start/end timestamps.
 
 ## [1.9.9] - 2026-03-25
 ### Changed

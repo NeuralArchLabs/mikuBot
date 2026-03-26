@@ -58,9 +58,11 @@ export async function sendStreamingMessage(
     const fullMessages = [
         { role: 'system', content: systemPrompt },
         ...messages.map(m => {
-            if (!m.timestamp) return m;
-            const ts = new Date(m.timestamp).toLocaleString('es-ES', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '');
-            return { ...m, content: `[${ts}] ${m.content || ''}` };
+            if (m.role === 'user' && m.timestamp) {
+                const ts = new Date(m.timestamp).toLocaleString('es-ES', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '');
+                return { ...m, content: `[${ts}] ${m.content || ''}` };
+            }
+            return { ...m, content: m.content || '' };
         })
     ];
 
