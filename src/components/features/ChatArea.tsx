@@ -304,15 +304,25 @@ export const ChatArea = ({
 
     const isAgentActive = !['idle'].includes(agentStatus.phase) && isLoading;
 
-    // Supplemental scroll for layout changes (status panel expansion)
+    // Responsive Auto-scroll logic: ensures the view stays at bottom during streaming or phase changes
     React.useEffect(() => {
-        const timer = setTimeout(() => {
-            if (scrollRef.current) {
-                scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        if (scrollRef.current) {
+            const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+            // Detect if user is near bottom or if it's a new user message
+            const isNearBottom = scrollHeight - scrollTop - clientHeight < 250;
+            const isNewMessage = messages.length > 0 && messages[messages.length - 1].isStreaming === false;
+
+            if (isNearBottom || isNewMessage) {
+                // Large timeout or requestAnimationFrame to ensure DOM is ready
+                const timer = setTimeout(() => {
+                    if (scrollRef.current) {
+                        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+                    }
+                }, 50);
+                return () => clearTimeout(timer);
             }
-        }, 100); // Wait bit for CSS transition to start/settle
-        return () => clearTimeout(timer);
-    }, [agentStatus.phase, pendingApproval]);
+        }
+    }, [messages, agentStatus.phase, pendingApproval]);
 
     return (
         <div className="flex-1 flex flex-col h-full relative">
@@ -491,6 +501,13 @@ export const ChatArea = ({
                                                     <img src="./mikuBotICON.png" alt="Miku Core Icon" className="w-3 h-3 rounded-sm object-cover brightness-110" />
                                                 )}
                                                 {msg.role === 'user' ? 'Transmisor' : 'Neural Core'}
+                                                
+                                                {!msg.isStreaming && (
+                                                    <span className="opacity-60 lowercase tracking-tighter flex items-center gap-1 ml-1 border-l border-white/10 pl-2">
+                                                        <Icon name="clock" className="text-[8px]" />
+                                                        {new Date(msg.timestamp).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '')}
+                                                    </span>
+                                                )}
                                             </div>
                                             {msg.source === 'telegram' && (
                                                 <div className="flex items-center gap-1 text-[#0088cc] font-black lowercase tracking-tighter">
@@ -560,11 +577,6 @@ export const ChatArea = ({
                                                     </span>
                                                     <span className="opacity-60">{msg.model || 'Default Model'}</span>
                                                 </div>
-                                                {!msg.isStreaming && (
-                                                    <span className="text-[9px] font-mono text-slate-600">
-                                                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                    </span>
-                                                )}
                                             </div>
                                         )}
                                     </div>

@@ -48,7 +48,7 @@ export async function sendStreamingMessage(
     provider: Provider | undefined,
     config: AppConfig,
     systemPrompt: string,
-    messages: { role: string; content: string; attachments?: Attachment[] }[],
+    messages: { role: string; content: string; timestamp?: number; attachments?: Attachment[] }[],
     onChunk: (text: string) => void
 ): Promise<void> {
     const providerType = provider || config.provider;
@@ -57,7 +57,11 @@ export async function sendStreamingMessage(
     // Prepare full history for the provider
     const fullMessages = [
         { role: 'system', content: systemPrompt },
-        ...messages
+        ...messages.map(m => {
+            if (!m.timestamp) return m;
+            const ts = new Date(m.timestamp).toLocaleString('es-ES', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '');
+            return { ...m, content: `[${ts}] ${m.content || ''}` };
+        })
     ];
 
     const providerInstance = (await import('../core/ModelProviders')).ProviderFactory.create(providerType, {

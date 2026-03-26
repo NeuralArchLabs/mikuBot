@@ -1233,14 +1233,14 @@ Para ver todas tus habilidades adicionales habilitadas y sus parámetros técnic
 
         let finalAssistantText = '';
         let finalHistory: any[] = [];
-        let chatHistoryLocal: { role: string; content: string; attachments?: Attachment[] }[] = [];
+        let chatHistoryLocal: { role: string; content: string; timestamp: number; attachments?: Attachment[] }[] = [];
 
         try {
             const currentMessages = messagesRef.current;
             chatHistoryLocal = currentMessages
                 .filter(m => !m.excludeFromContext)
-                .map(m => ({ role: m.role, content: m.text, attachments: m.attachments }));
-            chatHistoryLocal.push({ role: 'user', content: text, attachments: userAttachments });
+                .map(m => ({ role: m.role, content: m.text, timestamp: m.timestamp, attachments: m.attachments }));
+            chatHistoryLocal.push({ role: 'user', content: text, timestamp: Date.now(), attachments: userAttachments });
 
             const isAgentLoop = useAgentEngine;
             const isChatTools = effectiveMode === 'chat';
@@ -1366,7 +1366,7 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                     // Fallback to ref if local was empty (e.g. error in try block)
                     historyForNaming = messagesRef.current
                         .filter(m => !m.excludeFromContext)
-                        .map(m => ({ role: m.role, content: m.text }));
+                        .map(m => ({ role: m.role, content: m.text, timestamp: m.timestamp }));
                 }
 
                 // Determine if the current title is "default" (generated or generic)

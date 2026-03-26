@@ -21,6 +21,16 @@ export const ToolBlock: React.FC<ToolBlockProps> = ({ block, isOld }) => {
     // Typing state
     const [displayText, setDisplayText] = useState('');
     const [isTyping, setIsTyping] = useState(false);
+    
+    // Captured timestamps for the 'Execution Log'
+    const [startTime] = useState(() => new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
+    const [endTime, setEndTime] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (result && !endTime) {
+            setEndTime(new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
+        }
+    }, [result, endTime]);
 
     if (!toolCall) return null;
 
@@ -160,7 +170,7 @@ export const ToolBlock: React.FC<ToolBlockProps> = ({ block, isOld }) => {
                             </div>
                             <div className="text-[10px] text-slate-500 font-mono leading-relaxed bg-black/20 p-2 rounded-lg border border-white/5">
                                 Status: {isSuccess ? 'SUCCESS' : hasError ? 'ERROR' : 'PENDING'}<br />
-                                Timestamp: {new Date().toLocaleTimeString()}<br />
+                                Executed: {endTime || startTime}<br />
                                 ID: {toolCall.id}
                             </div>
                         </div>

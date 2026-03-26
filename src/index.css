@@ -1,26 +1,37 @@
 @import "tailwindcss";
 
-/* Custom Scrollbar Modern & Minimalist */
+/* Custom Scrollbar Modern & Minimalist - Improved Usability */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(71, 85, 105, 0.4) transparent;
+  scroll-behavior: smooth;
+}
+
 .custom-scrollbar::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 10px;
+  height: 10px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
+  margin: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: rgba(71, 85, 105, 0.4);
   border-radius: 20px;
-  border: 1px solid transparent;
+  border: 3px solid transparent;
   background-clip: padding-box;
+  transition: background 0.3s ease;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(96, 165, 250, 0.6);
-  border: 1px solid transparent;
-  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:active {
+  background: rgba(96, 165, 250, 0.8);
 }
 
 /* Markdown Styles overrides (Tailwind typography plugin usage recommended instead but keeping existing custom styles) */
@@ -1970,14 +1981,14 @@ select.premium-input option {
   box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
 }
 
-/* Scrollbar refinement */
+/* Scrollbar refinement override */
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.03);
+  background: rgba(148, 163, 184, 0.25);
+  border: 3px solid transparent;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(96, 165, 250, 0.3);
+  background: rgba(96, 165, 250, 0.45);
 }
 
 @keyframes float {
