@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.1.1] - 2026-03-25
+### Added
+- **Temporal Awareness Injection**: The agent now receives a formatted timestamp (`[DD/MM HH:mm]`) at the beginning of every historical message, providing a precise session timeline without bloating the system prompt.
+- **Improved Auto-Scroll Logic**: Refined the chat area's behavior to intelligently follow streaming content when the user is near the bottom, while respecting manual scroll positions.
+
+### Changed
+- **Scrollbar Accessibility**: Increased scrollbar width to 10px and added high-contrast hover/active states to improve desktop usability.
+- **Smooth Content Transitions**: Added `scroll-behavior: smooth` to the primary chat container for more fluid navigation.
+- **Fixed Execution Timestamps**: Tool blocks now capture and display a static "Executed" time upon completion, replacing the volatile render-time clock.
+
+### Fixed
+- **Timestamp Leakage**: Implemented a filtering layer in `answerFormatter.ts` to strip injected timestamps from the model's output before rendering or sending via Telegram.
+
 ## [1.9.9] - 2026-03-25
 ### Changed
 - **Native searXena API Integration**: Refactored the `run-search` and `run-extract` IPC handlers to communicate directly with the searXena FastAPI server (port 8000) via Node.js `http`. This eliminates dependencies on broken Python bridge scripts (`search.py`, `extract.py`) and missing libraries (`requests`, `trafilatura`).

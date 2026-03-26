@@ -1,5 +1,5 @@
-# 🟢 MikuCentral Project Status (v1.9.8)
-**Last Update:** 2026-03-23 | **Status:** Stable / High Performance
+# 🟢 MikuCentral Project Status (v2.1.1)
+**Last Update:** 2026-03-25 | **Status:** Stable / Enhanced Awareness
 
 ## 🏗️ Core Architecture
 MikuCentral is a hybrid AI interface combining a **Vite/React** frontend with an **Electron** backend.
@@ -65,6 +65,12 @@ The `OnboardingWizard.tsx` ensures the initial environment is set correctly. By 
 - **Data Integrity Fix**: Integrated `fsyncSync` in `safeWriteJSON` to ensure file writes are flushed to physical disk, preventing 0-byte file corruption during power loss or system crashes.
 - **Self-Healing Session List**: Added proactive cleanup in the `get-sessions` handler to remove unreadable/corrupted files, preventing UI clutter.
 - **Native Descriptor Writing**: Refactored the file-saving bridge to use native file descriptors for guaranteed write completion.
+
+### 7. Temporal Awareness & UX Refinement (v2.1.1)
+- **Session Timestamping**: Injected formatted timestamps (`[DD/MM HH:mm]`) into historical messages, providing the model with accurate session-long temporal context.
+- **Desktop Scroll Experience**: Re-engineered scrollbars (10px width + active/hover states) and implemented smart auto-scroll to follow output during streaming if user is near the bottom.
+- **Output Sanitization**: The `answerFormatter` now filters out the injected timestamps from the model's final response, ensuring a clean UI and Telegram experience.
+- **Stable Tool Timestamps**: Tool execution blocks now lock to a static "Executed" timestamp once the process reaches its final state (success or error).
 
 ## ⚠️ Internal Peculiarities & Developer Notes
 - **Memory Store vs Native**: Tools prioritize native disk operations (`agentReadFile`, etc.). Memory store serves as a secondary fallback for remote/web-view modes.
