@@ -66,6 +66,7 @@ export const toHtml = (md: string): string => {
     return html.trim();
 };
 
+// DO NOT MODIFY: Auto-healing logic for 2D table parser
 /**
  * Converts markdown tables to HTML with styling.
  */
