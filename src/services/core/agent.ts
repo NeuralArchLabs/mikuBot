@@ -20,7 +20,7 @@ import {
 } from '../../constants';
 import { validateToolArgs, safeFetch } from '../../utils';
 import { recoverToolCallsFromText, normalizeRawToolCall, RecoveredCall } from '../formatters/toolCallNormalizer';
-import { formatFinalResponse } from '../formatters/answerFormatter';
+import { createFormatter } from '../formatters/formatterFactory';
 import type { ProviderOptions } from './ModelProviders';
 
 
@@ -481,7 +481,9 @@ export async function sendAgentMessage(
 
             if (finalAnswerCall && !turnHasFailure) {
                 const args = finalAnswerCall.function.arguments;
-                const text = formatFinalResponse(args.text || args.respuesta || args.answer || 'Completado');
+                // Use dynamic formatter based on model type
+                const formatter = createFormatter({ modelName: config.model });
+                const text = formatter.format(args.text || args.respuesta || args.answer || 'Completado');
                 let sources = args.sources || autoExtractSources(actionHistory, agentMessages, tools);
                 let finalContent = text;
                 if (sources.length > 0) finalContent += '\n\n---DIVIDER---\n\n**🔍 Bibliografía:**\n' + sources.slice(0, 10).map((s: string) => `• ${s}`).join('\n');

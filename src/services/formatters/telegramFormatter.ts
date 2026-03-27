@@ -4,14 +4,15 @@
  * ──────────────────────────────────────────────────────────────────────
  *
  *  This formatter:
- *  - Calls formatFinalResponse() for text normalization
+ *  - Implements IFormatter strategy pattern
  *  - Converts markdown to Telegram-compatible HTML
  *  - Formats tables specially for Telegram mobile responsiveness
  *  - Replaces dividers with Telegram-friendly visual separators
- *  - Enforces 4096 character limit
+ *  - Splits output into chunks respecting 4096 character limit
  * ──────────────────────────────────────────────────────────────────────
  */
 
+import { IFormatter } from './IFormatter';
 import { formatFinalResponse } from './answerFormatter';
 
 /**
@@ -68,119 +69,137 @@ function formatTelegramTable(lines: string[]): string {
 }
 
 /**
- * Formats text for Telegram output, splitting it into multiple chunks if it exceeds the limit.
- * Calls formatFinalResponse() first, then applies Telegram-specific formatting.
- * Returns an array of formatted strings (chunks).
+ * Telegram formatter implementing IFormatter.
+ * Includes format() for standard use and formatAsChunks() for Telegram API.
+ */
+export class TelegramFormatter implements IFormatter {
+    format(rawText: any): string {
+        if (!rawText) return '';
+
+        // 1. Normalize text (single source of truth for cleanup)
+        let text = formatFinalResponse(rawText);
+
+        // 2. Clear thinking blocks
+        text = text.replace(/<thought>[\s\S]*?<\/think>/gi, '').trim();
+
+        // 3. Process tables and replace dividers
+        const lines = text.split('\n');
+        let inTable = false;
+        let tableLines: string[] = [];
+        const outputLines: string[] = [];
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const trimmedLine = line.trim();
+
+            // Replace DIVIDER marker with Telegram separator
+            if (trimmedLine === '---DIVIDER---') {
+                outputLines.push('━━━━━━━━━━━━━━━━━━━━━━━━');
+                continue;
+            }
+
+            // Skip empty standalone markers
+            if (trimmedLine === '***' || trimmedLine === '*' || trimmedLine === '-') {
+                continue;
+            }
+
+            // Table processing
+            if (line.startsWith('|') && line.includes('|')) {
+                inTable = true;
+                if (!line.match(/^[|:\-\s]+$/)) tableLines.push(line);
+            } else {
+                if (inTable && tableLines.length > 0) {
+                    outputLines.push(formatTelegramTable(tableLines));
+                    inTable = false;
+                    tableLines = [];
+                }
+                outputLines.push(lines[i]);
+            }
+        }
+
+        if (inTable && tableLines.length > 0) {
+            outputLines.push(formatTelegramTable(tableLines));
+        }
+
+        text = outputLines.join('\n');
+
+        // 4. Escape HTML special characters
+        text = text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/&lt;(\/)?(b|i|code|pre|a)(.*?)&gt;/g, '<$1$2$3>');
+
+        // 5. Convert Markdown to Telegram HTML
+        text = text.replace(/^(?:#{1,6})\s*(.*)$/gm, '<b>$1</b>');
+        text = text.replace(/\*\*\*(.*?)\*\*\*/g, '<b><i>$1</i></b>');
+        text = text.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+        text = text.replace(/(?<!\*)\*(?!\*)(.*?)\*/g, '<i>$1</i>');
+        text = text.replace(/```(?:[a-z]*\n)?([\s\S]*?)```/g, '<pre>$1</pre>');
+        text = text.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+        text = text.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2">$1</a>');
+
+        // Bullet points
+        text = text.replace(/^[\*\-] (.*)$/gm, '• $1');
+        text = text.replace(/^(\d+)\. (.*)$/gm, '$1. $2');
+
+        return text.trim();
+    }
+
+    /**
+     * Telegram-specific method that splits output into chunks (max 4096 chars each).
+     * Returns an array of formatted strings suitable for Telegram API.
+     */
+    formatAsChunks(rawText: any): string[] {
+        const text = this.format(rawText);
+        const MAX_LIMIT = 4000;
+
+        if (text.length <= MAX_LIMIT) return [text];
+
+        const chunks: string[] = [];
+        let currentText = text;
+
+        while (currentText.length > 0) {
+            if (currentText.length <= MAX_LIMIT) {
+                chunks.push(currentText.trim());
+                break;
+            }
+
+            let splitIdx = currentText.lastIndexOf('\n', MAX_LIMIT);
+            if (splitIdx === -1) splitIdx = MAX_LIMIT;
+
+            let chunk = currentText.substring(0, splitIdx).trim();
+
+            // Ensure no unclosed tags in the chunk
+            const tags = [
+                { open: '<b>', close: '</b>' },
+                { open: '<i>', close: '</i>' },
+                { open: '<code>', close: '</code>' },
+                { open: '<pre>', close: '</pre>' },
+                { open: '<a ', close: '</a>' }
+            ];
+
+            tags.forEach(t => {
+                const openCount = (chunk.match(new RegExp(t.open, 'g')) || []).length;
+                const closeCount = (chunk.match(new RegExp(t.close, 'g')) || []).length;
+                if (openCount > closeCount) {
+                    chunk += t.close;
+                }
+            });
+
+            chunks.push(chunk);
+            currentText = currentText.substring(splitIdx).trim();
+        }
+
+        return chunks;
+    }
+}
+
+/**
+ * Legacy function for backward compatibility.
+ * Wraps TelegramFormatter class.
  */
 export function formatTelegramResponse(rawText: string): string[] {
-    if (!rawText) return [];
-
-    // 1. Normalize text (single source of truth for cleanup)
-    let text = formatFinalResponse(rawText);
-
-    // 2. Clear thinking blocks
-    text = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-
-    // 3. Process tables and replace dividers
-    const lines = text.split('\n');
-    let inTable = false;
-    let tableLines: string[] = [];
-    const outputLines: string[] = [];
-
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        const trimmedLine = line.trim();
-
-        // Replace DIVIDER marker with Telegram separator
-        if (trimmedLine === '---DIVIDER---') {
-            outputLines.push('━━━━━━━━━━━━━━━━━━━━━━━━');
-            continue;
-        }
-
-        // Skip empty standalone markers
-        if (trimmedLine === '***' || trimmedLine === '*' || trimmedLine === '-') {
-            continue;
-        }
-
-        // Table processing
-        if (line.startsWith('|') && line.includes('|')) {
-            inTable = true;
-            if (!line.match(/^[|:\-\s]+$/)) tableLines.push(line);
-        } else {
-            if (inTable && tableLines.length > 0) {
-                outputLines.push(formatTelegramTable(tableLines));
-                inTable = false;
-                tableLines = [];
-            }
-            outputLines.push(lines[i]);
-        }
-    }
-
-    if (inTable && tableLines.length > 0) {
-        outputLines.push(formatTelegramTable(tableLines));
-    }
-
-    text = outputLines.join('\n');
-
-    // 4. Escape HTML special characters
-    text = text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/&lt;(\/)?(b|i|code|pre|a)(.*?)&gt;/g, '<$1$2$3>');
-
-    // 5. Convert Markdown to Telegram HTML
-    text = text.replace(/^(?:#{1,6})\s*(.*)$/gm, '<b>$1</b>');
-    text = text.replace(/\*\*\*(.*?)\*\*\*/g, '<b><i>$1</i></b>');
-    text = text.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
-    text = text.replace(/(?<!\*)\*(?!\*)(.*?)\*/g, '<i>$1</i>');
-    text = text.replace(/```(?:[a-z]*\n)?([\s\S]*?)```/g, '<pre>$1</pre>');
-    text = text.replace(/`([^`\n]+)`/g, '<code>$1</code>');
-    text = text.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2">$1</a>');
-
-    // Bullet points
-    text = text.replace(/^[\*\-] (.*)$/gm, '• $1');
-    text = text.replace(/^(\d+)\. (.*)$/gm, '$1. $2');
-
-    // 6. Split into chunks if necessary (Telegram limit is 4096)
-    const MAX_LIMIT = 4000;
-    if (text.length <= MAX_LIMIT) return [text.trim()];
-
-    const chunks: string[] = [];
-    let currentText = text;
-
-    while (currentText.length > 0) {
-        if (currentText.length <= MAX_LIMIT) {
-            chunks.push(currentText.trim());
-            break;
-        }
-
-        // Find a good split point (preferably a newline)
-        let splitIdx = currentText.lastIndexOf('\n', MAX_LIMIT);
-        if (splitIdx === -1) splitIdx = MAX_LIMIT;
-
-        let chunk = currentText.substring(0, splitIdx).trim();
-        
-        // Ensure no unclosed tags in the chunk
-        const tags = [
-            { open: '<b>', close: '</b>' },
-            { open: '<i>', close: '</i>' },
-            { open: '<code>', close: '</code>' },
-            { open: '<pre>', close: '</pre>' },
-            { open: '<a ', close: '</a>' }
-        ];
-
-        tags.forEach(t => {
-            const openCount = (chunk.match(new RegExp(t.open, 'g')) || []).length;
-            const closeCount = (chunk.match(new RegExp(t.close, 'g')) || []).length;
-            if (openCount > closeCount) {
-                chunk += t.close;
-            }
-        });
-
-        chunks.push(chunk);
-        currentText = currentText.substring(splitIdx).trim();
-    }
-
-    return chunks;
+    const formatter = new TelegramFormatter();
+    return formatter.formatAsChunks(rawText);
 }

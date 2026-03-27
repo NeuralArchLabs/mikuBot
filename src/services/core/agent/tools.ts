@@ -6,7 +6,7 @@
 import { ToolCall, ToolResult, AppConfig, FileTarget } from '../../../types';
 import { PROTECTED_CORE_FILES, CONSOLE_ALLOWED_COMMANDS, CONSOLE_BLOCKED_PATTERNS } from '../../../constants';
 import { validateToolArgs, safeFetch } from '../../../utils';
-import { formatTelegramResponse } from '../../formatters/telegramFormatter';
+import { TelegramFormatter } from '../../formatters/telegramFormatter';
 import { resolvePathAndSource, resolveSource, getFileStore, getRelativePath } from './utils';
 
 export async function executeToolCall(
@@ -395,7 +395,8 @@ export async function executeToolCall(
 
                 try {
                     const token = config.telegramBotToken;
-                    const chunks = formatTelegramResponse(args.text);
+                    const formatter = new TelegramFormatter();
+                    const chunks = formatter.formatAsChunks(args.text);
                     
                     if (chunks.length === 0) return { success: false, error: 'Empty message content.' };
 
