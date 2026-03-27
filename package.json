@@ -62,7 +62,8 @@
     "@tailwindcss/vite": "^4.1.18",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "unzipper": "^0.12.3"
+    "unzipper": "^0.12.3",
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

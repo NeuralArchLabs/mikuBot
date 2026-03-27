@@ -3,6 +3,7 @@ import { InteractionContext } from './services/core/InteractionContext';
 import { AppState, AgentStatus, Message, PendingToolApproval, AgentMode, ModelInfo, FileSystemDirectoryHandle, FileSystemFileHandle, FileTarget, Session, ApprovalMode, SessionMetadata, PermissionStatus, Provider, AppConfig, Attachment } from './types';
 import { DEFAULT_CONFIG, DEFAULT_FILES, AGENT_TOOLS } from './constants';
 import { createDefaultAgentStatus } from './utils';
+import { useAgentStore, selectMessages, selectAgentStatus, selectIsLoading, selectInput, selectPendingToolApproval } from './stores/useAgentStore';
 import {
     Sidebar,
     ChatArea,
@@ -49,15 +50,32 @@ export const App = () => {
         folderPermissions: { core: 'prompt', extra: 'prompt', workSpace: 'prompt', tools: 'prompt' }
     });
 
-    const [messages, setMessages] = useState<Message[]>([]);
-    const [input, setInput] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
+    // Zustand store - estado atómico para alta frecuencia (streaming)
+    const messages = useAgentStore(selectMessages);
+    const agentStatus = useAgentStore(selectAgentStatus);
+    const isLoading = useAgentStore(selectIsLoading);
+    const input = useAgentStore(selectInput);
+    const pendingToolApproval = useAgentStore(selectPendingToolApproval);
+
+    // Store actions
+    const {
+        setMessages: setMessagesStore,
+        addMessage,
+        updateMessageContent,
+        updateMessageStreaming,
+        clearMessages,
+        setAgentStatus: setAgentStatusStore,
+        updateAgentPhase,
+        updateStreamedText,
+        resetAgentStatus,
+        setIsLoading: setIsLoadingStore,
+        setInput: setInputStore,
+        setPendingToolApproval: setPendingToolApprovalStore
+    } = useAgentStore();
+
     const [models, setModels] = useState<Record<Provider, ModelInfo[]>>({ groq: [], gemini: [], ollama: [] });
     const [loadingModels, setLoadingModels] = useState<Record<Provider, boolean>>({ groq: false, gemini: false, ollama: false });
     const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'connected' | 'error'>('idle');
-
-    const [agentStatus, setAgentStatus] = useState<AgentStatus>(createDefaultAgentStatus());
-    const [pendingToolApproval, setPendingToolApproval] = useState<PendingToolApproval | null>(null);
     const [sessions, setSessions] = useState<SessionMetadata[]>([]);
     const [loadingSessions, setLoadingSessions] = useState(true);
     const [lastNeuralTrigger, setLastNeuralTrigger] = useState<number>(0);
@@ -184,10 +202,10 @@ export const App = () => {
             messageCount: 0
         };
         setSessions(prev => [meta, ...prev]);
-        setMessages([]);
-        setInput('');
-        setAgentStatus(createDefaultAgentStatus());
-        setPendingToolApproval(null);
+        clearMessages();
+        setInputStore('');
+        resetAgentStatus();
+        setPendingToolApprovalStore(null);
         setState(prev => ({
             ...prev,
             sessionId: id,
@@ -203,8 +221,8 @@ export const App = () => {
 
     const onSelectSession = useCallback(async (id: string) => {
         // Prepare UI state regardless of if session is the same
-        setAgentStatus(createDefaultAgentStatus());
-        setPendingToolApproval(null);
+        resetAgentStatus();
+        setPendingToolApprovalStore(null);
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
             abortControllerRef.current = null;
@@ -212,8 +230,8 @@ export const App = () => {
 
         const session = await persistence.loadSession(id);
         if (session) {
-            setMessages(session.messages || []);
-            setInput(session.draft || '');
+            setMessagesStore(session.messages || []);
+            setInputStore(session.draft || '');
             setState(prev => ({
                 ...prev,
                 sessionId: id,
@@ -224,8 +242,8 @@ export const App = () => {
                 debugMode: false // Always close debug mode on selection
             }));
         } else {
-            setMessages([]);
-            setInput('');
+            clearMessages();
+            setInputStore('');
             setState(prev => ({
                 ...prev,
                 sessionId: id,
@@ -287,9 +305,9 @@ export const App = () => {
 
         if (await askConfirm("Rewind conversation to this point? All subsequent messages will be lost.", 'right')) {
             const newHistory = messages.slice(0, index);
-            setMessages(newHistory);
-            setInput(msg.text);
-            setAgentStatus(createDefaultAgentStatus());
+            setMessagesStore(newHistory);
+            setInputStore(msg.text);
+            resetAgentStatus();
         }
     }, [messages, askConfirm]);
 
@@ -990,22 +1008,22 @@ Para ver todas tus habilidades adicionales habilitadas y sus parámetros técnic
 
     const handleAbortAgent = useCallback(() => {
         if (abortControllerRef.current) abortControllerRef.current.abort();
-        setIsLoading(false);
-        setAgentStatus(prev => ({ ...prev, phase: 'aborted' }));
-        setPendingToolApproval(null);
+        setIsLoadingStore(false);
+        updateAgentPhase('aborted');
+        setPendingToolApprovalStore(null);
     }, []);
 
     const handleApproveToolCall = useCallback(() => {
         if (pendingToolApproval) {
             pendingToolApproval.resolve(true);
-            setPendingToolApproval(null);
+            setPendingToolApprovalStore(null);
         }
     }, [pendingToolApproval]);
 
     const handleRejectToolCall = useCallback(() => {
         if (pendingToolApproval) {
             pendingToolApproval.resolve(false);
-            setPendingToolApproval(null);
+            setPendingToolApprovalStore(null);
         }
     }, [pendingToolApproval]);
 
@@ -1092,7 +1110,7 @@ Para ver todas tus habilidades adicionales habilitadas y sus parámetros técnic
 
                 if (isNewSessionCmd) {
                     // Forciply clear any residual messages from the UI and only show the command success message.
-                    setMessages([sysMsg]);
+                    setMessagesStore([sysMsg]);
                 } else {
                     const cmdMsg: Message = {
                         id: Date.now().toString(),
@@ -1102,10 +1120,10 @@ Para ver todas tus habilidades adicionales habilitadas y sus parámetros técnic
                         source: isRemote ? 'telegram' : 'ui',
                         excludeFromContext: true
                     };
-                    setMessages(prev => [...prev, cmdMsg, sysMsg]);
+                    setMessagesStore(prev => [...prev, cmdMsg, sysMsg]);
                 }
 
-                setInput('');
+                setInputStore('');
 
                 if (isRemote) {
                     console.log("[Command] Sending remote feedback for command:", result);
@@ -1188,12 +1206,12 @@ Para ver todas tus habilidades adicionales habilitadas y sus parámetros técnic
             isScheduler: isScheduled,
             isInitiallyCollapsed: isScheduled
         };
-        setMessages(prev => [...prev, userMsg]);
-        setInput('');
+        setMessagesStore(prev => [...prev, userMsg]);
+        setInputStore('');
 
         const effectiveMode = ctx.getEffectiveMode(currentState.agentMode);
-        setIsLoading(true);
-        setAgentStatus({ ...createDefaultAgentStatus(), isInstructionMode: effectiveMode === 'agent' });
+        setIsLoadingStore(true);
+        setAgentStatusStore({ ...createDefaultAgentStatus(), isInstructionMode: effectiveMode === 'agent' });
 
         const modelMsgId = (Date.now() + 1).toString();
 
@@ -1226,7 +1244,7 @@ Para ver todas tus habilidades adicionales habilitadas y sus parámetros técnic
             isScheduledResponse: ctx.isScheduled,
             isInitiallyCollapsed: ctx.isScheduled
         };
-        setMessages(prev => [...prev, modelMsg]);
+        setMessagesStore(prev => [...prev, modelMsg]);
 
         const ac = new AbortController();
         abortControllerRef.current = ac;
@@ -1310,13 +1328,13 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                 deleteFile,
                 (chunk, replace, blocks) => {
                     finalAssistantText = replace ? chunk : finalAssistantText + chunk;
-                    setMessages(prev => prev.map(m => m.id === modelMsgId ? { ...m, text: finalAssistantText, blocks: blocks || m.blocks } : m));
+                    updateMessageContent(modelMsgId, finalAssistantText, blocks);
                 },
                 (p) => {
                     if (p.rawMessages) finalHistory = p.rawMessages;
-                    setAgentStatus(prev => ({ ...prev, ...p }));
+                    setAgentStatusStore(p);
                 },
-                (toolCall) => new Promise(resolve => setPendingToolApproval({ toolCall, resolve })),
+                (toolCall) => new Promise(resolve => setPendingToolApprovalStore({ toolCall, resolve })),
                 async (task: any) => {
                     const newTask = neuralScheduler.addTask(task);
                     return newTask.id;
@@ -1324,7 +1342,7 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                 ac.signal,
                 (history) => {
                     finalHistory = history;
-                    setMessages(prev => prev.map(m => m.id === modelMsgId ? { ...m, rawHistory: history } : m));
+                    setMessagesStore(prev => prev.map(m => m.id === modelMsgId ? { ...m, rawHistory: history } : m));
                 },
                 true, // useTextExtraction (siempre encendido si hay herramientas)
                 useAgentEngine,
@@ -1346,10 +1364,10 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
             }
         } catch (error) {
             if (error instanceof DOMException && error.name === 'AbortError') return undefined;
-            setMessages(prev => prev.map(m => m.id === modelMsgId ? { ...m, text: `⚠️ Error: ${error instanceof Error ? error.message : 'Unknown'}` } : m));
+            setMessagesStore(prev => prev.map(m => m.id === modelMsgId ? { ...m, text: `⚠️ Error: ${error instanceof Error ? error.message : 'Unknown'}` } : m));
         } finally {
-            setIsLoading(false);
-            setMessages(prev => prev.map(m => m.id === modelMsgId ? { ...m, isStreaming: false } : m));
+            setIsLoadingStore(false);
+            updateMessageStreaming(modelMsgId, false);
 
             // [AUTO-NAME] On 3rd turn (approx 6 messages)
             // We use a small timeout just to detach from the main render cycle, but we use captured data
@@ -1478,7 +1496,7 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                 isScheduler: true,
                 isInitiallyCollapsed: false, // Show errors!
             };
-            setMessages(prev => [...prev, schedulerMsg]);
+            setMessagesStore(prev => [...prev, schedulerMsg]);
         };
 
         neuralScheduler.init(
@@ -1506,8 +1524,8 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
     }, [isLoading, processMessage]);
 
     const handleClear = useCallback(() => {
-        setMessages([]);
-        setAgentStatus(createDefaultAgentStatus());
+        clearMessages();
+        resetAgentStatus();
     }, []);
 
     // ── Native Menu Listeners ──────────────────────────────────────────
@@ -1619,7 +1637,7 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                     <div className="flex-1 flex flex-col h-full">
                         <ChatArea
                             sessionId={state.sessionId || 'empty'}
-                            messages={messages} isLoading={isLoading} input={input} setInput={setInput}
+                            messages={messages} isLoading={isLoading} input={input} setInput={setInputStore}
                             onSend={(atts) => processMessage(input, false, false, false, atts)} onSendAsInstruction={(atts) => processMessage(input, true, false, false, atts)}
                             onAbort={handleAbortAgent} onReprompt={handleReprompt} onRewind={onRewind} scrollRef={scrollRef}
                             agentStatus={agentStatus} pendingApproval={pendingToolApproval}
