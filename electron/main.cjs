@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, Menu, shell, Tray, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu, shell, Tray, nativeImage, safeStorage } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
@@ -92,6 +92,50 @@ function safeWriteJSON(filePath, data) {
     }
 }
 
+/**
+ * Vault Encryption Helper
+ * Protects API Keys before saving to JSON
+ */
+function encryptApiKeys(apiKeys) {
+    if (!apiKeys || !safeStorage.isEncryptionAvailable()) return apiKeys;
+    const encrypted = { ...apiKeys };
+    for (const key of ['gemini', 'groq', 'zai']) {
+        const val = encrypted[key];
+        if (val && typeof val === 'string' && !val.startsWith('enc:')) {
+            try {
+                const buffer = safeStorage.encryptString(val);
+                encrypted[key] = `enc:${buffer.toString('base64')}`;
+            } catch (e) {
+                console.warn(`[Vault] Encryption failed for ${key}:`, e.message);
+            }
+        }
+    }
+    return encrypted;
+}
+
+/**
+ * Vault Decryption Helper
+ * Restores API Keys after reading from JSON
+ */
+function decryptApiKeys(apiKeys) {
+    if (!apiKeys || !safeStorage.isEncryptionAvailable()) return apiKeys;
+    const decrypted = { ...apiKeys };
+    for (const key of ['gemini', 'groq', 'zai']) {
+        const val = decrypted[key];
+        if (val && typeof val === 'string' && val.startsWith('enc:')) {
+            try {
+                const base64 = val.substring(4);
+                const buffer = Buffer.from(base64, 'base64');
+                decrypted[key] = safeStorage.decryptString(buffer);
+            } catch (e) {
+                console.warn(`[Vault] Decryption failed for ${key}:`, e.message);
+                // Fallback: keep original or mark as invalid?
+            }
+        }
+    }
+    return decrypted;
+}
+
 
 // Global path state
 // Robust Fallback: In production, prioritize User Data directory over App Path to avoid common environment conflicts
@@ -140,7 +184,8 @@ function getApiKeys() {
         if (fs.existsSync(configPath)) {
             const raw = fs.readFileSync(configPath, 'utf8');
             const parsed = JSON.parse(raw);
-            return parsed.config?.apiKeys || {};
+            const keys = parsed.config?.apiKeys || {};
+            return decryptApiKeys(keys);
         }
     } catch (e) {
         console.error('[Main Process] Failed to read API keys:', e.message);
@@ -480,7 +525,14 @@ ipcMain.handle('save-settings', async (event, settings) => {
     try {
         const configPath = getEffectivePaths().config;
         console.log('Saving settings to:', configPath);
-        const result = safeWriteJSON(configPath, settings);
+
+        // Vault Protection: Encrypt sensitive keys before disk persistence
+        const protectedSettings = JSON.parse(JSON.stringify(settings));
+        if (protectedSettings.config?.apiKeys) {
+            protectedSettings.config.apiKeys = encryptApiKeys(protectedSettings.config.apiKeys);
+        }
+
+        const result = safeWriteJSON(configPath, protectedSettings);
         if (!result.ok) throw new Error(result.error);
 
         // React to system settings immediately
@@ -510,6 +562,12 @@ ipcMain.handle('load-settings', async () => {
         if (fs.existsSync(configPath)) {
             const data = fs.readFileSync(configPath, 'utf8');
             const settings = JSON.parse(data);
+            
+            // Vault Decryption: Ensure frontend receives clean keys
+            if (settings.config?.apiKeys) {
+                settings.config.apiKeys = decryptApiKeys(settings.config.apiKeys);
+            }
+            
             return { ok: true, settings };
         }
         return { ok: true, settings: null };
