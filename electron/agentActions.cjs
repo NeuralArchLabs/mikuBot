@@ -8,6 +8,7 @@ const path = require('path');
 const os = require('os');
 const { exec } = require('child_process');
 const util = require('util');
+const SafePathResolver = require('./SafePathResolver.cjs');
 
 const execPromise = util.promisify(exec);
 
@@ -111,7 +112,9 @@ async function handleGetFileOutline(fullPath) {
  */
 async function handleBatchOperation(root, { operation, source, destination, pattern }) {
     if (!source) throw new Error('Source path required');
-    const sourcePath = path.resolve(root, source);
+    
+    // Support prefix resolution inside the action
+    const sourcePath = SafePathResolver.resolvePath(source);
     let count = 0;
 
     if (pattern) {
@@ -157,16 +160,17 @@ async function applyBatchOp(op, src, dest) {
  * Lists files and directories in a path.
  */
 async function handleListFiles(root, { directory, recursive = false }) {
-    const targetDir = directory ? path.resolve(root, directory) : root;
-    
-    // Security check
-    if (!targetDir.startsWith(root) && !targetDir.startsWith(os.tmpdir())) {
-        // Allow temporary directories for sandbox operations
-    } else if (!targetDir.startsWith(root)) {
-         throw new Error('Access denied: Directory outside workspace.');
+    // Resolve using prefix if present, otherwise fallback to root/directory
+    let targetDir;
+    try {
+        targetDir = directory ? SafePathResolver.resolvePath(directory) : root;
+    } catch (e) {
+        // Fallback for raw paths if resolver fails (e.g. no prefix match and no workspace root set)
+        targetDir = directory ? path.resolve(root, directory) : root;
     }
-
-    if (!(await fs.stat(targetDir)).isDirectory()) {
+    
+    const stats = await fs.stat(targetDir);
+    if (!stats.isDirectory()) {
         throw new Error('Path is not a directory.');
     }
 
@@ -287,7 +291,7 @@ async function searchWithFindstr(searchText, root, caseSensitive) {
  */
 async function handleSearchFilesNative(root, { searchText, filePattern, caseSensitive, searchPath }) {
     if (!searchText) throw new Error('Search text required');
-    const targetRoot = searchPath ? path.resolve(root, searchPath) : root;
+    const targetRoot = searchPath ? SafePathResolver.resolvePath(searchPath) : root;
 
     // 1. Try RipGrep
     const rgResult = await searchWithRipGrep(searchText, targetRoot, !!caseSensitive, filePattern);
@@ -432,7 +436,8 @@ function applySinglePatch(content, search, replace, strategy, eol, lineNumber) {
  * Patch File logic with multi-patch support and EOL detection.
  */
 async function handlePatchFile(root, { path: relPath, search, replace, strategy = 'auto', lineNumber, patches }) {
-    const fullPath = path.resolve(root, relPath);
+    // Support prefix inside patch
+    const fullPath = SafePathResolver.resolvePath(relPath);
     try {
         const content = await fs.readFile(fullPath, 'utf-8');
         const originalContent = content;
@@ -480,7 +485,7 @@ async function handlePatchFile(root, { path: relPath, search, replace, strategy 
 }
 
 async function handleUndoPatch(root, relPath) {
-    const fullPath = path.resolve(root, relPath);
+    const fullPath = SafePathResolver.resolvePath(relPath);
     const backupPath = fullPath + '.bak';
     try {
         const backup = await fs.readFile(backupPath, 'utf-8');

@@ -9,6 +9,7 @@ const agentActions = require('./agentActions.cjs');
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('ffmpeg-static');
 const readline = require('readline');
+const SafePathResolver = require('./SafePathResolver.cjs');
 
 
 // Configure ffmpeg
@@ -114,6 +115,14 @@ const SEARXENA_DIR = app.isPackaged
 const ENGINE_PYTHON = path.join(SEARXENA_DIR, 'local', 'py3', 'Scripts', 'python.exe');
 
 console.log('Main Process: Active Workspace Path:', currentWorkspacePath);
+
+// Initialize SafePathResolver with detected roots (Siblings under mikuCentralRoot)
+SafePathResolver.init({
+    '@CORE': path.join(currentWorkspacePath, 'core'),
+    '@LIBRARY': path.join(currentWorkspacePath, 'library'),
+    '@TOOLS': path.join(currentWorkspacePath, 'commands'),
+    '@WORKSPACE': path.join(currentWorkspacePath, 'workspace')
+});
 
 // Ensure essential workspace folders exist if path is set
 function ensureWorkspaceStructure(targetPath) {
@@ -1050,18 +1059,80 @@ ipcMain.handle('import-backup', async () => {
     });
 });
 
-ipcMain.handle('run-console', async (event, { command, args, cwd }) => {
-    const { exec } = require('child_process');
+ipcMain.handle('run-console', async (event, input) => {
+    const { command, args, cwd, timeout_ms: topTimeout } = input;
+    const { spawn } = require('child_process');
+    const blockedOperators = /[>|&;]/; // Bloquear >, >>, |, &, ;
+    
     return new Promise((resolve) => {
-        const fullCommand = args ? `${command} ${args}` : command;
-        console.log(`[Main Process] Shell: ${fullCommand} in ${cwd || 'root'}`);
+        // Bloqueo de operadores vía regex
+        const commandStr = command || '';
+        const argsStr = typeof args === 'string' ? args : (Array.isArray(args) ? args.join(' ') : JSON.stringify(args || ''));
+        
+        if (blockedOperators.test(commandStr) || blockedOperators.test(argsStr)) {
+            return resolve({
+                code: 1,
+                stdout: '',
+                stderr: 'SecurityError: Comando bloqueado por uso de operadores prohibidos (> | & ;).',
+                error: 'Forbidden operator detected'
+            });
+        }
 
-        exec(fullCommand, { cwd: cwd || undefined, timeout: 60000 }, (error, stdout, stderr) => {
+        console.log(`[Main Process] Shell: ${commandStr} ${argsStr} (Secure Spawn) in ${cwd || 'root'}`);
+
+        // Extraer timeout_ms (del objeto principal o de args)
+        const requestedTimeout = topTimeout || (args && args.timeout_ms) || 15000;
+        const timeout_ms = Math.min(requestedTimeout, 120000);
+        
+        // Determinar argumentos para spawn
+        let spawnArgs = [];
+        if (typeof args === 'string') {
+            spawnArgs = args.split(/\s+/).filter(a => a.length > 0);
+        } else if (Array.isArray(args)) {
+            spawnArgs = args;
+        }
+
+        // Usar spawn para mayor control
+        const proc = spawn(command, spawnArgs, { 
+            cwd: cwd || undefined,
+            shell: true,
+            windowsHide: true,
+            timeout: timeout_ms 
+        });
+
+        let stdout = '';
+        let stderr = '';
+
+        proc.stdout.on('data', (data) => stdout += data.toString());
+        proc.stderr.on('data', (data) => stderr += data.toString());
+
+        const timer = setTimeout(() => {
+            try { proc.kill(); } catch(e) {}
             resolve({
-                code: error ? error.code : 0,
+                code: 1,
+                stdout,
+                stderr: `${stderr}\nERROR: Proceso finalizado por timeout (${timeout_ms}ms).`,
+                error: 'Process Timed Out'
+            });
+        }, timeout_ms);
+
+        proc.on('close', (code) => {
+            clearTimeout(timer);
+            resolve({
+                code: code ?? 0,
                 stdout: stdout,
                 stderr: stderr,
-                error: error ? error.message : null
+                error: null
+            });
+        });
+
+        proc.on('error', (err) => {
+            clearTimeout(timer);
+            resolve({
+                code: 1,
+                stdout: stdout,
+                stderr: stderr,
+                error: err.message
             });
         });
     });
@@ -1694,8 +1765,8 @@ ipcMain.handle('searxena:stop', async () => {
 
 // ── Advanced Agent Tools (Ported) ──────────────────────────────────
 ipcMain.handle('agent:read-file', async (event, { path: relPath }) => {
-    const fullPath = path.resolve(currentWorkspacePath, relPath);
     try {
+        const fullPath = SafePathResolver.resolvePath(relPath);
         const content = await fs.promises.readFile(fullPath, 'utf-8');
         return { ok: true, content };
     } catch (e) {
@@ -1704,8 +1775,8 @@ ipcMain.handle('agent:read-file', async (event, { path: relPath }) => {
 });
 
 ipcMain.handle('agent:get-file-outline', async (event, { path: relPath }) => {
-    const fullPath = path.resolve(currentWorkspacePath, relPath);
     try {
+        const fullPath = SafePathResolver.resolvePath(relPath);
         const outline = await agentActions.handleGetFileOutline(fullPath);
         return { ok: true, outline };
     } catch (e) {
@@ -1715,7 +1786,8 @@ ipcMain.handle('agent:get-file-outline', async (event, { path: relPath }) => {
 
 ipcMain.handle('agent:batch-operation', async (event, data) => {
     try {
-        const root = data.rootPath || currentWorkspacePath;
+        // Here, rootPath might be a prefixed path now.
+        const root = data.rootPath ? SafePathResolver.resolvePath(data.rootPath) : SafePathResolver.roots['@WORKSPACE'];
         const result = await agentActions.handleBatchOperation(root, data);
         return { ok: true, result };
     } catch (e) {
@@ -1725,7 +1797,8 @@ ipcMain.handle('agent:batch-operation', async (event, data) => {
 
 ipcMain.handle('agent:list-files', async (event, data) => {
     try {
-        const root = data.rootPath || currentWorkspacePath;
+        // Ensure root is resolved via SafePathResolver
+        const root = data.rootPath ? SafePathResolver.resolvePath(data.rootPath) : currentWorkspacePath;
         const results = await agentActions.handleListFiles(root, data);
         return { ok: true, results };
     } catch (e) {
@@ -1735,7 +1808,7 @@ ipcMain.handle('agent:list-files', async (event, data) => {
 
 ipcMain.handle('agent:search-files', async (event, data) => {
     try {
-        const root = data.rootPath || currentWorkspacePath;
+        const root = data.rootPath ? SafePathResolver.resolvePath(data.rootPath) : currentWorkspacePath;
         const results = await agentActions.handleSearchFilesNative(root, data);
         return { ok: true, results };
     } catch (e) {
@@ -1745,7 +1818,8 @@ ipcMain.handle('agent:search-files', async (event, data) => {
 
 ipcMain.handle('agent:patch-file', async (event, data) => {
     try {
-        const result = await agentActions.handlePatchFile(currentWorkspacePath, data);
+        // Pass everything as-is, resolver is now inside agentActions
+        const result = await agentActions.handlePatchFile(SafePathResolver.roots['@WORKSPACE'], data);
         return { ok: true, result };
     } catch (e) {
         return { ok: false, error: e.message };
@@ -1754,7 +1828,7 @@ ipcMain.handle('agent:patch-file', async (event, data) => {
 
 ipcMain.handle('agent:undo-patch', async (event, { path: relPath }) => {
     try {
-        const result = await agentActions.handleUndoPatch(currentWorkspacePath, relPath);
+        const result = await agentActions.handleUndoPatch(SafePathResolver.roots['@WORKSPACE'], relPath);
         return { ok: true, result };
     } catch (e) {
         return { ok: false, error: e.message };
