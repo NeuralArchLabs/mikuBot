@@ -33,7 +33,17 @@ export function cleanTechnicalNoise(text: string, signatureRegex?: RegExp): stri
 
     s = s.replace(/\{\s*"(?:name|action|function|tool_call|arguments|args)"\s*:.*$/gim, '');
     s = s.replace(/^\s*[\}\],]+\s*$/gm, '');
-    s = s.replace(/[\}\],]+\s*$/g, '');
+    s = s.replace(/[\}\],]+\s*$/g, (match, offset) => {
+        // Preserve trailing }} if it's part of a neural signature
+        // Signature pattern: content followed by space(s) then }}
+        // JSON noise pattern: "key": "value"} or ]} 
+        const before = s.substring(Math.max(0, offset - 6), offset);
+        const isSignatureClose = /\s\s$/.test(before) || /[^\w"'\]:]$/.test(before);
+        if (isSignatureClose && /^\}\}\s*$/.test(match)) {
+            return match; // Keep — it's a signature closing
+        }
+        return ''; // Strip — it's JSON noise
+    });
 
     // 3. ELIMINAR BLOQUES DE IDENTIDAD (Soul signature) para evitar duplicados en narrativa
     // Si se pasa un regex específico, lo usamos; si no, usamos el patrón universal
