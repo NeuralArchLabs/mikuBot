@@ -13,44 +13,17 @@ export function cleanTechnicalNoise(text: string, signatureRegex?: RegExp): stri
     let s = (text || '').trim();
     if (!s) return '';
 
-    // 1. ELIMINAR ETIQUETAS XML (Ghost tools) Y PENSAMIENTO FORZADO
-    s = s.replace(/<\|?tool_call\|?>[\s\S]*?<\|?\/?tool_call\|?>/gi, '');
-    s = s.replace(/<think>[\s\S]*?<\/think>/gi, '');
-
-    // 2. ELIMINAR BLOQUES JSON COMPLETOS Y FRAGMENTADOS
-    s = s.replace(/```(?:json|JSON)?\s*\{[\s\S]*?\}\s*```/gi, '');
-
-    // Objetos JSON técnicos por marcadores
-    s = s.replace(/\{[\s\S]*?\}/g, (match) => {
-        const lowerMatch = match.toLowerCase();
-        const toolMarkers = [
-            '"name":', '"action":', '"function":', '"filename":',
-            '"content":', '"url":', '"query":', '"coin_id":',
-            '"text":', '"args":', '"arguments":'
-        ];
-        return toolMarkers.some(m => lowerMatch.includes(m.toLowerCase())) ? '' : match;
-    });
-
-    s = s.replace(/\{\s*"(?:name|action|function|tool_call|arguments|args)"\s*:.*$/gim, '');
+    // 2. ELIMINAR ECOS DE PROTOCOLO (Solo si no están en bloques de código)
+    // No eliminamos bloques ```json ya que pueden ser parte de la respuesta útil para el usuario.
+    
+    // Objetos JSON técnicos específicos del protocolo (no el código del usuario)
+    s = s.replace(/\{"(?:name|action|function|tool_call|arguments|args)"\s*:.*$/gim, '');
     s = s.replace(/^\s*[\}\],]+\s*$/gm, '');
-    s = s.replace(/[\}\],]+\s*$/g, (match, offset) => {
-        // Preserve trailing }} if it's part of a neural signature
-        // Signature pattern: content followed by space(s) then }}
-        // JSON noise pattern: "key": "value"} or ]} 
-        const before = s.substring(Math.max(0, offset - 6), offset);
-        const isSignatureClose = /\s\s$/.test(before) || /[^\w"'\]:]$/.test(before);
-        if (isSignatureClose && /^\}\}\s*$/.test(match)) {
-            return match; // Keep — it's a signature closing
-        }
-        return ''; // Strip — it's JSON noise
-    });
 
-    // 3. ELIMINAR BLOQUES DE IDENTIDAD (Soul signature) para evitar duplicados en narrativa
-    // Si se pasa un regex específico, lo usamos; si no, usamos el patrón universal
-    const sigPattern = signatureRegex || /\{\{?[\s\S]*?[🌅🌌🌑✨⚡🧩🧠🌊🔥🔋].*?\}\}?/g;
-    s = s.replace(sigPattern, '');
+    // 3. PRESERVAR FIRMA Y CÓDIGO (Ya no eliminamos sigPattern automáticamente aquí)
+    // El usuario desea que la firma NO se pierda.
 
-    // 4. ELIMINAR ECOS DEL PROTOCOLO Y LOGS TÉCNICOS
+    // 4. ELIMINAR ECOS DEL PROTOCOLO Y LOGS TÉCNICOS RESIDUOS
     const noisePatterns = [
         /^(?:I apologize|My apologies|You are right|You are correct)[\s\S]*?(?={|\[|{{)/i,
         /^(?:Thinking Process|Neural Flow|Neural Core|Proceso de Razonamiento|Active Reasoning|Razonamiento Activo|Flujo Neural|Core de Miku|Razonamiento)[\s\S]*?(?={|\[|{{)/i,
@@ -60,15 +33,9 @@ export function cleanTechnicalNoise(text: string, signatureRegex?: RegExp): stri
         /Tool Calls:\s*\[[\s\S]*?\]/gi, 
         /(?:^|\n)Tool Calls[:\s]*/gi,
         /\[\s*\{\s*"id":[\s\S]*?\}\s*\]/gi,
-        /^(?:\[assistant\]|\[tool\]|\[user\]|\[system\])[:\s]*/gim,
-        /^\s*[-*=_]{3,}\s*\n/i, // Strip leading separator line
-        /\n\s*[-*=_]{3,}\s*$/i // Strip trailing separator line
+        /^(?:\[assistant\]|\[tool\]|\[user\]|\[system\])[:\s]*/gim
     ];
     noisePatterns.forEach(p => s = s.replace(p, ''));
-
-    // 5. LIMPIEZA DE CERCAS Y ESPACIOS SOBRANTES
-    s = s.replace(/```(?:json|JSON)?/gi, '');
-    s = s.replace(/```/g, '');
 
     return s.trim();
 }
