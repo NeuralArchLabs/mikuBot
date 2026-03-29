@@ -1329,36 +1329,74 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                 model: effectiveModel
             };
 
-            await sendAgentMessage(
-                effectiveConfig, systemInstruction, chatHistoryLocal, toolsForSession,
-                { ...freshState.core }, { ...freshState.additional }, { ...freshState.workSpace }, { ...freshState.tools },
-                saveFile,
-                deleteFile,
-                (chunk, replace, blocks) => {
-                    finalAssistantText = replace ? chunk : finalAssistantText + chunk;
-                    updateMessageContent(modelMsgId, finalAssistantText, blocks);
-                },
-                (p) => {
-                    if (p.rawMessages) finalHistory = p.rawMessages;
-                    setAgentStatusStore(p);
-                },
-                (toolCall) => new Promise(resolve => setPendingToolApprovalStore({ toolCall, resolve })),
-                async (task: any) => {
-                    const newTask = neuralScheduler.addTask(task);
-                    return newTask.id;
-                },
-                ac.signal,
-                (history) => {
-                    finalHistory = history;
-                    setMessagesStore(prev => prev.map(m => m.id === modelMsgId ? { ...m, rawHistory: history } : m));
-                },
-                true, // useTextExtraction (siempre encendido si hay herramientas)
-                useAgentEngine,
-                (currentState.safeMode || ctx.forceToolMode) && !ctx.isScheduled,
-                currentState.approvalMode,
-                ctx.getEffectiveMode(currentState.agentMode) === 'agent', // isInstructionMode (botón del rayo o modo agente) 
-                ctx.isScheduled
-            );
+            // --- Master Fallback Logic ---
+            // Determine if a different master fallback is available for retry
+            const hasMasterFallback = currentState.config.model
+                && (currentState.config.provider !== effectiveProvider || currentState.config.model !== effectiveModel);
+
+            const runInference = async (inferenceConfig: typeof effectiveConfig, isFallback = false) => {
+                if (isFallback) {
+                    // Reset message content for retry
+                    finalAssistantText = '';
+                    updateMessageContent(modelMsgId, '', []);
+                    setMessagesStore(prev => prev.map(m => m.id === modelMsgId
+                        ? { ...m, provider: inferenceConfig.provider, model: inferenceConfig.model }
+                        : m
+                    ));
+                }
+
+                await sendAgentMessage(
+                    inferenceConfig, systemInstruction, chatHistoryLocal, toolsForSession,
+                    { ...freshState.core }, { ...freshState.additional }, { ...freshState.workSpace }, { ...freshState.tools },
+                    saveFile,
+                    deleteFile,
+                    (chunk, replace, blocks) => {
+                        finalAssistantText = replace ? chunk : finalAssistantText + chunk;
+                        updateMessageContent(modelMsgId, finalAssistantText, blocks);
+                    },
+                    (p) => {
+                        if (p.rawMessages) finalHistory = p.rawMessages;
+                        setAgentStatusStore(p);
+                    },
+                    (toolCall) => new Promise(resolve => setPendingToolApprovalStore({ toolCall, resolve })),
+                    async (task: any) => {
+                        const newTask = neuralScheduler.addTask(task);
+                        return newTask.id;
+                    },
+                    ac.signal,
+                    (history) => {
+                        finalHistory = history;
+                        setMessagesStore(prev => prev.map(m => m.id === modelMsgId ? { ...m, rawHistory: history } : m));
+                    },
+                    true,
+                    useAgentEngine,
+                    (currentState.safeMode || ctx.forceToolMode) && !ctx.isScheduled,
+                    currentState.approvalMode,
+                    ctx.getEffectiveMode(currentState.agentMode) === 'agent',
+                    ctx.isScheduled
+                );
+            };
+
+            try {
+                await runInference(effectiveConfig);
+            } catch (primaryError) {
+                // If abort, rethrow immediately — no fallback
+                if (primaryError instanceof DOMException && primaryError.name === 'AbortError') throw primaryError;
+
+                if (hasMasterFallback) {
+                    console.warn(`[Fallback] Primary provider ${effectiveProvider}/${effectiveModel} failed. Retrying with master: ${currentState.config.provider}/${currentState.config.model}`);
+                    updateMessageContent(modelMsgId, `⚠️ ${effectiveProvider} falló. Reintentando con master fallback (${currentState.config.provider}/${currentState.config.model})...\n\n`, []);
+
+                    const masterConfig = {
+                        ...currentState.config,
+                        provider: currentState.config.provider,
+                        model: currentState.config.model
+                    };
+                    await runInference(masterConfig, true);
+                } else {
+                    throw primaryError; // No master fallback available, propagate
+                }
+            }
 
             if (ctx.isRemote && finalAssistantText) {
                 // Check in finalHistory (local variable, NOT stale state) if a tool already sent it
