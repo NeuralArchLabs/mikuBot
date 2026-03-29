@@ -27,6 +27,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
     const [technicalLevel, setTechnicalLevel] = useState('Intermedio');
     const [currentGoal, setCurrentGoal] = useState('Asistencia general');
     const [autonomyMode, setAutonomyMode] = useState('Semi-autónomo');
+    const [userContext, setUserContext] = useState('');
 
     // ── HealthCheck state ────────────────────────────────────────────
     const [healthStatus, setHealthStatus] = useState<HealthCheckResult | null>(null);
@@ -147,7 +148,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                                 TECHNICAL_SKILL: technicalLevel,
                                 CURRENT_GOAL: currentGoal,
                                 AUTONOMY_MODE: autonomyMode,
-                                USER_CONTEXT_DUMP: 'Sin contexto adicional proporcionado.',
+                                USER_CONTEXT_DUMP: userContext.trim() || 'Sin contexto adicional proporcionado.',
                             };
 
                             // 4. Hydrate templates (synchronous, no IPC)
@@ -429,6 +430,22 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                                             </button>
                                         ))}
                                     </div>
+                                </div>
+
+                                {/* User Context */}
+                                <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                                    <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
+                                        <Icon name="info-circle" className="text-sm text-pink-400" /> About You
+                                        <span className="text-[9px] text-slate-500 font-normal ml-auto">Optional</span>
+                                    </label>
+                                    <textarea
+                                        value={userContext}
+                                        onChange={(e) => setUserContext(e.target.value)}
+                                        placeholder="Comparte contexto útil sobre ti: tu profesión, proyectos activos, herramientas que usas, preferencias..."
+                                        rows={3}
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-600 text-sm focus:border-pink-500 focus:outline-none resize-none"
+                                    />
+                                    <p className="text-[10px] text-slate-500 mt-1.5">This helps the agent give you more relevant and personalized responses.</p>
                                 </div>
                             </div>
                         </div>
