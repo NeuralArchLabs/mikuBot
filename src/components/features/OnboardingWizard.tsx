@@ -3,7 +3,7 @@ import { AppConfig } from '../../types';
 import { Icon } from '../common/Common';
 import { DEFAULT_CONFIG } from '../../constants';
 import { runHealthCheck, type HealthCheckResult } from '../../services/core/HealthCheck';
-import { hydrateAllTemplates, type PromptVariables } from '../../services/core/BlueprintHydrator';
+import { hydrateAllTemplates, extractTemplatesFromFolderContent, type PromptVariables } from '../../services/core/BlueprintHydrator';
 
 interface OnboardingProps {
     onComplete: (config: AppConfig, handles: any) => Promise<void>;
@@ -25,6 +25,8 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
     const [userName, setUserName] = useState('');
     const [userTone, setUserTone] = useState('Profesional y amigable');
     const [technicalLevel, setTechnicalLevel] = useState('Intermedio');
+    const [currentGoal, setCurrentGoal] = useState('Asistencia general');
+    const [autonomyMode, setAutonomyMode] = useState('Semi-autónomo');
 
     // ── HealthCheck state ────────────────────────────────────────────
     const [healthStatus, setHealthStatus] = useState<HealthCheckResult | null>(null);
@@ -128,30 +130,45 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
             // ── Hydrate templates and write personalized files ────────
             if ((window as any).electron) {
                 try {
-                    const variables: PromptVariables = {
-                        LANGUAGE: 'Español',
-                        TONE: userTone,
-                        VERBOSITY: 'Medio',
-                        HUMOR_LEVEL: 'Bajo',
-                        USER_NAME: userName || 'Usuario',
-                        TECHNICAL_SKILL: technicalLevel,
-                        CURRENT_GOAL: 'Asistencia general',
-                        AUTONOMY_MODE: 'Semi-autónomo',
-                        USER_CONTEXT_DUMP: 'Sin contexto adicional proporcionado.',
-                    };
+                    // 1. Read the commands folder which has blueprints/templates/ (copied by setup-onboarding)
+                    const folderRes = await (window as any).electron.readFolder(nextConfig.folderPaths.tools);
+                    if (folderRes.ok && folderRes.files) {
+                        // 2. Extract template content from the folder listing
+                        const templateContent = extractTemplatesFromFolderContent(folderRes.files);
 
-                    const hydrated = await hydrateAllTemplates(variables);
+                        if (Object.keys(templateContent).length > 0) {
+                            // 3. Build variables from collected user data
+                            const variables: PromptVariables = {
+                                LANGUAGE: 'Español',
+                                TONE: userTone,
+                                VERBOSITY: 'Medio',
+                                HUMOR_LEVEL: 'Bajo',
+                                USER_NAME: userName || 'Usuario',
+                                TECHNICAL_SKILL: technicalLevel,
+                                CURRENT_GOAL: currentGoal,
+                                AUTONOMY_MODE: autonomyMode,
+                                USER_CONTEXT_DUMP: 'Sin contexto adicional proporcionado.',
+                            };
 
-                    for (const file of hydrated) {
-                        const targetPath = file.target === 'core'
-                            ? nextConfig.folderPaths.core
-                            : nextConfig.folderPaths.tools;
+                            // 4. Hydrate templates (synchronous, no IPC)
+                            const hydrated = hydrateAllTemplates(variables, templateContent);
 
-                        await (window as any).electron.writeFile({
-                            filePath: targetPath + '/' + file.filename,
-                            content: file.content
-                        });
-                        console.log(`[Onboarding] ✅ ${file.filename} → ${file.target}`);
+                            // 5. Write each file using correct IPC params: { folderPath, filename, content }
+                            for (const file of hydrated) {
+                                const folderPath = file.target === 'core'
+                                    ? nextConfig.folderPaths.core
+                                    : nextConfig.folderPaths.tools;
+
+                                await (window as any).electron.writeFile({
+                                    folderPath,
+                                    filename: file.filename,
+                                    content: file.content
+                                });
+                                console.log(`[Onboarding] ✅ ${file.filename} → ${folderPath}`);
+                            }
+                        } else {
+                            console.warn('[Onboarding] No templates found in commands folder.');
+                        }
                     }
                 } catch (e) {
                     console.warn('[Onboarding] Template hydration failed (non-blocking):', e);
@@ -364,6 +381,47 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                                                 className={`p-2.5 rounded-lg border text-xs font-bold transition-all ${
                                                     technicalLevel === opt.value
                                                         ? 'bg-cyan-600/20 border-cyan-500 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.15)]'
+                                                        : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:bg-slate-800'
+                                                }`}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Current Goal */}
+                                <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                                    <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
+                                        <Icon name="bullseye" className="text-sm text-emerald-400" /> Primary Goal
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={currentGoal}
+                                        onChange={(e) => setCurrentGoal(e.target.value)}
+                                        placeholder="¿Cuál es tu objetivo principal?"
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-600 text-sm focus:border-emerald-500 focus:outline-none"
+                                    />
+                                    <p className="text-[10px] text-slate-500 mt-1.5">e.g. Desarrollo de software, Investigación, Productividad personal</p>
+                                </div>
+
+                                {/* Autonomy Mode */}
+                                <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                                    <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
+                                        <Icon name="robot" className="text-sm text-amber-400" /> Autonomy Level
+                                    </label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {[
+                                            { value: 'Conservador', label: 'Conservative' },
+                                            { value: 'Semi-autónomo', label: 'Balanced' },
+                                            { value: 'Autónomo', label: 'Autonomous' },
+                                        ].map(opt => (
+                                            <button
+                                                key={opt.value}
+                                                onClick={() => setAutonomyMode(opt.value)}
+                                                className={`p-2.5 rounded-lg border text-xs font-bold transition-all ${
+                                                    autonomyMode === opt.value
+                                                        ? 'bg-amber-600/20 border-amber-500 text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.15)]'
                                                         : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:bg-slate-800'
                                                 }`}
                                             >

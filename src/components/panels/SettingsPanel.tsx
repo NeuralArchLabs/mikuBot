@@ -1241,6 +1241,51 @@ export const SettingsPanel = ({
                             </div>
                         </div>
 
+                        {/* ── Danger Zone: Factory Reset ─────────────────────── */}
+                        <div className="space-y-4 pt-6">
+                            <div className="h-px bg-gradient-to-r from-transparent via-red-500/20 to-transparent" />
+                            <div className="premium-panel p-6 border-red-900/30 bg-red-950/10 relative overflow-hidden">
+                                <div className="absolute -top-20 -right-20 w-60 h-60 bg-red-600/5 blur-3xl rounded-full transform-gpu pointer-events-none" />
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-2xl bg-red-900/40 border border-red-700/30 flex items-center justify-center text-red-400 shadow-inner">
+                                            <Icon name="exclamation-triangle" className="text-xl" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-base font-black text-red-300 tracking-tight">Factory Reset</h3>
+                                            <p className="text-[10px] text-red-400/50 font-medium">Reset configuration and re-run the setup wizard from scratch.</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            const first = await askConfirm(
+                                                "⚠️ Esto reiniciará la configuración y forzará el asistente de instalación.\n\nTus sesiones y archivos de core NO se eliminarán, pero tus rutas y preferencias se restablecerán.\n\n¿Deseas continuar?"
+                                            );
+                                            if (!first) return;
+
+                                            const second = await askConfirm(
+                                                "🔴 CONFIRMACIÓN FINAL\n\n¿Estás absolutamente seguro? La aplicación se reiniciará y deberás completar el setup nuevamente."
+                                            );
+                                            if (!second) return;
+
+                                            try {
+                                                onUpdatePartialConfig({ isConfigured: false } as any);
+                                                onSaveGlobal();
+                                                await askAlert("♻️ Reiniciando aplicación...");
+                                                window.location.reload();
+                                            } catch (e) {
+                                                await askAlert("❌ Error al reiniciar: " + (e as any)?.message);
+                                            }
+                                        }}
+                                        className="px-6 py-3 bg-red-950/50 hover:bg-red-900/60 border border-red-700/40 hover:border-red-500/50 text-red-400 hover:text-red-300 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg whitespace-nowrap active:scale-95"
+                                    >
+                                        <Icon name="redo-alt" className="text-sm" /> Reset & Re-run Setup
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         <div className={`md:hidden pt-2 pb-6 flex justify-center sticky bottom-0 z-20 pointer-events-none transition-all duration-300 ${showFloatingSave ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
                             <button
                                 onClick={onSaveGlobal}

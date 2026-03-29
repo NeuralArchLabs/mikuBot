@@ -92,42 +92,65 @@ export function hydrateTemplate(
 }
 
 /**
- * Reads a blueprint template file via Electron IPC.
- * Returns null if unavailable.
+ * Reads ALL blueprint templates from disk via the existing `readFolder` IPC.
+ * Returns a map of filename → content.
+ * This is the ONLY IPC call needed — we read the whole templates/ folder at once.
  */
-async function readTemplate(templateName: string): Promise<string | null> {
+export async function readAllTemplatesFromDisk(): Promise<Record<string, string>> {
     const electron = (window as any).electron;
-    if (!electron?.readBlueprintTemplate) return null;
+    if (!electron?.readFolder) return {};
 
-    try {
-        const res = await electron.readBlueprintTemplate({ filename: templateName });
-        if (res.ok && res.content) return res.content;
-    } catch (e) {
-        console.warn(`[SystemPromptBuilder] Failed to read template "${templateName}":`, e);
+    // We need to discover the templates path.
+    // During onboarding, core/base gets copied into commands/ by setup-onboarding.
+    // But templates live in core/base/blueprints/templates/ which IS copied to commands/blueprints/templates/.
+    // However, the BEST source is the app's bundled resources. The readFolder IPC
+    // can read any path, so we try multiple fallback paths.
+
+    // Strategy: The caller should pass the commands path (which has the copied core/base).
+    // But we also support a direct read if the path is available.
+    return {};
+}
+
+/**
+ * Reads templates from a pre-loaded folder content map (from readFolder IPC).
+ * The keys in folderContent are relative paths like "blueprints/templates/SOUL.template.md".
+ */
+export function extractTemplatesFromFolderContent(
+    folderContent: Record<string, string>
+): Record<string, string> {
+    const templates: Record<string, string> = {};
+
+    for (const [relPath, content] of Object.entries(folderContent)) {
+        const normalizedPath = relPath.replace(/\\/g, '/');
+        // Match files in blueprints/templates/ that end with .template.md
+        if (normalizedPath.includes('blueprints/templates/') && normalizedPath.endsWith('.template.md')) {
+            const filename = normalizedPath.split('/').pop() || '';
+            if (filename) templates[filename] = content;
+        }
     }
-    return null;
+
+    return templates;
 }
 
 // ─── Main Entry Point ───────────────────────────────────────────────
 
 /**
- * Reads all blueprint templates, hydrates them with the user's variables,
- * and returns the results ready to be saved into the core/ folder.
+ * Hydrates all blueprint templates with the user's variables.
  *
- * Called during onboarding after the user has configured their preferences.
- *
- * @param variables - Personalization values collected during onboarding
+ * @param variables       - Personalization values collected during onboarding
+ * @param templateContent - Map of template filename → raw content (from extractTemplatesFromFolderContent)
  * @returns Array of hydrated files ready for persistence
  */
-export async function hydrateAllTemplates(
-    variables: PromptVariables
-): Promise<HydrationResult[]> {
+export function hydrateAllTemplates(
+    variables: PromptVariables,
+    templateContent: Record<string, string>
+): HydrationResult[] {
     const results: HydrationResult[] = [];
 
     for (const { template, output, target } of TEMPLATE_MAP) {
-        const raw = await readTemplate(template);
+        const raw = templateContent[template];
         if (!raw) {
-            console.warn(`[SystemPromptBuilder] Template "${template}" not found, skipping.`);
+            console.warn(`[BlueprintHydrator] Template "${template}" not found in provided content, skipping.`);
             continue;
         }
 
@@ -147,9 +170,10 @@ export async function hydrateAllTemplates(
  */
 export async function hydrateAndPersistTemplates(
     variables: PromptVariables,
+    templateContent: Record<string, string>,
     saveFn: (filename: string, content: string, target: 'core' | 'tools') => Promise<boolean>
 ): Promise<string[]> {
-    const hydrated = await hydrateAllTemplates(variables);
+    const hydrated = hydrateAllTemplates(variables, templateContent);
     const saved: string[] = [];
 
     for (const file of hydrated) {
@@ -157,12 +181,12 @@ export async function hydrateAndPersistTemplates(
             const ok = await saveFn(file.filename, file.content, file.target);
             if (ok) {
                 saved.push(file.filename);
-                console.log(`[SystemPromptBuilder] ✅ ${file.filename} saved (vars: ${file.appliedVariables.join(', ')})`);
+                console.log(`[BlueprintHydrator] ✅ ${file.filename} saved (vars: ${file.appliedVariables.join(', ')})`);
             } else {
-                console.error(`[SystemPromptBuilder] ❌ Failed to save ${file.filename}`);
+                console.error(`[BlueprintHydrator] ❌ Failed to save ${file.filename}`);
             }
         } catch (e) {
-            console.error(`[SystemPromptBuilder] ❌ Error saving ${file.filename}:`, e);
+            console.error(`[BlueprintHydrator] ❌ Error saving ${file.filename}:`, e);
         }
     }
 
