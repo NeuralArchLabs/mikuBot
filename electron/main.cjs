@@ -1117,7 +1117,7 @@ ipcMain.handle('export-backup', async () => {
         const psArgs = [
             '-NoProfile',
             '-ExecutionPolicy', 'Bypass',
-            '-Command', `Compress-Archive -Path '${currentWorkspacePath}\\*' -DestinationPath '${filePath}' -Force`
+            '-Command', `Compress-Archive -Path '${currentWorkspacePath}/*' -DestinationPath '${filePath}' -Force`
         ];
 
         execFile('powershell.exe', psArgs, (error, stdout, stderr) => {
@@ -1141,6 +1141,16 @@ ipcMain.handle('import-backup', async () => {
     if (!filePaths || filePaths.length === 0) return { canceled: true };
 
     const zipPath = filePaths[0];
+
+    // VALIDACIÓN: Verificar que el archivo existe y es legible antes de procesar
+    try {
+        const stats = await fs.promises.stat(zipPath);
+        if (!stats.isFile()) {
+            return { ok: false, error: 'El archivo seleccionado no es válido.' };
+        }
+    } catch (e) {
+        return { ok: false, error: `Error al acceder al archivo: ${e.message}` };
+    }
 
     return new Promise((resolve) => {
         const { execFile } = require('child_process');
@@ -1753,7 +1763,7 @@ function setupAppMenu(win) {
                         dialog.showMessageBox(win, {
                             type: 'info',
                             title: 'MikuCentral',
-                            message: 'MikuCentral v1.4.0',
+                            message: 'MikuCentral v2.1.0',
                             detail: 'Neural AI Interface for Multi-Model Management.\nCreated with love for high-performance AI workflows.'
                         });
                     }

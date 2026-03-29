@@ -1247,7 +1247,7 @@ export const SettingsPanel = ({
                                             <button
                                                 onClick={async () => {
                                                     if (!(window as any).electron) return;
-                                                    const confirm = window.confirm("⚠️ ¡ATENCIÓN!\n\nImportar un respaldo sobreescribirá todos tus archivos actuales en el Workspace. Esta acción no se puede deshacer.\n\n¿Deseas continuar?");
+                                                    const confirm = window.confirm("⚠️ ¡ATENCIÓN! IMPORTANTE\n\nImportar un respaldo SOBREESCRIBIRÁ TODOS tus archivos actuales en el Workspace, incluyendo:\n\n• Configuraciones\n• Sesiones\n• Tareas programadas\n• Comandos y habilidades\n\nEsta acción NO SE PUEDE DESHACER.\n\n⚠️ ALERTA: El comando de PowerShell usa '-Force' que sobreescribirá archivos existentes sin preguntar nuevamente.\n\n¿Estás SEGURO de que deseas continuar?");
 
                                                     if (!confirm) return;
 

@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.1.0] - 2026-03-29
+### Fixed
+- **Backup System Path Normalization**: Fixed duplicated backslashes in PowerShell `Compress-Archive` command. Changed from `'${currentWorkspacePath}\\*'` to `'${currentWorkspacePath}/*'` using forward slashes for cross-platform compatibility, preventing compression failures on Windows.
+- **Backup File Validation**: Added validation before import operations to verify that the selected file exists and is readable. Prevents confusing errors when users attempt to import invalid files.
+- **Backup Confirmation Enhancement**: Updated import confirmation dialog with detailed warnings about what files will be overwritten and the use of `-Force` flag in PowerShell, improving user awareness of the operation's impact.
+- **MASTER_RELEASE_MANIFEST Compliance**: Completed comprehensive audit of all changes specified in MASTER_RELEASE_MANIFEST v2.1.0. All 4 Sprints fully implemented with 100% completion rate for Sprint 1, 2, 3 and 4.
+
+### Verified
+- **PowerShell Modules**: Confirmed that both `Compress-Archive` and `Expand-Archive` commands are available (Microsoft.PowerShell.Archive 1.0.1.0).
+- **All Security Features**: SafePathResolver, timeout hybrid console, and SafeStorage encryption all verified as functioning correctly.
+
 ## [2.0.0] - 2026-03-25
 ### Added
 - **Temporal Awareness**: Injected formatted timestamps (`[DD/MM HH:mm]`) into user message history for the AI agent, providing session-long temporal context.

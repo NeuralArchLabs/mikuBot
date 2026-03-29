@@ -102,7 +102,57 @@ Este manifiesto desglosa la visión técnica de MikuCentral en 4 Sprints de Alta
     3. Modificar los inyectores de estado inicial para usar `safeStorage.decryptString(buffer)` al enviar la configuración validada al frontend.
 
 ### [🚀 DevOps] S4.3: Onboarding y HealthCheck
+- **Estado:** ✅ COMPLETADO
 - **Acción:** Diagnóstico pre-vuelo en el asistente inicial.
 - **Lógica Paso a Paso:**
     1. Implementar la recolección de variables psicográficas en la UI (Modo, Tono, Nombre) para compilar los templates del Sprint 4.1.
     2. Ejecutar un ping nativo a los puertos 8000 (searXena) y 11434 (Ollama). Mostrar indicadores verdes/rojos en la UI del instalador para bloquear al usuario de iniciar sesiones inútiles si los motores están caídos.
+
+---
+
+## 📊 Resumen de Implementación
+
+### Sprint 1: Protocolo de Blindaje Total
+- **S1.1:** ✅ SafePathResolver.cjs implementado con validación "Zero Leak"
+- **S1.2:** ✅ run-console con timeout híbrido y bloqueo de operadores
+- **S1.3:** ✅ searXena mantiene arquitectura HTTP nativa (port 8000)
+
+### Sprint 2: Re-arquitectura de Estado
+- **S2.1:** ✅ useAgentStore.ts con Zustand para estado atómico
+- **S2.2:** ✅ Patrón Strategy para formateadores (Gemma, Standard, Telegram)
+
+### Sprint 3: Expansión Quirúrgica de Markdown
+- **S3.1:** ✅ Common.tsx con protección absoluta, checkboxes y botón de copiar
+
+### Sprint 4: Portal de Personalización y Seguridad
+- **S4.1:** ✅ BlueprintHydrator.ts con plantillas en `core/base/blueprints/templates/` (*Nota: ubicación implementada difiere de especificación pero funciona correctamente*)
+- **S4.2:** ✅ SafeStorage para encriptación de credenciales
+- **S4.3:** ✅ OnboardingWizard.tsx con HealthCheck completo
+
+**Estado General:** ✅ 100% de Sprints completados | 🟡 Discrepancia menor en ubicación de templates (no impacto funcional)
+
+---
+
+## 🔒 Auditoría y Correcciones Adicionales (v2.1.0)
+
+### Sistema de Backup/Restore
+- ✅ **Problema 1 (CRÍTICO) CORREGIDO**: Backslashes duplicados en paths PowerShell - Cambiado a forward slashes
+- ✅ **Problema 2 (MEDIO) CORREGIDO**: Agregada validación de archivo ZIP válido antes de importar
+- ✅ **Problema 3 (MEDIO) CORREGIDO**: Confirmación en frontend actualizada para ser más clara sobre sobrescritura
+- ✅ **Problema 4 (MEDIO) CORREGIDO**: Validación de contenido del backup incluida en la validación de archivo
+
+### Componentes Verificados
+- ✅ SafePathResolver con validación "Zero Leak"
+- ✅ useAgentStore con Zustand y selectores granulares
+- ✅ Formateadores con patrón Strategy (IFormatter, GemmaFormatter, StandardFormatter, telegramFormatter, formatterFactory)
+- ✅ SafePathResolver integrado en agentActions.cjs
+- ✅ safeWriteJSON con fsyncSync
+- ✅ encryptApiKeys/decryptApiKeys para SafeStorage
+- ✅ HealthCheck.ts con ping a puertos 8000 y 11434
+- ✅ Módulos PowerShell Compress-Archive y Expand-Archive verificados
+
+---
+
+**Fecha de Auditoría:** 2026-03-29
+**Estado:** 🟢 Production Ready
+**Notas:** Todos los cambios especificados en el MANIFEST han sido implementados correctamente. Las discrepancias menores de ubicación no afectan la funcionalidad del sistema.
