@@ -528,14 +528,17 @@ export function recoverToolCallsFromText(
             const parsed = JSON.parse(stabilized);
             const result = normalizeRawToolCall(parsed, tools);
             if (result.toolCall && !result.blocked) {
+                // EXPAND RANGE: Capture Markdown fences, Tool Calls: [ wrappers, etc.
+                const expanded = expandToWrappedNoise(rawText, obj.start, obj.end);
+                
                 // UNROLL BATCH: If batch_operation has multiple operations, split them
-                const unrolled = unrollBatchCalls({ toolCall: result.toolCall, start: obj.start, end: obj.end }, tools);
+                const unrolled = unrollBatchCalls({ toolCall: result.toolCall, start: expanded.start, end: expanded.end }, tools);
                 for (const rc of unrolled) {
                     foundCalls.push(rc);
                 }
                 
                 allWarnings.push(...result.warnings);
-                maskRange(obj.start, obj.end);
+                maskRange(expanded.start, expanded.end);
             }
         } catch {
             try {
@@ -543,11 +546,12 @@ export function recoverToolCallsFromText(
                 const parsed = JSON.parse(repaired);
                 const result = normalizeRawToolCall(parsed, tools);
                 if (result.toolCall) {
-                    const unrolled = unrollBatchCalls({ toolCall: result.toolCall, start: obj.start, end: obj.end }, tools);
+                    const expanded = expandToWrappedNoise(rawText, obj.start, obj.end);
+                    const unrolled = unrollBatchCalls({ toolCall: result.toolCall, start: expanded.start, end: expanded.end }, tools);
                     for (const rc of unrolled) {
                         foundCalls.push(rc);
                     }
-                    maskRange(obj.start, obj.end);
+                    maskRange(expanded.start, expanded.end);
                     allWarnings.push('JSON repaired');
                 }
             } catch { /* skip */ }
@@ -960,4 +964,48 @@ function repairJson(broken: string): string {
     while (braces > 0) { s += '}'; braces--; }
     s = s.replace(/,\s*([}\]])/g, '$1');
     return s;
+}
+
+/**
+ * Expands a found tool call range back and forward to swallow common noisy wrappers
+ * like Markdown fences (```json) or technical headers (Tool Calls: [).
+ */
+function expandToWrappedNoise(text: string, start: number, end: number): { start: number; end: number } {
+    let newStart = start;
+    let newEnd = end;
+
+    // 1. SCAN BACKWARDS for noise
+    const preWindow = text.substring(Math.max(0, start - 150), start);
+    // Patterns to swallow from behind (Markdown fences, tool call headers, unclosed brackets)
+    const backPatterns = [
+        /(?:```[a-z]*\s*|Tool Calls:\s*\[\s*|tool_calls\s*:\s*\[\s*|\[\s*|{"(tool_calls|tools)"\s*:\s*\[\s*)\s*$/i,
+        /(?:^|\n)\s*(?:Tool Calls|Llamado a herramientas)\s*[:\s]*$/i,
+        /["'](text|content|tool_code)["']\s*[:\s]*["']\s*$/i // Noise from previous field hallucinations
+    ];
+
+    for (const p of backPatterns) {
+        const m = preWindow.match(p);
+        if (m) {
+            newStart = start - m[0].length;
+            break; // Grab the most immediate wrapper
+        }
+    }
+
+    // 2. SCAN FORWARDS for noise
+    const postWindow = text.substring(end, Math.min(text.length, end + 100));
+    const forwardPatterns = [
+        /^\s*(?:\s*\]\s*|(?:\n|^)\s*```\s*)/gi,
+        /^\s*[}\]]\s*[}\]]/g, // Ghost closing tags
+        /^\s*[}\]]\s*[;.,]/g // Stray punctuation
+    ];
+
+    for (const p of forwardPatterns) {
+        const m = p.exec(postWindow);
+        if (m) {
+            newEnd = end + m[0].length;
+            break;
+        }
+    }
+
+    return { start: Math.max(0, newStart), end: Math.min(newEnd, text.length) };
 }

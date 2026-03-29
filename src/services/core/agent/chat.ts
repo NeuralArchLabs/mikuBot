@@ -33,7 +33,12 @@ export function cleanTechnicalNoise(text: string, signatureRegex?: RegExp): stri
         /Tool Calls:\s*\[[\s\S]*?\]/gi, 
         /(?:^|\n)Tool Calls[:\s]*/gi,
         /\[\s*\{\s*"id":[\s\S]*?\}\s*\]/gi,
-        /^(?:\[assistant\]|\[tool\]|\[user\]|\[system\])[:\s]*/gim
+        /^(?:\[assistant\]|\[tool\]|\[user\]|\[system\])[:\s]*/gim,
+        // Limpiar corchetes/llaves únicos que suelen quedar huérfanos tras la segmentación
+        /^\s*[\[\{\}\]]\s*$/gm,
+        // Solo eliminamos llaves si están solas (no dobles) usando un patrón más compatible
+        /^[\[\{\}\]]\s/gm,
+        /\s[\[\{\}\]]$/gm
     ];
     noisePatterns.forEach(p => s = s.replace(p, ''));
 
@@ -43,7 +48,7 @@ export function cleanTechnicalNoise(text: string, signatureRegex?: RegExp): stri
 /**
  * Segments a text into thought and narrative blocks, preserving <think> content.
  */
-export function segmentThoughtsAndNarrative(text: string, signatureRegex: RegExp): MessageBlock[] {
+export function segmentThoughtsAndNarrative(text: string, signatureRegex: RegExp, skipCleaning: boolean = false): MessageBlock[] {
     if (!text) return [];
     
     // Check for <think> tags
@@ -56,7 +61,7 @@ export function segmentThoughtsAndNarrative(text: string, signatureRegex: RegExp
         // Text before the <think> tag
         const preamble = text.substring(lastIdx, match.index);
         if (preamble.trim()) {
-            const cleaned = cleanTechnicalNoise(preamble, signatureRegex);
+            const cleaned = skipCleaning ? preamble.trim() : cleanTechnicalNoise(preamble, signatureRegex);
             if (cleaned) blocks.push({ type: 'answer', content: cleaned, isFromNarrative: true });
         }
         
@@ -70,7 +75,7 @@ export function segmentThoughtsAndNarrative(text: string, signatureRegex: RegExp
     // Remaining text after last <think> tag
     const remaining = text.substring(lastIdx);
     if (remaining.trim()) {
-        const cleaned = cleanTechnicalNoise(remaining, signatureRegex);
+        const cleaned = skipCleaning ? remaining.trim() : cleanTechnicalNoise(remaining, signatureRegex);
         if (cleaned) blocks.push({ type: 'answer', content: cleaned, isFromNarrative: true });
     }
 
@@ -240,9 +245,15 @@ export async function applyBatchTaskTicking(
 }
 
 export function getActionFingerprint(toolName: string, args: Record<string, any>): string {
-    const sortedArgs = Object.keys(args).sort().reduce((acc, key) => {
-        acc[key] = args[key];
-        return acc;
-    }, {} as Record<string, any>);
-    return `${toolName}|${JSON.stringify(sortedArgs)}`;
+    if (!toolName) return 'unknown_action';
+    try {
+        const safeArgs = args || {};
+        const sortedArgs = Object.keys(safeArgs).sort().reduce((acc, key) => {
+            acc[key] = safeArgs[key];
+            return acc;
+        }, {} as Record<string, any>);
+        return `${toolName}|${JSON.stringify(sortedArgs)}`;
+    } catch (err) {
+        return `${toolName}|error_fingerprint`;
+    }
 }

@@ -222,6 +222,8 @@ export async function sendAgentMessage(
 
 
     let memorySaved = false;
+    let hasFatalError = false;
+    let allNarrative = '';
 
     // --- Main Loop ---
     try {
@@ -320,6 +322,7 @@ export async function sendAgentMessage(
                             norm.toolCall.id = tc.id || norm.toolCall.id;
                             const fp = getActionFingerprint(norm.toolCall.function.name, norm.toolCall.function.arguments);
                             if (!finalToolCalls.some(x => getActionFingerprint(x.function.name, x.function.arguments) === fp)) {
+                                (norm.toolCall as any).thought_signature = tc.thought_signature || tc.thoughtSignature;
                                 finalToolCalls.push(norm.toolCall);
                                 positionalCalls.push({ toolCall: norm.toolCall, start: content?.length || 0, end: content?.length || 0 });
                             }
@@ -378,13 +381,22 @@ export async function sendAgentMessage(
                 else if (block.content?.trim()) mergedBlocks.push(block);
             });
 
+            // 10. RECONSTRUCT CLEAN NARRATIVE
+            const cleanTurnNarrative = mergedBlocks
+                .filter(b => b.type === 'answer')
+                .map(b => b.content)
+                .join('\n\n');
+            allNarrative += (allNarrative ? '\n\n' : '') + cleanTurnNarrative;
+
             agentMessages.push({
                 role: 'assistant',
-                content: (nativeReasoning ? `<think>\n${nativeReasoning}\n</think>\n` : '') + (turnHasFinal ? ' ' : (content || ' ')),
+                content: turnHasFinal ? ' ' : (cleanTurnNarrative || ' '),
+                reasoning: nativeReasoning || undefined,
                 tool_calls: uniqueToolCalls.length > 0 ? JSON.parse(JSON.stringify(uniqueToolCalls)) : undefined,
             });
 
-            onChunk(content || '', true, [...allBlocks, ...mergedBlocks]);
+            // Update UI with FULL cumulative narrative
+            onChunk(allNarrative || ' ', true, [...allBlocks, ...mergedBlocks]);
 
             const finalAnswerCall = uniqueToolCalls.find(tc => tc.function.name === 'final_answer');
             if (finalAnswerCall && isAgentMode) {
@@ -445,7 +457,14 @@ export async function sendAgentMessage(
             for (const tc of uniqueToolCalls.filter(x => x.function.name !== 'final_answer')) {
                 const approval = approvalMode === 'manual' || !isAuto(tc);
                 if (approval && !await onToolApproval(tc)) {
-                    agentMessages.push({ role: 'tool', tool_name: tc.function.name, content: 'Rejected', tool_call_id: tc.id, tool_args: tc.function.arguments });
+                    agentMessages.push({ 
+                        role: 'tool', 
+                        tool_name: tc.function.name, 
+                        content: 'Rejected', 
+                        tool_call_id: tc.id, 
+                        tool_args: tc.function.arguments,
+                        thought_signature: (tc as any).thought_signature
+                    });
                     turnHasFailure = true;
                     continue;
                 }
@@ -454,13 +473,27 @@ export async function sendAgentMessage(
                 if (b) { b.result = res; b.status = res.success ? 'success' : 'error'; }
                 if (!res.success) {
                     retries++;
-                    agentMessages.push({ role: 'tool', tool_name: tc.function.name, content: res.error, tool_call_id: tc.id, tool_args: tc.function.arguments });
+                    agentMessages.push({ 
+                        role: 'tool', 
+                        tool_name: tc.function.name, 
+                        content: res.error, 
+                        tool_call_id: tc.id, 
+                        tool_args: tc.function.arguments,
+                        thought_signature: (tc as any).thought_signature
+                    });
                     turnHasFailure = true;
                 } else {
                     retries = 0;
                     successfulCalls.push(tc);
                     actionHistory.push(`${tc.function.name}(${JSON.stringify(tc.function.arguments)})`);
-                    agentMessages.push({ role: 'tool', tool_name: tc.function.name, content: JSON.stringify(res), tool_call_id: tc.id, tool_args: tc.function.arguments });
+                    agentMessages.push({ 
+                        role: 'tool', 
+                        tool_name: tc.function.name, 
+                        content: JSON.stringify(res), 
+                        tool_call_id: tc.id, 
+                        tool_args: tc.function.arguments,
+                        thought_signature: (tc as any).thought_signature
+                    });
                     
                     // Update Local State (Only for persistent file operations)
                     if (tc.function.name === 'update_file' || tc.function.name === 'delete_file') {
@@ -503,10 +536,13 @@ export async function sendAgentMessage(
             }
         }
     } catch (err) {
-        log('error', `Agent Loop Error: ${err instanceof Error ? err.message : String(err)}`);
+        hasFatalError = true;
+        const errorMsg = `[CRITICAL_FAIL] ${err instanceof Error ? err.message : String(err)}`;
+        log('error', errorMsg);
+        onChunk(`\n\n❌ ERROR EN EL NÚCLEO:\n${errorMsg}`, false, [...allBlocks, { type: 'answer', content: `\n\n⚠️ ${errorMsg}` }]);
         throw err;
     } finally {
-        onStatus({ phase: 'idle' });
+        if (!hasFatalError) onStatus({ phase: 'idle' });
         if (onFinalRawHistory) onFinalRawHistory([...agentMessages]);
     }
 }

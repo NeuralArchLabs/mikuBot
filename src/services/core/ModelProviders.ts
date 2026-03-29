@@ -403,20 +403,24 @@ export class GeminiProvider extends ModelProvider {
             const parts: any[] = [];
 
             if (m.role === 'tool' && this.supportsNativeTools()) {
+                const sig = (m as any).thought_signature || (m as any).thoughtSignature;
                 parts.push({
                     functionResponse: {
                         name: (m as any).tool_name || 'unknown_tool',
                         response: { content: m.content || '{}' }
-                    }
+                    },
+                    ...(sig ? { thought_signature: sig } : {})
                 });
             } else if (m.role === 'assistant' && m.tool_calls && Array.isArray(m.tool_calls) && m.tool_calls.length > 0 && this.supportsNativeTools()) {
                 if (m.content) parts.push({ text: m.content });
                 m.tool_calls.forEach((tc: any) => {
+                    const sig = tc.thought_signature || tc.thoughtSignature;
                     parts.push({
                         functionCall: {
                             name: tc.function.name,
                             args: typeof tc.function.arguments === 'string' ? JSON.parse(tc.function.arguments) : tc.function.arguments
-                        }
+                        },
+                        ...(sig ? { thought_signature: sig } : {})
                     });
                 });
             } else {
@@ -440,6 +444,7 @@ export class GeminiProvider extends ModelProvider {
                 }
 
                 if (text) parts.push({ text });
+                if (m.reasoning) parts.push({ thought: m.reasoning });
 
                 const imageAttachments = m.attachments?.filter((a: any) => a.type.startsWith('image/')) || [];
                 imageAttachments.forEach((img: any) => {
@@ -488,13 +493,15 @@ export class GeminiProvider extends ModelProvider {
                     const alreadyHas = this.toolCallsDeltas.some(tc => tc.function.name === callName);
                     
                     if (!alreadyHas) {
+                        const sig = part.thought_signature || part.thoughtSignature;
                         this.toolCallsDeltas.push({
                             id: 'tc-' + Math.random().toString(36).slice(2, 9),
                             type: 'function',
                             function: {
                                 name: callName,
                                 arguments: part.functionCall.args
-                            }
+                            },
+                            thought_signature: sig
                         });
                     }
                 }
