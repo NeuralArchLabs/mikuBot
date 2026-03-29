@@ -72,6 +72,7 @@ export const SettingsPanel = ({
     const [startingSearxena, setStartingSearxena] = useState(false);
     const [updatingSearxena, setUpdatingSearxena] = useState(false);
     const [showSkillsBlueprints, setShowSkillsBlueprints] = useState(false);
+    const [isWaving, setIsWaving] = useState(false);
 
     const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
         // Toggle the floating button when having scrolled past the top header
@@ -765,7 +766,7 @@ export const SettingsPanel = ({
 
                                         <div className="flex-1 flex flex-col justify-center">
                                             <div className="relative flex items-center group">
-                                                <div className="absolute left-6 text-blue-400/60 flex items-center justify-center">
+                                                <div className="absolute left-6 text-slate-500 group-hover:text-blue-300 flex items-center justify-center z-10 transition-colors">
                                                     <Icon name={editingProvider === 'ollama' ? 'link' : 'key'} />
                                                 </div>
                                                 <input
@@ -837,8 +838,8 @@ export const SettingsPanel = ({
                                         <div className="md:w-2/3 grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div>
                                                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block ml-1">Bot Token</label>
-                                                <div className="relative">
-                                                    <div className="absolute left-5 top-1/2 -translate-y-1/2 text-blue-400/60">
+                                                <div className="relative group">
+                                                    <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 group-hover:text-blue-300 z-10 transition-colors">
                                                         <Icon name="key" />
                                                     </div>
                                                     <input
@@ -852,8 +853,8 @@ export const SettingsPanel = ({
                                             </div>
                                             <div>
                                                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block ml-1">Allowed Chat ID (Admin)</label>
-                                                <div className="relative">
-                                                    <div className="absolute left-5 top-1/2 -translate-y-1/2 text-blue-400/60">
+                                                <div className="relative group">
+                                                    <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 group-hover:text-blue-300 z-10 transition-colors">
                                                         <Icon name="user-shield" />
                                                     </div>
                                                     <input
@@ -978,15 +979,17 @@ export const SettingsPanel = ({
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 relative z-10">
                                         <div className="space-y-6 relative h-full flex flex-col">
                                             <div className="space-y-5">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center premium-transition text-indigo-400">
-                                                        <Icon name="search" className="text-xl" />
-                                                    </div>
-                                                    <h3 className="text-xl font-black text-white tracking-tight uppercase">searXena Engine</h3>
+                                                <div className="flex items-center oy-2">
+                                                    <h3 
+                                                        className="text-5xl font-bold tracking-tighter transition-all duration-700 opacity-70 group-hover:opacity-100"
+                                                        style={{ fontFamily: "'Outfit', sans-serif", letterSpacing: '-0.05em' }}
+                                                    >
+                                                        <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-fuchsia-500 group-hover:from-indigo-400 group-hover:via-purple-400 group-hover:to-fuchsia-400 bg-clip-text text-transparent transition-all duration-700">searXena</span>
+                                                    </h3>
                                                 </div>
                                                 
-                                                <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
-                                                    Soberanía total sobre tus búsquedas. El motor nativo <span className="text-indigo-400 font-bold">searXena</span> se ejecuta localmente sin rastreadores ni publicidad.
+                                                <p className="text-[11px] text-slate-400 leading-relaxed max-w-sm">
+                                                    Búsquedas y extracciones ilimitadas con <span className="text-indigo-300 font-bold text-[12px]">costo cero por API</span>. Un proyecto oficial de <span className="text-purple-400/80 font-bold">NeuralArchLabs</span> diseñado para agentes que requieren acceso soberano a la web sin cuotas ni rastreo.
                                                 </p>
                                                 
                                                 <div className="flex flex-wrap items-center gap-3 pt-2">
@@ -1004,9 +1007,37 @@ export const SettingsPanel = ({
 
                                             {/* Vertical Spacer - Captures the 'empty space' to center the mascot */}
                                             <div className="flex-1 relative min-h-[60px]">
+                                                {/* Paw Walking Path Animation - Right Sequence Only */}
+                                                <div className="absolute inset-0 pointer-events-none overflow-hidden group-hover:block hidden">
+                                                    {/* Sequence: Right Descending (Subtle & Clean) */}
+                                                    <div className="absolute top-[10%] right-[34%] rotate-[20deg] animate-paw-path" style={{ animationDelay: '0s' }}>
+                                                        <Icon name="paw" className="text-[11px] text-indigo-400/20" />
+                                                    </div>
+                                                    <div className="absolute top-[20%] right-[28%] rotate-[-10deg] animate-paw-path" style={{ animationDelay: '0.4s' }}>
+                                                        <Icon name="paw" className="text-[11px] text-indigo-400/20" />
+                                                    </div>
+                                                    <div className="absolute top-[32%] right-[24%] rotate-[30deg] animate-paw-path" style={{ animationDelay: '0.8s' }}>
+                                                        <Icon name="paw" className="text-[11px] text-purple-400/20" />
+                                                    </div>
+                                                    <div className="absolute top-[42%] right-[18%] rotate-[-5deg] animate-paw-path" style={{ animationDelay: '1.2s' }}>
+                                                        <Icon name="paw" className="text-[11px] text-purple-400/20" />
+                                                    </div>
+                                                    <div className="absolute top-[54%] right-[14%] rotate-[35deg] animate-paw-path" style={{ animationDelay: '1.6s' }}>
+                                                        <Icon name="paw" className="text-[11px] text-fuchsia-400/15" />
+                                                    </div>
+                                                </div>
+
                                                 {/* Mascot Layer - Centered in the spacer without pushing layout */}
-                                                <div className="absolute inset-0 flex items-center justify-center lg:justify-start pointer-events-none select-none z-0">
-                                                    <div className="w-28 h-28 md:w-32 md:h-32 opacity-15 group-hover:opacity-100 group-hover:scale-110 transition-all duration-1000">
+                                                <div 
+                                                    className="absolute inset-0 flex items-center justify-center lg:justify-start cursor-pointer select-none z-10"
+                                                    onClick={() => {
+                                                        if (!isWaving) {
+                                                            setIsWaving(true);
+                                                            setTimeout(() => setIsWaving(false), 1200);
+                                                        }
+                                                    }}
+                                                >
+                                                    <div className="w-28 h-28 md:w-32 md:h-32 opacity-15 group-hover:opacity-100 group-hover:scale-110 transition-all duration-1000 relative">
                                                         <svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" className="w-full h-full filter drop-shadow-[0_0_20px_rgba(129,140,248,0.2)]">
                                                             <g transform="translate(80, 80)">
                                                                 <text x="0" y="-2" textAnchor="middle" dominantBaseline="central" fontSize="52" fontWeight="700" fill="url(#ozenGrad)"
@@ -1015,12 +1046,17 @@ export const SettingsPanel = ({
                                                                     <tspan style={{ opacity: 0 }}>ᴥ</tspan>
                                                                     <tspan className="xena-eye" dy="0">•</tspan>V
                                                                 </text>
-                                                                <text className="xena-nose" x="0" y="6" textAnchor="middle" dominantBaseline="central" fontSize="52" fontWeight="700" fill="url(#ozenGrad)"
+                                                                <text className={`xena-nose ${isWaving ? 'sniff-fast' : ''}`} x="0" y="6" textAnchor="middle" dominantBaseline="central" fontSize="52" fontWeight="700" fill="url(#ozenGrad)"
                                                                     style={{ fontFamily: "'-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Inter', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif" }}>
                                                                     ᴥ
                                                                 </text>
                                                             </g>
                                                         </svg>
+
+                                                        {/* Interactive Wave Paw - Positioned right next to the ear/face */}
+                                                        <div className={`absolute top-1/2 -right-12 transition-all duration-700 transform ease-out pointer-events-none ${isWaving ? 'scale-110 opacity-100 -rotate-12 -translate-y-[80%]' : 'scale-0 opacity-0 rotate-45 translate-y-0'}`}>
+                                                            <Icon name="paw" className="text-3xl text-indigo-400 drop-shadow-[0_0_20px_rgba(129,140,248,0.7)]" />
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1060,7 +1096,7 @@ export const SettingsPanel = ({
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
                                                         <div className={`w-2 h-2 rounded-full ${searxenaStatus.installed ? 'bg-[#818cf8] shadow-[0_0_8px_rgba(129,140,248,0.4)]' : 'bg-slate-700'}`} />
-                                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Nervio Central</span>
+                                                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Núcleo Local</span>
                                                     </div>
                                                     <span className="text-[9px] font-mono text-indigo-400/80 uppercase">{searxenaStatus.installed ? 'ONLINE' : 'MISSING'}</span>
                                                 </div>
@@ -1068,7 +1104,7 @@ export const SettingsPanel = ({
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
                                                         <div className={`w-2 h-2 rounded-full ${searxenaStatus.envReady ? 'bg-[#c084fc] shadow-[0_0_8px_rgba(192,132,252,0.4)]' : 'bg-amber-500/40 shadow-[0_0_8px_rgba(245,158,11,0.2)]'}`} />
-                                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Entorno Neural</span>
+                                                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Entorno Base</span>
                                                     </div>
                                                     <span className="text-[9px] font-mono text-purple-400/80 uppercase">{searxenaStatus.envReady ? 'READY' : 'SETUP REQUIRED'}</span>
                                                 </div>
@@ -1076,7 +1112,7 @@ export const SettingsPanel = ({
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
                                                         <div className={`w-2 h-2 rounded-full ${searxenaStatus.running ? 'bg-[#e879f9] shadow-[0_0_8px_rgba(232,121,249,0.5)] animate-pulse' : 'bg-slate-700'}`} />
-                                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Inercia</span>
+                                                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Instancia Activa</span>
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         {searxenaStatus.running && (
@@ -1094,7 +1130,7 @@ export const SettingsPanel = ({
                                             </div>
                                             
                                             <p className="text-[8px] text-slate-600 px-4 leading-tight font-black uppercase tracking-[0.1em] text-center opacity-70">
-                                                {searxenaStatus.installed ? '» PROCESAMIENTO SOBERANO HABILITADO' : '» MOTOR FUERA DE LÍNEA'}
+                                                {searxenaStatus.installed ? '» PROCESAMIENTO LOCAL HABILITADO' : '» MOTOR FUERA DE LÍNEA'}
                                             </p>
 
                                             {searxenaStatus.installed && (

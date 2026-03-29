@@ -1,5 +1,31 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: 'Outfit';
+  src: url('/fonts/Outfit-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Outfit';
+  src: url('/fonts/Outfit-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@keyframes paw-path {
+  0%, 15% { opacity: 0; transform: scale(0.5) translateY(5px); }
+  25% { opacity: 0.8; transform: scale(1.1) translateY(0); }
+  35%, 70% { opacity: 0.4; transform: scale(1) translateY(0); }
+  85%, 100% { opacity: 0; transform: scale(0.8) translateY(-5px); }
+}
+
+.animate-paw-path {
+  opacity: 0;
+  animation: paw-path 5s infinite ease-in-out;
+}
+
 /* Custom Scrollbar Modern & Minimalist - Improved Usability */
 .custom-scrollbar {
   scrollbar-width: thin;
@@ -1860,6 +1886,11 @@ select.premium-input option {
 .group:hover .xena-nose {
   animation: xena-sniff 0.25s infinite alternate ease-in-out;
   animation-play-state: running;
+}
+
+.xena-nose.sniff-fast {
+  animation: xena-sniff 0.08s infinite alternate ease-in-out !important;
+  animation-play-state: running !important;
 }
 
 .xena-eye {
