@@ -2,13 +2,14 @@ import sys
 import json
 import io
 import re
-import trafilatura
 import httpx
 from concurrent.futures import ThreadPoolExecutor
 
 # Force UTF-8 encoding
 if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
+SEARXENA_BASE = "http://127.0.0.1:8000/api/v1"
 
 def calculate_relevance(query, text):
     if not text: return 0
@@ -19,12 +20,15 @@ def calculate_relevance(query, text):
     if len(text) > 1000 and score / len(text) > 0.05: score *= 0.5 
     return score
 
-def extract_and_audit(url, query, snippet=""):
-    """Extrae contenido y realiza una auditoría interna de calidad."""
+def extract_and_audit(client, url, query, snippet=""):
+    """Extrae contenido usando SearXena extract API y realiza una auditoría interna de calidad."""
     audit_notes = []
     try:
-        downloaded = trafilatura.fetch_url(url)
-        content = trafilatura.extract(downloaded, include_links=False, include_tables=True) if downloaded else None
+        response = client.post(f"{SEARXENA_BASE}/extract", json={"url": url}, timeout=15.0)
+        content = None
+        if response.status_code == 200:
+            data = response.json()
+            content = data.get("content") or data.get("text") or data.get("extracted_text") or ""
         
         status = "KEEP"
         if not content or len(content) < 300:
@@ -51,16 +55,19 @@ def extract_and_audit(url, query, snippet=""):
 def perform_heavy_artillery(client, query, lang="es", limit=8):
     """Ejecuta una búsqueda de alto nivel con SearXena."""
     try:
-        api_url = "http://127.0.0.1:8000/api/v1/search"
         payload = {"query": query, "limit": limit, "language": lang, "category": "it" if "tecn" in query or "ai" in query else "general"}
-        response = client.post(api_url, json=payload)
+        response = client.post(f"{SEARXENA_BASE}/search", json=payload)
         if response.status_code != 200: return []
         
         results = response.json().get("results", [])
         items = [{"url": r.get("url"), "snippet": r.get("content", "")} for r in results]
         
-        with ThreadPoolExecutor(max_workers=len(items) if items else 1) as executor:
-            audited_results = list(executor.map(lambda x: extract_and_audit(x["url"], query, x["snippet"]), items))
+        # Extract content from each URL using SearXena extract API
+        with ThreadPoolExecutor(max_workers=min(len(items), 4) if items else 1) as executor:
+            audited_results = list(executor.map(
+                lambda x: extract_and_audit(httpx.Client(timeout=15.0), x["url"], query, x["snippet"]),
+                items
+            ))
         
         return audited_results
     except: return []
@@ -69,6 +76,7 @@ def deep_research_artillery(topic, lang="both"):
     """
     DEEP RESEARCH (Heavy Artillery):
     Proceso de Auditoría -> Descarte -> Construcción -> Reporte final.
+    Uses SearXena API for both search and content extraction.
     """
     audit_report = {"discarded": [], "validated": [], "warnings": []}
     combined_data = []
@@ -98,7 +106,7 @@ def deep_research_artillery(topic, lang="both"):
     # Generar Reporte de Síntesis (Justificación)
     summary_report = {
         "title": f"Dossier de Investigación: {topic}",
-        "methodology": "Artillería Pesada (SearXena Multi-Lang + Trafilatura Audit Layer)",
+        "methodology": "Artillería Pesada (SearXena Multi-Lang + Native Extract Audit Layer)",
         "total_sources_scanned": len(combined_data),
         "validated_sources": len(audit_report["validated"]),
         "discarded_sources": len(audit_report["discarded"]),

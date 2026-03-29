@@ -2,13 +2,14 @@ import sys
 import json
 import io
 import re
-import trafilatura
 import httpx
 from concurrent.futures import ThreadPoolExecutor
 
 # Force UTF-8 encoding
 if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
+SEARXENA_BASE = "http://127.0.0.1:8000/api/v1"
 
 def calculate_relevance(query, text):
     if not text: return 0
@@ -20,12 +21,15 @@ def calculate_relevance(query, text):
             score += text_low.count(term)
     return score
 
-def extract_one(url, query, snippet=""):
+def extract_one(client, url, query, snippet=""):
+    """Extract full content from a URL using SearXena's /api/v1/extract endpoint."""
     try:
-        downloaded = trafilatura.fetch_url(url)
+        response = client.post(f"{SEARXENA_BASE}/extract", json={"url": url}, timeout=15.0)
         content = None
-        if downloaded:
-            content = trafilatura.extract(downloaded, include_links=False, include_comments=False, include_tables=True)
+        if response.status_code == 200:
+            data = response.json()
+            # SearXena extract returns the content in various possible fields
+            content = data.get("content") or data.get("text") or data.get("extracted_text") or ""
         
         final_content = content if content and len(content) > 200 else snippet
         score = calculate_relevance(query, final_content)
@@ -42,14 +46,14 @@ def extract_one(url, query, snippet=""):
 def web_research(query, max_sites=3):
     """
     WEB RESEARCH (Mid-Point): 
-    Diferente de web_search por leer el contenido real de los sitios. 
+    Diferente de web_search por leer el contenido real de los sitios via SearXena extract API.
     A diferencia de deep_research, es lineal y no genera reportes ni auditorías.
     """
     try:
-        api_url = "http://127.0.0.1:8000/api/v1/search"
-        with httpx.Client(timeout=15.0) as client:
+        with httpx.Client(timeout=20.0) as client:
+            # Step 1: Search
             payload = {"query": query, "limit": 6, "category": "general"}
-            response = client.post(api_url, json=payload)
+            response = client.post(f"{SEARXENA_BASE}/search", json=payload)
             if response.status_code != 200:
                 return {"success": False, "error": "Motor SearXena fuera de línea."}
             
@@ -59,8 +63,12 @@ def web_research(query, max_sites=3):
 
             items_to_process = [{"url": r.get("url"), "snippet": r.get("content", "")} for r in search_results[:max_sites]]
             
+            # Step 2: Extract content from each URL using SearXena extract API
             with ThreadPoolExecutor(max_workers=len(items_to_process)) as executor:
-                results = list(executor.map(lambda x: extract_one(x["url"], query, x["snippet"]), items_to_process))
+                results = list(executor.map(
+                    lambda x: extract_one(httpx.Client(timeout=15.0), x["url"], query, x["snippet"]),
+                    items_to_process
+                ))
                 extracted_data = [r for r in results if r is not None]
 
             extracted_data.sort(key=lambda x: x["relevance"], reverse=True)

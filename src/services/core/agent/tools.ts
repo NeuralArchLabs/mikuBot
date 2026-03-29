@@ -347,7 +347,7 @@ export async function executeToolCall(
             }
 
             case 'read_url': {
-                // Prioritize Native Internal Extraction (Python trafilatura bridge)
+                // Prioritize Native Internal Extraction (SearXena extract API)
                 if (typeof window !== 'undefined' && (window as any).electron?.runExtract) {
                     try {
                         const response = await (window as any).electron.runExtract({ url: args.url });
