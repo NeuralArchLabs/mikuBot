@@ -6,6 +6,9 @@ export const Icon = ({ name, className = "" }: { name: string; className?: strin
     <i className={`fas fa-${name} ${className}`} aria-hidden="true" />
 );
 
+// ⚡ ABSOLUTE PROTECTION: CORE MARKDOWN RENDERER ENGINE
+// This component manages the final sanitization and HTML injection.
+// DO NOT ALTER recursion logic or sanitizer settings.
 const MarkdownRendererBase = ({ content }: { content: string }) => {
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -132,6 +135,8 @@ interface InteractiveMarkdownRendererProps {
     content: string;
 }
 
+// ⚡ ABSOLUTE PROTECTION: INTERACTIVE ENGINE & UI HOOKS
+// Manages the mutation of DOM elements for copy-buttons and checkboxes.
 const InteractiveMarkdownRendererBase = ({ content }: InteractiveMarkdownRendererProps) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [checkboxes, setCheckboxes] = useState<Record<string, boolean>>({});

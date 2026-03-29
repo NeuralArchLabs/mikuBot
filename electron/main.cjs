@@ -17,6 +17,11 @@ if (ffmpegPath) {
     ffmpeg.setFfmpegPath(ffmpegPath.replace('app.asar', 'app.asar.unpacked'));
 }
 
+// Requirements:
+// 1: justext
+// 2: vosk
+// 3: ...
+
 // Global state for window and system tray
 let mainWin = null;
 let tray = null;
@@ -53,6 +58,12 @@ function saveWorkspacePath(folderPath) {
     try {
         fs.writeFileSync(POINTER_FILE, JSON.stringify({ workspacePath: folderPath }), 'utf8');
         currentWorkspacePath = folderPath;
+        
+        // Ensure subsystems are updated to new path
+        ensureWorkspaceStructure(currentWorkspacePath);
+        reinitSafePathResolver(currentWorkspacePath);
+        
+        console.log('[Main Process] Workspace path updated and sandbox re-initialized:', currentWorkspacePath);
     } catch (e) {
         console.error('Error saving workspace pointer:', e);
     }
@@ -160,13 +171,20 @@ const ENGINE_PYTHON = path.join(SEARXENA_DIR, 'local', 'py3', 'Scripts', 'python
 
 console.log('Main Process: Active Workspace Path:', currentWorkspacePath);
 
-// Initialize SafePathResolver with detected roots (Siblings under mikuCentralRoot)
-SafePathResolver.init({
-    '@CORE': path.join(currentWorkspacePath, 'core'),
-    '@LIBRARY': path.join(currentWorkspacePath, 'library'),
-    '@TOOLS': path.join(currentWorkspacePath, 'commands'),
-    '@WORKSPACE': path.join(currentWorkspacePath, 'workspace')
-});
+// ── SafePathResolver Initialization ──────────────────────────────────
+function reinitSafePathResolver(workspacePath) {
+    if (!workspacePath) return;
+    
+    SafePathResolver.init({
+        '@CORE': path.join(workspacePath, 'core'),
+        '@LIBRARY': path.join(workspacePath, 'library'),
+        '@TOOLS': path.join(workspacePath, 'commands'),
+        '@WORKSPACE': path.join(workspacePath, 'workspace')
+    });
+}
+
+// Initial Call
+reinitSafePathResolver(currentWorkspacePath);
 
 // Ensure essential workspace folders exist if path is set
 function ensureWorkspaceStructure(targetPath) {
@@ -697,30 +715,28 @@ ipcMain.handle('load-scheduler-logs', async () => {
 });
 
 // ── Voice & Vosk Model Management ────────────────────────────────────
-const VOSK_MODELS_ROOT = path.join(currentWorkspacePath, 'engine', 'models', 'vosk');
-const VOSK_BUNDLED_ROOT = path.join(resourcesPath, 'engine', 'models', 'vosk');
-
-console.log('[Voice] Models Workspace Path:', VOSK_MODELS_ROOT);
-console.log('[Voice] Models Bundled Path:', VOSK_BUNDLED_ROOT);
+// Models are stored in the application's installation directory (resourcesPath)
+// to avoid duplicating heavy assets (LLM/Vosk models) across different user workspaces.
+const getVoskModelsRoot = () => path.join(resourcesPath, 'engine', 'models', 'vosk');
+// Bundled root is the same as models root in this architecture
+const getVoskBundledRoot = () => getVoskModelsRoot();
 
 ipcMain.handle('voice:list-models', async () => {
     try {
         const models = new Set();
+        const workspaceRoot = getVoskModelsRoot();
 
-        // 1. Check workspace
-        if (fs.existsSync(VOSK_MODELS_ROOT)) {
-            fs.readdirSync(VOSK_MODELS_ROOT)
-                .filter(f => fs.statSync(path.join(VOSK_MODELS_ROOT, f)).isDirectory())
+        // Check the installation folder for models
+        if (fs.existsSync(workspaceRoot)) {
+            fs.readdirSync(workspaceRoot)
+                .filter(f => {
+                    const fullPath = path.join(workspaceRoot, f);
+                    try { return fs.statSync(fullPath).isDirectory(); } catch(e) { return false; }
+                })
                 .forEach(m => models.add(m));
         } else {
-            fs.mkdirSync(VOSK_MODELS_ROOT, { recursive: true });
-        }
-
-        // 2. Check bundled resources
-        if (fs.existsSync(VOSK_BUNDLED_ROOT)) {
-            fs.readdirSync(VOSK_BUNDLED_ROOT)
-                .filter(f => fs.statSync(path.join(VOSK_BUNDLED_ROOT, f)).isDirectory())
-                .forEach(m => models.add(m));
+            // Ensure folder exists (might need admin rights if in Program Files)
+            try { fs.mkdirSync(workspaceRoot, { recursive: true }); } catch(e) { console.warn('[Voice] Could not create models dir:', e.message); }
         }
 
         return { ok: true, models: Array.from(models) };
@@ -731,20 +747,15 @@ ipcMain.handle('voice:list-models', async () => {
 });
 
 ipcMain.handle('voice:download-model', async (event, { lang }) => {
-    const sender = event.sender;
-    const modelUrls = {
-        'es': 'https://alphacephei.com/vosk/models/vosk-model-small-es-0.42.zip',
-        'en': 'https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip'
-    };
-
-    const url = modelUrls[lang];
-    if (!url) return { ok: false, error: `Language ${lang} not supported for auto-download.` };
-
     try {
-        const https = require('https');
-        const unzipper = require('unzipper'); // Needs to be installed or use a different method
+        const workspaceRoot = getVoskModelsRoot();
+        const url = modelUrls[lang];
+        if (!url) return { ok: false, error: `Language ${lang} not supported for auto-download.` };
 
-        const tempZip = path.join(VOSK_MODELS_ROOT, `model_${lang}.zip`);
+        const https = require('https');
+        const unzipper = require('unzipper');
+
+        const tempZip = path.join(workspaceRoot, `model_${lang}.zip`);
         const file = fs.createWriteStream(tempZip);
 
         return new Promise((resolve) => {
@@ -764,9 +775,9 @@ ipcMain.handle('voice:download-model', async (event, { lang }) => {
                     file.close();
                     // Extract
                     fs.createReadStream(tempZip)
-                        .pipe(unzipper.Extract({ path: VOSK_MODELS_ROOT }))
+                        .pipe(unzipper.Extract({ path: workspaceRoot }))
                         .on('close', () => {
-                            fs.unlinkSync(tempZip);
+                            if (fs.existsSync(tempZip)) fs.unlinkSync(tempZip);
                             resolve({ ok: true, lang });
                         })
                         .on('error', (err) => resolve({ ok: false, error: err.message }));
@@ -783,7 +794,7 @@ ipcMain.handle('voice:download-model', async (event, { lang }) => {
 
 ipcMain.handle('voice:delete-model', async (event, { modelName }) => {
     try {
-        const modelPath = path.join(VOSK_MODELS_ROOT, modelName);
+        const modelPath = path.join(getVoskModelsRoot(), modelName);
         if (fs.existsSync(modelPath)) {
             fs.rmSync(modelPath, { recursive: true, force: true });
         }
@@ -806,8 +817,8 @@ ipcMain.handle('voice:start-recognition', async (event, { modelName }) => {
     if (!fs.existsSync(engineScript)) return { ok: false, error: 'Voice engine script missing.' };
 
     try {
-        let fullPath = path.join(VOSK_MODELS_ROOT, modelName);
-        if (!fs.existsSync(fullPath)) fullPath = path.join(VOSK_BUNDLED_ROOT, modelName);
+        let fullPath = path.join(getVoskModelsRoot(), modelName);
+        if (!fs.existsSync(fullPath)) fullPath = path.join(getVoskBundledRoot(), modelName);
         if (!fs.existsSync(fullPath)) return { ok: false, error: `Model not found: ${modelName}` };
 
         // Clean up previous if any
@@ -889,8 +900,8 @@ ipcMain.handle('telegram:process-voice', async (event, fileId) => {
     if (!fs.existsSync(pythonExe)) return { ok: false, error: 'Engine environment not found (searXena).' };
     if (!fs.existsSync(engineScript)) return { ok: false, error: 'Voice engine script missing.' };
 
-    let modelPath = path.join(VOSK_MODELS_ROOT, voskModelName);
-    if (!fs.existsSync(modelPath)) modelPath = path.join(VOSK_BUNDLED_ROOT, voskModelName);
+    let modelPath = path.join(getVoskModelsRoot(), voskModelName);
+    if (!fs.existsSync(modelPath)) modelPath = path.join(getVoskBundledRoot(), voskModelName);
     if (!fs.existsSync(modelPath)) return { ok: false, error: `Model not found: ${voskModelName}` };
 
     const tempDir = path.join(app.getPath('temp'), 'miku_voice_temp');
@@ -945,6 +956,9 @@ ipcMain.handle('telegram:process-voice', async (event, fileId) => {
                         } else {
                             lastPartial = msg.text; // Guardar último parcial por si acaso
                         }
+                    } else if (msg.error) {
+                        console.error('[Telegram Voice] Error from Python engine:', msg.error);
+                        pyProc.kill();
                     }
                 } catch (e) {
                     console.warn('[Telegram Voice] JSON Parse error on line:', line);
@@ -1001,10 +1015,14 @@ ipcMain.handle('fs-select-folder', async () => {
 
 ipcMain.handle('fs-open-folder', async (event, folderPath) => {
     try {
-        if (!folderPath || !fs.existsSync(folderPath)) {
+        if (!folderPath) return { ok: false, error: 'Path is required' };
+        
+        // Resolve path through sandbox rules
+        const resolvedPath = SafePathResolver.resolvePath(folderPath);
+        if (!fs.existsSync(resolvedPath)) {
             return { ok: false, error: 'Path does not exist' };
         }
-        await shell.openPath(folderPath);
+        await shell.openPath(resolvedPath);
         return { ok: true };
     } catch (e) {
         return { ok: false, error: e.message };
@@ -1057,12 +1075,24 @@ ipcMain.handle('setup-onboarding', async (event, { targetPath, cleanInstall }) =
         // Save selection as the permanent workspace
         saveWorkspacePath(targetPath);
 
-        // Copy core/base to commands (only if not already there or if clean install)
+        // Populate @TOOLS (commands) from app internal resources
+        // coreBasePath: Internal engine templates, modes, and skills
         const coreBasePath = path.join(resourcesPath, 'core', 'base');
-        const commandsPath = path.join(targetPath, 'commands');
+        
+        // targetFolders: Folders in the user's workspace to be populated
+        // Note: @CORE is intentionally left empty (reserved for Soul/User state)
+        // Note: @TOOLS (commands) receives the static engine files
+        const workspaceCommandsPath = path.join(targetPath, 'commands');
 
         if (fs.existsSync(coreBasePath)) {
-            fs.cpSync(coreBasePath, commandsPath, { recursive: true, overwrite: cleanInstall });
+            console.log('[Setup] Seeding static engine files to @TOOLS from:', coreBasePath);
+            
+            // Seed @TOOLS in workspace (Common skills, blueprints, MODES.md, etc.)
+            fs.cpSync(coreBasePath, workspaceCommandsPath, { recursive: true, overwrite: cleanInstall });
+            
+            console.log('[Setup] Static engine files (@TOOLS) seeded successfully.');
+        } else {
+            console.warn('[Setup] Internal core/base not found. Seeding skipped.');
         }
 
         return { ok: true };
@@ -1082,13 +1112,21 @@ ipcMain.handle('export-backup', async () => {
     if (!filePath) return { canceled: true };
 
     return new Promise((resolve) => {
-        const { exec } = require('child_process');
-        // Usar PowerShell nativo para comprimir
-        const cmd = `powershell -Command "Compress-Archive -Path '${currentWorkspacePath}\\*' -DestinationPath '${filePath}' -Force"`;
+        const { execFile } = require('child_process');
+        // Usar PowerShell nativo para comprimir via execFile para evitar inyecciones en el path
+        const psArgs = [
+            '-NoProfile',
+            '-ExecutionPolicy', 'Bypass',
+            '-Command', `Compress-Archive -Path '${currentWorkspacePath}\\*' -DestinationPath '${filePath}' -Force`
+        ];
 
-        exec(cmd, (error, stdout, stderr) => {
-            if (error) resolve({ ok: false, error: error.message });
-            else resolve({ ok: true, path: filePath });
+        execFile('powershell.exe', psArgs, (error, stdout, stderr) => {
+            if (error) {
+                console.error('[Main Process] Backup Failed:', stderr || error.message);
+                resolve({ ok: false, error: stderr || error.message });
+            } else {
+                resolve({ ok: true, path: filePath });
+            }
         });
     });
 });
@@ -1105,14 +1143,20 @@ ipcMain.handle('import-backup', async () => {
     const zipPath = filePaths[0];
 
     return new Promise((resolve) => {
-        const { exec } = require('child_process');
-        // Limpiar destino (excepto el archivo zip si estuviera dentro, aunque no debería)
-        // Expandir archivo a la carpeta workspace actual
-        const cmd = `powershell -Command "Expand-Archive -Path '${zipPath}' -DestinationPath '${currentWorkspacePath}' -Force"`;
+        const { execFile } = require('child_process');
+        const psArgs = [
+            '-NoProfile',
+            '-ExecutionPolicy', 'Bypass',
+            '-Command', `Expand-Archive -Path '${zipPath}' -DestinationPath '${currentWorkspacePath}' -Force`
+        ];
 
-        exec(cmd, (error, stdout, stderr) => {
-            if (error) resolve({ ok: false, error: error.message });
-            else resolve({ ok: true });
+        execFile('powershell.exe', psArgs, (error, stdout, stderr) => {
+            if (error) {
+                console.error('[Main Process] Import Failed:', stderr || error.message);
+                resolve({ ok: false, error: stderr || error.message });
+            } else {
+                resolve({ ok: true });
+            }
         });
     });
 });
@@ -1151,9 +1195,16 @@ ipcMain.handle('run-console', async (event, input) => {
         }
 
         // Usar spawn para mayor control
+        // Determinamos el Shell por plataforma para mayor seguridad
+        const shellCmd = process.platform === 'win32' ? 'powershell.exe' : '/bin/sh';
+        
+        // Si usamos shell: true, pasamos el comando como un solo string
+        // Si usamos shell: false, pasamos el ejecutable y argumentos por separado
+        // Para máxima seguridad contra inyecciones, idealmente shell: false
+        
         const proc = spawn(command, spawnArgs, { 
-            cwd: cwd || undefined,
-            shell: true,
+            cwd: cwd ? SafePathResolver.resolvePath(cwd) : SafePathResolver.roots['@WORKSPACE'],
+            shell: true, // Requerido para muchos comandos del usuario, mitigado por regex
             windowsHide: true,
             timeout: timeout_ms 
         });
@@ -1435,10 +1486,11 @@ ipcMain.handle('execute-skill', async (event, { toolsPath, skillName, args }) =>
             const { execFile } = require('child_process');
             const pythonExe = ENGINE_PYTHON;
 
+            // Security: Use execFile to avoid shell injection
             return new Promise((resolve) => {
                 execFile(pythonExe, [entryFile, JSON.stringify(args)], (error, stdout, stderr) => {
                     if (error) {
-                        console.error(`[Main Process] Skill execution error (${skillName}):`, error);
+                        console.error(`[Main Process] Skill execution error (${skillName}):`, error.message);
                         return resolve({ ok: false, error: error.message, stderr });
                     }
                     try {
@@ -1451,14 +1503,18 @@ ipcMain.handle('execute-skill', async (event, { toolsPath, skillName, args }) =>
                 });
             });
         } else if (manifest.runtime === 'node') {
-            const { exec } = require('child_process');
-            // Using the node version from electron or system? 
-            // In Electron, we can use process.execPath for the electron binary, 
-            // but for a script we normally want just 'node'.
+            const { execFile } = require('child_process');
+            
             return new Promise((resolve) => {
-                const cmd = `node "${entryFile}" '${JSON.stringify(args)}'`;
-                exec(cmd, (error, stdout, stderr) => {
-                    if (error) return resolve({ ok: false, error: error.message, stderr });
+                // Determine if we should use electron or just node
+                const nodeBinary = process.platform === 'win32' ? 'node.exe' : 'node';
+                
+                // Using execFile for zero shell overhead & security
+                execFile(nodeBinary, [entryFile, JSON.stringify(args)], (error, stdout, stderr) => {
+                    if (error) {
+                        console.error(`[Main Process] Skill execution error (${skillName}):`, error.message);
+                        return resolve({ ok: false, error: error.message, stderr });
+                    }
                     try {
                         const match = stdout.match(/\{[\s\S]*\}/);
                         const data = match ? JSON.parse(match[0]) : stdout.trim();
@@ -1493,8 +1549,8 @@ ipcMain.handle('fs-read-folder', async (event, folderPathOrObj) => {
     }
 
     try {
-        const normalizedPath = path.normalize(folderPath);
-        if (!fs.existsSync(normalizedPath)) return { ok: false, error: 'Folder not found' };
+        const resolvedPath = SafePathResolver.resolvePath(folderPath);
+        if (!fs.existsSync(resolvedPath)) return { ok: false, error: 'Folder not found' };
 
         let fileCount = 0;
         const files = {};
@@ -1537,7 +1593,7 @@ ipcMain.handle('fs-read-folder', async (event, folderPathOrObj) => {
             }
         };
 
-        walk(normalizedPath, normalizedPath, 0);
+        walk(resolvedPath, resolvedPath, 0);
         return { ok: true, files };
     } catch (error) {
         return { ok: false, error: error.message };
@@ -1546,12 +1602,32 @@ ipcMain.handle('fs-read-folder', async (event, folderPathOrObj) => {
 
 ipcMain.handle('fs-write-file', async (event, { folderPath, filename, content }) => {
     try {
-        const fullPath = path.join(folderPath, filename);
+        if (!folderPath || !filename) throw new Error('Path and filename are required');
+        
+        // Security: Ensure path is within sandbox
+        const resolvedDir = SafePathResolver.resolvePath(folderPath);
+        const fullPath = path.join(resolvedDir, filename);
+        
+        // Secondary Leak Check: path.join could still bypass if filename is "../foo"
+        const normalizedRoot = path.normalize(resolvedDir);
+        if (!fullPath.toLowerCase().startsWith(normalizedRoot.toLowerCase())) {
+            throw new Error(`SecurityError: Access denied. Filename attempt to escape root.`);
+        }
+
         const dir = path.dirname(fullPath);
         if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir, { recursive: true });
         }
-        fs.writeFileSync(fullPath, content, 'utf8');
+        
+        // Use atomic write from our helper
+        const result = safeWriteJSON(fullPath, content); 
+        // Wait, safeWriteJSON expects an object. For raw content, we'll use fs.writeFileSync
+        // but with a temp file for safety.
+        
+        const tempPath = `${fullPath}.tmp`;
+        fs.writeFileSync(tempPath, content, 'utf8');
+        fs.renameSync(tempPath, fullPath);
+        
         return { ok: true };
     } catch (error) {
         return { ok: false, error: error.message };
@@ -1560,7 +1636,17 @@ ipcMain.handle('fs-write-file', async (event, { folderPath, filename, content })
 
 ipcMain.handle('fs-delete-file', async (event, { folderPath, filename }) => {
     try {
-        const fullPath = path.join(folderPath, filename);
+        if (!folderPath || !filename) throw new Error('Path and filename are required');
+        
+        const resolvedDir = SafePathResolver.resolvePath(folderPath);
+        const fullPath = path.join(resolvedDir, filename);
+        
+        // Leak check
+        const normalizedRoot = path.normalize(resolvedDir);
+        if (!fullPath.toLowerCase().startsWith(normalizedRoot.toLowerCase())) {
+            throw new Error(`SecurityError: Access denied. Filename attempt to escape root.`);
+        }
+
         if (fs.existsSync(fullPath)) {
             fs.unlinkSync(fullPath);
         }
@@ -1793,8 +1879,13 @@ async function installSearXenaEnv() {
                         console.error('[searXena Install Error]', stderr);
                         resolve({ ok: false, error: stderr || err.message });
                     } else {
-                        console.log('[searXena Install Success] Dependencies ready.');
-                        resolve({ ok: true, output: stdout });
+                        console.log('[searXena Install Success] Dependencies ready. Installing Vosk...');
+                        // Manually install vosk into this shared environment
+                        const voskCmd = `"${ENGINE_PYTHON}" -m pip install vosk`;
+                        exec(voskCmd, (vErr) => {
+                            if (vErr) console.warn('[Main Process] Non-critical error installing vosk automatically:', vErr.message);
+                            resolve({ ok: true, output: stdout });
+                        });
                     }
                 });
             });

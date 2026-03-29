@@ -24,6 +24,19 @@ function init(config) {
 function resolvePath(requestedPath) {
     if (!requestedPath) throw new Error('Path is required');
 
+    // If it's an absolute path, check if it belongs to any known root first
+    if (path.isAbsolute(requestedPath)) {
+        const normRequested = path.normalize(requestedPath).toLowerCase();
+        for (const [pref, root] of Object.entries(roots)) {
+            if (!root) continue;
+            const normRoot = path.normalize(root).toLowerCase();
+            if (normRequested.startsWith(normRoot)) {
+                // If it already starts with a root, it's safe to resolve directly
+                return path.normalize(requestedPath);
+            }
+        }
+    }
+
     // Default to workspace if no prefix is detected
     let prefix = '@WORKSPACE';
     let cleanPath = requestedPath;
