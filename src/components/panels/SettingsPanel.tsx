@@ -1278,20 +1278,22 @@ export const SettingsPanel = ({
                         </div>
 
                         {/* ── Danger Zone: Factory Reset ─────────────────────── */}
-                        <div className="space-y-4 pt-6">
-                            <div className="h-px bg-gradient-to-r from-transparent via-red-500/20 to-transparent" />
-                            <div className="premium-panel p-6 border-red-900/30 bg-red-950/10 relative overflow-hidden">
-                                <div className="absolute -top-20 -right-20 w-60 h-60 bg-red-600/5 blur-3xl rounded-full transform-gpu pointer-events-none" />
-                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-2xl bg-red-900/40 border border-red-700/30 flex items-center justify-center text-red-400 shadow-inner">
-                                            <Icon name="exclamation-triangle" className="text-xl" />
+                        <div className="pt-2">
+                            <div className="premium-card premium-red p-6 bg-red-950/[0.03] hover:bg-red-950/15 border border-transparent hover:border-red-500/20 group overflow-hidden transition-all duration-700">
+                                {/* Subtle Inner Glow - Appears on Hover */}
+                                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-red-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                                
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                                    <div className="flex items-center gap-5">
+                                        <div className="w-14 h-14 rounded-2xl bg-red-500/[0.05] border border-transparent group-hover:bg-red-500/20 group-hover:border-red-500/30 transition-all duration-500 flex items-center justify-center text-red-400/80 group-hover:text-red-400">
+                                            <Icon name="exclamation-triangle" className="text-2xl animate-pulse" />
                                         </div>
                                         <div>
-                                            <h3 className="text-base font-black text-red-300 tracking-tight">Factory Reset</h3>
-                                            <p className="text-[10px] text-red-400/50 font-medium">Reset configuration and re-run the setup wizard from scratch.</p>
+                                            <h3 className="text-base font-black text-red-200/90 group-hover:text-red-100 tracking-tight mb-1 transition-colors">Factory Reset</h3>
+                                            <p className="text-[10px] text-red-400/30 group-hover:text-red-400/60 font-medium leading-relaxed max-w-sm transition-colors">Reset configuration and re-run the setup wizard from scratch.</p>
                                         </div>
                                     </div>
+                                    
                                     <button
                                         type="button"
                                         onClick={async () => {
@@ -1314,9 +1316,10 @@ export const SettingsPanel = ({
                                                 await askAlert("❌ Error al reiniciar: " + (e as any)?.message);
                                             }
                                         }}
-                                        className="px-6 py-3 bg-red-950/50 hover:bg-red-900/60 border border-red-700/40 hover:border-red-500/50 text-red-400 hover:text-red-300 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg whitespace-nowrap active:scale-95"
+                                        className="h-11 px-6 bg-red-500/[0.02] hover:bg-red-500/15 border border-transparent hover:border-red-500/40 text-red-400/60 hover:text-red-100 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 shadow-lg hover:shadow-red-500/10 active:scale-95 group/btn"
                                     >
-                                        <Icon name="redo-alt" className="text-sm" /> Reset & Re-run Setup
+                                        <Icon name="redo-alt" className="text-sm group-hover/btn:rotate-[360deg] transition-all duration-700" /> 
+                                        Reset & Re-run Setup
                                     </button>
                                 </div>
                             </div>
