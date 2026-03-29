@@ -29,6 +29,10 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
     const [autonomyMode, setAutonomyMode] = useState('Semi-autónomo');
     const [userContext, setUserContext] = useState('');
 
+    // ── Telegram configuration state ─────────────────────────────────────
+    const [telegramBotToken, setTelegramBotToken] = useState('');
+    const [telegramChatId, setTelegramChatId] = useState('');
+
     // ── HealthCheck state ────────────────────────────────────────────
     const [healthStatus, setHealthStatus] = useState<HealthCheckResult | null>(null);
     const [healthLoading, setHealthLoading] = useState(false);
@@ -120,6 +124,8 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
             const nextConfig = {
                 ...config,
                 isConfigured: true,
+                telegramBotToken: telegramBotToken,
+                telegramChatId: telegramChatId,
                 folderPaths: {
                     core: cleanPath + '/core',
                     tools: cleanPath + '/commands',
@@ -570,12 +576,81 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                             )}
                         </div>
                     )}
+
+                    {step === 5 && (
+                        <div className="w-full max-w-md space-y-6 animate-fade-in">
+                            <div className="text-center mb-6">
+                                <h1 className="text-2xl font-bold text-white mb-2">Telegram Integration</h1>
+                                <p className="text-slate-400 text-sm">Configure Telegram to receive notifications and interact remotely. (Optional)</p>
+                            </div>
+
+                            {/* BotFather Instructions */}
+                            <div className="bg-blue-900/10 border border-blue-500/20 p-4 rounded-xl space-y-3">
+                                <div className="flex items-center gap-2 text-blue-400">
+                                    <Icon name="info-circle" className="text-lg" />
+                                    <span className="font-bold text-sm">How to create your bot</span>
+                                </div>
+                                <ol className="text-xs text-blue-200/80 space-y-2 list-decimal list-inside">
+                                    <li>Abre Telegram y busca <span className="font-mono bg-blue-500/20 px-1.5 py-0.5 rounded">@BotFather</span></li>
+                                    <li>Envía el comando <span className="font-mono bg-blue-500/20 px-1.5 py-0.5 rounded">/newbot</span> y sigue las instrucciones</li>
+                                    <li>Copia el <span className="font-bold">Bot Token</span> que BotFather te proporcione</li>
+                                    <li>Busca <span className="font-mono bg-blue-500/20 px-1.5 py-0.5 rounded">@userinfobot</span> en Telegram</li>
+                                    <li>Envía cualquier mensaje para obtener tu <span className="font-bold">Chat ID</span></li>
+                                </ol>
+                                <div className="text-[10px] text-blue-300/60 italic mt-2">
+                                    Puedes configurar Telegram más tarde desde Settings si prefieres hacerlo después.
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                {/* Bot Token */}
+                                <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                                    <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
+                                        <Icon name="telegram-plane" className="text-sm text-cyan-400" /> Bot Token
+                                        <span className="text-[9px] text-slate-500 font-normal ml-auto">Optional</span>
+                                    </label>
+                                    <input
+                                        type="password"
+                                        value={telegramBotToken}
+                                        onChange={(e) => setTelegramBotToken(e.target.value)}
+                                        placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-600 text-sm focus:border-cyan-500 focus:outline-none font-mono"
+                                    />
+                                    <p className="text-[10px] text-slate-500 mt-1.5">Token proporcionado por BotFather (formato: números:letras)</p>
+                                </div>
+
+                                {/* Chat ID */}
+                                <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                                    <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
+                                        <Icon name="user" className="text-sm text-cyan-400" /> Chat ID
+                                        <span className="text-[9px] text-slate-500 font-normal ml-auto">Optional</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={telegramChatId}
+                                        onChange={(e) => setTelegramChatId(e.target.value)}
+                                        placeholder="123456789"
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-600 text-sm focus:border-cyan-500 focus:outline-none font-mono"
+                                    />
+                                    <p className="text-[10px] text-slate-500 mt-1.5">Tu ID de chat (obténlo desde @userinfobot)</p>
+                                </div>
+
+                                {/* Optional Note */}
+                                <div className="bg-slate-800/30 border border-slate-700/50 p-3 rounded-lg flex items-start gap-2">
+                                    <Icon name="check-circle" className="text-emerald-400 text-xs mt-0.5 flex-shrink-0" />
+                                    <div className="text-[10px] text-slate-400 leading-relaxed">
+                                        Si dejas estos campos vacíos, puedes configurar Telegram más tarde desde <span className="text-slate-300">Settings → Telegram</span>.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Footer */}
                 <div className="p-6 border-t border-slate-800 bg-slate-900 flex justify-between items-center">
                     <div className="flex gap-1.5">
-                        {[1, 2, 3, 4].map(i => (
+                        {[1, 2, 3, 4, 5].map(i => (
                             <div key={i} className={`w-2 h-2 rounded-full transition-all ${step === i ? 'bg-blue-500 w-4' : 'bg-slate-700'}`} />
                         ))}
                     </div>
@@ -589,7 +664,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                                 Back
                             </button>
                         )}
-                        {step < 4 ? (
+                        {step < 5 ? (
                             <button
                                 onClick={handleNext}
                                 disabled={step === 3 && !userName.trim()}

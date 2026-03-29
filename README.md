@@ -1,50 +1,80 @@
-# 🌐 mikuCentral v1.9.7 — Neural AI Interface & Agent OS
+# 🌐 MikuCentral v2.1.3 — Neural AI Interface & Agent OS
 
-![Version](https://img.shields.io/badge/version-1.9.7-cyan.svg?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.1.3-cyan.svg?style=for-the-badge)
 ![Status](https://img.shields.io/badge/status-stable-green.svg?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-private-red.svg?style=for-the-badge)
 
-**mikuCentral** es un entorno de ejecución de agentes autónomos de grado profesional diseñado para la soberanía tecnológica. Combina una interfaz estética premium con un motor de razonamiento neural capaz de orquestar flujos de trabajo complejos, interactuar con el sistema de archivos local y ejecutar comandos nativos mediante la infraestructura de **Electron**.
+**MikuCentral** es un entorno de ejecución de agentes autónomos de grado profesional diseñado para la soberanía tecnológica. Combina una interfaz estética premium con un motor de razonamiento neural capaz de orquestar flujos de trabajo complejos, interactuar con el sistema de archivos local y ejecutar comandos nativos mediante la infraestructura de **Electron**.
 
 ---
 
 ## ✨ Características Destacadas
 
 ### 🧠 Inteligencia Neural Multimodelo
-- **Multi-Provider**: Soporte nativo para **Ollama** (Inferencia 100% local), **Google Gemini Pro** (Cloud) y **Groq** (LPU de ultra-baja latencia).
-- **Razonamiento Estructurado**: Un motor de extracción propietario permite que incluso modelos básicos sigan protocolos de herramientas (tool calling) mediante síntesis de texto.
-- **Neural Flow**: Interfaz que separa visualmente el pensamiento interno (*Internal Monologue*) de las acciones técnicas ejecutadas por el agente.
 
-### ⏰ Neural Scheduler (Autonomous Tasks)
-- **Automated Workflows**: Programación de tareas mediante intervalos, cron o ejecuciones únicas sin intervención humana.
-- **Task Presets**: Briefings matutinos, reportes de estado periódicos y diarios nocturnos automatizados.
-- **Activity Guard**: El scheduler detecta proactivamente la actividad del usuario para encolar ejecuciones y evitar colisiones de contexto en el chat.
-- **Native Logs**: Registro detallado de cada ejecución autónoma con tiempos de respuesta y outputs históricos.
+**Proveedores Soportados:**
+- **Ollama** — Inferencia 100% local y privada
+- **Google Gemini Pro** — Modelo cloud con alta capacidad de razonamiento
+- **Groq** — Inferencia ultra-rápida con LPU
+- **Z.AI (BigModel)** — Capacidades avanzadas de codificación
 
-### 🛡️ Persistencia y Soberanía (Session States)
-- **Session-Scoped Configuration**: Cada chat guarda su propio modo (Chat/Agent), estados de seguridad y borradores de texto inteligentes.
-- **Single Source of Truth**: Gestión de configuración centralizada en `config.json`. Sin dependencias de almacenamiento volátil del navegador.
-- **Atomic Import/Export**: Capacidad de exportar e importar configuraciones completas de la IA, incluyendo llaves API, rutas de memoria y modelos preferidos.
-- **Neural Resilience**: Persistencia de sesiones locales para ramificar conversaciones y mantener contextos históricos infinitos.
+**Características Principales:**
+- **Razonamiento Estructurado**: Motor de extracción propietario que permite que incluso modelos básicos sigan protocolos de herramientas (tool calling)
+- **Neural Flow**: Interfaz que separa visualmente el pensamiento interno (*Internal Monologue*) de las acciones técnicas ejecutadas
+- **Límites de Tokens Configurables**: Soporte hasta 128K tokens de salida para tareas complejas
 
-### 🛠️ Ecosistema de Herramientas (The Toolbelt)
-- **Native File System**: Lectura, escritura, borrado y particionamiento de archivos en tiempo real con rutas absolutas de Windows.
-- **Integrated Terminal**: Ejecución de comandos seguros (`git`, `node`, `python`, etc.) directamente desde la interfaz del agente.
-- **Web Intelligence (searXena)**: Motor de búsqueda nativo con **Auto-Setup**. El sistema detecta e instala automáticamente su propio entorno de Python al primer arranque y garantiza un cierre limpio del proceso al salir.
-- **Native Explorer**: Integración directa con el explorador de Windows para abrir carpetas de proyecto con un solo click.
+### ⏰ Neural Scheduler (Tareas Autónomas)
+- **Automated Workflows**: Programación de tareas mediante intervalos, cron o ejecuciones únicas
+- **Task Presets**: Briefings matutinos, reportes de estado periódicos y diarios nocturnos
+- **Activity Guard**: Detección proactiva de la actividad del usuario para encolar ejecuciones
+- **Multi-Canal**: Salida a UI, Telegram o ambos
+- **Native Logs**: Registro detallado de cada ejecución autónoma
+
+### 🛡️ Persistencia y Seguridad
+- **Session-Scoped Configuration**: Cada chat guarda su propio modo, estados de seguridad y borradores
+- **SafeStorage**: Encriptación nativa de credenciales API mediante el llavero del sistema
+- **Atomic Import/Export**: Sistema de backup/restore completo para exportar e importar todo el workspace
+- **Neural Resilience**: Persistencia de sesiones locales para ramificar conversaciones
+
+### 🛠️ Ecosistema de Herramientas
+
+**Sistema de Archivos Multi-Raíz:**
+- `@WORKSPACE/` — Directorio de proyectos principal (workspace)
+- `@CORE/` — Lógica del sistema, identidad y prompts base (core)
+- `@LIBRARY/` — Protocolos, bases de conocimiento y datos estáticos (library)
+- `@TOOLS/` — Blueprints de skills y scripts personalizados (tools)
+
+**Herramientas del Agente:**
+| Herramienta | Descripción |
+|-------------|-------------|
+| `read_file` | Leer contenido de archivos de cualquier fuente |
+| `update_file` | Crear o actualizar archivos (directorios auto-creados) |
+| `patch_file` | Aplicar parches inteligentes con backup automático (.bak) |
+| `undo_patch` | Revertir el último parche usando el backup |
+| `list_files` | Listar archivos en cualquier carpeta |
+| `search_files` | Búsqueda de alto rendimiento usando motores nativos |
+| `get_file_outline` | Extraer Clases, Funciones e Interfaces de código fuente |
+| `batch_operation` | Operaciones por lotes: copiar, mover, eliminar |
+| `get_system_metrics` | Métricas en tiempo real: CPU, RAM, Uptime |
+| `web_search` | Búsqueda web para noticias y documentación |
+| `read_url` | Extraer contenido de URLs |
+| `run_console` | Ejecutar comandos consola con aprobación |
+| `send_telegram_message` | Enviar notificaciones a Telegram |
+| `add_scheduled_task` | Programar tareas autónomas |
+| `final_answer` | Sintetizar resultados finales con fuentes |
+
+### 🔌 Neural Skills (Sistema de Plugins)
+- **Selective Skill Toggles**: Activar/desactivar skills en tiempo real
+- **Dynamic Tool Injection**: Solo skills activas se envían al modelo
+- **Blueprints de Creación**: Plantillas pre-construidas para Python, Node.js
+- **Blueprints de Persona**: SOUL.md, USER.md, AGENT_MODES.md para personalizar identidad
 
 ### 🎨 Estética Cinema-Dark Premium
-- **Cinematic Transitions**: Animaciones de entrada de panel con efectos de blur dinámico y escalado elástico.
-- **Micro-interacciones**: Iconos reactivos que pulsan y rotan orgánicamente durante estados de carga o interacciones.
-- **Visual Feedback Loop**: La interfaz reacciona físicamente al éxito o fallo de las tareas mediante sincronización visual con el motor neural.
-- **Glassmorphism UI**: Interfaz diseñada con capas de profundidad, desenfoques dinámicos y micro-animaciones fluidas.
-- **Neural Sidebar**: Navegación rápida con animación de firma neural sofisticada al interactuar con el logo del sistema.
-
-### 🔌 Neural Skills (Plugin System)
-- **Selective Skill Toggles**: Cada skill cuenta con un switch inline para activar/desactivar su inyección al agente en tiempo real.
-- **Dynamic Tool Injection**: Solo las skills activas se envían al modelo, optimizando consumo de tokens y evitando confusión.
-- **Blueprints de Creación**: Plantillas pre-construidas (Python, Node.js) para crear nuevas skills en segundos.
-- **Visual Balance**: Tipografía refinada con pesos ligeros para una lectura cómoda y profesional.
+- **Cinematic Transitions**: Animaciones de blur dinámico y escalado elástico
+- **Micro-interacciones**: Iconos reactivos con pulsos y rotaciones orgánicas
+- **Visual Feedback Loop**: Sincronización visual con el motor neural
+- **Glassmorphism UI**: Capas de profundidad y desenfoques dinámicos
+- **Markdown Avanzado**: Tablas auto-regenerables, checkboxes interactivos, bloques de código con botón de copiar
 
 ---
 
@@ -53,10 +83,11 @@
 | Componente | Tecnología |
 | :--- | :--- |
 | **Frontend** | React 19 + TypeScript |
-| **Styling** | Vanilla CSS + Tailwind CSS 4.0 |
+| **Styling** | Vanilla CSS + Tailwind CSS 4.1 |
 | **Desktop Runtime** | Electron 40.2 (Native Node.js integration) |
 | **Build Tool** | Vite 6.2 |
-| **Inferencia** | Google GenAI SDK, fetch-proxy para Ollama |
+| **State Management** | Zustand 5.0 |
+| **Inferencia** | Google GenAI SDK, fetch-proxy para Ollama, OpenAI-compatible para Groq/Z.AI |
 
 ---
 
@@ -69,55 +100,94 @@
 
 ### Pasos para Desarrolladores:
 
-1.  **Clonar este repositorio neural**:
+1. **Clonar este repositorio:**
     ```bash
     git clone https://github.com/martinezpalomera92/mikuCentralv1.0.git
     cd mikuCentralv1.0
     ```
 
-2.  **Instalar dependencias**:
+2. **Instalar dependencias:**
     ```bash
     npm install
     ```
 
-3.  **Ejecutar en modo Desarrollo (con Electron HMR)**:
+3. **Ejecutar en modo Desarrollo (con Electron HMR):**
     ```bash
     npm run electron:dev
     ```
 
-4.  **Compilar para Producción (Generar instalador .exe)**:
+4. **Compilar para Producción (Generar instalador .exe):**
     ```bash
     npm run electron:build
     ```
 
+### Estructura de Directorios:
+
+```
+mikuCentralv1.0/
+├── electron/          # Proceso principal nativo (IPC, sistema de archivos)
+├── src/               # Frontend React
+│   ├── components/    # UI modular (Chat, Settings, Skills, Sidebar)
+│   ├── services/      # Capa lógica (Persistencia, AI Providers, Telegram)
+│   └── stores/        # Gestión de estado (Zustand)
+├── core/              # Identidad, herramientas y skills del agente
+└── config.json        # Configuración local (generado automáticamente)
+```
+
 ---
 
-## ⌨️ Atajos de Teclado (Keyboard Shortcuts)
-Optimiza tu flujo de trabajo neural con estos atajos:
+## ⌨️ Atajos de Teclado
 
 | Atajo | Acción |
 | :--- | :--- |
-| `Enter` | Enviar señal / **Reanudar tarea** (si el input está vacío) |
-| `Alt + Enter` | **En el Editor**: Enviar como Instrucción (⚡ Forces Tool Call) |
-| `Alt + Enter` | **En Aprobación**: Autorizar ejecución de herramienta (Authorize) |
-| `Alt + Backspace` | **En Aprobación**: Denegar ejecución de herramienta (Deny) |
-| `Esc` | **Global**: Cancelar operación del agente (Abort Neural Process) |
+| `Enter` | Enviar señal / Reanudar tarea (input vacío) |
+| `Alt + Enter` | Enviar como Instrucción (⚡ Forces Tool Call) / Autorizar herramienta |
+| `Alt + Backspace` | Denegar ejecución de herramienta |
+| `Esc` | Cancelar operación del agente |
 | `Shift + Enter` | Nueva línea en el editor |
 
 ---
 
-## 📂 Estructura de la Arquitectura Neural
+## 🔒 Seguridad
 
-- `electron/`: Proceso principal nativo (main process). Handlers de persistencia y sistema de archivos.
-- `src/components/`: Interfaz modular (Chat, Settings, Skills, Sidebar, Onboarding).
-- `src/services/`: Capa lógica de core (Persistencia, AI Providers, Telegram Sync).
-- `core/`: Archivos de identidad, herramientas y skills del agente.
-- `config.json`: (Generado automáticamente) El ADN de tu configuración local.
+### SafeStorage
+Las credenciales API (Gemini, Groq, Z.AI) se almacenan encriptadas utilizando el llavero nativo del sistema:
+- **Windows**: Credential Manager
+- **macOS**: Keychain
+- **Linux**: Secret Service API
+
+### SafePathResolver
+Sistema de validación de rutas "Zero Leak" que previene ataques de path traversal. Solo permite acceso a directorios autorizados (`@CORE/`, `@LIBRARY/`, `@TOOLS/`, `@WORKSPACE/`).
+
+### Console Protection
+El comando `run_console` utiliza una whitelist de comandos seguros y bloquea operadores peligrosos (`>`, `>>`, `|`, `&`, `;`) para prevenir inyecciones de shell.
+
+---
+
+## 📦 Backup & Restore
+
+El sistema permite exportar e importar todo el workspace en un archivo ZIP:
+
+**Exportar:**
+1. Ve a Settings → Backup & Restore
+2. Clic en "Exportar Backup"
+3. Selecciona la ubicación de guardado
+4. El ZIP incluye: workspace, core, library, tools, config.json
+
+**Importar:**
+1. Ve a Settings → Backup & Restore
+2. Clic en "Importar Backup"
+3. Selecciona el archivo ZIP
+4. Confirma la sobrescritura de archivos existentes
+
+> **Nota:** La importación sobrescribe todos los archivos existentes. Se recomienda hacer un backup antes de importar.
 
 ---
 
 ## 📜 Historial de Evolución
-Consulta el [CHANGELOG.md](./CHANGELOG.md) para detalles técnicos sobre las últimas actualizaciones del protocolo de persistencia y refinamiento de la interfaz.
+
+Consulta el [CHANGELOG.md](./CHANGELOG.md) para detalles técnicos sobre las últimas actualizaciones.
 
 ---
+
 *Desarrollado con precisión por Antigravity AI para Armando.*

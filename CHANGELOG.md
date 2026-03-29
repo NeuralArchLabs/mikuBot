@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.1.2] - 2026-03-29
+### Fixed
+- **batch_operation Zero Leak Enforcement**: Applied `SafePathResolver.resolvePath()` to destination parameter in `handleBatchOperation`. This ensures destination paths are validated against the Zero Leak sandbox, preventing unauthorized file operations outside configured workspace directories.
+
+## [2.1.1] - 2026-03-29
+### Fixed
+- **batch_operation Path Duplication (Frontend)**: Fixed duplicated directory paths in `batch_operation` tool. The frontend now builds absolute paths consistent with `patch_file` and `read_file` tools instead of using relative paths.
+- **batch_operation Absolute Path Handling (Backend)**: Updated `handleBatchOperation` in `agentActions.cjs` to properly detect and handle absolute paths in destination parameter. Previously assumed all paths were relative from root, causing errors when frontend passed absolute paths.
+
 ## [2.1.0] - 2026-03-29
 ### Fixed
 - **Backup System Path Normalization**: Fixed duplicated backslashes in PowerShell `Compress-Archive` command. Changed from `'${currentWorkspacePath}\\*'` to `'${currentWorkspacePath}/*'` using forward slashes for cross-platform compatibility, preventing compression failures on Windows.

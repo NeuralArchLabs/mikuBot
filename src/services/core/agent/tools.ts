@@ -29,7 +29,9 @@ export async function executeToolCall(
                 const staticPath = config.folderPaths?.[target];
                 const relPath = getRelativePath(target, cleanFilename);
                 const isElectron = !!(window as any).electron;
-                const finalPath = (isElectron && staticPath) ? `${staticPath}/${cleanFilename}` : relPath;
+                const finalPath = (isElectron && staticPath) 
+                    ? (cleanFilename ? `${staticPath}/${cleanFilename}` : staticPath) 
+                    : relPath;
 
                 let nativeError = '';
                 if (isElectron && (window as any).electron?.agentReadFile) {
@@ -88,7 +90,9 @@ export async function executeToolCall(
                 const isElectron = !!(window as any).electron;
 
                 // If in Electron and we have a static path, use absolute path to avoid workspace desync
-                const finalPath = (isElectron && staticPath) ? `${staticPath}/${cleanFilename}` : relPath;
+                const finalPath = (isElectron && staticPath) 
+                    ? (cleanFilename ? `${staticPath}/${cleanFilename}` : staticPath) 
+                    : relPath;
 
                 if (isElectron && (window as any).electron?.patchFile) {
                     const result = await (window as any).electron.patchFile({
@@ -131,7 +135,9 @@ export async function executeToolCall(
                 const staticPath = config.folderPaths?.[target];
                 const relPath = getRelativePath(target, cleanFilename);
                 const isElectron = !!(window as any).electron;
-                const finalPath = (isElectron && staticPath) ? `${staticPath}/${cleanFilename}` : relPath;
+                const finalPath = (isElectron && staticPath) 
+                    ? (cleanFilename ? `${staticPath}/${cleanFilename}` : staticPath) 
+                    : relPath;
 
                 if (isElectron && (window as any).electron?.undoPatch) {
                     const result = await (window as any).electron.undoPatch({ path: finalPath });
@@ -146,7 +152,9 @@ export async function executeToolCall(
                 const staticPath = config.folderPaths?.[target];
                 const relPath = getRelativePath(target, cleanFilename);
                 const isElectron = !!(window as any).electron;
-                const finalPath = (isElectron && staticPath) ? `${staticPath}/${cleanFilename}` : relPath;
+                const finalPath = (isElectron && staticPath) 
+                    ? (cleanFilename ? `${staticPath}/${cleanFilename}` : staticPath) 
+                    : relPath;
 
                 if (isElectron && (window as any).electron?.getFileOutline) {
                     const result = await (window as any).electron.getFileOutline({ path: finalPath });
@@ -160,11 +168,27 @@ export async function executeToolCall(
                 if ((window as any).electron?.batchOperation) {
                     const { target: srcTarget, cleanFilename: srcFn } = resolvePathAndSource(args.source_path || args.filename || '', args.source, config);
                     const { target: destTarget, cleanFilename: destFn } = resolvePathAndSource(args.destination_path || args.destination || '', args.source, config);
+                    const srcStaticPath = config.folderPaths?.[srcTarget];
+                    const destStaticPath = config.folderPaths?.[destTarget];
+                    const isElectron = !!(window as any).electron;
+
+                    // Build absolute paths for backend (consistent with patch_file, read_file pattern)
+                    // This prevents path duplication like "workspace/workspace/test_patch.txt"
+                    const absoluteSource = (isElectron && srcStaticPath) 
+                        ? (srcFn ? `${srcStaticPath}/${srcFn}` : srcStaticPath) 
+                        : getRelativePath(srcTarget, srcFn);
+                    
+                    let absoluteDestination = undefined;
+                    if (args.destination_path || args.destination) {
+                        absoluteDestination = (isElectron && destStaticPath) 
+                            ? (destFn ? `${destStaticPath}/${destFn}` : destStaticPath) 
+                            : getRelativePath(destTarget, destFn);
+                    }
 
                     const result = await (window as any).electron.batchOperation({
                         operation: args.operation,
-                        source: getRelativePath(srcTarget, srcFn),
-                        destination: args.destination ? getRelativePath(destTarget, destFn) : undefined,
+                        source: absoluteSource,
+                        destination: absoluteDestination,
                         pattern: args.pattern
                     });
                     if (result.ok) return { success: true, data: { message: result.result } };

@@ -15,24 +15,22 @@ export function resolvePathAndSource(filename: string | undefined, sourceArg?: s
     let target: FileTarget = 'workSpace';
 
     // 1. Prefix Detection (Highest Priority)
-    if (f.toUpperCase().startsWith('@CORE/')) {
+    const upperF = f.toUpperCase();
+    if (upperF === '@CORE' || upperF.startsWith('@CORE/')) {
         target = 'core';
-        f = f.slice(6);
-    } else if (f.toUpperCase().startsWith('@EXTRA/')) {
+        f = upperF === '@CORE' ? '' : f.slice(6);
+    } else if (upperF === '@EXTRA' || upperF.startsWith('@EXTRA/') || upperF === '@LIBRARY' || upperF.startsWith('@LIBRARY/')) {
         target = 'extra';
-        f = f.slice(7);
-    } else if (f.toUpperCase().startsWith('@LIBRARY/')) {
-        target = 'extra';
-        f = f.slice(9);
-    } else if (f.toUpperCase().startsWith('@WORKSPACE/')) {
+        if (upperF === '@EXTRA' || upperF === '@LIBRARY') f = '';
+        else f = upperF.startsWith('@EXTRA/') ? f.slice(7) : f.slice(9);
+    } else if (upperF === '@WORKSPACE' || upperF.startsWith('@WORKSPACE/') || upperF === '@SANDBOX' || upperF.startsWith('@SANDBOX/')) {
         target = 'workSpace';
-        f = f.slice(11);
-    } else if (f.toUpperCase().startsWith('@SANDBOX/')) { // Backwards compat
-        target = 'workSpace';
-        f = f.slice(9);
-    } else if (f.toUpperCase().startsWith('@TOOLS/')) {
+        if (upperF === '@WORKSPACE') f = '';
+        else if (upperF === '@SANDBOX') f = '';
+        else f = upperF.startsWith('@WORKSPACE/') ? f.slice(11) : f.slice(9);
+    } else if (upperF === '@TOOLS' || upperF.startsWith('@TOOLS/')) {
         target = 'tools';
-        f = f.slice(7);
+        f = upperF === '@TOOLS' ? '' : f.slice(7);
     } 
     // 1.5 Naked Prefix Interception (Fallback for when agents don't explicitly pass source or @)
     else if (!sourceArg) {

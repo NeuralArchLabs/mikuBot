@@ -99,7 +99,7 @@ export async function sendAgentMessage(
             return await providerInstance.streamRequest(messages);
         } catch (err: any) {
             if (useTools && modelSupportsNativeTools && providerInstance.shouldFallback(err)) {
-                log('warn', `El modelo ${config.model} reportó un error con herramientas nativas. Activando fallback a extracción de texto.`);
+                log('warn', `⚠️ Este modelo está siendo optimizado para el llamado de herramientas nativas. Activando motor de extracción secundaria de respaldo.`);
                 modelSupportsNativeTools = false;
                 return streamModelRequest(messages, useTools, customOnStatus);
             }
@@ -399,8 +399,11 @@ export async function sendAgentMessage(
                     (tc.function.arguments.filename || '').toLowerCase().includes('tasks.md')
                 );
 
-                if (taskMatch && pending > 0 && !willDeleteTasks) {
-                    const nudge = `⚠️ BLOQUEO DE PROTOCOLO: Aún tienes ${pending} tareas pendientes en TASKS.md. Debes tachar todas las tareas con [x] antes de finalizar, o borrar el archivo si ya no es necesario.`;
+                if (taskMatch && !willDeleteTasks) {
+                    const nudge = pending > 0 
+                        ? `⚠️ BLOQUEO DE PROTOCOLO: Aún tienes ${pending} tareas pendientes en TASKS.md. Debes tachar todas las tareas con [x] antes de finalizar o borrar el archivo (@CORE/tasks.md) si has terminado.`
+                        : `⚠️ BLOQUEO DE PROTOCOLO: El archivo @CORE/tasks.md aún existe. El protocolo exige que elimines el archivo de plan de trabajo (delete_file) antes de emitir tu respuesta final para mantener el entorno limpio.`;
+                    
                     agentMessages.push({ role: 'tool', tool_name: 'final_answer', content: nudge, tool_call_id: finalAnswerCall.id, tool_args: finalAnswerCall.function.arguments });
                     uniqueToolCalls.length = 0;
                     lastExecutionFeedback = nudge;

@@ -112,7 +112,7 @@ async function handleGetFileOutline(fullPath) {
  */
 async function handleBatchOperation(root, { operation, source, destination, pattern }) {
     if (!source) throw new Error('Source path required');
-    
+
     // Support prefix resolution inside the action
     const sourcePath = SafePathResolver.resolvePath(source);
     let count = 0;
@@ -121,18 +121,23 @@ async function handleBatchOperation(root, { operation, source, destination, patt
         const stats = await fs.stat(sourcePath);
         const baseDir = stats.isDirectory() ? sourcePath : path.dirname(sourcePath);
         const files = await fs.readdir(baseDir);
-        
+
         const regex = new RegExp('^' + pattern.replace(/\./g, '\\.').replace(/\*/g, '.*').replace(/\?/g, '.') + '$');
 
         for (const file of files) {
             if (regex.test(file)) {
                 const filePath = path.join(baseDir, file);
-                await applyBatchOp(operation, filePath, destination ? path.resolve(root, destination, file) : '');
+                // Apply Zero Leak validation to destination if provided
+                const resolvedDest = destination ? SafePathResolver.resolvePath(destination) : '';
+                const finalDest = resolvedDest ? path.join(resolvedDest, file) : '';
+                await applyBatchOp(operation, filePath, finalDest);
                 count++;
             }
         }
     } else {
-        await applyBatchOp(operation, sourcePath, destination ? path.resolve(root, destination) : '');
+        // Apply Zero Leak validation to destination if provided
+        const resolvedDest = destination ? SafePathResolver.resolvePath(destination) : '';
+        await applyBatchOp(operation, sourcePath, resolvedDest);
         count = 1;
     }
     return `${operation} completed: ${count} item(s) processed`;
