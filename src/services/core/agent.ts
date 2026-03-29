@@ -342,6 +342,7 @@ export async function sendAgentMessage(
                     uniqueToolCalls.push(tc);
                 }
             }
+            uniqueToolCalls.reverse(); // Maintain original model execution order (Top-to-Bottom)
             if (bestFinalAnswer) uniqueToolCalls.push(bestFinalAnswer);
             positionalCalls = positionalCalls.filter(pc => uniqueToolCalls.some(utc => utc.id === pc.toolCall.id));
 
