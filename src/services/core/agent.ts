@@ -245,12 +245,13 @@ export async function sendAgentMessage(
                 
                 const taskLines = tasksContent.trim() ? tasksContent.split('\n') : [];
 
-                // Only show next action when there's an actual plan with pending tasks
-                let taskProgressBlock = '';
+                // Always show next action — guide the agent
+                let nextAction = 'Analizar la misión y ejecutar la acción más relevante';
                 if (taskLines.length > 0) {
                     const nextTodo = taskLines.find(l => l.includes('[ ]'))?.trim();
-                    if (nextTodo) taskProgressBlock = `\nSiguiente Acción: ${nextTodo}`;
+                    nextAction = nextTodo || 'Todas las tareas completadas — Preparar respuesta final';
                 }
+                const taskProgressBlock = `\nSiguiente Acción: ${nextAction}`;
 
                 const autoTaskInfo = turnAutoTasks.length > 0 ? `\n✨ AUTO-SINC: Tareas tachadas automáticamente: ${turnAutoTasks.join(', ')}` : "";
                 const unplannedInfo = (successfulCalls.length > 0 && turnAutoTasks.length === 0 && tasksContent.includes('[ ]')) 
