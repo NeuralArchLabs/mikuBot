@@ -481,7 +481,20 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                                         value={config.apiKeys.groq}
                                         onChange={(e) => setConfig({ ...config, apiKeys: { ...config.apiKeys, groq: e.target.value } })}
                                         placeholder="gsk_..."
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-600 text-sm focus:border-blue-500 focus:outline-none"
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-600 text-sm focus:border-orange-500 focus:outline-none"
+                                    />
+                                </div>
+
+                                <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                                    <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
+                                        <Icon name="bolt" className="text-sm text-purple-400" /> Z.AI BigModel (Large Context)
+                                    </label>
+                                    <input
+                                        type="password"
+                                        value={config.apiKeys.zai}
+                                        onChange={(e) => setConfig({ ...config, apiKeys: { ...config.apiKeys, zai: e.target.value } })}
+                                        placeholder="v4_..."
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-600 text-sm focus:border-purple-500 focus:outline-none"
                                     />
                                 </div>
 
@@ -587,7 +600,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                         ) : (
                             <>
                                 {/* Soft warning if no provider configured and Ollama offline */}
-                                {healthStatus && !healthStatus.ollama.online && !config.apiKeys.gemini && !config.apiKeys.groq && (
+                                {healthStatus && !healthStatus.ollama.online && !config.apiKeys.gemini && !config.apiKeys.groq && !config.apiKeys.zai && (
                                     <span className="text-[10px] text-amber-400 mr-2 flex items-center gap-1">
                                         <Icon name="exclamation-triangle" className="text-xs" /> No provider available
                                     </span>
