@@ -51,7 +51,7 @@ export async function executeToolCall(
             case 'update_file': {
                 if (!args.filename) return { success: false, error: 'Missing required parameter: filename.' };
                 const { target, cleanFilename } = resolvePathAndSource(args.filename, args.source, config);
-                
+
                 // Protection logic
                 const isProtected = PROTECTED_CORE_FILES.some(p => {
                     const lowFile = cleanFilename.toLowerCase();
@@ -86,7 +86,7 @@ export async function executeToolCall(
                 const staticPath = config.folderPaths?.[target];
                 const relPath = getRelativePath(target, cleanFilename);
                 const isElectron = !!(window as any).electron;
-                
+
                 // If in Electron and we have a static path, use absolute path to avoid workspace desync
                 const finalPath = (isElectron && staticPath) ? `${staticPath}/${cleanFilename}` : relPath;
 
@@ -113,7 +113,7 @@ export async function executeToolCall(
                 const patchStore = getFileStore(target, files, additionalFiles, workSpaceFiles, toolsFiles);
                 const existingContent = patchStore[cleanFilename];
                 if (existingContent === undefined) return { success: false, error: `File not found.` };
-                
+
                 const findBlock = args.search || args.find;
                 const findIdx = existingContent.indexOf(findBlock);
                 if (findIdx === -1) return { success: false, error: `Could not find the exact text block.` };
@@ -142,25 +142,25 @@ export async function executeToolCall(
             }
 
             case 'get_file_outline': {
-                 const { target, cleanFilename } = resolvePathAndSource(args.filename, args.source, config);
-                 const staticPath = config.folderPaths?.[target];
-                 const relPath = getRelativePath(target, cleanFilename);
-                 const isElectron = !!(window as any).electron;
-                 const finalPath = (isElectron && staticPath) ? `${staticPath}/${cleanFilename}` : relPath;
+                const { target, cleanFilename } = resolvePathAndSource(args.filename, args.source, config);
+                const staticPath = config.folderPaths?.[target];
+                const relPath = getRelativePath(target, cleanFilename);
+                const isElectron = !!(window as any).electron;
+                const finalPath = (isElectron && staticPath) ? `${staticPath}/${cleanFilename}` : relPath;
 
-                 if (isElectron && (window as any).electron?.getFileOutline) {
-                     const result = await (window as any).electron.getFileOutline({ path: finalPath });
-                     if (result.ok) return { success: true, data: { outline: result.outline } };
-                     return { success: false, error: result.error };
-                 }
-                 return { success: false, error: 'Outline not available.' };
+                if (isElectron && (window as any).electron?.getFileOutline) {
+                    const result = await (window as any).electron.getFileOutline({ path: finalPath });
+                    if (result.ok) return { success: true, data: { outline: result.outline } };
+                    return { success: false, error: result.error };
+                }
+                return { success: false, error: 'Outline not available.' };
             }
 
             case 'batch_operation': {
                 if ((window as any).electron?.batchOperation) {
                     const { target: srcTarget, cleanFilename: srcFn } = resolvePathAndSource(args.source_path || args.filename || '', args.source, config);
                     const { target: destTarget, cleanFilename: destFn } = resolvePathAndSource(args.destination_path || args.destination || '', args.source, config);
-                    
+
                     const result = await (window as any).electron.batchOperation({
                         operation: args.operation,
                         source: getRelativePath(srcTarget, srcFn),
@@ -176,7 +176,7 @@ export async function executeToolCall(
             case 'list_files': {
                 let target = resolveSource(args.source);
                 let subDir = args.directory || args.path || "";
-                
+
                 // Smart naked prefix remap (if source not specified)
                 if (!args.source && subDir) {
                     const normalizedSub = subDir.replace(/\\/g, '/').toLowerCase();
@@ -216,10 +216,10 @@ export async function executeToolCall(
                 if (subDir) {
                     // Fix: strip '.' or './' prefixes which prevent matching workspace files stored as simple relative paths
                     const normalizedSub = subDir.replace(/\\/g, '/').replace(/^\.[/\\]*/, '').replace(/^\/+|\/+$/g, '');
-                    
+
                     if (normalizedSub) {
-                        fileList = fileList.filter(f => 
-                            f.name.startsWith(normalizedSub + '/') || 
+                        fileList = fileList.filter(f =>
+                            f.name.startsWith(normalizedSub + '/') ||
                             f.name === normalizedSub
                         );
                     }
@@ -347,7 +347,7 @@ export async function executeToolCall(
             }
 
             case 'read_url': {
-                // Prioritize Native Internal Extraction (SearXena extract API)
+                // Prioritize Native Internal Extraction (SearXena O-ZEN Engine extract API)
                 if (typeof window !== 'undefined' && (window as any).electron?.runExtract) {
                     try {
                         const response = await (window as any).electron.runExtract({ url: args.url });
@@ -397,7 +397,7 @@ export async function executeToolCall(
                     const token = config.telegramBotToken;
                     const formatter = new TelegramFormatter();
                     const chunks = formatter.formatAsChunks(args.text);
-                    
+
                     if (chunks.length === 0) return { success: false, error: 'Empty message content.' };
 
                     let lastMessageId = 0;
@@ -414,22 +414,22 @@ export async function executeToolCall(
 
                         const data = await response.json();
                         if (!data.ok) {
-                            return { success: false, error: `Telegram API Error [Part ${i+1}]: ${data.description || 'Unknown error'}` };
+                            return { success: false, error: `Telegram API Error [Part ${i + 1}]: ${data.description || 'Unknown error'}` };
                         }
                         lastMessageId = data.result.message_id;
-                        
+
                         // Small delay between chunks if multiple
                         if (chunks.length > 1 && i < chunks.length - 1) {
                             await new Promise(r => setTimeout(r, 300));
                         }
                     }
 
-                    return { 
-                        success: true, 
-                        data: { 
-                            message: chunks.length > 1 ? `Message sent in ${chunks.length} parts.` : 'Message sent successfully.', 
-                            message_id: lastMessageId 
-                        } 
+                    return {
+                        success: true,
+                        data: {
+                            message: chunks.length > 1 ? `Message sent in ${chunks.length} parts.` : 'Message sent successfully.',
+                            message_id: lastMessageId
+                        }
                     };
                 } catch (e) {
                     return { success: false, error: `Failed to connect to Telegram API: ${e instanceof Error ? e.message : String(e)}` };

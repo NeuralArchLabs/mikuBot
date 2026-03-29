@@ -244,19 +244,19 @@ export async function sendAgentMessage(
 
                 
                 const taskLines = tasksContent.trim() ? tasksContent.split('\n') : [];
-                const lastDone = taskLines.filter(l => l.includes('[x]')).pop()?.trim() || 'Ninguna (Inicio)';
-                let nextTodo = 'Analizar y ejecutar (Tarea Simple) o Planificar (Tarea Compleja)';
+
+                // Only show next action when there's an actual plan with pending tasks
+                let taskProgressBlock = '';
                 if (taskLines.length > 0) {
-                    const foundTodo = taskLines.find(l => l.includes('[ ]'))?.trim();
-                    if (foundTodo) nextTodo = foundTodo;
-                    else nextTodo = 'Finalización / Limpieza';
+                    const nextTodo = taskLines.find(l => l.includes('[ ]'))?.trim();
+                    if (nextTodo) taskProgressBlock = `\nSiguiente Acción: ${nextTodo}`;
                 }
 
                 const autoTaskInfo = turnAutoTasks.length > 0 ? `\n✨ AUTO-SINC: Tareas tachadas automáticamente: ${turnAutoTasks.join(', ')}` : "";
                 const unplannedInfo = (successfulCalls.length > 0 && turnAutoTasks.length === 0 && tasksContent.includes('[ ]')) 
                     ? "\n⚠️ NOTA: Has realizado acciones que no parecen coincidir con ninguna tarea pendiente en tu plan." : "";
 
-                const awarenessBlock = `[ESTADO_DEL_AGENTE]\nMisión Original: "${missionTrigger}"\nTurno Actual: ${iterations} de ${MAX_RETRIES}\n[/ESTADO_DEL_AGENTE]\n[FOCO_DE_OPERACIÓN]\nResultado Anterior: ${lastExecutionFeedback}${autoTaskInfo}${unplannedInfo}\nTarea Completada: ${lastDone}\nSiguiente Acción: ${nextTodo}\n[/FOCO_DE_OPERACIÓN]`;
+                const awarenessBlock = `[ESTADO_DEL_AGENTE]\nMisión Original: "${missionTrigger}"\nTurno Actual: ${iterations} de ${MAX_RETRIES}\n[/ESTADO_DEL_AGENTE]\n[FOCO_DE_OPERACIÓN]\nResultado Anterior: ${lastExecutionFeedback}${autoTaskInfo}${unplannedInfo}${taskProgressBlock}\n[/FOCO_DE_OPERACIÓN]`;
                 const workPlanBlock = `\n[PLAN_DE_TRABAJO_ACTUAL]\n${(tasksContent || '').trim() || 'No hay tareas activas.'}\n[/PLAN_DE_TRABAJO_ACTUAL]\n`;
                 let sCurrent = agentMessages[0].content;
                 const wpStart = sCurrent.indexOf("[PLAN_DE_TRABAJO_ACTUAL]");
