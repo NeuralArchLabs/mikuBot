@@ -1139,7 +1139,15 @@ Para ver todas tus habilidades adicionales habilitadas y sus parámetros técnic
             // If not handled, maybe it's for the model (e.g. /imagine).
         }
 
-        if (!currentState.config.model) {
+        // Resolve which model would actually be used based on mode + overrides
+        const preflightMode = ctx.getEffectiveMode(currentState.agentMode);
+        const hasAgentOverride = currentState.config.agentProvider && currentState.config.agentModel;
+        const hasChatOverride = currentState.config.chatProvider && currentState.config.chatModel;
+        const resolvedModel = preflightMode === 'agent'
+            ? (hasAgentOverride ? currentState.config.agentModel : currentState.config.model)
+            : (hasChatOverride ? currentState.config.chatModel : currentState.config.model);
+
+        if (!resolvedModel) {
             await askAlert('Select a model first.');
             return;
         }
