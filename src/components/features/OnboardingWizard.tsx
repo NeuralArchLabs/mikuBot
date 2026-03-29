@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AppConfig } from '../../types';
 import { Icon } from '../common/Common';
 import { DEFAULT_CONFIG } from '../../constants';
+import { runHealthCheck, type HealthCheckResult } from '../../services/core/HealthCheck';
+import { hydrateAllTemplates, type PromptVariables } from '../../services/core/BlueprintHydrator';
 
 interface OnboardingProps {
     onComplete: (config: AppConfig, handles: any) => Promise<void>;
@@ -18,6 +20,47 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
     const [existingData, setExistingData] = useState<{ exists: boolean; found: string[] }>({ exists: false, found: [] });
     const [cleanInstall, setCleanInstall] = useState(false);
     const [showingWarning, setShowingWarning] = useState(false);
+
+    // ── Personalization state (psychographic variables) ───────────────
+    const [userName, setUserName] = useState('');
+    const [userTone, setUserTone] = useState('Profesional y amigable');
+    const [technicalLevel, setTechnicalLevel] = useState('Intermedio');
+
+    // ── HealthCheck state ────────────────────────────────────────────
+    const [healthStatus, setHealthStatus] = useState<HealthCheckResult | null>(null);
+    const [healthLoading, setHealthLoading] = useState(false);
+    const healthIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    const performHealthCheck = useCallback(async () => {
+        setHealthLoading(true);
+        try {
+            const result = await runHealthCheck();
+            setHealthStatus(result);
+        } catch {
+            // Silently ignore — UI remains in "unknown" state
+        } finally {
+            setHealthLoading(false);
+        }
+    }, []);
+
+    // Trigger health check when entering Step 4 (providers), poll every 8s
+    useEffect(() => {
+        if (step === 4) {
+            performHealthCheck();
+            healthIntervalRef.current = setInterval(performHealthCheck, 8000);
+        } else {
+            if (healthIntervalRef.current) {
+                clearInterval(healthIntervalRef.current);
+                healthIntervalRef.current = null;
+            }
+        }
+        return () => {
+            if (healthIntervalRef.current) {
+                clearInterval(healthIntervalRef.current);
+                healthIntervalRef.current = null;
+            }
+        };
+    }, [step, performHealthCheck]);
 
     useEffect(() => {
         const fetchDefault = async () => {
@@ -81,6 +124,39 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                     extra: cleanPath + '/library'
                 }
             };
+
+            // ── Hydrate templates and write personalized files ────────
+            if ((window as any).electron) {
+                try {
+                    const variables: PromptVariables = {
+                        LANGUAGE: 'Español',
+                        TONE: userTone,
+                        VERBOSITY: 'Medio',
+                        HUMOR_LEVEL: 'Bajo',
+                        USER_NAME: userName || 'Usuario',
+                        TECHNICAL_SKILL: technicalLevel,
+                        CURRENT_GOAL: 'Asistencia general',
+                        AUTONOMY_MODE: 'Semi-autónomo',
+                        USER_CONTEXT_DUMP: 'Sin contexto adicional proporcionado.',
+                    };
+
+                    const hydrated = await hydrateAllTemplates(variables);
+
+                    for (const file of hydrated) {
+                        const targetPath = file.target === 'core'
+                            ? nextConfig.folderPaths.core
+                            : nextConfig.folderPaths.tools;
+
+                        await (window as any).electron.writeFile({
+                            filePath: targetPath + '/' + file.filename,
+                            content: file.content
+                        });
+                        console.log(`[Onboarding] ✅ ${file.filename} → ${file.target}`);
+                    }
+                } catch (e) {
+                    console.warn('[Onboarding] Template hydration failed (non-blocking):', e);
+                }
+            }
 
             await onComplete(nextConfig, { targetPath: selectedPath });
         } catch (err: any) {
@@ -224,6 +300,85 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                     {step === 3 && (
                         <div className="w-full max-w-md space-y-6 animate-fade-in">
                             <div className="text-center mb-6">
+                                <h1 className="text-2xl font-bold text-white mb-2">Agent Personalization</h1>
+                                <p className="text-slate-400 text-sm">Customize how MikuBot interacts with you. These settings shape the agent's personality files.</p>
+                            </div>
+
+                            <div className="space-y-4">
+                                {/* User Name */}
+                                <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                                    <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
+                                        <Icon name="user" className="text-sm text-blue-400" /> Your Name
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={userName}
+                                        onChange={(e) => setUserName(e.target.value)}
+                                        placeholder="¿Cómo te llamas?"
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-600 text-sm focus:border-blue-500 focus:outline-none"
+                                    />
+                                    <p className="text-[10px] text-slate-500 mt-1.5">The agent will address you by this name.</p>
+                                </div>
+
+                                {/* Tone Selection */}
+                                <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                                    <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
+                                        <Icon name="comment-dots" className="text-sm text-purple-400" /> Communication Tone
+                                    </label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {[
+                                            { value: 'Profesional y amigable', label: 'Professional', icon: 'briefcase' },
+                                            { value: 'Casual y relajado', label: 'Casual', icon: 'coffee' },
+                                            { value: 'Conciso y directo', label: 'Direct', icon: 'bolt' },
+                                            { value: 'Detallado y didáctico', label: 'Detailed', icon: 'book' },
+                                        ].map(opt => (
+                                            <button
+                                                key={opt.value}
+                                                onClick={() => setUserTone(opt.value)}
+                                                className={`p-3 rounded-lg border text-xs font-bold transition-all flex items-center gap-2 ${
+                                                    userTone === opt.value
+                                                        ? 'bg-purple-600/20 border-purple-500 text-purple-300 shadow-[0_0_10px_rgba(168,85,247,0.15)]'
+                                                        : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:bg-slate-800'
+                                                }`}
+                                            >
+                                                <Icon name={opt.icon} className="text-xs" /> {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Technical Level */}
+                                <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                                    <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
+                                        <Icon name="layer-group" className="text-sm text-cyan-400" /> Technical Level
+                                    </label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {[
+                                            { value: 'Principiante', label: 'Beginner' },
+                                            { value: 'Intermedio', label: 'Intermediate' },
+                                            { value: 'Avanzado', label: 'Advanced' },
+                                        ].map(opt => (
+                                            <button
+                                                key={opt.value}
+                                                onClick={() => setTechnicalLevel(opt.value)}
+                                                className={`p-2.5 rounded-lg border text-xs font-bold transition-all ${
+                                                    technicalLevel === opt.value
+                                                        ? 'bg-cyan-600/20 border-cyan-500 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.15)]'
+                                                        : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:bg-slate-800'
+                                                }`}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {step === 4 && (
+                        <div className="w-full max-w-md space-y-6 animate-fade-in">
+                            <div className="text-center mb-6">
                                 <h1 className="text-2xl font-bold text-white mb-2">Providers & API Keys</h1>
                                 <p className="text-slate-400 text-sm">Configure your preferred AI providers to power the engine. (These can be changed later)</p>
                             </div>
@@ -258,6 +413,19 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                                 <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
                                     <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
                                         <img src="./ollamaICON.webp" alt="Ollama" className="w-4 h-4 object-contain brightness-0 invert" /> Ollama URL (Local Models)
+                                        {/* Ollama status dot */}
+                                        {healthStatus && (
+                                            <span className={`ml-auto inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider ${
+                                                healthStatus.ollama.online ? 'text-emerald-400' : 'text-red-400'
+                                            }`}>
+                                                <span className={`w-2 h-2 rounded-full ${
+                                                    healthStatus.ollama.online
+                                                        ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)] animate-pulse'
+                                                        : 'bg-red-400 shadow-[0_0_6px_rgba(248,113,113,0.5)]'
+                                                }`} />
+                                                {healthStatus.ollama.online ? 'Online' : 'Offline'}
+                                            </span>
+                                        )}
                                     </label>
                                     <input
                                         type="text"
@@ -266,6 +434,45 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                                         placeholder="http://localhost:11434"
                                         className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-600 text-sm focus:border-blue-500 focus:outline-none"
                                     />
+                                    {healthStatus?.ollama.online && healthStatus.ollama.latencyMs !== null && (
+                                        <div className="text-[10px] text-emerald-500/60 mt-1.5 font-mono">
+                                            Latency: {healthStatus.ollama.latencyMs}ms
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* SearXena Status Card */}
+                                <div className={`p-4 rounded-xl border transition-all ${
+                                    healthStatus?.searxena.online
+                                        ? 'bg-emerald-900/10 border-emerald-500/30'
+                                        : 'bg-slate-800/50 border-slate-700'
+                                }`}>
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-sm font-bold text-white flex items-center gap-2">
+                                            <Icon name="search" className="text-sm text-cyan-400" /> SearXena (Local Search)
+                                        </label>
+                                        {healthStatus && (
+                                            <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider ${
+                                                healthStatus.searxena.online ? 'text-emerald-400' : 'text-red-400'
+                                            }`}>
+                                                <span className={`w-2 h-2 rounded-full ${
+                                                    healthStatus.searxena.online
+                                                        ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)] animate-pulse'
+                                                        : 'bg-red-400 shadow-[0_0_6px_rgba(248,113,113,0.5)]'
+                                                }`} />
+                                                {healthStatus.searxena.online ? 'Online' : 'Offline'}
+                                            </span>
+                                        )}
+                                        {!healthStatus && healthLoading && (
+                                            <Icon name="spinner" className="animate-spin text-slate-500 text-xs" />
+                                        )}
+                                    </div>
+                                    <p className="text-[11px] text-slate-500 mt-2">
+                                        {healthStatus?.searxena.online
+                                            ? `Connected — ${healthStatus.searxena.latencyMs}ms`
+                                            : 'Optional. Provides private local web search via SearXNG.'
+                                        }
+                                    </p>
                                 </div>
                             </div>
                             {error && (
@@ -280,7 +487,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                 {/* Footer */}
                 <div className="p-6 border-t border-slate-800 bg-slate-900 flex justify-between items-center">
                     <div className="flex gap-1.5">
-                        {[1, 2, 3].map(i => (
+                        {[1, 2, 3, 4].map(i => (
                             <div key={i} className={`w-2 h-2 rounded-full transition-all ${step === i ? 'bg-blue-500 w-4' : 'bg-slate-700'}`} />
                         ))}
                     </div>
@@ -294,22 +501,31 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                                 Back
                             </button>
                         )}
-                        {step < 3 ? (
+                        {step < 4 ? (
                             <button
                                 onClick={handleNext}
-                                className="px-8 py-2 rounded-lg font-bold text-white bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-500/20 transition-all active:scale-95 flex items-center gap-2"
+                                disabled={step === 3 && !userName.trim()}
+                                className="px-8 py-2 rounded-lg font-bold text-white bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-500/20 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50 disabled:active:scale-100"
                             >
                                 Continue
                             </button>
                         ) : (
-                            <button
-                                onClick={finish}
-                                disabled={loading || !selectedPath}
-                                className="px-8 py-2 rounded-lg font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-500/20 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50 disabled:active:scale-100"
-                            >
-                                {loading ? <Icon name="spinner" className="animate-spin" /> : <Icon name="check" />}
-                                Initialize Engine
-                            </button>
+                            <>
+                                {/* Soft warning if no provider configured and Ollama offline */}
+                                {healthStatus && !healthStatus.ollama.online && !config.apiKeys.gemini && !config.apiKeys.groq && (
+                                    <span className="text-[10px] text-amber-400 mr-2 flex items-center gap-1">
+                                        <Icon name="exclamation-triangle" className="text-xs" /> No provider available
+                                    </span>
+                                )}
+                                <button
+                                    onClick={finish}
+                                    disabled={loading || !selectedPath}
+                                    className="px-8 py-2 rounded-lg font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-500/20 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50 disabled:active:scale-100"
+                                >
+                                    {loading ? <Icon name="spinner" className="animate-spin" /> : <Icon name="check" />}
+                                    Initialize Engine
+                                </button>
+                            </>
                         )}
                     </div>
                 </div>

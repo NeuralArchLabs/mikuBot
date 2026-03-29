@@ -8,3 +8,5 @@ export * from './formatters/answerFormatter';
 export * from './formatters/telegramFormatter';
 export * from './formatters/toolCallNormalizer';
 export * from './commands/executor';
+export * from './core/BlueprintHydrator';
+export * from './core/HealthCheck';

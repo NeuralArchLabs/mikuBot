@@ -94,6 +94,7 @@ export const MarkdownRenderer = React.memo(MarkdownRendererBase);
 
 // Checkbox item component for interactive lists
 interface CheckboxItemProps {
+    key?: string;
     id: string;
     checked: boolean;
     onChange: (id: string, checked: boolean) => void;
@@ -108,14 +109,14 @@ const CheckboxItem = ({ id, checked, onChange, children }: CheckboxItemProps) =>
     return (
         <div className="flex items-start gap-2 mb-1.5 ml-6">
             <button
+                type="button"
                 onClick={handleToggle}
                 className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center transition-all duration-200 ${
                     checked
                         ? 'bg-cyan-500/80 border-cyan-400 text-white'
                         : 'border-cyan-400/40 bg-transparent hover:border-cyan-400/70'
                 }`}
-                aria-checked={checked}
-                role="checkbox"
+                aria-label={checked ? "Completado" : "Pendiente"}
             >
                 {checked && <span className="text-xs font-bold">✓</span>}
             </button>
