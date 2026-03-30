@@ -29,4 +29,7 @@ export const CONSOLE_BLOCKED_PATTERNS: RegExp[] = [
     /del\s+\//,     // Windows delete with root path
     /\.\.\//,       // path traversal
     /\.\.\\/,       // Windows path traversal
+    /%[a-zA-Z_]+%/, // environment variables leakage (Windows)
+    /\$[a-zA-Z_]+/,  // environment variables leakage (Linux/Unix)
+    /[A-Z]:\\/i,     // absolute Windows paths in arguments
 ];

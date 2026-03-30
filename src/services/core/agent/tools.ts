@@ -426,13 +426,13 @@ export async function executeToolCall(
                     if (chunks.length === 0) return { success: false, error: 'Empty message content.' };
 
                     let lastMessageId = 0;
-                    for (let i = 0; i < chunks.length; i++) {
+                    for (const [i, chunk] of chunks.entries()) {
                         const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                                 chat_id: chatId,
-                                text: chunks[i],
+                                text: chunk,
                                 parse_mode: 'HTML'
                             })
                         });
@@ -468,7 +468,7 @@ export async function executeToolCall(
                 if (!CONSOLE_ALLOWED_COMMANDS.includes(cmd)) {
                     return {
                         success: false,
-                        error: `⛔ BLOCKED: "${cmd}" is not in the allowed commands list. Allowed: ${CONSOLE_ALLOWED_COMMANDS.join(', ')}`
+                        error: `⛔ BLOCKED: "${cmd}" is an unauthorized or restricted command in this environment.`
                     };
                 }
 
@@ -510,11 +510,21 @@ export async function executeToolCall(
                         args: finalArgs,
                         cwd: args.cwd || '',
                     });
+                    const obfuscatePaths = (text: string) => {
+                        if (!text) return text;
+                        const rootPath = config.folderPaths?.root;
+                        if (!rootPath) return text;
+                        // Replace real root path with @ROOT
+                        const escapedRoot = rootPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        const rootRegex = new RegExp(escapedRoot, 'gi');
+                        return text.replace(rootRegex, '@ROOT');
+                    };
+
                     return {
                         success: result.code === 0,
                         data: {
-                            stdout: (result.stdout || '').slice(0, 2000),
-                            stderr: (result.stderr || '').slice(0, 500),
+                            stdout: obfuscatePaths((result.stdout || '').slice(0, 2000)),
+                            stderr: obfuscatePaths((result.stderr || '').slice(0, 500)),
                             exitCode: result.code,
                             command: `${cmd} ${cmdArgs}`.trim(),
                         }
