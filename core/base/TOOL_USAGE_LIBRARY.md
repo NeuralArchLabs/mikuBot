@@ -106,6 +106,28 @@ Este archivo contiene fragmentos de código JSON válidos para cada herramienta.
 }
 ```
 
+## [web_research]
+```json
+{
+  "name": "web_research",
+  "arguments": {
+    "query": "Investigación sobre la arquitectura de microfrontends",
+    "max_sites": 3
+  }
+}
+```
+
+## [deep_research]
+```json
+{
+  "name": "deep_research",
+  "arguments": {
+    "topic": "avances en reactores de fusión nuclear 2024",
+    "target_language": "both"
+  }
+}
+```
+
 ## [read_url]
 ```json
 {
@@ -183,6 +205,51 @@ Este archivo contiene fragmentos de código JSON válidos para cada herramienta.
   "name": "miku_clock",
   "arguments": {
     "format": "24h"
+  }
+}
+```
+
+## [list_available_skills]
+```json
+{
+  "name": "list_available_skills",
+  "arguments": {}
+}
+```
+
+## [gmail_imap]
+```json
+{
+  "name": "gmail_imap",
+  "arguments": {
+    "email": "tu_correo@gmail.com",
+    "app_password": "abcd efgh ijkl mnop",
+    "action": "list",
+    "limit": 5
+  }
+}
+```
+
+## [delete_file]
+```json
+{
+  "name": "delete_file",
+  "arguments": {
+    "filename": "temp_plan.md",
+    "source": "workSpace"
+  }
+}
+```
+
+## [api_fetcher]
+```json
+{
+  "name": "api_fetcher",
+  "arguments": {
+    "url": "https://api.example.com/v1/user",
+    "method": "POST",
+    "body": { "id": 123 },
+    "headers": { "Authorization": "Bearer TOKEN" }
   }
 }
 ```

@@ -82,6 +82,10 @@ Efficiently edit files using various strategies. Always creates a `.bak` backup.
 Reverts the last patch to a file using the `.bak` file.
 - **Param:** `filename`
 
+### `delete_file`
+Delete a file or clear @CORE/tasks.md once completed.
+- **Param:** `filename`, `source`
+
 ## 🔍 Discovery & Search (`list_files`, `search_files`)
 
 ### `list_files`
@@ -111,16 +115,19 @@ Get real-time OS metrics (CPU, Memory, Uptime, Hostname).
 ### `get_git_info`
 Get repository status, branch name, and modified files count.
 
-## 🛰️ Jerarquía de Investigación (Tiers 1-3)
+## 🛰️ Jerarquía de Investigación (Tiers 1-4)
 
 ### Tier 1: `web_search` [Base Tool]
 Búsqueda superficial rápida. Devuelve títulos y resúmenes cortos (snippets).
 
-### Tier 2: `web_research` [Skill Intermedia]
-Investigación con lectura de contenido real (Top 3-5 sitios). Evita alucinaciones.
+### Tier 2: `read_url` [Base Tool]
+Lectura directa de una URL para extraer contenido textual y limpiar el HTML.
 
-### Tier 3: `deep_research` [Artillería Pesada]
-Investigación exhaustiva. Multi-idioma, Auditoría interna de calidad, Descarte de ruido y Dossier de justificación técnica.
+### Tier 3: `web_research` / `deep_research` [Skills]
+Investigación profunda con auditoría y lectura múltiple. Evita alucinaciones.
+
+### Tier 4: `api_fetcher` [Universal Skill]
+Interacción directa con APIs REST (GET, POST, JSON). Permite al agente consumir cualquier servicio web externo con autenticación y parámetros complejos.
 
 ## ⏳ Neural Scheduling (`add_scheduled_task`)
 
@@ -133,6 +140,16 @@ Program a proactive task for the agent to execute in the future.
 - **Param:** `channel` (telegram, ui, both)
 - **Param:** `mode` (chat, agent)
 
+## 🧠 Neural Skills Library (Dynamic)
+Habilidades modulares instaladas en `@TOOLS/skills/`:
+- **`api_fetcher`**: Cliente HTTP universal para APIs REST.
+- **`deep_research`**: Agente de investigación exhaustiva con auditoría.
+- **`web_research`**: Navegación y lectura de múltiples fuentes web.
+- **`crypto_tracker`**: Seguimiento de precios de criptomonedas en tiempo real.
+- **`list_available_skills`**: Auto-descubrimiento de nuevas habilidades instaladas.
+- **`gmail_imap`**: Lectura y gestión básica de correos vía IMAP.
+- **`miku_clock`**: Gestión de tiempo y saludos personalizados.
+
 ## 🏁 Conclusion (`final_answer`)
 
 ### `final_answer`
@@ -142,4 +159,4 @@ Conclude the task with a synthesis.
 - **Rule:** Do NOT hallucinate sources. Only cite what you actually touched.
 
 ---
-*Nota: Este archivo sirve como referencia espacial y técnica. El sistema inyectará estas reglas automáticamente si detecta fallos.*
+*Nota: Este archivo sirve como referencia espacial y técnica. El sistema inyectará estas reglas automáticamente si detecta fallos.*
