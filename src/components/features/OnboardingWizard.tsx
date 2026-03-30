@@ -212,84 +212,94 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4">
-            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-[2.5rem] w-full max-w-2xl overflow-hidden flex flex-col h-[85vh] min-h-[500px] max-h-[820px] animate-macos-expand relative">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/95 backdrop-blur-md p-4">
+            <div className="bg-slate-900/80 backdrop-blur-2xl border border-white/5 shadow-[0_0_60px_rgba(0,0,0,0.5)] rounded-[2rem] w-full max-w-2xl overflow-hidden flex flex-col h-[85vh] min-h-[500px] max-h-[820px] relative">
                 {/* Background Ambient Glows */}
-                <div className="absolute top-0 left-1/4 w-1/2 h-64 bg-blue-600/10 blur-[100px] pointer-events-none rounded-full transform-gpu" />
-                <div className="absolute bottom-0 right-1/4 w-1/3 h-48 bg-purple-600/10 blur-[80px] pointer-events-none rounded-full transform-gpu" />
+                <div className="absolute top-0 left-1/4 w-1/2 h-64 bg-blue-600/5 blur-[120px] pointer-events-none rounded-full transform-gpu" />
+                <div className="absolute bottom-0 right-1/4 w-1/3 h-48 bg-purple-600/5 blur-[100px] pointer-events-none rounded-full transform-gpu" />
 
                 {/* Header */}
                 <div className="h-20 flex items-center justify-start px-8 border-b border-white/5 bg-slate-950/40 gap-4 relative z-10">
-                    <div className="w-10 h-10 rounded-xl bg-slate-800/50 flex items-center justify-center border border-white/10 shadow-inner">
-                        <img src="./mikuBotICON.png" alt="Logo" className="w-7 h-7 object-contain opacity-90" />
+                    <div className="w-10 h-10 rounded-xl bg-slate-800/30 flex items-center justify-center border border-white/10 shadow-inner group hover:border-blue-500/30 transition-all duration-500">
+                        <img src="./mikuBotICON.png" alt="Logo" className="w-7 h-7 object-contain opacity-90 group-hover:opacity-100 transition-opacity" />
                     </div>
                     <div>
-                        <h2 className="text-sm font-black text-white tracking-[0.2em] uppercase">MikuCentral Setup</h2>
+                        <h2 className="text-sm font-black text-white tracking-[0.2em] uppercase">Setup</h2>
                         <div className="flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Neural Link Initialization</p>
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_6px_rgba(59,130,246,0.5)]" />
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">System Initialization</p>
                         </div>
-                    </div>
-                    <div className="ml-auto flex items-center gap-1.5">
-                        {[1, 2, 3, 4, 5, 6].map(s => (
-                            <div key={s} className={`h-1 rounded-full transition-all duration-500 ${step >= s ? 'w-4 bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]' : 'w-2 bg-slate-800'}`} />
-                        ))}
                     </div>
                 </div>
 
                 {/* Body */}
-                <div className="flex-1 p-8 overflow-y-auto custom-scrollbar flex flex-col items-center">
+                <div className="flex-1 p-8 md:p-10 overflow-y-auto custom-scrollbar flex flex-col items-center">
 
                     {step === 1 && (
-                        <div className="w-full h-full flex flex-col items-center text-center justify-center space-y-6">
-                            <div className="w-24 h-24 rounded-full bg-blue-500/10 flex items-center justify-center mb-4">
-                                <Icon name="robot" className="text-5xl text-blue-400" />
+                        <div className="w-full h-full flex flex-col items-center text-center justify-center space-y-8 animate-fade-in">
+                            <div className="w-36 h-36 rounded-[2.5rem] bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center border border-white/5 shadow-[0_0_40px_rgba(59,130,246,0.1)]">
+                                <img src="./mikuBotICON.png" alt="MikuCentral" className="w-24 h-24 object-contain" />
                             </div>
-                            <h1 className="text-3xl font-bold text-white">Welcome to MikuCentral</h1>
-                            <p className="text-slate-400 max-w-md">
-                                The Neural AI Interface for Multi-Model Management. Before you start, we need to set up your environment, prepare the neural core base, and select your AI providers.
-                            </p>
+                            <div className="space-y-4">
+                                <h1 className="text-4xl font-black text-white tracking-tight">Welcome</h1>
+                                <p className="text-slate-400 max-w-3xl leading-relaxed text-sm">
+                                    Neural AI Interface. Setup your environment, prepare the neural core, and configure AI providers.
+                                </p>
+                            </div>
                         </div>
                     )}
 
                     {step === 2 && (
-                        <div className="w-full max-w-md space-y-6 animate-fade-in text-left">
-                            <div className="text-center mb-8">
-                                <h1 className="text-2xl font-bold text-white mb-2">Environment Setup</h1>
-                                <p className="text-slate-400 text-sm">Select where MikuCentral should store your neural logic, tools, and workspaces.</p>
+                        <div className="w-full max-w-3xl space-y-6 animate-fade-in text-left">
+                            <div className="text-center mb-8 space-y-2">
+                                <h1 className="text-2xl font-black text-white tracking-tight">Environment</h1>
+                                <p className="text-slate-400 text-sm">Select storage location for neural logic, tools, and workspaces.</p>
                             </div>
 
-                            <div className="space-y-4">
+                            <div className="space-y-4 flex flex-col items-center justify-center max-w-2xl mx-auto">
                                 <button
                                     onClick={() => setPathMode('default')}
-                                    className={`w-full p-4 rounded-xl border flex items-start gap-4 transition-all text-left ${pathMode === 'default' ? 'bg-blue-900/20 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.1)]' : 'bg-slate-800/50 border-slate-700 hover:bg-slate-800'}`}
+                                    className={`premium-card p-5 rounded-2xl flex items-start gap-4 transition-all duration-500 text-left group relative overflow-hidden ${pathMode === 'default' ? 'premium-emerald !bg-emerald-500/5' : '!bg-slate-900/40'}`}
                                 >
-                                    <Icon name={pathMode === 'default' ? 'dot-circle' : 'circle'} className={`text-xl mt-0.5 ${pathMode === 'default' ? 'text-blue-400' : 'text-slate-500'}`} />
-                                    <div>
-                                        <div className="font-bold text-white mb-1">Default Path (Recommended)</div>
-                                        <div className="text-xs text-slate-400 font-mono break-all">{defaultPath}</div>
-                                        <div className="text-xs text-slate-500 mt-2">Automatically creates 'core', 'commands', 'workspace', and 'library' folders inside.</div>
+                                    <div className={`absolute inset-0 bg-gradient-to-br ${pathMode === 'default' ? 'from-emerald-500/10 to-emerald-600/5' : 'from-transparent to-slate-800/30'} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+                                    <div className={`w-10 h-10 rounded-xl bg-emerald-500/10 border ${pathMode === 'default' ? 'border-emerald-500/30' : 'border-transparent'} text-emerald-400 flex items-center justify-center flex-shrink-0 premium-transition z-10`}>
+                                        <Icon name={pathMode === 'default' ? 'check-circle' : 'circle'} className="text-lg" />
                                     </div>
+                                    <div className="flex-1 z-10">
+                                        <div className="font-black text-white mb-2 tracking-wide">Default Path</div>
+                                        <div className="text-[11px] text-slate-400 font-mono break-all bg-slate-900/40 p-2 rounded-lg border border-white/5">{defaultPath}</div>
+                                        <div className="text-[10px] text-slate-500 mt-2 font-medium">Files will be created in selected paths: `@CORE`, `@TOOLS`, `@WORKSPACE`, `@LIBRARY`</div>
+                                    </div>
+                                    {pathMode === 'default' && (
+                                        <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)] animate-pulse" />
+                                    )}
                                 </button>
 
                                 <button
                                     onClick={() => setPathMode('custom')}
-                                    className={`w-full p-4 rounded-xl border flex items-start gap-4 transition-all text-left ${pathMode === 'custom' ? 'bg-blue-900/20 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.1)]' : 'bg-slate-800/50 border-slate-700 hover:bg-slate-800'}`}
+                                    className={`premium-card p-5 rounded-2xl flex items-start gap-4 transition-all duration-500 text-left group relative overflow-hidden ${pathMode === 'custom' ? 'premium-indigo !bg-indigo-500/5' : '!bg-slate-900/40'}`}
                                 >
-                                    <Icon name={pathMode === 'custom' ? 'dot-circle' : 'circle'} className={`text-xl mt-0.5 ${pathMode === 'custom' ? 'text-blue-400' : 'text-slate-500'}`} />
-                                    <div className="w-full">
-                                        <div className="font-bold text-white mb-1">Custom Path</div>
-                                        <div className="text-xs text-slate-400 mb-2">Choose your own directory to store the agent framework.</div>
+                                    <div className={`absolute inset-0 bg-gradient-to-br ${pathMode === 'custom' ? 'from-indigo-500/10 to-indigo-600/5' : 'from-transparent to-slate-800/30'} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+                                    <div className={`w-10 h-10 rounded-xl bg-indigo-500/10 border ${pathMode === 'custom' ? 'border-indigo-500/30' : 'border-transparent'} text-indigo-400 flex items-center justify-center flex-shrink-0 premium-transition z-10`}>
+                                        <Icon name={pathMode === 'custom' ? 'check-circle' : 'circle'} className="text-lg" />
                                     </div>
+                                    <div className="flex-1 z-10">
+                                        <div className="font-black text-white mb-1 tracking-wide">Custom Path</div>
+                                        <div className="text-[10px] text-slate-400 font-medium">Choose your own directory to store the agent framework.</div>
+                                    </div>
+                                    {pathMode === 'custom' && (
+                                        <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-indigo-400 shadow-[0_0_8px_rgba(129,140,248,0.6)] animate-pulse" />
+                                    )}
                                 </button>
 
                                 {pathMode === 'custom' && (
-                                    <div className="animate-fade-in bg-slate-800/80 p-3 rounded-lg flex items-center gap-2 border border-slate-700">
+                                    <div className="animate-fade-in bg-slate-900/40 p-4 rounded-2xl border border-white/5 flex items-center gap-3">
+                                        <Icon name="folder" className="text-slate-500 flex-shrink-0" />
                                         <input
                                             value={customPath}
                                             onChange={(e) => setCustomPath(e.target.value)}
                                             placeholder="C:\\Path\\To\\Folder"
-                                            className="bg-transparent border-none outline-none text-white text-sm flex-1 font-mono"
+                                            className="bg-transparent border-none outline-none text-white text-sm flex-1 font-mono placeholder-slate-600"
                                         />
                                         {(window as any).electron && (
                                             <button
@@ -297,107 +307,107 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                                                     const res = await (window as any).electron.selectFolder();
                                                     if (res.ok) setCustomPath(res.path);
                                                 }}
-                                                className="px-3 py-1.5 bg-slate-700 hover:bg-blue-600 rounded text-xs font-bold text-white transition-colors flex items-center gap-2"
+                                                className="premium-button premium-emphasis premium-indigo px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20"
                                             >
-                                                <Icon name="folder-open" /> Browse
+                                                <Icon name="folder-open" className="mr-1" /> Browse
                                             </button>
                                         )}
                                     </div>
                                 )}
                             </div>
 
-                            <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-lg mt-4 flex items-start gap-3">
-                                <Icon name="info-circle" className="text-amber-400 text-lg flex-shrink-0" />
-                                <div className="text-xs text-amber-200/80 leading-relaxed">
-                                    The core system files (base personality and instructions) will be automatically extracted and copied into the <code className="bg-amber-500/20 px-1 rounded">commands</code> folder for you.
+                            <div className="bg-slate-900/40 border border-amber-500/20 p-4 rounded-2xl mt-4 flex items-start gap-3">
+                                <Icon name="info-circle" className="text-amber-400 text-base flex-shrink-0" />
+                                <div className="text-[10px] text-amber-200/70 leading-relaxed">
+                                    Core system files will be automatically extracted into respective subfolders: <code className="bg-amber-500/20 px-1.5 rounded text-amber-100">@CORE</code> and <code className="bg-amber-500/20 px-1.5 rounded text-amber-100">@TOOLS</code>.
                                 </div>
                             </div>
 
                             {showingWarning && (
-                                <div className="animate-macos-expand bg-slate-950 border border-blue-500/30 p-5 rounded-xl mt-6 space-y-4 shadow-2xl">
-                                    <div className="flex items-center gap-3 text-blue-400">
+                                <div className="animate-fade-in bg-slate-950/80 backdrop-blur-xl border border-blue-500/30 p-6 rounded-2xl mt-6 space-y-5 shadow-2xl relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
+                                    <div className="flex items-center gap-3 text-blue-400 relative z-10">
                                         <Icon name="exclamation-triangle" className="text-xl" />
-                                        <h3 className="font-bold">¡Instalación Previa Detectada!</h3>
+                                        <h3 className="font-bold text-white tracking-wide">Existing Installation Detected</h3>
                                     </div>
-                                    <p className="text-xs text-slate-400 leading-relaxed">
-                                        Se han encontrado archivos de MikuCentral en esta carpeta. ¿Cómo deseas proceder?
+                                    <p className="text-[10px] text-slate-400 leading-relaxed relative z-10">
+                                        Files found in this directory. Choose how to proceed.
                                     </p>
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-3 relative z-10">
                                         <button
                                             onClick={() => { setCleanInstall(false); setShowingWarning(false); }}
-                                            className={`p-3 rounded-lg border text-xs font-bold transition-all ${!cleanInstall ? 'bg-blue-600 border-blue-400 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}
+                                            className={`p-4 rounded-xl border text-[10px] font-black uppercase tracking-wider transition-all ${!cleanInstall ? 'bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-900/40 border-white/5 text-slate-400 hover:bg-slate-800'}`}
                                         >
                                             <Icon name="history" className="mb-1 block text-sm" />
-                                            Mantener Archivos
+                                            Keep Files
                                         </button>
                                         <button
                                             onClick={() => { setCleanInstall(true); setShowingWarning(false); }}
-                                            className={`p-3 rounded-lg border text-xs font-bold transition-all ${cleanInstall ? 'bg-red-600 border-red-400 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}
+                                            className={`p-4 rounded-xl border text-[10px] font-black uppercase tracking-wider transition-all ${cleanInstall ? 'bg-red-600 border-red-400 text-white shadow-lg shadow-red-500/20' : 'bg-slate-900/40 border-white/5 text-slate-400 hover:bg-slate-800'}`}
                                         >
                                             <Icon name="trash-alt" className="mb-1 block text-sm" />
-                                            Limpiar Todo
+                                            Clean Install
                                         </button>
                                     </div>
-                                    {!showingWarning && (
-                                        <div className="text-[10px] text-center text-slate-500 italic">
-                                            {cleanInstall ? "Se borrarán los datos anteriores para una instalación limpia." : "Se vincularán tus sesiones y configuraciones existentes."}
-                                        </div>
-                                    )}
                                 </div>
                             )}
 
                             {!showingWarning && existingData.exists && (
-                                <div className="text-[10px] text-center text-slate-500 mt-2">
+                                <div className="text-[10px] text-center text-slate-500 mt-3">
                                     <Icon name="check-circle" className="text-emerald-500 mr-1" />
-                                    {cleanInstall ? "Instalación limpia seleccionada." : "Archivos previos vinculados con éxito."}
-                                    <button onClick={() => setShowingWarning(true)} className="ml-2 text-blue-400 hover:underline">Cambiar</button>
+                                    {cleanInstall ? "Clean install selected." : "Existing files linked successfully."}
+                                    <button onClick={() => setShowingWarning(true)} className="ml-2 text-blue-400 hover:text-blue-300 font-medium">Change</button>
                                 </div>
                             )}
                         </div>
                     )}
 
                     {step === 3 && (
-                        <div className="w-full max-w-md space-y-6 animate-fade-in text-left">
-                            <div className="text-center mb-6">
-                                <h1 className="text-2xl font-bold text-white mb-2">Agent Personalization</h1>
-                                <p className="text-slate-400 text-sm">Customize how your assistant interacts with you. These settings shape its core personality.</p>
+                        <div className="w-full max-w-3xl space-y-6 animate-fade-in text-left">
+                            <div className="text-center mb-6 space-y-2">
+                                <h1 className="text-2xl font-black text-white tracking-tight">Personalization</h1>
+                                <p className="text-slate-400 text-sm">Customize assistant interaction style and personality.</p>
                             </div>
 
                             <div className="space-y-4">
                                 {/* User Name & Assistant Alias */}
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
-                                        <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
-                                            <Icon name="user" className="text-sm text-blue-400" /> Your Name
+                                <div className="grid grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-4">
+                                    <div className="premium-card premium-blue p-5 rounded-2xl">
+                                        <label className="text-[10px] font-black text-blue-400 uppercase tracking-[0.15em] flex items-center gap-2 mb-3">
+                                            <Icon name="user" className="text-xs" /> Your Name
                                         </label>
-                                        <input
-                                            type="text"
-                                            value={userName}
-                                            onChange={(e) => setUserName(e.target.value)}
-                                            placeholder="¿Cómo te llamas?"
-                                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-600 text-sm focus:border-blue-500 focus:outline-none"
-                                        />
+                                        <div className="relative group">
+                                            <input
+                                                type="text"
+                                                value={userName}
+                                                onChange={(e) => setUserName(e.target.value)}
+                                                placeholder="¿Cómo te llamas?"
+                                                className="w-full premium-input rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none premium-transition"
+                                            />
+                                        </div>
                                     </div>
-                                    <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
-                                        <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
-                                            <Icon name="terminal" className="text-sm text-emerald-400" /> Assistant Alias
+                                    <div className="premium-card premium-emerald p-5 rounded-2xl">
+                                        <label className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.15em] flex items-center gap-2 mb-3">
+                                            <Icon name="terminal" className="text-xs" /> Assistant Alias
                                         </label>
-                                        <input
-                                            type="text"
-                                            value={assistantAlias}
-                                            onChange={(e) => setAssistantAlias(e.target.value)}
-                                            placeholder="mikuBot"
-                                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-600 text-sm focus:border-emerald-500 focus:outline-none"
-                                        />
+                                        <div className="relative group">
+                                            <input
+                                                type="text"
+                                                value={assistantAlias}
+                                                onChange={(e) => setAssistantAlias(e.target.value)}
+                                                placeholder="mikuBot"
+                                                className="w-full premium-input rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none premium-transition"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
 
                                 {/* Tone & Autonomy */}
-                                <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
-                                    <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
-                                        <Icon name="comment-dots" className="text-sm text-purple-400" /> Communication Tone
+                                <div className="premium-card premium-purple p-5 rounded-2xl">
+                                    <label className="text-[10px] font-black text-purple-400 uppercase tracking-[0.15em] flex items-center gap-2 mb-4">
+                                        <Icon name="comment-dots" className="text-xs" /> Communication Tone
                                     </label>
-                                    <div className="grid grid-cols-2 gap-2">
+                                    <div className="grid grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-3">
                                         {[
                                             { value: 'Profesional y amigable', label: 'Professional', icon: 'briefcase' },
                                             { value: 'Casual y relajado', label: 'Casual', icon: 'coffee' },
@@ -407,104 +417,123 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                                             <button
                                                 key={opt.value}
                                                 onClick={() => setUserTone(opt.value)}
-                                                className={`p-3 rounded-lg border text-xs font-bold transition-all flex items-center gap-2 ${
+                                                className={`p-4 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 border group ${
                                                     userTone === opt.value
-                                                        ? 'bg-purple-600/20 border-purple-500 text-purple-300 shadow-[0_0_10px_rgba(168,85,247,0.15)]'
-                                                        : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:bg-slate-800'
+                                                        ? 'bg-purple-500/20 border-purple-500/30 text-purple-300 shadow-[0_0_20px_rgba(168,85,247,0.15)]'
+                                                        : 'bg-slate-900/40 border-white/5 text-slate-400 hover:bg-slate-800 hover:border-white/10'
                                                 }`}
                                             >
-                                                <Icon name={opt.icon} className="text-xs" /> {opt.label}
+                                                <Icon name={opt.icon} className={`text-sm ${userTone === opt.value ? 'text-purple-300' : 'text-slate-500'}`} />
+                                                {opt.label}
                                             </button>
                                         ))}
                                     </div>
                                 </div>
 
                                 {/* Verbosity & Humor & Technical Level */}
-                                <div className="space-y-4">
-                                     <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
-                                        <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
-                                            <Icon name="align-left" className="text-sm text-blue-400" /> Verbosity & Humor Level
+                                <div className="grid grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-4">
+                                     <div className="premium-card premium-blue p-5 rounded-2xl">
+                                        <label className="text-[10px] font-black text-blue-400 uppercase tracking-[0.15em] flex items-center gap-2 mb-4">
+                                            <Icon name="align-left" className="text-xs" /> Verbosity & Humor
                                         </label>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <select 
-                                                value={verbosity} 
-                                                onChange={(e) => setVerbosity(e.target.value)}
-                                                aria-label="Verbosity Level"
-                                                className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-500"
-                                            >
-                                                <option value="Conciso">Concise Output</option>
-                                                <option value="Medio">Balanced Output</option>
-                                                <option value="Detallado">Detailed/Verbose</option>
-                                            </select>
-                                            <select 
-                                                value={humorLevel} 
-                                                onChange={(e) => setHumorLevel(e.target.value)}
-                                                aria-label="Humor Level"
-                                                className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-yellow-500"
-                                            >
-                                                <option value="Ninguno">No Humor</option>
-                                                <option value="Bajo">Subtle Humor</option>
-                                                <option value="Alto">High/Witty Humor</option>
-                                            </select>
+                                        <div className="space-y-4">
+                                            <div className="relative group">
+                                                <select
+                                                    value={verbosity}
+                                                    onChange={(e) => setVerbosity(e.target.value)}
+                                                    aria-label="Verbosity Level"
+                                                    className="w-full premium-input rounded-xl px-4 py-3 text-white text-xs font-medium focus:outline-none appearance-none shadow-inner"
+                                                >
+                                                    <option value="Conciso">Concise Output</option>
+                                                    <option value="Medio">Balanced Output</option>
+                                                    <option value="Detallado">Detailed/Verbose</option>
+                                                </select>
+                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                                                    <Icon name="chevron-down" className="text-xs" />
+                                                </div>
+                                            </div>
+                                            <div className="relative group">
+                                                <select
+                                                    value={humorLevel}
+                                                    onChange={(e) => setHumorLevel(e.target.value)}
+                                                    aria-label="Humor Level"
+                                                    className="w-full premium-input rounded-xl px-4 py-3 text-white text-xs font-medium focus:outline-none appearance-none shadow-inner"
+                                                >
+                                                    <option value="Ninguno">No Humor</option>
+                                                    <option value="Bajo">Subtle Humor</option>
+                                                    <option value="Alto">High/Witty Humor</option>
+                                                </select>
+                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                                                    <Icon name="chevron-down" className="text-xs" />
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
-                                        <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
-                                            <Icon name="robot" className="text-sm text-amber-400" /> Technical & Autonomy Level
+                                    <div className="premium-card premium-amber p-5 rounded-2xl">
+                                        <label className="text-[10px] font-black text-amber-400 uppercase tracking-[0.15em] flex items-center gap-2 mb-4">
+                                            <Icon name="robot" className="text-xs" /> Technical & Autonomy
                                         </label>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <select 
-                                                value={technicalLevel} 
-                                                onChange={(e) => setTechnicalLevel(e.target.value)}
-                                                aria-label="Technical Level"
-                                                className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-cyan-500"
-                                            >
-                                                <option value="Principiante">Beginner User</option>
-                                                <option value="Intermedio">Intermediate User</option>
-                                                <option value="Avanzado">Advanced/Dev User</option>
-                                            </select>
-                                            <select 
-                                                value={autonomyMode} 
-                                                onChange={(e) => setAutonomyMode(e.target.value)}
-                                                aria-label="Autonomy Level"
-                                                className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-amber-500"
-                                            >
-                                                <option value="Conservador">Conservative Agent</option>
-                                                <option value="Semi-autónomo">Balanced Autonomy</option>
-                                                <option value="Autónomo">Full Autonomous</option>
-                                            </select>
+                                        <div className="space-y-4">
+                                            <div className="relative group">
+                                                <select
+                                                    value={technicalLevel}
+                                                    onChange={(e) => setTechnicalLevel(e.target.value)}
+                                                    aria-label="Technical Level"
+                                                    className="w-full premium-input rounded-xl px-4 py-3 text-white text-xs font-medium focus:outline-none appearance-none shadow-inner"
+                                                >
+                                                    <option value="Principiante">Beginner User</option>
+                                                    <option value="Intermedio">Intermediate User</option>
+                                                    <option value="Avanzado">Advanced/Dev User</option>
+                                                </select>
+                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                                                    <Icon name="chevron-down" className="text-xs" />
+                                                </div>
+                                            </div>
+                                            <div className="relative group">
+                                                <select
+                                                    value={autonomyMode}
+                                                    onChange={(e) => setAutonomyMode(e.target.value)}
+                                                    aria-label="Autonomy Level"
+                                                    className="w-full premium-input rounded-xl px-4 py-3 text-white text-xs font-medium focus:outline-none appearance-none shadow-inner"
+                                                >
+                                                    <option value="Conservador">Conservative Agent</option>
+                                                    <option value="Semi-autónomo">Balanced Autonomy</option>
+                                                    <option value="Autónomo">Full Autonomous</option>
+                                                </select>
+                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                                                    <Icon name="chevron-down" className="text-xs" />
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Custom Rules & About You */}
-                                <div className="space-y-4">
-                                    <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
-                                        <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
-                                            <Icon name="scroll" className="text-sm text-pink-400" /> Custom Instructions
-                                            <span className="text-[9px] text-slate-500 font-normal ml-auto">Rules for Assistant</span>
+                                <div className="grid grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-4">
+                                    <div className="premium-card premium-pink p-5 rounded-2xl">
+                                        <label className="text-[10px] font-black text-pink-400 uppercase tracking-[0.15em] flex items-center gap-2 mb-3">
+                                            <Icon name="scroll" className="text-xs" /> Custom Rules
                                         </label>
                                         <textarea
                                             value={customRules}
                                             onChange={(e) => setCustomRules(e.target.value)}
                                             placeholder="Introduce reglas específicas: 'háblame de tú', 'no uses emojis', etc."
-                                            rows={2}
-                                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-600 text-sm focus:border-pink-500 focus:outline-none resize-none"
+                                            rows={6}
+                                            className="w-full premium-input rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none resize-none"
                                         />
                                     </div>
 
-                                    <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
-                                        <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
-                                            <Icon name="info-circle" className="text-sm text-blue-400" /> User Context
-                                            <span className="text-[9px] text-slate-500 font-normal ml-auto">About You</span>
+                                    <div className="premium-card premium-cyan p-5 rounded-2xl">
+                                        <label className="text-[10px] font-black text-cyan-400 uppercase tracking-[0.15em] flex items-center gap-2 mb-3">
+                                            <Icon name="info-circle" className="text-xs" /> User Context
                                         </label>
                                         <textarea
                                             value={userContext}
                                             onChange={(e) => setUserContext(e.target.value)}
                                             placeholder="Profesión, proyectos activos, herramientas favoritas..."
-                                            rows={2}
-                                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-600 text-sm focus:border-blue-500 focus:outline-none resize-none"
+                                            rows={6}
+                                            className="w-full premium-input rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none resize-none"
                                         />
                                     </div>
                                 </div>
@@ -513,163 +542,174 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                     )}
 
                     {step === 4 && (
-                        <div className="w-full max-w-md space-y-6 animate-fade-in text-left">
-                            <div className="text-center mb-6">
-                                <h1 className="text-2xl font-bold text-white mb-2">Providers Guide</h1>
-                                <p className="text-slate-400 text-sm">How to get your API keys and set up local inference.</p>
+                        <div className="w-full max-w-3xl space-y-6 animate-fade-in text-left">
+                            <div className="text-center mb-6 space-y-2">
+                                <h1 className="text-2xl font-black text-white tracking-tight">Providers</h1>
+                                <p className="text-slate-400 text-sm">Get API keys and set up local inference.</p>
                             </div>
 
-                            <div className="grid grid-cols-1 gap-3">
+                            <div className="grid grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-4">
                                 {/* Google AI Studio */}
-                                <div className="bg-slate-800/40 p-4 rounded-xl border border-slate-700/50 hover:border-blue-500/50 transition-colors group">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
-                                            <img src="./geminiICON.png" alt="Gemini" className="w-5 h-5 object-contain" />
+                                <div className="premium-card premium-blue p-5 rounded-2xl group relative overflow-hidden h-full flex flex-col">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                                    <div className="relative z-10">
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+                                                <img src="./geminiICON.png" alt="Gemini" className="w-6 h-6 object-contain" />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-sm font-black text-white tracking-wide">Google AI</h3>
+                                                <p className="text-[9px] text-slate-500 font-medium">Gemini 1.5 Pro/Flash</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h3 className="text-sm font-bold text-white">Google AI Studio</h3>
-                                            <p className="text-[10px] text-slate-500">Gemini 1.5 Pro/Flash (Free Tier)</p>
-                                        </div>
-                                        <button 
+                                        <p className="text-[10px] text-slate-400 leading-relaxed mb-4">
+                                            Free tier available. Main model for MikuCentral.
+                                        </p>
+                                        <button
                                             onClick={() => (window as any).electron?.openExternal('https://aistudio.google.com/app/apikey')}
-                                            className="ml-auto text-[10px] bg-blue-600/20 text-blue-400 px-2 py-1 rounded hover:bg-blue-600/40 transition-colors font-bold"
+                                            className="premium-button premium-emphasis premium-blue w-full py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider text-blue-400 bg-blue-500/10 hover:bg-blue-500/20"
                                         >
-                                            Get Key <Icon name="external-link-alt" className="ml-1 text-[8px]" />
+                                            <Icon name="external-link-alt" className="mr-1 text-xs" /> Get Key
                                         </button>
                                     </div>
-                                    <p className="text-[10px] text-slate-400 leading-relaxed">
-                                        Ve a AI Studio, crea un proyecto y genera tu API Key. Es el modelo principal de MikuCentral.
-                                    </p>
                                 </div>
 
                                 {/* Groq */}
-                                <div className="bg-slate-800/40 p-4 rounded-xl border border-slate-700/50 hover:border-orange-500/50 transition-colors group">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center border border-orange-500/20">
-                                            <img src="./groqICON.png" alt="Groq" className="w-4 h-4 object-contain brightness-0 invert" />
+                                <div className="premium-card premium-amber p-5 rounded-2xl group relative overflow-hidden h-full flex flex-col">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                                    <div className="relative z-10">
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <div className="w-12 h-12 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
+                                                <img src="./groqICON.png" alt="Groq" className="w-5 h-5 object-contain brightness-0 invert" />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-sm font-black text-white tracking-wide">Groq Cloud</h3>
+                                                <p className="text-[9px] text-slate-500 font-medium">Ultra-fast Inference</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h3 className="text-sm font-bold text-white">Groq Cloud</h3>
-                                            <p className="text-[10px] text-slate-500">Ultra-fast Llama 3 & Mixtral</p>
-                                        </div>
-                                        <button 
+                                        <p className="text-[10px] text-slate-400 leading-relaxed mb-4">
+                                            Llama 3 & Mixtral. Instant responses.
+                                        </p>
+                                        <button
                                             onClick={() => (window as any).electron?.openExternal('https://console.groq.com/keys')}
-                                            className="ml-auto text-[10px] bg-orange-600/20 text-orange-400 px-2 py-1 rounded hover:bg-orange-600/40 transition-colors font-bold"
+                                            className="premium-button premium-emphasis premium-amber w-full py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider text-orange-400 bg-orange-500/10 hover:bg-orange-500/20"
                                         >
-                                            Get Key <Icon name="external-link-alt" className="ml-1 text-[8px]" />
+                                            <Icon name="external-link-alt" className="mr-1 text-xs" /> Get Key
                                         </button>
                                     </div>
-                                    <p className="text-[10px] text-slate-400 leading-relaxed">
-                                        Inicia sesión con Google/GitHub y genera una API Key en la sección 'API Keys'. Ideal para respuestas instantáneas.
-                                    </p>
                                 </div>
 
                                 {/* Z.AI */}
-                                <div className="bg-slate-800/40 p-4 rounded-xl border border-slate-700/50 hover:border-purple-500/50 transition-colors group">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
-                                            <img src="./zai.png" alt="Z.AI" className="w-4 h-4 object-contain brightness-0 invert" />
+                                <div className="premium-card premium-purple p-5 rounded-2xl group relative overflow-hidden h-full flex flex-col">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                                    <div className="relative z-10">
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
+                                                <img src="./zai.png" alt="Z.AI" className="w-5 h-5 object-contain brightness-0 invert" />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-sm font-black text-white tracking-wide">Z.AI</h3>
+                                                <p className="text-[9px] text-slate-500 font-medium">Large Context</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h3 className="text-sm font-bold text-white">Z.AI (BigModel)</h3>
-                                            <p className="text-[10px] text-slate-500">Large Context Inference</p>
-                                        </div>
-                                        <button 
-                                            onClick={() => (window as any).electron?.openExternal('https://z.ai')}
-                                            className="ml-auto text-[10px] bg-purple-600/20 text-purple-400 px-2 py-1 rounded hover:bg-purple-600/40 transition-colors font-bold"
+                                        <p className="text-[10px] text-slate-400 leading-relaxed mb-4">
+                                            Massive context inference. Token v4.
+                                        </p>
+                                        <button
+                                            onClick={() => (window as any).electron?.openExternal('https://z.ai/api-key')}
+                                            className="premium-button premium-emphasis premium-purple w-full py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider text-purple-400 bg-purple-500/10 hover:bg-purple-500/20"
                                         >
-                                            Get Key <Icon name="external-link-alt" className="ml-1 text-[8px]" />
+                                            <Icon name="external-link-alt" className="mr-1 text-xs" /> Get Key
                                         </button>
                                     </div>
-                                    <p className="text-[10px] text-slate-400 leading-relaxed">
-                                        La API privada para modelos de contexto masivo. Visita z.ai para obtener tu token v4.
-                                    </p>
                                 </div>
 
                                 {/* Ollama */}
-                                <div className="bg-slate-800/40 p-4 rounded-xl border border-slate-700/50 hover:border-emerald-500/50 transition-colors group">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
-                                            <img src="./ollamaICON.webp" alt="Ollama" className="w-5 h-5 object-contain brightness-0 invert" />
+                                <div className="premium-card premium-emerald p-5 rounded-2xl group relative overflow-hidden h-full flex flex-col">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                                    <div className="relative z-10">
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                                                <img src="./ollamaICON.webp" alt="Ollama" className="w-6 h-6 object-contain brightness-0 invert" />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-sm font-black text-white tracking-wide">Ollama</h3>
+                                                <p className="text-[9px] text-slate-500 font-medium">Local Models</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h3 className="text-sm font-bold text-white">Ollama (Local)</h3>
-                                            <p className="text-[10px] text-slate-500">Run LLMs on your computer</p>
-                                        </div>
-                                        <button 
+                                        <p className="text-[10px] text-slate-400 leading-relaxed mb-4">
+                                            Run LLMs locally. 100% private.
+                                        </p>
+                                        <button
                                             onClick={() => (window as any).electron?.openExternal('https://ollama.com/download')}
-                                            className="ml-auto text-[10px] bg-emerald-600/20 text-emerald-400 px-2 py-1 rounded hover:bg-emerald-600/40 transition-colors font-bold"
+                                            className="premium-button premium-emphasis premium-emerald w-full py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20"
                                         >
-                                            Download <Icon name="download" className="ml-1 text-[8px]" />
+                                            <Icon name="download" className="mr-1 text-xs" /> Download
                                         </button>
                                     </div>
-                                    <p className="text-[10px] text-slate-400 leading-relaxed">
-                                        Descarga e instala Ollama. Una vez abierto, podrás conectar MikuCentral para inferencia 100% privada y local.
-                                    </p>
                                 </div>
                             </div>
                         </div>
                     )}
 
                     {step === 5 && (
-                        <div className="w-full max-w-md space-y-6 animate-fade-in">
-                            <div className="text-center mb-6">
-                                <h1 className="text-2xl font-bold text-white mb-2">Providers & API Keys</h1>
-                                <p className="text-slate-400 text-sm">Configure your preferred AI providers to power the engine.</p>
+                        <div className="w-full max-w-3xl space-y-6 animate-fade-in">
+                            <div className="text-center mb-6 space-y-2">
+                                <h1 className="text-2xl font-black text-white tracking-tight">API Configuration</h1>
+                                <p className="text-slate-400 text-sm">Configure preferred AI providers for the engine.</p>
                             </div>
 
                             <div className="space-y-4">
-                                <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
-                                    <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
-                                        <img src="./geminiICON.png" alt="Gemini" className="w-4 h-4 object-contain" /> Google Gemini (Primary)
+                                <div className="premium-card premium-blue p-5 rounded-2xl">
+                                    <label className="text-[10px] font-black text-blue-400 uppercase tracking-[0.15em] flex items-center gap-2 mb-3">
+                                        <img src="./geminiICON.png" alt="Gemini" className="w-4 h-4 object-contain" /> Google Gemini
                                     </label>
                                     <input
                                         type="password"
                                         value={config.apiKeys.gemini}
                                         onChange={(e) => setConfig({ ...config, apiKeys: { ...config.apiKeys, gemini: e.target.value } })}
                                         placeholder="AIzaSy..."
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-600 text-sm focus:border-blue-500 focus:outline-none"
+                                        className="w-full premium-input rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none"
                                     />
                                 </div>
 
-                                <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
-                                    <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
-                                        <img src="./groqICON.png" alt="Groq" className="w-4 h-4 object-contain brightness-0 invert" /> Groq (Speed Inference)
+                                <div className="premium-card premium-amber p-5 rounded-2xl">
+                                    <label className="text-[10px] font-black text-orange-400 uppercase tracking-[0.15em] flex items-center gap-2 mb-3">
+                                        <img src="./groqICON.png" alt="Groq" className="w-4 h-4 object-contain brightness-0 invert" /> Groq
                                     </label>
                                     <input
                                         type="password"
                                         value={config.apiKeys.groq}
                                         onChange={(e) => setConfig({ ...config, apiKeys: { ...config.apiKeys, groq: e.target.value } })}
                                         placeholder="gsk_..."
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-600 text-sm focus:border-orange-500 focus:outline-none"
+                                        className="w-full premium-input rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none"
                                     />
                                 </div>
 
-                                <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
-                                    <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
-                                        <img src="./zai.png" alt="Z.AI" className="w-4 h-4 object-contain brightness-0 invert" /> Z.AI BigModel (Large Context)
+                                <div className="premium-card premium-purple p-5 rounded-2xl">
+                                    <label className="text-[10px] font-black text-purple-400 uppercase tracking-[0.15em] flex items-center gap-2 mb-3">
+                                        <img src="./zai.png" alt="Z.AI" className="w-4 h-4 object-contain brightness-0 invert" /> Z.AI BigModel
                                     </label>
                                     <input
                                         type="password"
                                         value={config.apiKeys.zai}
                                         onChange={(e) => setConfig({ ...config, apiKeys: { ...config.apiKeys, zai: e.target.value } })}
                                         placeholder="v4_..."
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-600 text-sm focus:border-purple-500 focus:outline-none"
+                                        className="w-full premium-input rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none"
                                     />
                                 </div>
 
-                                <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
-                                    <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
-                                        <img src="./ollamaICON.webp" alt="Ollama" className="w-4 h-4 object-contain brightness-0 invert" /> Ollama URL (Local Models)
-                                        {/* Ollama status dot */}
+                                <div className="premium-card premium-emerald p-5 rounded-2xl">
+                                    <label className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.15em] flex items-center gap-2 mb-3">
+                                        <img src="./ollamaICON.webp" alt="Ollama" className="w-4 h-4 object-contain brightness-0 invert" /> Ollama URL
                                         {healthStatus && (
                                             <span className={`ml-auto inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider ${
-                                                healthStatus.ollama.online ? 'text-emerald-400' : 'text-red-400'
+                                                healthStatus.ollama.online ? 'text-emerald-400' : 'text-slate-500'
                                             }`}>
                                                 <span className={`w-2 h-2 rounded-full ${
                                                     healthStatus.ollama.online
-                                                        ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)] animate-pulse'
-                                                        : 'bg-red-400 shadow-[0_0_6px_rgba(248,113,113,0.5)]'
+                                                        ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)] animate-pulse'
+                                                        : 'bg-slate-600'
                                                 }`} />
                                                 {healthStatus.ollama.online ? 'Online' : 'Offline'}
                                             </span>
@@ -680,79 +720,80 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                                         value={config.ollamaUrl}
                                         onChange={(e) => setConfig({ ...config, ollamaUrl: e.target.value })}
                                         placeholder="http://localhost:11434"
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-600 text-sm focus:border-blue-500 focus:outline-none"
+                                        className="w-full premium-input rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none"
                                     />
                                     {healthStatus?.ollama.online && healthStatus.ollama.latencyMs !== null && (
-                                        <div className="text-[10px] text-emerald-500/60 mt-1.5 font-mono">
+                                        <div className="text-[10px] text-emerald-400/80 mt-2 font-mono font-medium">
                                             Latency: {healthStatus.ollama.latencyMs}ms
                                         </div>
                                     )}
                                 </div>
 
-                                {/* SearXena Status Card */}
-                                <div className={`p-4 rounded-xl border transition-all ${
-                                    healthStatus?.searxena.online
-                                        ? 'bg-emerald-900/10 border-emerald-500/30'
-                                        : 'bg-slate-800/50 border-slate-700'
-                                }`}>
-                                    <div className="flex items-center justify-between">
-                                        <label className="text-sm font-bold text-white flex items-center gap-2">
-                                            <Icon name="search" className="text-sm text-cyan-400" /> SearXena (Local Search)
-                                        </label>
-                                        {healthStatus && (
-                                            <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider ${
-                                                healthStatus.searxena.online ? 'text-emerald-400' : 'text-red-400'
-                                            }`}>
-                                                <span className={`w-2 h-2 rounded-full ${
-                                                    healthStatus.searxena.online
-                                                        ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)] animate-pulse'
-                                                        : 'bg-red-400 shadow-[0_0_6px_rgba(248,113,113,0.5)]'
-                                                }`} />
-                                                {healthStatus.searxena.online ? 'Online' : 'Offline'}
-                                            </span>
-                                        )}
+                                <div className="grid grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-4">
+                                    <div className={`p-5 rounded-2xl border transition-all ${
+                                        healthStatus?.searxena.online
+                                            ? 'bg-emerald-900/10 border-emerald-500/30'
+                                            : 'bg-slate-900/40 border-white/5'
+                                    }`}>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <label className="text-[10px] font-black text-white uppercase tracking-[0.15em] flex items-center gap-2">
+                                                <Icon name="search" className="text-xs text-cyan-400" /> SearXena
+                                            </label>
+                                            {healthStatus && (
+                                                <span className={`inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider ${
+                                                    healthStatus.searxena.online ? 'text-emerald-400' : 'text-slate-500'
+                                                }`}>
+                                                    <span className={`w-1.5 h-1.5 rounded-full ${
+                                                        healthStatus.searxena.online
+                                                            ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)] animate-pulse'
+                                                            : 'bg-slate-600'
+                                                    }`} />
+                                                    {healthStatus.searxena.online ? 'Online' : 'Offline'}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className="text-[10px] text-slate-500">
+                                            {healthStatus?.searxena.online
+                                                ? `${healthStatus.searxena.latencyMs}ms`
+                                                : 'Local web search via SearXNG.'
+                                            }
+                                        </p>
                                     </div>
-                                    <p className="text-[11px] text-slate-500 mt-2">
-                                        {healthStatus?.searxena.online
-                                            ? `Connected — ${healthStatus.searxena.latencyMs}ms`
-                                            : 'Optional. Provides private local web search via SearXNG.'
-                                        }
-                                    </p>
-                                </div>
 
-                                {/* Vosk Status Card */}
-                                <div className={`p-4 rounded-xl border transition-all ${
-                                    healthStatus?.vosk.online
-                                        ? 'bg-emerald-900/10 border-emerald-500/30'
-                                        : 'bg-slate-800/50 border-slate-700'
-                                }`}>
-                                    <div className="flex items-center justify-between">
-                                        <label className="text-sm font-bold text-white flex items-center gap-2">
-                                            <Icon name="microphone" className="text-sm text-pink-400" /> Vosk (Voice Engine)
-                                        </label>
-                                        {healthStatus && (
-                                            <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider ${
-                                                healthStatus.vosk.online ? 'text-emerald-400' : 'text-red-400'
-                                            }`}>
-                                                <span className={`w-2 h-2 rounded-full ${
-                                                    healthStatus.vosk.online
-                                                        ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)] animate-pulse'
-                                                        : 'bg-red-400 shadow-[0_0_6px_rgba(248,113,113,0.5)]'
-                                                }`} />
-                                                {healthStatus.vosk.online ? 'Ready' : 'Not Loaded'}
-                                            </span>
-                                        )}
+                                    <div className={`p-5 rounded-2xl border transition-all ${
+                                        healthStatus?.vosk.online
+                                            ? 'bg-emerald-900/10 border-emerald-500/30'
+                                            : 'bg-slate-900/40 border-white/5'
+                                    }`}>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <label className="text-[10px] font-black text-white uppercase tracking-[0.15em] flex items-center gap-2">
+                                                <Icon name="microphone" className="text-xs text-pink-400" /> Vosk
+                                            </label>
+                                            {healthStatus && (
+                                                <span className={`inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider ${
+                                                    healthStatus.vosk.online ? 'text-emerald-400' : 'text-slate-500'
+                                                }`}>
+                                                    <span className={`w-1.5 h-1.5 rounded-full ${
+                                                        healthStatus.vosk.online
+                                                            ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)] animate-pulse'
+                                                            : 'bg-slate-600'
+                                                    }`} />
+                                                    {healthStatus.vosk.online ? 'Ready' : 'Not Loaded'}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className="text-[10px] text-slate-500">
+                                            {healthStatus?.vosk.online
+                                                ? 'Voice engine active.'
+                                                : 'Vosk Python module required.'
+                                            }
+                                        </p>
                                     </div>
-                                    <p className="text-[11px] text-slate-500 mt-2">
-                                        {healthStatus?.vosk.online
-                                            ? 'Vosk Python module detected and working.'
-                                            : 'Requires the `vosk` Python module in the engine workspace.'
-                                        }
-                                    </p>
                                 </div>
                             </div>
                             {error && (
-                                <div className="text-red-400 text-xs text-center border border-red-500/30 bg-red-900/20 py-2 rounded">
+                                <div className="bg-red-950/20 border border-red-500/20 p-4 rounded-2xl text-red-300 text-[11px] text-center">
+                                    <Icon name="exclamation-circle" className="mr-2" />
                                     {error}
                                 </div>
                             )}
@@ -760,68 +801,61 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                     )}
 
                     {step === 6 && (
-                        <div className="w-full max-w-md space-y-6 animate-fade-in">
-                            <div className="text-center mb-6">
-                                <h1 className="text-2xl font-bold text-white mb-2">Telegram Integration</h1>
-                                <p className="text-slate-400 text-sm">Configure Telegram to receive notifications and interact remotely. (Optional)</p>
+                        <div className="w-full max-w-3xl space-y-6 animate-fade-in">
+                            <div className="text-center mb-6 space-y-2">
+                                <h1 className="text-2xl font-black text-white tracking-tight">Telegram</h1>
+                                <p className="text-slate-400 text-sm">Configure Telegram for notifications and remote interaction. (Optional)</p>
                             </div>
 
                             {/* BotFather Instructions */}
-                            <div className="bg-blue-900/10 border border-blue-500/20 p-4 rounded-xl space-y-3">
-                                <div className="flex items-center gap-2 text-blue-400">
-                                    <Icon name="info-circle" className="text-lg" />
-                                    <span className="font-bold text-sm">How to create your bot</span>
+                            <div className="bg-slate-900/40 border border-cyan-500/20 p-5 rounded-2xl space-y-4 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/5 rounded-full blur-2xl -mr-12 -mt-12 pointer-events-none" />
+                                <div className="flex items-center gap-2 text-cyan-400 relative z-10">
+                                    <Icon name="info-circle" className="text-base" />
+                                    <span className="font-black text-sm tracking-wide">Create Your Bot</span>
                                 </div>
-                                <ol className="text-xs text-blue-200/80 space-y-2 list-decimal list-inside">
-                                    <li>Abre Telegram y busca <span className="font-mono bg-blue-500/20 px-1.5 py-0.5 rounded">@BotFather</span></li>
-                                    <li>Envía el comando <span className="font-mono bg-blue-500/20 px-1.5 py-0.5 rounded">/newbot</span> y sigue las instrucciones</li>
-                                    <li>Copia el <span className="font-bold">Bot Token</span> que BotFather te proporcione</li>
-                                    <li>Busca <span className="font-mono bg-blue-500/20 px-1.5 py-0.5 rounded">@userinfobot</span> en Telegram</li>
-                                    <li>Envía cualquier mensaje para obtener tu <span className="font-bold">Chat ID</span></li>
+                                <ol className="text-[10px] text-slate-400 space-y-2 list-decimal list-inside relative z-10">
+                                    <li>Open Telegram and search <span className="font-mono bg-cyan-500/10 px-1.5 py-0.5 rounded text-cyan-300">@BotFather</span></li>
+                                    <li>Send <span className="font-mono bg-cyan-500/10 px-1.5 py-0.5 rounded text-cyan-300">/newbot</span> and follow instructions</li>
+                                    <li>Copy the <span className="text-white font-medium">Bot Token</span> provided</li>
+                                    <li>Search <span className="font-mono bg-cyan-500/10 px-1.5 py-0.5 rounded text-cyan-300">@userinfobot</span></li>
+                                    <li>Send any message to get your <span className="text-white font-medium">Chat ID</span></li>
                                 </ol>
-                                <div className="text-[10px] text-blue-300/60 italic mt-2">
-                                    Puedes configurar Telegram más tarde desde Settings si prefieres hacerlo después.
-                                </div>
                             </div>
 
                             <div className="space-y-4">
-                                {/* Bot Token */}
-                                <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
-                                    <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
-                                        <Icon name="telegram-plane" className="text-sm text-cyan-400" /> Bot Token
-                                        <span className="text-[9px] text-slate-500 font-normal ml-auto">Optional</span>
-                                    </label>
-                                    <input
-                                        type="password"
-                                        value={telegramBotToken}
-                                        onChange={(e) => setTelegramBotToken(e.target.value)}
-                                        placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-600 text-sm focus:border-cyan-500 focus:outline-none font-mono"
-                                    />
-                                    <p className="text-[10px] text-slate-500 mt-1.5">Token proporcionado por BotFather (formato: números:letras)</p>
+                                <div className="grid grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-4">
+                                    <div className="premium-card premium-cyan p-5 rounded-2xl">
+                                        <label className="text-[10px] font-black text-cyan-400 uppercase tracking-[0.15em] flex items-center gap-2 mb-3">
+                                            <Icon name="telegram-plane" className="text-xs" /> Bot Token
+                                        </label>
+                                        <input
+                                            type="password"
+                                            value={telegramBotToken}
+                                            onChange={(e) => setTelegramBotToken(e.target.value)}
+                                            placeholder="123456789:ABC..."
+                                            className="w-full premium-input rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none font-mono"
+                                        />
+                                    </div>
+
+                                    <div className="premium-card premium-cyan p-5 rounded-2xl">
+                                        <label className="text-[10px] font-black text-cyan-400 uppercase tracking-[0.15em] flex items-center gap-2 mb-3">
+                                            <Icon name="user" className="text-xs" /> Chat ID
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={telegramChatId}
+                                            onChange={(e) => setTelegramChatId(e.target.value)}
+                                            placeholder="123456789"
+                                            className="w-full premium-input rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none font-mono"
+                                        />
+                                    </div>
                                 </div>
 
-                                {/* Chat ID */}
-                                <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
-                                    <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
-                                        <Icon name="user" className="text-sm text-cyan-400" /> Chat ID
-                                        <span className="text-[9px] text-slate-500 font-normal ml-auto">Optional</span>
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={telegramChatId}
-                                        onChange={(e) => setTelegramChatId(e.target.value)}
-                                        placeholder="123456789"
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-600 text-sm focus:border-cyan-500 focus:outline-none font-mono"
-                                    />
-                                    <p className="text-[10px] text-slate-500 mt-1.5">Tu ID de chat (obténlo desde @userinfobot)</p>
-                                </div>
-
-                                {/* Optional Note */}
-                                <div className="bg-slate-800/30 border border-slate-700/50 p-3 rounded-lg flex items-start gap-2">
-                                    <Icon name="check-circle" className="text-emerald-400 text-xs mt-0.5 flex-shrink-0" />
+                                <div className="bg-slate-900/40 border border-white/5 p-4 rounded-2xl flex items-start gap-3">
+                                    <Icon name="check-circle" className="text-emerald-400 text-sm flex-shrink-0" />
                                     <div className="text-[10px] text-slate-400 leading-relaxed">
-                                        Si dejas estos campos vacíos, puedes configurar Telegram más tarde desde <span className="text-slate-300">Settings → Telegram</span>.
+                                        Leave empty to skip. Configure later in <span className="text-slate-300 font-medium">Settings → Telegram</span>.
                                     </div>
                                 </div>
                             </div>
@@ -830,10 +864,10 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                 </div>
 
                 {/* Footer */}
-                <div className="p-6 border-t border-slate-800 bg-slate-900 flex justify-between items-center">
+                <div className="p-6 border-t border-white/5 bg-slate-950/40 backdrop-blur-xl flex justify-between items-center">
                     <div className="flex gap-1.5">
                         {[1, 2, 3, 4, 5, 6].map(i => (
-                            <div key={i} className={`w-2 h-2 rounded-full transition-all ${step === i ? 'bg-blue-500 w-4' : 'bg-slate-700'}`} />
+                            <div key={i} className={`w-2 h-2 rounded-full transition-all duration-500 ${step === i ? 'bg-blue-500 w-4 shadow-[0_0_8px_rgba(59,130,246,0.5)]' : 'bg-slate-800'}`} />
                         ))}
                     </div>
                     <div className="flex gap-3">
@@ -841,7 +875,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                             <button
                                 onClick={handlePrev}
                                 disabled={loading}
-                                className="px-6 py-2 rounded-lg font-bold text-slate-300 hover:bg-slate-800 transition-colors disabled:opacity-50"
+                                className="premium-button px-6 py-2.5 rounded-xl font-bold text-slate-400 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 Back
                             </button>
@@ -850,25 +884,24 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                             <button
                                 onClick={handleNext}
                                 disabled={step === 3 && !userName.trim()}
-                                className="px-8 py-2 rounded-lg font-bold text-white bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-500/20 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50 disabled:active:scale-100"
+                                className="premium-button premium-emphasis premium-blue px-8 py-2.5 rounded-xl font-bold text-white bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-500/20 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50 disabled:active:scale-100 disabled:cursor-not-allowed"
                             >
                                 Continue
                             </button>
                         ) : (
                             <>
-                                {/* Soft warning if no provider configured and Ollama offline */}
                                 {healthStatus && !healthStatus.ollama.online && !config.apiKeys.gemini && !config.apiKeys.groq && !config.apiKeys.zai && (
                                     <span className="text-[10px] text-amber-400 mr-2 flex items-center gap-1">
-                                        <Icon name="exclamation-triangle" className="text-xs" /> No provider available
+                                        <Icon name="exclamation-triangle" className="text-xs" /> No provider
                                     </span>
                                 )}
                                 <button
                                     onClick={finish}
                                     disabled={loading || !selectedPath}
-                                    className="px-8 py-2 rounded-lg font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-500/20 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50 disabled:active:scale-100"
+                                    className="premium-button premium-emphasis premium-emerald px-8 py-2.5 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-500/20 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50 disabled:active:scale-100 disabled:cursor-not-allowed"
                                 >
                                     {loading ? <Icon name="spinner" className="animate-spin" /> : <Icon name="check" />}
-                                    Initialize Engine
+                                    Initialize
                                 </button>
                             </>
                         )}
