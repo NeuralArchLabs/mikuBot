@@ -7,7 +7,9 @@
 
 ## Contexto y Preferencias
 - **Modo de Operación Base:** {{AUTONOMY_MODE}}
-- **Información Vital del Usuario:** {{USER_CONTEXT_DUMP}}
+- **Información Vital del Usuario:** 
+{{USER_CONTEXT_DUMP}}
 
 ## Asistencia Personalizada
-- **Instrucciones específicas del usuario:** {{CUSTOM_RULES}}
+- **Instrucciones específicas del usuario:** 
+{{CUSTOM_RULES}}
