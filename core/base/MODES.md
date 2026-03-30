@@ -17,8 +17,8 @@ You are in STOCHASTIC AGENT MODE. Your task is to fulfill the user's request thr
 3. **FINAL ANSWER:** Use the `final_answer` tool to deliver the result.
 4. **ACCURACY:** Be precise. If a search is empty, admit it. Don't hallucinate context.
 5. **ZERO LEAK PROTOCOL:** El uso de rutas absolutas está prohibido. Usa prefijos:
-   - `@CORE/` (Config), `@LIBRARY/` (Docs), `@TOOLS/` (Skills/Cmds), `@WORKSPACE/` (Área de Trabajo/Archivos).
-   - El sistema bloquea cualquier acceso fuera de estos prefijos (Miku Sandbox).
+   - `@CORE/` (Config), `@LIBRARY/` (Docs), `@TOOLS/` (Skills/Cmds), `@WORKSPACE/` (Área de Trabajo/Archivos), `@ROOT/` (Home/Configuración Global).
+   - **REGLA DE ORO:** Usa `@ROOT/config.json` para leer o modificar la configuración del sistema. No uses `../` ni `read_file` con `source: "workSpace"` para archivos fuera de la carpeta de trabajo.
 
 - **FileSystem:** `read_file`, `update_file`, `patch_file`, `undo_patch`, `delete_file`, `list_files`, `search_files` (Native).
 - **Analysis:** `get_file_outline`, `batch_operation`.
@@ -66,6 +66,8 @@ Te encuentras en una conversación casual. Tu prioridad es tu identidad (SOUL).
    - `@LIBRARY/` (Documentos/Conocimiento Persistente).
    - `@TOOLS/` (Personalización/Skills).
    - `@WORKSPACE/` (Área de Trabajo General del Usuario).
+   - `@ROOT/` (Directorio Maestro: Úsalo para leer `config.json` o logs de tareas).
+   - **IMPORTANTE:** Si necesitas leer `config.json`, usa `@ROOT/config.json`. No intentes saltar carpetas con `..`. Las rutas absolutas fallarán (Zero Leak).
    - Si no usas prefijo, el sistema asumirá `@WORKSPACE/` por defecto. Las rutas absolutas fallarán (Zero Leak).
 
 **TIPS:** 

@@ -9,7 +9,8 @@ let roots = {
     '@CORE': '',
     '@LIBRARY': '',
     '@TOOLS': '',
-    '@WORKSPACE': ''
+    '@WORKSPACE': '',
+    '@ROOT': ''
 };
 
 function init(config) {
@@ -17,6 +18,7 @@ function init(config) {
     if (config['@LIBRARY']) roots['@LIBRARY'] = path.normalize(config['@LIBRARY']);
     if (config['@TOOLS']) roots['@TOOLS'] = path.normalize(config['@TOOLS']);
     if (config['@WORKSPACE']) roots['@WORKSPACE'] = path.normalize(config['@WORKSPACE']);
+    if (config['@ROOT']) roots['@ROOT'] = path.normalize(config['@ROOT']);
     
     console.log('[SafePathResolver] Initialized with roots:', roots);
 }
@@ -24,52 +26,58 @@ function init(config) {
 function resolvePath(requestedPath) {
     if (!requestedPath) throw new Error('Path is required');
 
-    // If it's an absolute path, check if it belongs to any known root first
-    if (path.isAbsolute(requestedPath)) {
-        const normRequested = path.normalize(requestedPath).toLowerCase();
-        for (const [pref, root] of Object.entries(roots)) {
-            if (!root) continue;
-            const normRoot = path.normalize(root).toLowerCase();
-            if (normRequested.startsWith(normRoot)) {
-                // If it already starts with a root, it's safe to resolve directly
-                return path.normalize(requestedPath);
-            }
-        }
-    }
-
-    // Default to workspace if no prefix is detected
-    let prefix = '@WORKSPACE';
+    // NO default prefix anymore for maximum security.
+    let prefix = null;
     let cleanPath = requestedPath;
 
+    // Detect Prefix
     const prefixMatch = requestedPath.match(/^(@[A-Z]+)[\\/](.*)$/);
     if (prefixMatch) {
         prefix = prefixMatch[1];
         cleanPath = prefixMatch[2];
     } else if (requestedPath.startsWith('@')) {
-        // Handle case where it might be just the prefix or malformed prefix
-        const parts = requestedPath.split('/');
+        const parts = requestedPath.split(/[\\/]/);
         prefix = parts[0];
         cleanPath = parts.slice(1).join('/');
+    } else if (path.isAbsolute(requestedPath)) {
+        // For absolute paths: determine which root they belong to.
+        const normRequested = path.normalize(requestedPath).toLowerCase();
+        let foundPrefix = null;
+        for (const [pref, root] of Object.entries(roots)) {
+            if (!root) continue;
+            const normRoot = path.normalize(root).toLowerCase();
+            // Prefix check should be strict: root path or subpath
+            if (normRequested === normRoot || normRequested.startsWith(normRoot + path.sep)) {
+                foundPrefix = pref;
+                break;
+            }
+        }
+        if (!foundPrefix) {
+            throw new Error(`SecurityError: Access denied. Absolute path "${requestedPath}" is outside all authorized roots.`);
+        }
+        // If found, treat it as validated since it belongs to a root
+        return path.normalize(requestedPath);
     }
 
     const mappedRoot = roots[prefix];
     if (!mappedRoot) {
-        // If it looks like a prefix but we don't know it, throw error
-        if (prefix.startsWith('@')) {
-            throw new Error(`SecurityError: Unknown or unauthorized prefix: ${prefix}`);
-        }
-        // If it doesn't look like a prefix, it might be a raw relative path.
-        // For "Zero Leak", we should ideally force prefixes, but let's be pragmatic.
-        // If no prefix, we treat it as workspace relative.
-        return path.resolve(roots['@WORKSPACE'], requestedPath);
+        throw new Error(`SecurityError: ${prefix ? 'Unknown or unauthorized prefix: ' + prefix : 'No path prefix provided (@ROOT, @WORKSPACE, etc.) and path is not absolute.'}`);
     }
 
+    // Security: Prevent cleanPath from starting with slashes to avoid drive root resolution on Windows
+    const finalCleanPath = cleanPath.replace(/^[\\\/]+/, '');
+    
     // Resolve and Normalize
-    const resolvedPath = path.resolve(mappedRoot, cleanPath);
+    const resolvedPath = path.resolve(mappedRoot, finalCleanPath);
     const normalizedRoot = path.normalize(mappedRoot);
 
-    // Strict Validation: Zero Leak check (Case-Insensitive for Windows compatibility)
-    if (!resolvedPath.toLowerCase().startsWith(normalizedRoot.toLowerCase())) {
+    // Final "Zero Leak" Check: Every single path MUST start with its prefix root
+    const lowerResolved = resolvedPath.toLowerCase();
+    const lowerRoot = normalizedRoot.toLowerCase();
+    
+    const isIllegal = lowerResolved !== lowerRoot && !lowerResolved.startsWith(lowerRoot + path.sep);
+
+    if (isIllegal) {
         throw new Error(`SecurityError: Access denied. Path "${resolvedPath}" is outside its authorized root "${normalizedRoot}".`);
     }
 

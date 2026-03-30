@@ -10,7 +10,7 @@ export type Provider = 'groq' | 'gemini' | 'ollama' | 'zai';
 export type AgentMode = 'chat' | 'agent';
 
 /** File System Target */
-export type FileTarget = 'core' | 'extra' | 'workSpace' | 'tools';
+export type FileTarget = 'core' | 'extra' | 'workSpace' | 'tools' | 'root';
 
 /** Approval Mode for tools */
 export type ApprovalMode = 'auto' | 'manual';

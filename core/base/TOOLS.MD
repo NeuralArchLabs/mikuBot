@@ -11,6 +11,7 @@ El sistema utiliza los siguientes alias internos para referirse a las carpetas c
 - **@DEV:** Carpeta de proyectos de desarrollo.
 - **@MAP:** Biblioteca de referencia y documentación.
 - **@WORKSPACE:** Directorio de trabajo por defecto para pruebas y outputs temporales.
+- **@ROOT:** Directorio Raíz del proyecto (donde vive `config.json`).
 
 Las rutas reales son inyectadas dinámicamente según la configuración de Armando. No asumas rutas absolutas fijas a menos que sean necesarias para un comando específico del sistema.
 

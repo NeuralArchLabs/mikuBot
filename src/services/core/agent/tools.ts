@@ -15,6 +15,7 @@ export async function executeToolCall(
     additionalFiles: Record<string, string>,
     workSpaceFiles: Record<string, string>,
     toolsFiles: Record<string, string>,
+    rootFiles: Record<string, string>,
     saveFileFn: (name: string, content: string, target: FileTarget) => Promise<boolean>,
     deleteFileFn: (name: string, target: FileTarget) => Promise<boolean>,
     config: AppConfig,
@@ -42,7 +43,7 @@ export async function executeToolCall(
                     return { success: false, error: `Error reading file natively: ${result.error}` };
                 }
 
-                const store = getFileStore(target, files, additionalFiles, workSpaceFiles, toolsFiles);
+                const store = getFileStore(target, files, additionalFiles, workSpaceFiles, toolsFiles, rootFiles);
                 const content = store[cleanFilename];
                 if (content !== undefined) {
                     return { success: true, data: { filename: cleanFilename, content, source: target } };
@@ -71,7 +72,7 @@ export async function executeToolCall(
 
                 const saved = await saveFileFn(cleanFilename, args.content, target);
                 if (saved) {
-                    const store = getFileStore(target, files, additionalFiles, workSpaceFiles, toolsFiles);
+                    const store = getFileStore(target, files, additionalFiles, workSpaceFiles, toolsFiles, rootFiles);
                     store[cleanFilename] = args.content;
                 }
                 if (saved) {
@@ -114,7 +115,7 @@ export async function executeToolCall(
                 }
 
                 // Fallback to basic patch if not in Electron
-                const patchStore = getFileStore(target, files, additionalFiles, workSpaceFiles, toolsFiles);
+                const patchStore = getFileStore(target, files, additionalFiles, workSpaceFiles, toolsFiles, rootFiles);
                 const existingContent = patchStore[cleanFilename];
                 if (existingContent === undefined) return { success: false, error: `File not found.` };
 
@@ -231,7 +232,7 @@ export async function executeToolCall(
                 }
 
                 // Memory Fallback
-                const store = getFileStore(target, files, additionalFiles, workSpaceFiles, toolsFiles);
+                const store = getFileStore(target, files, additionalFiles, workSpaceFiles, toolsFiles, rootFiles);
                 let fileList = Object.keys(store).map(f => ({
                     name: f,
                     size: (store[f] || '').length
@@ -287,7 +288,7 @@ export async function executeToolCall(
                     if (result.ok) return { success: true, data: { query: args.query, matches: result.results, count: result.results.length, source: target } };
                 }
                 // Fallback
-                const store = getFileStore(target, files, additionalFiles, workSpaceFiles, toolsFiles);
+                const store = getFileStore(target, files, additionalFiles, workSpaceFiles, toolsFiles, rootFiles);
                 const query = args.query.toLowerCase();
                 const matches: { filename: string; lines: string[] }[] = [];
                 for (const [filename, content] of Object.entries(store)) {
@@ -530,7 +531,7 @@ export async function executeToolCall(
                 const { target, cleanFilename } = resolvePathAndSource(args.filename, args.source, config);
                 const deleted = await deleteFileFn(cleanFilename, target);
                 if (deleted) {
-                    const store = getFileStore(target, files, additionalFiles, workSpaceFiles, toolsFiles);
+                    const store = getFileStore(target, files, additionalFiles, workSpaceFiles, toolsFiles, rootFiles);
                     delete store[cleanFilename];
                     return { success: true, data: { filename: cleanFilename, message: `File "${cleanFilename}" deleted from ${target}.`, source: target } };
                 }

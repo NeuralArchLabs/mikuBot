@@ -47,6 +47,7 @@ export async function sendAgentMessage(
     additionalFiles: Record<string, string>,
     workSpaceFiles: Record<string, string>,
     toolsFiles: Record<string, string>,
+    rootFiles: Record<string, string>,
     saveFileFn: (name: string, content: string, target: FileTarget) => Promise<boolean>,
     deleteFileFn: (name: string, target: FileTarget) => Promise<boolean>,
     onChunk: (text: string, replace?: boolean, blocks?: any[]) => void,
@@ -174,6 +175,7 @@ export async function sendAgentMessage(
     const currentAdditional = { ...additionalFiles };
     const currentWorkSpace = { ...workSpaceFiles };
     const currentTools = { ...toolsFiles };
+    const currentRoot = { ...rootFiles };
 
     const MAX_RETRIES = 10;
     let iterations = 0;
@@ -468,7 +470,7 @@ export async function sendAgentMessage(
                     turnHasFailure = true;
                     continue;
                 }
-                const res = await executeToolCall(tc, currentFiles, currentAdditional, currentWorkSpace, currentTools, saveFileFn, deleteFileFn, config, onAddTask);
+                const res = await executeToolCall(tc, currentFiles, currentAdditional, currentWorkSpace, currentTools, currentRoot, saveFileFn, deleteFileFn, config, onAddTask);
                 const b = allBlocks.find(x => x.toolCall?.id === tc.id);
                 if (b) { b.result = res; b.status = res.success ? 'success' : 'error'; }
                 if (!res.success) {
@@ -498,7 +500,7 @@ export async function sendAgentMessage(
                     // Update Local State (Only for persistent file operations)
                     if (tc.function.name === 'update_file' || tc.function.name === 'delete_file') {
                         const { target, cleanFilename: cf } = resolvePathAndSource(tc.function.arguments.filename || '', tc.function.arguments.source);
-                        const store = getFileStore(target, currentFiles, currentAdditional, currentWorkSpace, currentTools);
+                        const store = getFileStore(target, currentFiles, currentAdditional, currentWorkSpace, currentTools, currentRoot);
                         if (tc.function.name === 'update_file') store[cf] = tc.function.arguments.content;
                         if (tc.function.name === 'delete_file') delete store[cf];
                     }

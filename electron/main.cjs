@@ -1,5 +1,5 @@
 const { app, BrowserWindow, ipcMain, dialog, Menu, shell, Tray, nativeImage, safeStorage } = require('electron');
-const { spawn } = require('child_process');
+const { spawn, exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const { Readable } = require('stream');
@@ -175,12 +175,17 @@ console.log('Main Process: Active Workspace Path:', currentWorkspacePath);
 function reinitSafePathResolver(workspacePath) {
     if (!workspacePath) return;
     
+    const normalizedPath = path.normalize(workspacePath);
+    
     SafePathResolver.init({
-        '@CORE': path.join(workspacePath, 'core'),
-        '@LIBRARY': path.join(workspacePath, 'library'),
-        '@TOOLS': path.join(workspacePath, 'commands'),
-        '@WORKSPACE': path.join(workspacePath, 'workspace')
+        '@CORE': path.join(normalizedPath, 'core'),
+        '@LIBRARY': path.join(normalizedPath, 'library'),
+        '@TOOLS': path.join(normalizedPath, 'commands'),
+        '@WORKSPACE': path.join(normalizedPath, 'workspace'),
+        '@ROOT': normalizedPath
     });
+    
+    console.log('[Main Process] SafePathResolver re-initialized with ROOT:', normalizedPath);
 }
 
 // Initial Call
@@ -575,20 +580,34 @@ ipcMain.handle('save-settings', async (event, settings) => {
 
 ipcMain.handle('load-settings', async () => {
     try {
-        const configPath = getEffectivePaths().config;
+        const paths = getEffectivePaths();
+        const configPath = paths.config;
         console.log('Loading settings from:', configPath);
+        
+        let settings = { config: {} };
+        
         if (fs.existsSync(configPath)) {
             const data = fs.readFileSync(configPath, 'utf8');
-            const settings = JSON.parse(data);
+            settings = JSON.parse(data);
             
             // Vault Decryption: Ensure frontend receives clean keys
             if (settings.config?.apiKeys) {
                 settings.config.apiKeys = decryptApiKeys(settings.config.apiKeys);
             }
-            
-            return { ok: true, settings };
+        } else {
+            console.log('[Main Process] No config.json found at target path. Providing defaults.');
         }
-        return { ok: true, settings: null };
+
+        // AUTO-INJECT ROOT PATHS: Ensure frontend and backend are always in sync
+        // This fixes ENOENT issues when @ROOT is not explicitly defined in config.json
+        if (!settings.config) settings.config = {};
+        if (!settings.config.folderPaths) settings.config.folderPaths = {};
+        if (!settings.config.folderNames) settings.config.folderNames = {};
+
+        settings.config.folderPaths.root = currentWorkspacePath;
+        settings.config.folderNames.root = path.basename(currentWorkspacePath) || 'MikuCentral';
+
+        return { ok: true, settings };
     } catch (error) {
         console.error('Failed to load settings:', error);
         return { ok: false, error: error.message };
@@ -720,6 +739,34 @@ ipcMain.handle('load-scheduler-logs', async () => {
 const getVoskModelsRoot = () => path.join(resourcesPath, 'engine', 'models', 'vosk');
 // Bundled root is the same as models root in this architecture
 const getVoskBundledRoot = () => getVoskModelsRoot();
+
+/**
+ * Parallel Dependency Bootstrap (Silent)
+ * Installs libraries like Vosk in the background to ensure they are ready 
+ * without delaying the main search engine setup.
+ */
+async function bootstrapHeavyDependencies() {
+    if (!fs.existsSync(ENGINE_PYTHON)) {
+        console.warn('[Bootstrap] Python engine not ready yet. Skipping parallel install.');
+        return;
+    }
+
+    console.log('[Bootstrap] Checking critical heavy dependencies (Vosk)...');
+    const checkVoskCmd = `"${ENGINE_PYTHON}" -c "import vosk"`;
+    
+    exec(checkVoskCmd, (err) => {
+        if (err) {
+            console.log('[Bootstrap] Vosk missing. Starting parallel installation...');
+            const installVoskCmd = `"${ENGINE_PYTHON}" -m pip install vosk --quiet`;
+            exec(installVoskCmd, (vErr) => {
+                if (vErr) console.error('[Bootstrap] Failed to install Vosk automatically:', vErr.message);
+                else console.log('[Bootstrap] Vosk successfully installed in parallel.');
+            });
+        } else {
+            console.log('[Bootstrap] Vosk is already available.');
+        }
+    });
+}
 
 ipcMain.handle('voice:list-models', async () => {
     try {
@@ -924,6 +971,7 @@ ipcMain.handle('telegram:process-voice', async (event, fileId) => {
             let transcriptionParts = [];
             let lastPartial = "";
             let isEngineReady = false;
+            let engineError = null;
 
             const rl = readline.createInterface({ input: pyProc.stdout });
 
@@ -940,6 +988,7 @@ ipcMain.handle('telegram:process-voice', async (event, fileId) => {
                             .audioChannels(1)
                             .on('error', (err) => {
                                 console.error('[Telegram Voice] FFmpeg Error:', err);
+                                engineError = `FFmpeg Error: ${err.message}`;
                                 pyProc.kill();
                             })
                             .on('end', () => {
@@ -958,6 +1007,7 @@ ipcMain.handle('telegram:process-voice', async (event, fileId) => {
                         }
                     } else if (msg.error) {
                         console.error('[Telegram Voice] Error from Python engine:', msg.error);
+                        engineError = msg.error;
                         pyProc.kill();
                     }
                 } catch (e) {
@@ -969,10 +1019,19 @@ ipcMain.handle('telegram:process-voice', async (event, fileId) => {
             rl.on('close', () => {
                 if (fs.existsSync(oggPath)) fs.unlinkSync(oggPath);
 
+                if (engineError) {
+                    return resolve({ ok: false, error: engineError });
+                }
+
                 // Si el motor terminó y nos quedó un parcial sin consolidar, lo añadimos
                 if (lastPartial) transcriptionParts.push(lastPartial);
 
                 const finalResult = transcriptionParts.join(" ").trim();
+                
+                if (!finalResult) {
+                    return resolve({ ok: false, error: 'No se detectaron palabras en el audio o el mensaje es demasiado corto.' });
+                }
+
                 console.log(`[Telegram Voice] Transcription completed. Words: ${transcriptionParts.length}`);
                 resolve({ ok: true, text: finalResult });
             });
@@ -1945,8 +2004,8 @@ ipcMain.handle('agent:get-file-outline', async (event, { path: relPath }) => {
 
 ipcMain.handle('agent:batch-operation', async (event, data) => {
     try {
-        // Here, rootPath might be a prefixed path now.
-        const root = data.rootPath ? SafePathResolver.resolvePath(data.rootPath) : SafePathResolver.roots['@WORKSPACE'];
+        const rootPath = data.rootPath || '@WORKSPACE';
+        const root = SafePathResolver.resolvePath(rootPath);
         const result = await agentActions.handleBatchOperation(root, data);
         return { ok: true, result };
     } catch (e) {
@@ -1956,8 +2015,8 @@ ipcMain.handle('agent:batch-operation', async (event, data) => {
 
 ipcMain.handle('agent:list-files', async (event, data) => {
     try {
-        // Ensure root is resolved via SafePathResolver
-        const root = data.rootPath ? SafePathResolver.resolvePath(data.rootPath) : currentWorkspacePath;
+        const rootPath = data.rootPath || '@WORKSPACE';
+        const root = SafePathResolver.resolvePath(rootPath);
         const results = await agentActions.handleListFiles(root, data);
         return { ok: true, results };
     } catch (e) {
@@ -1967,7 +2026,8 @@ ipcMain.handle('agent:list-files', async (event, data) => {
 
 ipcMain.handle('agent:search-files', async (event, data) => {
     try {
-        const root = data.rootPath ? SafePathResolver.resolvePath(data.rootPath) : currentWorkspacePath;
+        const rootPath = data.rootPath || '@WORKSPACE';
+        const root = SafePathResolver.resolvePath(rootPath);
         const results = await agentActions.handleSearchFilesNative(root, data);
         return { ok: true, results };
     } catch (e) {
@@ -1977,8 +2037,8 @@ ipcMain.handle('agent:search-files', async (event, data) => {
 
 ipcMain.handle('agent:patch-file', async (event, data) => {
     try {
-        // Pass everything as-is, resolver is now inside agentActions
-        const result = await agentActions.handlePatchFile(SafePathResolver.roots['@WORKSPACE'], data);
+        const root = SafePathResolver.roots['@ROOT'] || SafePathResolver.roots['@WORKSPACE'];
+        const result = await agentActions.handlePatchFile(root, data);
         return { ok: true, result };
     } catch (e) {
         return { ok: false, error: e.message };
@@ -1987,7 +2047,8 @@ ipcMain.handle('agent:patch-file', async (event, data) => {
 
 ipcMain.handle('agent:undo-patch', async (event, { path: relPath }) => {
     try {
-        const result = await agentActions.handleUndoPatch(SafePathResolver.roots['@WORKSPACE'], relPath);
+        const root = SafePathResolver.roots['@ROOT'] || SafePathResolver.roots['@WORKSPACE'];
+        const result = await agentActions.handleUndoPatch(root, relPath);
         return { ok: true, result };
     } catch (e) {
         return { ok: false, error: e.message };
@@ -2057,6 +2118,14 @@ function createWindow() {
     }
 
     setupAppMenu(mainWin);
+
+    mainWin.on('closed', () => {
+        mainWin = null;
+    });
+    // Start background dependency bootstrap
+    setTimeout(() => {
+        bootstrapHeavyDependencies();
+    }, 5000); // 5s delay to let main app breathe
 
     mainWin.once('ready-to-show', () => {
         mainWin.show();

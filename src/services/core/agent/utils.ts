@@ -14,7 +14,29 @@ export function resolvePathAndSource(filename: string | undefined, sourceArg?: s
     let f = (filename || '').trim();
     let target: FileTarget = 'workSpace';
 
-    // 1. Prefix Detection (Highest Priority)
+    const normalizedF = f.replace(/\\/g, '/').toLowerCase();
+    const isAbsolutePath = /^[a-zA-Z]:\//.test(normalizedF) || normalizedF.startsWith('/');
+
+    // 1. Absolute Path Detection (via config folderPaths)
+    // Moving this UP ensures absolute paths are handled before default prefix logic
+    if (isAbsolutePath && config?.folderPaths) {
+        const paths = config.folderPaths;
+        // Priority order: core > tools > workSpace > extra > root
+        const targets: FileTarget[] = ['core', 'tools', 'workSpace', 'extra', 'root'];
+        for (const t of targets) {
+            const p = paths[t];
+            if (p) {
+                const normalizedP = p.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+                // Match exact root OR subpath
+                if (normalizedF === normalizedP || normalizedF.startsWith(normalizedP + '/')) {
+                    const clean = f.substring(p.length).replace(/^[/\\]+/, '');
+                    return { target: t, cleanFilename: clean };
+                }
+            }
+        }
+    }
+
+    // 2. Prefix Detection (@CORE/, etc.)
     const upperF = f.toUpperCase();
     if (upperF === '@CORE' || upperF.startsWith('@CORE/')) {
         target = 'core';
@@ -31,16 +53,17 @@ export function resolvePathAndSource(filename: string | undefined, sourceArg?: s
     } else if (upperF === '@TOOLS' || upperF.startsWith('@TOOLS/')) {
         target = 'tools';
         f = upperF === '@TOOLS' ? '' : f.slice(7);
+    } else if (upperF === '@ROOT' || upperF.startsWith('@ROOT/')) {
+        target = 'root';
+        f = upperF === '@ROOT' ? '' : f.slice(6);
     } 
-    // 1.5 Naked Prefix Interception (Fallback for when agents don't explicitly pass source or @)
+    // 3. Naked Subfolder Interception (legacy support for core/, library/, etc.)
     else if (!sourceArg) {
         const normalized = f.replace(/\\/g, '/').toLowerCase();
         
         const applyPrefixFix = (targetId: FileTarget, prefix: string, len: number) => {
             target = targetId;
             f = f.substring(len);
-            // If the user's folderPaths configuration does not naturally end with this subfolder,
-            // we must prepended it back to prevent files dumping into the root workspace!
             if (config?.folderPaths?.[targetId]) {
                 const staticP = config.folderPaths[targetId].replace(/\\/g, '/').toLowerCase();
                 if (!staticP.endsWith(`/${prefix}`) && !staticP.endsWith(`\\${prefix}`)) {
@@ -70,36 +93,7 @@ export function resolvePathAndSource(filename: string | undefined, sourceArg?: s
             target = 'workSpace';
             f = '';
         }
-    }
-    
-    // 2. Absolute Path Detection (via config)
-    else if (config?.folderPaths) {
-        const paths = config.folderPaths;
-        const normalizedF = f.replace(/\\/g, '/').toLowerCase();
-        
-        let found = false;
-        // Priority: core > tools > workSpace > extra
-        const targets: FileTarget[] = ['core', 'tools', 'workSpace', 'extra'];
-        for (const t of targets) {
-            const p = paths[t];
-            if (p) {
-                const normalizedP = p.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
-                if (normalizedF.startsWith(normalizedP + '/')) {
-                    target = t;
-                    f = f.substring(p.length).replace(/^[/\\]+/, '');
-                    found = true;
-                    break;
-                }
-            }
-        }
-
-        // 3. Fallback to sourceArg if no absolute path found
-        if (!found && sourceArg) {
-            target = resolveSource(sourceArg);
-        }
-    }
-    // 4. Minimal Fallback
-    else if (sourceArg) {
+    } else if (sourceArg) {
         target = resolveSource(sourceArg);
     }
 
@@ -112,6 +106,7 @@ export function resolveSource(source?: string): FileTarget {
     if (s === 'core' || s === 'nucleo' || s === 'núcleo' || s === 'identidad') return 'core';
     if (s === 'library' || s === 'extra' || s === 'biblioteca' || s === 'librería' || s === 'libreria' || s === 'adicional') return 'extra';
     if (s === 'tools' || s === 'herramientas' || s === 'scripts' || s === 'commands') return 'tools';
+    if (s === 'root' || s === 'maestra' || s === 'principal' || s === 'base') return 'root';
     if (s === 'workspace' || s === 'trabajo' || s === 'local' || s === 'sandbox') return 'workSpace';
     return 'workSpace';
 }
@@ -121,22 +116,25 @@ export function getFileStore(
     files: Record<string, string>,
     additionalFiles: Record<string, string>,
     workSpaceFiles: Record<string, string>,
-    toolsFiles?: Record<string, string>
+    toolsFiles: Record<string, string>,
+    rootFiles: Record<string, string>
 ): Record<string, string> {
     switch (target) {
         case 'core': return files;
         case 'extra': return additionalFiles;
         case 'workSpace': return workSpaceFiles;
-        case 'tools': return toolsFiles || {};
+        case 'tools': return toolsFiles;
+        case 'root': return rootFiles;
     }
 }
 
 export function getRelativePath(target: FileTarget, filename: string): string {
     const map: Record<FileTarget, string> = {
-        core: 'core',
-        extra: 'library',
-        workSpace: 'workspace',
-        tools: 'commands'
+        core: '@CORE',
+        extra: '@LIBRARY',
+        workSpace: '@WORKSPACE',
+        tools: '@TOOLS',
+        root: '@ROOT'
     };
     // Ensure filename doesn't start with a slash
     const cleanFn = filename.startsWith('/') || filename.startsWith('\\') ? filename.slice(1) : filename;

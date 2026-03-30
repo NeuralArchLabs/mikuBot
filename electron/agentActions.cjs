@@ -165,14 +165,9 @@ async function applyBatchOp(op, src, dest) {
  * Lists files and directories in a path.
  */
 async function handleListFiles(root, { directory, recursive = false }) {
-    // Resolve using prefix if present, otherwise fallback to root/directory
-    let targetDir;
-    try {
-        targetDir = directory ? SafePathResolver.resolvePath(directory) : root;
-    } catch (e) {
-        // Fallback for raw paths if resolver fails (e.g. no prefix match and no workspace root set)
-        targetDir = directory ? path.resolve(root, directory) : root;
-    }
+    // RESOLVE STRICTOR: No logic fallbacks allowed. Use Resolver or fail.
+    const targetDir = directory ? SafePathResolver.resolvePath(directory) : root;
+    console.log(`[agentActions] handleListFiles listing: "${targetDir}" (requested: "${directory}", root: "${root}")`);
     
     const stats = await fs.stat(targetDir);
     if (!stats.isDirectory()) {
@@ -181,6 +176,11 @@ async function handleListFiles(root, { directory, recursive = false }) {
 
     const results = [];
     const files = await fs.readdir(targetDir);
+    console.log(`[agentActions] Found ${files.length} files in "${targetDir}"`);
+
+    // Get normalized normalizedRoot for relative mapping
+    // We use the root passed from main (which is the autorized prefix)
+    const normalizedRoot = path.normalize(targetDir);
 
     for (const file of files) {
         const fullPath = path.join(targetDir, file);
@@ -189,18 +189,21 @@ async function handleListFiles(root, { directory, recursive = false }) {
             const isDir = stats.isDirectory();
             
             // Skip common ignore patterns
-            if (['node_modules', '.git', 'dist', 'build', '.next'].includes(file)) continue;
+            if (['node_modules', '.git', 'dist', 'build', '.next', '.gemini'].includes(file)) continue;
 
             results.push({
-                name: path.relative(root, fullPath).replace(/\\/g, '/'),
+                name: file, // Return only the basename for security and clarity
                 size: isDir ? 0 : stats.size,
-                isDirectory: isDir
+                isDirectory: isDir,
+                path: path.relative(root, fullPath).replace(/\\/g, '/') // Relative to the effective root
             });
 
             if (recursive && isDir) {
-                // Limit depth to 3 for safety
-                const subFiles = await handleListFiles(root, { directory: path.relative(root, fullPath), recursive: false });
-                results.push(...subFiles);
+                // Limit depth and ensure recursive calls also respect the sandbox
+                if (results.length < 500) { // Safety cap
+                   const subFiles = await handleListFiles(root, { directory: fullPath, recursive: false });
+                   results.push(...subFiles);
+                }
             }
         } catch (e) {}
     }

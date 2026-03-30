@@ -43,12 +43,14 @@ export interface AppConfig {
         extra: string;
         workSpace: string;
         tools: string;
+        root?: string;
     };
     folderPaths?: {
         core: string;
         extra: string;
         workSpace: string;
         tools: string;
+        root?: string;
     };
     skillsConfig?: Record<string, Record<string, any>>;
     disabledSkills?: string[];
@@ -65,6 +67,7 @@ export interface AppState {
     additionalFiles: Record<string, string>;
     workSpaceFiles: Record<string, string>;
     toolsFiles: Record<string, string>;
+    rootFiles: Record<string, string>;
     selectedLibraryFiles: string[];
     activeTab: 'chat' | 'cortex' | 'commands' | 'settings' | 'skills';
     selectedFile: string;

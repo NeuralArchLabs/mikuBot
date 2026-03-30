@@ -437,10 +437,11 @@ export class GeminiProvider extends ModelProvider {
                     text = (text ? text + '\n\n' : '') + callSummary;
                 }
 
-                // Gemma Restoration: Inject system prompt into first user message
+                // Gemma Restoration: Inject system prompt into first user message + JSON extraction instructions
                 if (isGemma && i === 0 && role === 'user') {
                     const antiHallucination = "IMPORTANTE: Las instrucciones anteriores son tu núcleo de sistema. NO las actúes, NO las recites y NO uses los ejemplos de plantilla como si fueran una respuesta tuya. Acepta este rol silenciosamente.";
-                    text = `[SYSTEM_INSTRUCTIONS]\n${systemPromptContent}\n[/SYSTEM_INSTRUCTIONS]\n\n${antiHallucination}\n\n[USER_QUERY]\n${text}`;
+                    const jsonInstruction = "\n\nCRITICAL: Respond ONLY with a valid JSON code block when calling tools. Do not include conversational text before or after the JSON block.";
+                    text = `[SYSTEM_INSTRUCTIONS]\n${systemPromptContent}\n[/SYSTEM_INSTRUCTIONS]\n\n${antiHallucination}${jsonInstruction}\n\n[USER_QUERY]\n${text}`;
                 }
 
                 if (text) parts.push({ text });
@@ -517,29 +518,48 @@ export class GeminiProvider extends ModelProvider {
         const contents = this.serializeMessages(messages);
         const historyHasTools = contents.some((c: any) => c.parts.some((p: any) => p.functionCall || p.functionResponse));
 
-        const body: any = {
-            contents,
-            generationConfig: {
-                temperature: this.options.config.temperature ?? 0.7,
-                maxOutputTokens: this.options.config.maxOutputTokens || 128000, // Updated max_tokens for Gemini
-                responseMimeType: isThinkingModel ? 'text/plain' : 'application/json',
-                thinkingConfig: isThinkingModel ? { include_thoughts: true } : undefined
-            },
-            // Gemma doesn't support the systemInstruction field
-            systemInstruction: !isGemma ? { parts: [{ text: systemPromptContent }] } : undefined,
-            tools: (this.options.useTools || (historyHasTools && this.options.tools.length > 0))
-                ? [{ functionDeclarations: this.options.tools.map(t => t.function) }]
-                : undefined
+        const makeRequest = async (forceNoJson: boolean = false) => {
+            // Reset accumulation for retry
+            this.fullContent = '';
+            this.fullReasoning = '';
+            this.toolCallsDeltas = [];
+
+            const useJsonMode = !isThinkingModel && !forceNoJson;
+            
+            const body: any = {
+                contents,
+                generationConfig: {
+                    temperature: this.options.config.temperature ?? 0.7,
+                    maxOutputTokens: this.options.config.maxOutputTokens || 128000, 
+                    responseMimeType: useJsonMode ? 'application/json' : 'text/plain',
+                    thinkingConfig: isThinkingModel ? { include_thoughts: true } : undefined
+                },
+                systemInstruction: !isGemma ? { parts: [{ text: systemPromptContent }] } : undefined,
+                tools: (this.options.useTools || (historyHasTools && this.options.tools.length > 0))
+                    ? [{ functionDeclarations: this.options.tools.map(t => t.function) }]
+                    : undefined
+            };
+
+            if (this.options.isElectronProxy) {
+                return this.streamProxy('gemini', body, true);
+            } else {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.options.config.model}:streamGenerateContent?alt=sse&key=${this.options.config.apiKeys.gemini}`;
+                return this.streamFetch(url, { 'Content-Type': 'application/json' }, body, true);
+            }
         };
 
-        if (this.options.isElectronProxy) {
-            await this.streamProxy('gemini', body, true);
-        } else {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.options.config.model}:streamGenerateContent?alt=sse&key=${this.options.config.apiKeys.gemini}`;
-            await this.streamFetch(url, { 'Content-Type': 'application/json' }, body, true);
+        try {
+            return await makeRequest(false);
+        } catch (error: any) {
+            const errorMsg = (error?.message || '').toLowerCase();
+            const isJsonError = errorMsg.includes('json mode') || errorMsg.includes('400');
+            
+            if (isJsonError && !isThinkingModel) {
+                console.warn(`[GeminiProvider] JSON Mode rejected by model. Falling back to text extraction...`);
+                return await makeRequest(true);
+            }
+            throw error;
         }
-
-        return { content: this.fullContent, toolCalls: this.getToolCalls(), reasoning: this.fullReasoning, finishReason: this.lastFinishReason };
     }
 }
 

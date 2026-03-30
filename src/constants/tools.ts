@@ -17,7 +17,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
                 type: 'object',
                 properties: {
                     filename: { type: 'string', description: 'The filename to read (e.g. SOUL.md, project/index.html)' },
-                    source: { type: 'string', description: 'Where to read from. Defaults to "workSpace".', enum: ['workSpace', 'core', 'library', 'extra', 'tools'] }
+                    source: { type: 'string', description: 'Where to read from. Defaults to "workSpace".', enum: ['workSpace', 'core', 'library', 'extra', 'tools', 'root'] }
                 },
                 required: ['filename']
             }
@@ -33,7 +33,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
                 properties: {
                     filename: { type: 'string', description: 'The file path (e.g. docs/api.md). Directories auto-created.' },
                     content: { type: 'string', description: 'The full content for the file' },
-                    source: { type: 'string', description: 'Where to save. Defaults to "workSpace".', enum: ['workSpace', 'core', 'library', 'extra', 'tools'] }
+                    source: { type: 'string', description: 'Where to save. Defaults to "workSpace".', enum: ['workSpace', 'core', 'library', 'extra', 'tools', 'root'] }
                 },
                 required: ['filename', 'content']
             }
@@ -64,7 +64,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
                             }
                         }
                     },
-                    source: { type: 'string', description: 'Defaults to "workSpace".', enum: ['workSpace', 'core', 'library', 'extra', 'tools'] }
+                    source: { type: 'string', description: 'Defaults to "workSpace".', enum: ['workSpace', 'core', 'library', 'extra', 'tools', 'root'] }
                 },
                 required: ['filename']
             }
@@ -79,7 +79,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
                 type: 'object',
                 properties: {
                     filename: { type: 'string', description: 'The file to revert.' },
-                    source: { type: 'string', description: 'Where file lives.', enum: ['workSpace', 'core', 'library', 'extra', 'tools'] }
+                    source: { type: 'string', description: 'Where file lives.', enum: ['workSpace', 'core', 'library', 'extra', 'tools', 'root'] }
                 },
                 required: ['filename']
             }
@@ -93,7 +93,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
             parameters: {
                 type: 'object',
                 properties: {
-                    source: { type: 'string', description: 'Which mount point to list. Defaults to "workSpace".', enum: ['workSpace', 'core', 'library', 'extra', 'tools'] },
+                    source: { type: 'string', description: 'Which mount point to list. Defaults to "workSpace".', enum: ['workSpace', 'core', 'library', 'extra', 'tools', 'root'] },
                     directory: { type: 'string', description: 'Optional sub-folder to list (e.g. "src/components").' }
                 },
                 required: []
@@ -112,7 +112,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
                     filePattern: { type: 'string', description: 'Optional glob filter (e.g. "*.js").' },
                     caseSensitive: { type: 'boolean', description: 'Defaults to false.' },
                     searchPath: { type: 'string', description: 'Specific sub-folder to search.' },
-                    source: { type: 'string', description: 'Defaults to "workSpace".', enum: ['workSpace', 'core', 'library', 'extra', 'tools'] }
+                    source: { type: 'string', description: 'Defaults to "workSpace".', enum: ['workSpace', 'core', 'library', 'extra', 'tools', 'root'] }
                 },
                 required: ['query']
             }
@@ -127,7 +127,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
                 type: 'object',
                 properties: {
                     filename: { type: 'string', description: 'The source file.' },
-                    source: { type: 'string', description: 'Where file lives.', enum: ['workSpace', 'core', 'library', 'extra', 'tools'] }
+                    source: { type: 'string', description: 'Where file lives.', enum: ['workSpace', 'core', 'library', 'extra', 'tools', 'root'] }
                 },
                 required: ['filename']
             }
@@ -145,7 +145,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
                     source_path: { type: 'string', description: 'Source path or directory.' },
                     destination_path: { type: 'string', description: 'Target destination (for copy/move).' },
                     pattern: { type: 'string', description: 'Optional glob pattern (e.g. "*.ts").' },
-                    source: { type: 'string', enum: ['workSpace', 'core', 'library', 'extra', 'tools'], description: 'Reference mount point.' }
+                    source: { type: 'string', enum: ['workSpace', 'core', 'library', 'extra', 'tools', 'root'], description: 'Reference mount point.' }
                 },
                 required: ['operation', 'source_path']
             }
@@ -232,7 +232,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
                 type: 'object',
                 properties: {
                     filename: { type: 'string', description: 'The filename to delete.' },
-                    source: { type: 'string', description: 'Where file lives. Defaults to "workSpace".', enum: ['workSpace', 'core', 'library', 'extra', 'tools'] }
+                    source: { type: 'string', description: 'Where file lives. Defaults to "workSpace".', enum: ['workSpace', 'core', 'library', 'extra', 'tools', 'root'] }
                 },
                 required: ['filename']
             }

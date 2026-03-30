@@ -21,8 +21,8 @@ export const DEFAULT_CONFIG: AppConfig = {
     braveApiKey: '',
     telegramBotToken: '',
     telegramChatId: '',
-    folderNames: { core: '', extra: '', workSpace: '', tools: '' },
-    folderPaths: { core: '', extra: '', workSpace: '', tools: '' },
+    folderNames: { core: '', extra: '', workSpace: '', tools: '', root: '' },
+    folderPaths: { core: '', extra: '', workSpace: '', tools: '', root: '' },
     skillsConfig: {},
     disabledSkills: [],
     voskModelPath: ''

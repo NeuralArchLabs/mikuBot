@@ -36,6 +36,7 @@ export const App = () => {
         additionalFiles: {},
         workSpaceFiles: {},
         toolsFiles: {},
+        rootFiles: {},
         selectedLibraryFiles: [],
         activeTab: 'chat' as const,
         selectedFile: '',
@@ -47,7 +48,7 @@ export const App = () => {
         safeMode: true,
         approvalMode: 'auto' as ApprovalMode,
         debugMode: false,
-        folderPermissions: { core: 'prompt', extra: 'prompt', workSpace: 'prompt', tools: 'prompt' }
+        folderPermissions: { core: 'prompt', extra: 'prompt', workSpace: 'prompt', tools: 'prompt', root: 'prompt' }
     });
 
     // Zustand store - estado atómico para alta frecuencia (streaming)
@@ -57,7 +58,11 @@ export const App = () => {
     const input = useAgentStore(selectInput);
     const pendingToolApproval = useAgentStore(selectPendingToolApproval);
 
-    // Store actions
+    const [coreHandle, setCoreHandle] = useState<FileSystemDirectoryHandle | null>(null);
+    const [extraHandle, setExtraHandle] = useState<FileSystemDirectoryHandle | null>(null);
+    const [workSpaceHandle, setWorkSpaceHandle] = useState<FileSystemDirectoryHandle | null>(null);
+    const [toolsHandle, setToolsHandle] = useState<FileSystemDirectoryHandle | null>(null);
+    const [rootHandle, setRootHandle] = useState<FileSystemDirectoryHandle | null>(null);
     const {
         setMessages: setMessagesStore,
         addMessage,
@@ -83,10 +88,6 @@ export const App = () => {
     const lastUserTextRef = useRef<string>('');
     const lastForceToolModeRef = useRef<boolean>(false);
 
-    const [coreHandle, setCoreHandle] = useState<FileSystemDirectoryHandle | null>(null);
-    const [extraHandle, setExtraHandle] = useState<FileSystemDirectoryHandle | null>(null);
-    const [workSpaceHandle, setWorkSpaceHandle] = useState<FileSystemDirectoryHandle | null>(null);
-    const [toolsHandle, setToolsHandle] = useState<FileSystemDirectoryHandle | null>(null);
     const [syncing, setSyncing] = useState(false);
 
     // System Dialogs
@@ -436,6 +437,7 @@ export const App = () => {
                     case 'extra': return { ...prev, additionalFiles: newFiles };
                     case 'workSpace': return { ...prev, workSpaceFiles: newFiles };
                     case 'tools': return { ...prev, toolsFiles: newFiles };
+                    case 'root': return { ...prev, rootFiles: newFiles };
                 }
                 return prev;
             });
@@ -453,11 +455,11 @@ export const App = () => {
             const isElectron = !!(window as any).electron;
             const configToUse = customConfig || state.config;
             const staticPaths = configToUse.folderPaths;
-            const results: Record<FileTarget, PermissionStatus> = { core: 'prompt', extra: 'prompt', workSpace: 'prompt', tools: 'prompt' };
+            const results: Record<FileTarget, PermissionStatus> = { core: 'prompt', extra: 'prompt', workSpace: 'prompt', tools: 'prompt', root: 'prompt' };
 
             if (isElectron && staticPaths) {
                 console.log("[Restore] Electron Mode: syncing via static paths");
-                const targets: FileTarget[] = ['core', 'extra', 'workSpace', 'tools'];
+                const targets: FileTarget[] = ['core', 'extra', 'workSpace', 'tools', 'root'];
                 for (const t of targets) {
                     const path = staticPaths[t];
                     if (path) {
@@ -469,7 +471,7 @@ export const App = () => {
                 }
             } else {
                 console.log("[Restore] Browser Mode: syncing via handles");
-                const targets: FileTarget[] = ['core', 'extra', 'workSpace', 'tools'];
+                const targets: FileTarget[] = ['core', 'extra', 'workSpace', 'tools', 'root'];
                 for (const t of targets) {
                     const h = await db.get(t + 'Handle');
                     if (h) {
@@ -477,6 +479,7 @@ export const App = () => {
                         if (t === 'extra') setExtraHandle(h);
                         if (t === 'workSpace') setWorkSpaceHandle(h);
                         if (t === 'tools') setToolsHandle(h);
+                        if (t === 'root') setRootHandle?.(h);
 
                         const perm = await (h as any).queryPermission({ mode: 'read' }) as PermissionStatus;
                         results[t] = perm;
@@ -545,6 +548,7 @@ export const App = () => {
                 case 'extra': handle = extraHandle; break;
                 case 'workSpace': handle = workSpaceHandle; break;
                 case 'tools': handle = toolsHandle; break;
+                case 'root': handle = rootHandle; break;
             }
 
             const staticPath = state.config.folderPaths?.[target];
@@ -592,6 +596,8 @@ export const App = () => {
                         return { ...prev, workSpaceFiles: { ...prev.workSpaceFiles, [name]: content }, unsavedChanges: nextUnsaved };
                     case 'tools':
                         return { ...prev, toolsFiles: { ...prev.toolsFiles, [name]: content }, unsavedChanges: nextUnsaved };
+                    case 'root':
+                        return { ...prev, rootFiles: { ...prev.rootFiles, [name]: content }, unsavedChanges: nextUnsaved };
                 }
             });
 
@@ -609,6 +615,7 @@ export const App = () => {
             else if (target === 'extra') handle = extraHandle;
             else if (target === 'workSpace') handle = workSpaceHandle;
             else if (target === 'tools') handle = toolsHandle;
+            else if (target === 'root') handle = rootHandle;
 
             const staticPath = state.config.folderPaths?.[target];
             const isElectron = !!(window as any).electron?.deleteFile;
@@ -648,6 +655,10 @@ export const App = () => {
                     const next = { ...prev.toolsFiles };
                     delete next[name];
                     newState.toolsFiles = next;
+                } else if (target === 'root') {
+                    const next = { ...prev.rootFiles };
+                    delete next[name];
+                    newState.rootFiles = next;
                 }
                 return newState;
             });
@@ -1160,17 +1171,19 @@ Para ver todas tus habilidades adicionales habilitadas y sus parámetros técnic
             core: { ...currentState.files },
             additional: { ...currentState.additionalFiles },
             workSpace: { ...currentState.workSpaceFiles },
-            tools: { ...currentState.toolsFiles }
+            tools: { ...currentState.toolsFiles },
+            root: { ...currentState.rootFiles }
         };
 
         if (!isRemote) {
-            const targets: FileTarget[] = ['core', 'extra', 'workSpace', 'tools'];
+            const targets: FileTarget[] = ['core', 'extra', 'workSpace', 'tools', 'root'];
             for (const t of targets) {
                 const isPrompt = currentState.folderPermissions[t] === 'prompt';
                 const isEmpty = (t === 'core' && Object.keys(currentState.files).length === 0) ||
                     (t === 'extra' && Object.keys(currentState.additionalFiles).length === 0) ||
                     (t === 'workSpace' && Object.keys(currentState.workSpaceFiles).length === 0) ||
-                    (t === 'tools' && Object.keys(currentState.toolsFiles).length === 0);
+                    (t === 'tools' && Object.keys(currentState.toolsFiles).length === 0) ||
+                    (t === 'root' && Object.keys(currentState.rootFiles).length === 0);
 
                 if (isPrompt) {
                     const fresh = await requestFolderPermission(t);
@@ -1179,6 +1192,7 @@ Para ver todas tus habilidades adicionales habilitadas y sus parámetros técnic
                         if (t === 'extra') freshState.additional = fresh;
                         if (t === 'workSpace') freshState.workSpace = fresh;
                         if (t === 'tools') freshState.tools = fresh;
+                        if (t === 'root') freshState.root = fresh;
                     }
                 } else if (isEmpty) {
                     // If granted but empty (stale session), re-sync silently
@@ -1187,6 +1201,7 @@ Para ver todas tus habilidades adicionales habilitadas y sus parámetros técnic
                     if (t === 'extra') handle = extraHandle;
                     if (t === 'workSpace') handle = workSpaceHandle;
                     if (t === 'tools') handle = toolsHandle;
+                    if (t === 'root') handle = rootHandle;
                     if (handle) {
                         const fresh = await syncFiles(t, handle);
                         if (fresh) {
@@ -1194,6 +1209,7 @@ Para ver todas tus habilidades adicionales habilitadas y sus parámetros técnic
                             if (t === 'extra') freshState.additional = fresh;
                             if (t === 'workSpace') freshState.workSpace = fresh;
                             if (t === 'tools') freshState.tools = fresh;
+                            if (t === 'root') freshState.root = fresh;
                         }
                     }
                 }
@@ -1347,7 +1363,7 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
 
                 await sendAgentMessage(
                     inferenceConfig, systemInstruction, chatHistoryLocal, toolsForSession,
-                    { ...freshState.core }, { ...freshState.additional }, { ...freshState.workSpace }, { ...freshState.tools },
+                    { ...freshState.core }, { ...freshState.additional }, { ...freshState.workSpace }, { ...freshState.tools }, { ...freshState.root },
                     saveFile,
                     deleteFile,
                     (chunk, replace, blocks) => {
@@ -1735,13 +1751,14 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                         <SettingsPanel
                             config={state.config} updateConfig={updateConfig} models={models} loadingModels={loadingModels}
                             connectionStatus={connectionStatus} onTestConnection={handleTestConnection}
-                            onCoreSelect={() => handleSelectFolder('core')} onExtraSelect={() => handleSelectFolder('extra')} onWorkSpaceSelect={() => handleSelectFolder('workSpace')} onToolsSelect={() => handleSelectFolder('tools')}
+                            onCoreSelect={() => handleSelectFolder('core')} onExtraSelect={() => handleSelectFolder('extra')} onWorkSpaceSelect={() => handleSelectFolder('workSpace')} onToolsSelect={() => handleSelectFolder('tools')} onRootSelect={() => handleSelectFolder('root')}
                             onSaveGlobal={onSaveGlobal} onResetGlobal={onResetGlobal}
                             onLoadConfig={onLoadConfig} onExportConfig={onExportConfig}
                             corePathName={coreHandle?.name || state.config.folderPaths?.core || ''}
                             extraPathName={extraHandle?.name || state.config.folderPaths?.extra || ''}
                             workSpacePathName={workSpaceHandle?.name || state.config.folderPaths?.workSpace || ''}
                             toolsPathName={toolsHandle?.name || state.config.folderPaths?.tools || ''}
+                            rootPathName={rootHandle?.name || state.config.folderPaths?.root || ''}
                             syncing={syncing}
                             askAlert={askAlert}
                             askConfirm={askConfirm}
