@@ -777,6 +777,27 @@ async function bootstrapHeavyDependencies() {
     });
 }
 
+ipcMain.handle('voice:status', async () => {
+    try {
+        const { exec } = require('child_process');
+        return new Promise((resolve) => {
+            // Check if vosk can be imported in the current engine python
+            const checkCmd = `"${ENGINE_PYTHON}" -c "import vosk; print('OK')"`;
+            const start = performance.now();
+            exec(checkCmd, (err, stdout) => {
+                const latencyMs = Math.round(performance.now() - start);
+                if (err) {
+                    resolve({ ok: true, online: false, error: 'Vosk module not installed', latencyMs });
+                } else {
+                    resolve({ ok: true, online: stdout.includes('OK'), latencyMs });
+                }
+            });
+        });
+    } catch (error) {
+        return { ok: false, error: error.message };
+    }
+});
+
 ipcMain.handle('voice:list-models', async () => {
     try {
         const models = new Set();
@@ -2101,12 +2122,10 @@ function createWindow() {
         minWidth: 768,
         minHeight: 650,
         icon: (() => {
-            const { nativeImage } = require('electron');
             const iconPath = app.isPackaged
                 ? path.join(__dirname, '../dist/mikuBotICON.png')
                 : path.join(__dirname, '../public/mikuBotICON.png');
-            // Resize the image to prevent cropped/corrupted rendering on the taskbar/titlebar
-            return nativeImage.createFromPath(iconPath).resize({ width: 32, height: 32 });
+            return nativeImage.createFromPath(iconPath);
         })(),
         webPreferences: {
             preload: path.join(__dirname, 'preload.cjs'),

@@ -58,6 +58,17 @@ export interface AppConfig {
     minimizeToTray?: boolean;
     voskModelPath?: string;
     maxOutputTokens?: number;
+    // Personality / Context variables (for Template Hydration)
+    userName?: string;
+    assistantAlias?: string;
+    tone?: string;
+    technicalSkill?: string;
+    currentGoal?: string;
+    autonomyMode?: string;
+    userContextDump?: string;
+    verbosity?: string;
+    humorLevel?: string;
+    customRules?: string;
 }
 
 /** Application State */

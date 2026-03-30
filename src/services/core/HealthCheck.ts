@@ -21,6 +21,7 @@ export interface EngineStatus {
 export interface HealthCheckResult {
     ollama: EngineStatus;
     searxena: EngineStatus;
+    vosk: EngineStatus;
     timestamp: number;
 }
 
@@ -87,15 +88,42 @@ async function pingEngine(name: string, url: string): Promise<EngineStatus> {
  * Returns a snapshot of each engine's status.
  */
 export async function runHealthCheck(): Promise<HealthCheckResult> {
-    // Run both pings in parallel for speed
+    const start = performance.now();
+    
+    // 1. Run URL-based pings in parallel
     const [ollama, searxena] = await Promise.all([
         pingEngine('Ollama', OLLAMA_URL),
         pingEngine('SearXena', SEARXENA_URL),
     ]);
 
+    // 2. Check Vosk via Electron Bridge (IPC)
+    let vosk: EngineStatus = {
+        name: 'Vosk',
+        url: 'Native/Python',
+        online: false,
+        latencyMs: 0,
+        lastChecked: Date.now()
+    };
+
+    if ((window as any).electron?.getVoiceStatus) {
+        try {
+            const res = await (window as any).electron.getVoiceStatus();
+            vosk = {
+                ...vosk,
+                online: !!res?.online,
+                latencyMs: res?.latencyMs || 0,
+                error: res?.error,
+                lastChecked: Date.now()
+            };
+        } catch (e: any) {
+            vosk.error = e.message;
+        }
+    }
+
     return {
         ollama,
         searxena,
+        vosk,
         timestamp: Date.now(),
     };
 }

@@ -28,6 +28,10 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
     const [currentGoal, setCurrentGoal] = useState('Asistencia general');
     const [autonomyMode, setAutonomyMode] = useState('Semi-autónomo');
     const [userContext, setUserContext] = useState('');
+    const [assistantAlias, setAssistantAlias] = useState('mikuBot');
+    const [verbosity, setVerbosity] = useState('Medio');
+    const [humorLevel, setHumorLevel] = useState('Bajo');
+    const [customRules, setCustomRules] = useState('');
 
     // ── Telegram configuration state ─────────────────────────────────────
     const [telegramBotToken, setTelegramBotToken] = useState('');
@@ -50,9 +54,9 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
         }
     }, []);
 
-    // Trigger health check when entering Step 4 (providers), poll every 8s
+    // Trigger health check when entering Step 4 or 5 (tutorial/providers), poll every 8s
     useEffect(() => {
-        if (step === 4) {
+        if (step === 4 || step === 5) {
             performHealthCheck();
             healthIntervalRef.current = setInterval(performHealthCheck, 8000);
         } else {
@@ -103,8 +107,13 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
         checkExisting();
     }, [selectedPath]);
 
-    const handleNext = () => setStep(prev => prev + 1);
-    const handlePrev = () => setStep(prev => prev - 1);
+    const handleNext = () => {
+        if (step < 6) setStep(step + 1);
+    };
+
+    const handlePrev = () => {
+        if (step > 1) setStep(step - 1);
+    };
 
     const finish = async () => {
         setLoading(true);
@@ -126,6 +135,16 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                 isConfigured: true,
                 telegramBotToken: telegramBotToken,
                 telegramChatId: telegramChatId,
+                userName,
+                assistantAlias,
+                tone: userTone,
+                technicalSkill: technicalLevel,
+                currentGoal,
+                autonomyMode,
+                userContextDump: userContext,
+                verbosity,
+                humorLevel,
+                customRules,
                 folderPaths: {
                     core: cleanPath + '/core',
                     tools: cleanPath + '/commands',
@@ -148,13 +167,15 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                             const variables: PromptVariables = {
                                 LANGUAGE: 'Español',
                                 TONE: userTone,
-                                VERBOSITY: 'Medio',
-                                HUMOR_LEVEL: 'Bajo',
+                                VERBOSITY: verbosity,
+                                HUMOR_LEVEL: humorLevel,
                                 USER_NAME: userName || 'Usuario',
+                                ASSISTANT_ALIAS: assistantAlias || 'mikuBot',
                                 TECHNICAL_SKILL: technicalLevel,
                                 CURRENT_GOAL: currentGoal,
                                 AUTONOMY_MODE: autonomyMode,
                                 USER_CONTEXT_DUMP: userContext.trim() || 'Sin contexto adicional proporcionado.',
+                                CUSTOM_RULES: customRules.trim() || 'Sin instrucciones adicionales.',
                             };
 
                             // 4. Hydrate templates (synchronous, no IPC)
@@ -192,13 +213,27 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
 
     return (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4">
-            <div className="bg-slate-900 border border-slate-700 shadow-2xl rounded-2xl w-full max-w-2xl overflow-hidden flex flex-col h-[85vh] min-h-[500px] max-h-[800px] animate-macos-expand">
+            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-[2.5rem] w-full max-w-2xl overflow-hidden flex flex-col h-[85vh] min-h-[500px] max-h-[820px] animate-macos-expand relative">
+                {/* Background Ambient Glows */}
+                <div className="absolute top-0 left-1/4 w-1/2 h-64 bg-blue-600/10 blur-[100px] pointer-events-none rounded-full transform-gpu" />
+                <div className="absolute bottom-0 right-1/4 w-1/3 h-48 bg-purple-600/10 blur-[80px] pointer-events-none rounded-full transform-gpu" />
+
                 {/* Header */}
-                <div className="h-16 flex items-center justify-start px-6 border-b border-slate-800 bg-slate-950 gap-4">
-                    <img src="./mikuBotICON.png" alt="Logo" className="w-8 h-8 object-cover rounded shadow-inner" />
+                <div className="h-20 flex items-center justify-start px-8 border-b border-white/5 bg-slate-950/40 gap-4 relative z-10">
+                    <div className="w-10 h-10 rounded-xl bg-slate-800/50 flex items-center justify-center border border-white/10 shadow-inner">
+                        <img src="./mikuBotICON.png" alt="Logo" className="w-7 h-7 object-contain opacity-90" />
+                    </div>
                     <div>
-                        <h2 className="text-lg font-bold text-white tracking-wider">MikuCentral Setup</h2>
-                        <p className="text-xs text-slate-500">First Run Initialization</p>
+                        <h2 className="text-sm font-black text-white tracking-[0.2em] uppercase">MikuCentral Setup</h2>
+                        <div className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Neural Link Initialization</p>
+                        </div>
+                    </div>
+                    <div className="ml-auto flex items-center gap-1.5">
+                        {[1, 2, 3, 4, 5, 6].map(s => (
+                            <div key={s} className={`h-1 rounded-full transition-all duration-500 ${step >= s ? 'w-4 bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]' : 'w-2 bg-slate-800'}`} />
+                        ))}
                     </div>
                 </div>
 
@@ -322,29 +357,42 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                     )}
 
                     {step === 3 && (
-                        <div className="w-full max-w-md space-y-6 animate-fade-in">
+                        <div className="w-full max-w-md space-y-6 animate-fade-in text-left">
                             <div className="text-center mb-6">
                                 <h1 className="text-2xl font-bold text-white mb-2">Agent Personalization</h1>
-                                <p className="text-slate-400 text-sm">Customize how MikuBot interacts with you. These settings shape the agent's personality files.</p>
+                                <p className="text-slate-400 text-sm">Customize how your assistant interacts with you. These settings shape its core personality.</p>
                             </div>
 
                             <div className="space-y-4">
-                                {/* User Name */}
-                                <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
-                                    <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
-                                        <Icon name="user" className="text-sm text-blue-400" /> Your Name
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={userName}
-                                        onChange={(e) => setUserName(e.target.value)}
-                                        placeholder="¿Cómo te llamas?"
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-600 text-sm focus:border-blue-500 focus:outline-none"
-                                    />
-                                    <p className="text-[10px] text-slate-500 mt-1.5">The agent will address you by this name.</p>
+                                {/* User Name & Assistant Alias */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                                        <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
+                                            <Icon name="user" className="text-sm text-blue-400" /> Your Name
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={userName}
+                                            onChange={(e) => setUserName(e.target.value)}
+                                            placeholder="¿Cómo te llamas?"
+                                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-600 text-sm focus:border-blue-500 focus:outline-none"
+                                        />
+                                    </div>
+                                    <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                                        <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
+                                            <Icon name="terminal" className="text-sm text-emerald-400" /> Assistant Alias
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={assistantAlias}
+                                            onChange={(e) => setAssistantAlias(e.target.value)}
+                                            placeholder="mikuBot"
+                                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-600 text-sm focus:border-emerald-500 focus:outline-none"
+                                        />
+                                    </div>
                                 </div>
 
-                                {/* Tone Selection */}
+                                {/* Tone & Autonomy */}
                                 <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
                                     <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
                                         <Icon name="comment-dots" className="text-sm text-purple-400" /> Communication Tone
@@ -371,97 +419,203 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                                     </div>
                                 </div>
 
-                                {/* Technical Level */}
-                                <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
-                                    <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
-                                        <Icon name="layer-group" className="text-sm text-cyan-400" /> Technical Level
-                                    </label>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        {[
-                                            { value: 'Principiante', label: 'Beginner' },
-                                            { value: 'Intermedio', label: 'Intermediate' },
-                                            { value: 'Avanzado', label: 'Advanced' },
-                                        ].map(opt => (
-                                            <button
-                                                key={opt.value}
-                                                onClick={() => setTechnicalLevel(opt.value)}
-                                                className={`p-2.5 rounded-lg border text-xs font-bold transition-all ${
-                                                    technicalLevel === opt.value
-                                                        ? 'bg-cyan-600/20 border-cyan-500 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.15)]'
-                                                        : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:bg-slate-800'
-                                                }`}
+                                {/* Verbosity & Humor & Technical Level */}
+                                <div className="space-y-4">
+                                     <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                                        <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
+                                            <Icon name="align-left" className="text-sm text-blue-400" /> Verbosity & Humor Level
+                                        </label>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <select 
+                                                value={verbosity} 
+                                                onChange={(e) => setVerbosity(e.target.value)}
+                                                aria-label="Verbosity Level"
+                                                className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-500"
                                             >
-                                                {opt.label}
-                                            </button>
-                                        ))}
+                                                <option value="Conciso">Concise Output</option>
+                                                <option value="Medio">Balanced Output</option>
+                                                <option value="Detallado">Detailed/Verbose</option>
+                                            </select>
+                                            <select 
+                                                value={humorLevel} 
+                                                onChange={(e) => setHumorLevel(e.target.value)}
+                                                aria-label="Humor Level"
+                                                className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-yellow-500"
+                                            >
+                                                <option value="Ninguno">No Humor</option>
+                                                <option value="Bajo">Subtle Humor</option>
+                                                <option value="Alto">High/Witty Humor</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                                        <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
+                                            <Icon name="robot" className="text-sm text-amber-400" /> Technical & Autonomy Level
+                                        </label>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <select 
+                                                value={technicalLevel} 
+                                                onChange={(e) => setTechnicalLevel(e.target.value)}
+                                                aria-label="Technical Level"
+                                                className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-cyan-500"
+                                            >
+                                                <option value="Principiante">Beginner User</option>
+                                                <option value="Intermedio">Intermediate User</option>
+                                                <option value="Avanzado">Advanced/Dev User</option>
+                                            </select>
+                                            <select 
+                                                value={autonomyMode} 
+                                                onChange={(e) => setAutonomyMode(e.target.value)}
+                                                aria-label="Autonomy Level"
+                                                className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-amber-500"
+                                            >
+                                                <option value="Conservador">Conservative Agent</option>
+                                                <option value="Semi-autónomo">Balanced Autonomy</option>
+                                                <option value="Autónomo">Full Autonomous</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* Current Goal */}
-                                <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
-                                    <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
-                                        <Icon name="bullseye" className="text-sm text-emerald-400" /> Primary Goal
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={currentGoal}
-                                        onChange={(e) => setCurrentGoal(e.target.value)}
-                                        placeholder="¿Cuál es tu objetivo principal?"
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-600 text-sm focus:border-emerald-500 focus:outline-none"
-                                    />
-                                    <p className="text-[10px] text-slate-500 mt-1.5">e.g. Desarrollo de software, Investigación, Productividad personal</p>
-                                </div>
-
-                                {/* Autonomy Mode */}
-                                <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
-                                    <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
-                                        <Icon name="robot" className="text-sm text-amber-400" /> Autonomy Level
-                                    </label>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        {[
-                                            { value: 'Conservador', label: 'Conservative' },
-                                            { value: 'Semi-autónomo', label: 'Balanced' },
-                                            { value: 'Autónomo', label: 'Autonomous' },
-                                        ].map(opt => (
-                                            <button
-                                                key={opt.value}
-                                                onClick={() => setAutonomyMode(opt.value)}
-                                                className={`p-2.5 rounded-lg border text-xs font-bold transition-all ${
-                                                    autonomyMode === opt.value
-                                                        ? 'bg-amber-600/20 border-amber-500 text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.15)]'
-                                                        : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:bg-slate-800'
-                                                }`}
-                                            >
-                                                {opt.label}
-                                            </button>
-                                        ))}
+                                {/* Custom Rules & About You */}
+                                <div className="space-y-4">
+                                    <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                                        <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
+                                            <Icon name="scroll" className="text-sm text-pink-400" /> Custom Instructions
+                                            <span className="text-[9px] text-slate-500 font-normal ml-auto">Rules for Assistant</span>
+                                        </label>
+                                        <textarea
+                                            value={customRules}
+                                            onChange={(e) => setCustomRules(e.target.value)}
+                                            placeholder="Introduce reglas específicas: 'háblame de tú', 'no uses emojis', etc."
+                                            rows={2}
+                                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-600 text-sm focus:border-pink-500 focus:outline-none resize-none"
+                                        />
                                     </div>
-                                </div>
 
-                                {/* User Context */}
-                                <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
-                                    <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
-                                        <Icon name="info-circle" className="text-sm text-pink-400" /> About You
-                                        <span className="text-[9px] text-slate-500 font-normal ml-auto">Optional</span>
-                                    </label>
-                                    <textarea
-                                        value={userContext}
-                                        onChange={(e) => setUserContext(e.target.value)}
-                                        placeholder="Comparte contexto útil sobre ti: tu profesión, proyectos activos, herramientas que usas, preferencias..."
-                                        rows={3}
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-600 text-sm focus:border-pink-500 focus:outline-none resize-none"
-                                    />
-                                    <p className="text-[10px] text-slate-500 mt-1.5">This helps the agent give you more relevant and personalized responses.</p>
+                                    <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                                        <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
+                                            <Icon name="info-circle" className="text-sm text-blue-400" /> User Context
+                                            <span className="text-[9px] text-slate-500 font-normal ml-auto">About You</span>
+                                        </label>
+                                        <textarea
+                                            value={userContext}
+                                            onChange={(e) => setUserContext(e.target.value)}
+                                            placeholder="Profesión, proyectos activos, herramientas favoritas..."
+                                            rows={2}
+                                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-600 text-sm focus:border-blue-500 focus:outline-none resize-none"
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     )}
 
                     {step === 4 && (
+                        <div className="w-full max-w-md space-y-6 animate-fade-in text-left">
+                            <div className="text-center mb-6">
+                                <h1 className="text-2xl font-bold text-white mb-2">Providers Guide</h1>
+                                <p className="text-slate-400 text-sm">How to get your API keys and set up local inference.</p>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-3">
+                                {/* Google AI Studio */}
+                                <div className="bg-slate-800/40 p-4 rounded-xl border border-slate-700/50 hover:border-blue-500/50 transition-colors group">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
+                                            <img src="./geminiICON.png" alt="Gemini" className="w-5 h-5 object-contain" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-sm font-bold text-white">Google AI Studio</h3>
+                                            <p className="text-[10px] text-slate-500">Gemini 1.5 Pro/Flash (Free Tier)</p>
+                                        </div>
+                                        <button 
+                                            onClick={() => (window as any).electron?.openExternal('https://aistudio.google.com/app/apikey')}
+                                            className="ml-auto text-[10px] bg-blue-600/20 text-blue-400 px-2 py-1 rounded hover:bg-blue-600/40 transition-colors font-bold"
+                                        >
+                                            Get Key <Icon name="external-link-alt" className="ml-1 text-[8px]" />
+                                        </button>
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 leading-relaxed">
+                                        Ve a AI Studio, crea un proyecto y genera tu API Key. Es el modelo principal de MikuCentral.
+                                    </p>
+                                </div>
+
+                                {/* Groq */}
+                                <div className="bg-slate-800/40 p-4 rounded-xl border border-slate-700/50 hover:border-orange-500/50 transition-colors group">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center border border-orange-500/20">
+                                            <img src="./groqICON.png" alt="Groq" className="w-4 h-4 object-contain brightness-0 invert" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-sm font-bold text-white">Groq Cloud</h3>
+                                            <p className="text-[10px] text-slate-500">Ultra-fast Llama 3 & Mixtral</p>
+                                        </div>
+                                        <button 
+                                            onClick={() => (window as any).electron?.openExternal('https://console.groq.com/keys')}
+                                            className="ml-auto text-[10px] bg-orange-600/20 text-orange-400 px-2 py-1 rounded hover:bg-orange-600/40 transition-colors font-bold"
+                                        >
+                                            Get Key <Icon name="external-link-alt" className="ml-1 text-[8px]" />
+                                        </button>
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 leading-relaxed">
+                                        Inicia sesión con Google/GitHub y genera una API Key en la sección 'API Keys'. Ideal para respuestas instantáneas.
+                                    </p>
+                                </div>
+
+                                {/* Z.AI */}
+                                <div className="bg-slate-800/40 p-4 rounded-xl border border-slate-700/50 hover:border-purple-500/50 transition-colors group">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
+                                            <img src="./zai.png" alt="Z.AI" className="w-4 h-4 object-contain brightness-0 invert" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-sm font-bold text-white">Z.AI (BigModel)</h3>
+                                            <p className="text-[10px] text-slate-500">Large Context Inference</p>
+                                        </div>
+                                        <button 
+                                            onClick={() => (window as any).electron?.openExternal('https://z.ai')}
+                                            className="ml-auto text-[10px] bg-purple-600/20 text-purple-400 px-2 py-1 rounded hover:bg-purple-600/40 transition-colors font-bold"
+                                        >
+                                            Get Key <Icon name="external-link-alt" className="ml-1 text-[8px]" />
+                                        </button>
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 leading-relaxed">
+                                        La API privada para modelos de contexto masivo. Visita z.ai para obtener tu token v4.
+                                    </p>
+                                </div>
+
+                                {/* Ollama */}
+                                <div className="bg-slate-800/40 p-4 rounded-xl border border-slate-700/50 hover:border-emerald-500/50 transition-colors group">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+                                            <img src="./ollamaICON.webp" alt="Ollama" className="w-5 h-5 object-contain brightness-0 invert" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-sm font-bold text-white">Ollama (Local)</h3>
+                                            <p className="text-[10px] text-slate-500">Run LLMs on your computer</p>
+                                        </div>
+                                        <button 
+                                            onClick={() => (window as any).electron?.openExternal('https://ollama.com/download')}
+                                            className="ml-auto text-[10px] bg-emerald-600/20 text-emerald-400 px-2 py-1 rounded hover:bg-emerald-600/40 transition-colors font-bold"
+                                        >
+                                            Download <Icon name="download" className="ml-1 text-[8px]" />
+                                        </button>
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 leading-relaxed">
+                                        Descarga e instala Ollama. Una vez abierto, podrás conectar MikuCentral para inferencia 100% privada y local.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {step === 5 && (
                         <div className="w-full max-w-md space-y-6 animate-fade-in">
                             <div className="text-center mb-6">
                                 <h1 className="text-2xl font-bold text-white mb-2">Providers & API Keys</h1>
-                                <p className="text-slate-400 text-sm">Configure your preferred AI providers to power the engine. (These can be changed later)</p>
+                                <p className="text-slate-400 text-sm">Configure your preferred AI providers to power the engine.</p>
                             </div>
 
                             <div className="space-y-4">
@@ -493,7 +647,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
 
                                 <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
                                     <label className="text-sm font-bold text-white flex items-center gap-2 mb-3">
-                                        <Icon name="bolt" className="text-sm text-purple-400" /> Z.AI BigModel (Large Context)
+                                        <img src="./zai.png" alt="Z.AI" className="w-4 h-4 object-contain brightness-0 invert" /> Z.AI BigModel (Large Context)
                                     </label>
                                     <input
                                         type="password"
@@ -557,14 +711,42 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                                                 {healthStatus.searxena.online ? 'Online' : 'Offline'}
                                             </span>
                                         )}
-                                        {!healthStatus && healthLoading && (
-                                            <Icon name="spinner" className="animate-spin text-slate-500 text-xs" />
-                                        )}
                                     </div>
                                     <p className="text-[11px] text-slate-500 mt-2">
                                         {healthStatus?.searxena.online
                                             ? `Connected — ${healthStatus.searxena.latencyMs}ms`
                                             : 'Optional. Provides private local web search via SearXNG.'
+                                        }
+                                    </p>
+                                </div>
+
+                                {/* Vosk Status Card */}
+                                <div className={`p-4 rounded-xl border transition-all ${
+                                    healthStatus?.vosk.online
+                                        ? 'bg-emerald-900/10 border-emerald-500/30'
+                                        : 'bg-slate-800/50 border-slate-700'
+                                }`}>
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-sm font-bold text-white flex items-center gap-2">
+                                            <Icon name="microphone" className="text-sm text-pink-400" /> Vosk (Voice Engine)
+                                        </label>
+                                        {healthStatus && (
+                                            <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider ${
+                                                healthStatus.vosk.online ? 'text-emerald-400' : 'text-red-400'
+                                            }`}>
+                                                <span className={`w-2 h-2 rounded-full ${
+                                                    healthStatus.vosk.online
+                                                        ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)] animate-pulse'
+                                                        : 'bg-red-400 shadow-[0_0_6px_rgba(248,113,113,0.5)]'
+                                                }`} />
+                                                {healthStatus.vosk.online ? 'Ready' : 'Not Loaded'}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-[11px] text-slate-500 mt-2">
+                                        {healthStatus?.vosk.online
+                                            ? 'Vosk Python module detected and working.'
+                                            : 'Requires the `vosk` Python module in the engine workspace.'
                                         }
                                     </p>
                                 </div>
@@ -577,7 +759,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                         </div>
                     )}
 
-                    {step === 5 && (
+                    {step === 6 && (
                         <div className="w-full max-w-md space-y-6 animate-fade-in">
                             <div className="text-center mb-6">
                                 <h1 className="text-2xl font-bold text-white mb-2">Telegram Integration</h1>
@@ -650,7 +832,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                 {/* Footer */}
                 <div className="p-6 border-t border-slate-800 bg-slate-900 flex justify-between items-center">
                     <div className="flex gap-1.5">
-                        {[1, 2, 3, 4, 5].map(i => (
+                        {[1, 2, 3, 4, 5, 6].map(i => (
                             <div key={i} className={`w-2 h-2 rounded-full transition-all ${step === i ? 'bg-blue-500 w-4' : 'bg-slate-700'}`} />
                         ))}
                     </div>
@@ -664,7 +846,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                                 Back
                             </button>
                         )}
-                        {step < 5 ? (
+                        {step < 6 ? (
                             <button
                                 onClick={handleNext}
                                 disabled={step === 3 && !userName.trim()}

@@ -64,6 +64,7 @@ contextBridge.exposeInMainWorld('electron', {
     getSystemMetrics: () => ipcRenderer.invoke('agent:system-metrics'),
 
     // Voice & Vosk Models
+    getVoiceStatus: () => ipcRenderer.invoke('voice:status'),
     listVoiceModels: () => ipcRenderer.invoke('voice:list-models'),
     downloadVoiceModel: (data) => ipcRenderer.invoke('voice:download-model', data),
     deleteVoiceModel: (data) => ipcRenderer.invoke('voice:delete-model', data),

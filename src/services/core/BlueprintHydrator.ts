@@ -22,10 +22,12 @@ export interface PromptVariables {
     VERBOSITY?: string;
     HUMOR_LEVEL?: string;
     USER_NAME?: string;
+    ASSISTANT_ALIAS?: string;
     TECHNICAL_SKILL?: string;
     CURRENT_GOAL?: string;
     AUTONOMY_MODE?: string;
     USER_CONTEXT_DUMP?: string;
+    CUSTOM_RULES?: string;
     [key: string]: string | undefined;
 }
 
@@ -48,10 +50,12 @@ const DEFAULT_VARIABLES: Record<string, string> = {
     VERBOSITY: 'Medio',
     HUMOR_LEVEL: 'Bajo',
     USER_NAME: 'Usuario',
+    ASSISTANT_ALIAS: 'mikuBot',
     TECHNICAL_SKILL: 'Intermedio',
     CURRENT_GOAL: 'Asistencia general',
     AUTONOMY_MODE: 'Semi-autónomo',
     USER_CONTEXT_DUMP: 'Sin contexto adicional proporcionado.',
+    CUSTOM_RULES: 'Sin instrucciones adicionales.',
 };
 
 // ─── Template → Output mapping ───────────────────────────────────────
@@ -206,9 +210,11 @@ export function extractVariablesFromConfig(config: Record<string, any>): PromptV
         VERBOSITY:         config.verbosity      || config.VERBOSITY         || DEFAULT_VARIABLES.VERBOSITY,
         HUMOR_LEVEL:       config.humorLevel     || config.HUMOR_LEVEL       || DEFAULT_VARIABLES.HUMOR_LEVEL,
         USER_NAME:         config.userName        || config.USER_NAME        || DEFAULT_VARIABLES.USER_NAME,
+        ASSISTANT_ALIAS:   config.assistantAlias || config.ASSISTANT_ALIAS   || DEFAULT_VARIABLES.ASSISTANT_ALIAS,
         TECHNICAL_SKILL:   config.technicalSkill  || config.TECHNICAL_SKILL  || DEFAULT_VARIABLES.TECHNICAL_SKILL,
         CURRENT_GOAL:      config.currentGoal     || config.CURRENT_GOAL     || DEFAULT_VARIABLES.CURRENT_GOAL,
         AUTONOMY_MODE:     config.autonomyMode    || config.AUTONOMY_MODE    || DEFAULT_VARIABLES.AUTONOMY_MODE,
         USER_CONTEXT_DUMP: config.userContextDump || config.USER_CONTEXT_DUMP || DEFAULT_VARIABLES.USER_CONTEXT_DUMP,
+        CUSTOM_RULES:      config.customRules     || config.CUSTOM_RULES      || DEFAULT_VARIABLES.CUSTOM_RULES,
     };
 }
