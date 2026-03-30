@@ -389,7 +389,9 @@ export async function sendAgentMessage(
                 .filter(b => b.type === 'answer')
                 .map(b => b.content)
                 .join('\n\n');
-            allNarrative += (allNarrative ? '\n\n' : '') + cleanTurnNarrative;
+            if (cleanTurnNarrative.trim()) {
+                allNarrative += (allNarrative ? '\n\n' : '') + cleanTurnNarrative;
+            }
 
             agentMessages.push({
                 role: 'assistant',

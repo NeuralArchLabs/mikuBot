@@ -43,11 +43,8 @@ function formatTelegramTable(lines: string[]): string {
         return '<pre>' + [sep, formattedRows[0], sep, ...formattedRows.slice(1), sep].join('\n') + '</pre>';
     }
 
-    // Wide table: use Vertical Cards (limit to 5 results)
-    const truncatedData = data.slice(0, 5);
-    const hasMore = data.length > 5;
-
-    let resultArr = truncatedData.map((row, rowIdx) => {
+    // Wide table: use Vertical Cards
+    let resultArr = data.map((row, rowIdx) => {
         const title = row[0] ? `<b>📌 ${row[0].toUpperCase()}</b>` : `<b>🔹 ELEMENTO ${rowIdx + 1}</b>`;
         const details = headers.map((h, i) => {
             if (i === 0) return null;
@@ -60,10 +57,6 @@ function formatTelegramTable(lines: string[]): string {
 
         return `${title}\n${details}`;
     });
-
-    if (hasMore) {
-        resultArr.push(`<i>... y ${data.length - 5} resultados más (demasiado largo para Telegram).</i>`);
-    }
 
     return resultArr.join('\n\n');
 }
