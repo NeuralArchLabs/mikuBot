@@ -25,5 +25,6 @@ export const DEFAULT_CONFIG: AppConfig = {
     folderPaths: { core: '', extra: '', workSpace: '', tools: '', root: '' },
     skillsConfig: {},
     disabledSkills: [],
-    voskModelPath: ''
+    voskModelPath: '',
+    maxOutputTokens: 128000
 };

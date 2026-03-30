@@ -103,46 +103,43 @@ function safeWriteJSON(filePath, data) {
     }
 }
 
-/**
- * Vault Encryption Helper
- * Protects API Keys before saving to JSON
- */
+function encryptValue(val) {
+    if (!val || typeof val !== 'string' || val.startsWith('enc:') || !safeStorage.isEncryptionAvailable()) return val;
+    try {
+        const buffer = safeStorage.encryptString(val);
+        return `enc:${buffer.toString('base64')}`;
+    } catch (e) {
+        console.warn(`[Vault] Encryption failed:`, e.message);
+        return val;
+    }
+}
+
+function decryptValue(val) {
+    if (!val || typeof val !== 'string' || !val.startsWith('enc:') || !safeStorage.isEncryptionAvailable()) return val;
+    try {
+        const base64 = val.substring(4);
+        const buffer = Buffer.from(base64, 'base64');
+        return safeStorage.decryptString(buffer);
+    } catch (e) {
+        console.warn(`[Vault] Decryption failed:`, e.message);
+        return val;
+    }
+}
+
 function encryptApiKeys(apiKeys) {
-    if (!apiKeys || !safeStorage.isEncryptionAvailable()) return apiKeys;
+    if (!apiKeys) return apiKeys;
     const encrypted = { ...apiKeys };
-    for (const key of ['gemini', 'groq', 'zai']) {
-        const val = encrypted[key];
-        if (val && typeof val === 'string' && !val.startsWith('enc:')) {
-            try {
-                const buffer = safeStorage.encryptString(val);
-                encrypted[key] = `enc:${buffer.toString('base64')}`;
-            } catch (e) {
-                console.warn(`[Vault] Encryption failed for ${key}:`, e.message);
-            }
-        }
+    for (const key of Object.keys(encrypted)) {
+        encrypted[key] = encryptValue(encrypted[key]);
     }
     return encrypted;
 }
 
-/**
- * Vault Decryption Helper
- * Restores API Keys after reading from JSON
- */
 function decryptApiKeys(apiKeys) {
-    if (!apiKeys || !safeStorage.isEncryptionAvailable()) return apiKeys;
+    if (!apiKeys) return apiKeys;
     const decrypted = { ...apiKeys };
-    for (const key of ['gemini', 'groq', 'zai']) {
-        const val = decrypted[key];
-        if (val && typeof val === 'string' && val.startsWith('enc:')) {
-            try {
-                const base64 = val.substring(4);
-                const buffer = Buffer.from(base64, 'base64');
-                decrypted[key] = safeStorage.decryptString(buffer);
-            } catch (e) {
-                console.warn(`[Vault] Decryption failed for ${key}:`, e.message);
-                // Fallback: keep original or mark as invalid?
-            }
-        }
+    for (const key of Object.keys(decrypted)) {
+        decrypted[key] = decryptValue(decrypted[key]);
     }
     return decrypted;
 }
@@ -222,7 +219,7 @@ function getTelegramToken() {
         if (fs.existsSync(configPath)) {
             const raw = fs.readFileSync(configPath, 'utf8');
             const parsed = JSON.parse(raw);
-            return parsed.config?.telegramBotToken || null;
+            return decryptValue(parsed.config?.telegramBotToken) || null;
         }
     } catch (e) {
         console.error('[Main Process] Failed to read config:', e.message);
@@ -554,6 +551,12 @@ ipcMain.handle('save-settings', async (event, settings) => {
         if (protectedSettings.config?.apiKeys) {
             protectedSettings.config.apiKeys = encryptApiKeys(protectedSettings.config.apiKeys);
         }
+        if (protectedSettings.config?.telegramBotToken) {
+            protectedSettings.config.telegramBotToken = encryptValue(protectedSettings.config.telegramBotToken);
+        }
+        if (protectedSettings.config?.telegramChatId) {
+            protectedSettings.config.telegramChatId = encryptValue(protectedSettings.config.telegramChatId);
+        }
 
         const result = safeWriteJSON(configPath, protectedSettings);
         if (!result.ok) throw new Error(result.error);
@@ -593,6 +596,12 @@ ipcMain.handle('load-settings', async () => {
             // Vault Decryption: Ensure frontend receives clean keys
             if (settings.config?.apiKeys) {
                 settings.config.apiKeys = decryptApiKeys(settings.config.apiKeys);
+            }
+            if (settings.config?.telegramBotToken) {
+                settings.config.telegramBotToken = decryptValue(settings.config.telegramBotToken);
+            }
+            if (settings.config?.telegramChatId) {
+                settings.config.telegramChatId = decryptValue(settings.config.telegramChatId);
             }
         } else {
             console.log('[Main Process] No config.json found at target path. Providing defaults.');

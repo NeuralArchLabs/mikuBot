@@ -240,7 +240,7 @@ export class OpenAICompatibleProvider extends ModelProvider {
             messages: this.serializeMessages(messages),
             stream: true,
             temperature: this.options.config.temperature ?? 0.7,
-            max_tokens: this.options.config.maxOutputTokens || 32768,
+            max_tokens: this.options.config.maxOutputTokens || 128000,
             tools: this.options.useTools ? this.options.tools : undefined
         };
 
@@ -320,7 +320,7 @@ export class ZAIProvider extends ModelProvider {
             messages: this.serializeMessages(messages),
             stream: true,
             temperature: this.options.config.temperature ?? 0.7,
-            max_tokens: this.options.config.maxOutputTokens || 32768,
+            max_tokens: this.options.config.maxOutputTokens || 128000,
             tools: this.options.useTools ? this.options.tools : undefined
         };
         const baseUrl = 'https://api.z.ai/api/coding/paas/v4/chat/completions';

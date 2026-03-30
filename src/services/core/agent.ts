@@ -237,6 +237,7 @@ export async function sendAgentMessage(
             }
 
             iterations++;
+            let turnHasFailure = false;
             let turnAutoTasks: string[] = [];
             let tasksContent = '';
             let successfulCalls: ToolCall[] = [];
@@ -428,10 +429,20 @@ export async function sendAgentMessage(
 
             allBlocks = [...allBlocks, ...mergedBlocks];
             if (uniqueToolCalls.length === 0) {
+                if (retries < MAX_RETRIES && (!content || content.trim() === '')) {
+                    retries++;
+                    const nudge = (turnHasFailure || lastExecutionFeedback.includes('⚠️')) 
+                        ? "⚠️ EL TURNO NO GENERÓ ACCIONES: Se detectaron bloqueos o errores. No te detengas, intenta un enfoque diferente o usa final_answer si no puedes proceder."
+                        : (isAgentMode || isInstructionMode) 
+                            ? "⚠️ PROTOCOLO DE AGENTE INCOMPLETO: Debes usar final_answer para concluir tu misión oficial."
+                            : "⚠️ RESPUESTA VACÍA: Por favor, emite una respuesta para continuar la conversación.";
+                    agentMessages.push({ role: 'user', content: nudge });
+                    continue;
+                }
                 if (isAgentMode || isInstructionMode) {
                     if (retries < MAX_RETRIES) {
                         retries++;
-                        agentMessages.push({ role: 'user', content: '⚠️ PROTOCOLO DE AGENTE INCOMPLETO: Use final_answer to finish.' });
+                        agentMessages.push({ role: 'user', content: "⚠️ PROTOCOLO DE AGENTE INCOMPLETO: Debes usar final_answer para concluir tu misión oficial." });
                         continue;
                     }
                 }
@@ -455,7 +466,6 @@ export async function sendAgentMessage(
                 return false;
             };
 
-            let turnHasFailure = false;
             for (const tc of uniqueToolCalls.filter(x => x.function.name !== 'final_answer')) {
                 const approval = approvalMode === 'manual' || !isAuto(tc);
                 if (approval && !await onToolApproval(tc)) {

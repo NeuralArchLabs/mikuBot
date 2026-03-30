@@ -316,7 +316,7 @@ export const SettingsPanel = ({
                             <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
                                 <Icon name="database" className="text-blue-500" /> Neural System Pathways
                             </label>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4">
                                 {/* WorkSpace */}
                                 <div className="premium-card premium-emerald p-5 relative overflow-hidden group transition-all duration-500 transform-gpu">
                                     <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none transform-gpu" />
@@ -357,46 +357,6 @@ export const SettingsPanel = ({
                                     </button>
                                 </div>
                                  
-                                 {/* Root Directory */}
-                                 <div className="premium-card premium-blue p-5 relative overflow-hidden group transition-all duration-500 transform-gpu">
-                                     <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none transform-gpu" />
-                                     
-                                     {/* Native Explorer Link - Absolute Corner */}
-                                     {config.folderPaths?.root && (
-                                         <button
-                                             onClick={(e) => {
-                                                 e.stopPropagation();
-                                                 const path = config.folderPaths?.root;
-                                                 if (path) (window as any).electron?.openFolder(path);
-                                             }}
-                                             className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/30 text-cyan-400 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-50 border border-cyan-500/20 hover:scale-110 active:scale-95 shadow-lg"
-                                             title="Open Root in Explorer"
-                                         >
-                                             <Icon name="external-link-alt" className="text-[10px]" />
-                                         </button>
-                                     )}
-
-                                     <div className="flex items-center gap-4 md:gap-3 xl:gap-4 mb-5 md:mb-4 xl:mb-5">
-                                         <div className="w-14 h-14 md:w-12 md:h-12 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rounded-2xl bg-cyan-500/10 border border-transparent group-hover:border-cyan-500/30 text-cyan-400 flex flex-shrink-0 items-center justify-center shadow-inner premium-transition">
-                                             <Icon name="sitemap" className="text-3xl md:text-xl lg:text-lg xl:text-xl transition-all" />
-                                         </div>
-                                         <div className="truncate flex-1">
-                                             <div className="text-xl md:text-base lg:text-sm xl:text-base font-black text-slate-100 tracking-wide mb-1 lg:mb-0 transition-all">Root</div>
-                                             <div className="text-[11px] md:text-[9px] lg:text-[8px] xl:text-[9px] font-bold uppercase tracking-widest text-cyan-400/80 truncate transition-all">Source & Config</div>
-                                         </div>
-                                     </div>
-                                     <div className="text-xs font-mono text-slate-400 mb-5 truncate bg-black/40 p-3 rounded-xl border border-white/5 shadow-inner leading-relaxed" title={rootPathName}>
-                                         {rootPathName || "App Base Folder"}
-                                     </div>
-                                     <button
-                                         onClick={onRootSelect}
-                                         disabled={syncing}
-                                         className="w-full py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase flex items-center justify-center gap-2 border premium-button premium-emphasis premium-blue text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20"
-                                     >
-                                         {syncing ? <Icon name="sync fa-spin" /> : <Icon name="folder-open" />} Select
-                                     </button>
-                                 </div>
-
                                 {/* Core Identity */}
                                 <div className="premium-card premium-indigo p-5 relative overflow-hidden group transition-all duration-500 transform-gpu">
                                     <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none transform-gpu" />
