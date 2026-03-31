@@ -1,106 +1,52 @@
-# 🌐 MikuCentral v2.1.4 — Neural AI Interface & Agent OS
+# 🌟 MikuBot — Tu Asistente de IA Personal para Windows
 
-![Version](https://img.shields.io/badge/version-2.1.4-cyan.svg?style=for-the-badge)
-![Status](https://img.shields.io/badge/status-stable-green.svg?style=for-the-badge)
-![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg?style=for-the-badge)
+![Estado](https://img.shields.io/badge/Estado-Estable-green.svg?style=for-the-badge)
+![Plataforma](https://img.shields.io/badge/Plataforma-Windows_10%2F11-0078D4.svg?style=for-the-badge&logo=windows)
+![Licencia](https://img.shields.io/badge/Licencia-AGPL--3.0-blue.svg?style=for-the-badge)
 
-**MikuCentral** es un entorno de ejecución de agentes autónomos de grado profesional diseñado para la soberanía tecnológica. Combina una interfaz estética premium con un motor de razonamiento neural capaz de orquestar flujos de trabajo complejos, interactuar con el sistema de archivos local y ejecutar comandos nativos mediante la infraestructura de **Electron**.
+Un agente y asistente de IA dirigido al público general. Diseñado como una alternativa amigable, de fácil instalación y uso frente a herramientas más complejas como OpenClaw, ideal para usuarios que no tienen un alto conocimiento técnico.
 
 ---
 
-## ✨ Características Destacadas
+## ✨ Características Principales
+
+*   **Onboarding y Personalización Profunda:** Cuenta con un proceso de configuración inicial que te guía paso a paso. Desde el primer momento, puedes nutrir al asistente con toda la información que desees que sepa sobre ti, logrando un nivel de personalización absoluto para que entienda exactamente tu contexto, tus necesidades y cómo ayudarte de forma hiperespecífica.
+*   **Autonomía y Modos de Operación:** Cuenta con un Modo Chat y un Modo Agente enfocados en diferentes tipos de asistencia, pero ambos con ejecución nativa de herramientas en el sistema. Puedes elegir entre un modo *completamente autónomo*, un *modo seguro* (requiere autorización previa a la ejecución), y la creación de **tareas programadas** para autonomía total.
+*   **Librería de Contexto:** Un módulo que permite crear, almacenar y tener disponibles protocolos y documentos para referenciarlos, revisarlos, mejorarlos o aplicarlos con el asistente en cualquier momento.
+*   **Voz y Conectividad 24/7:** Incluye reconocimiento de voz nativo *out of the box* (vía Vosk) en inglés y español para dictado y reconocimiento de mensajes. Además, permite vincularse fácilmente con Telegram (vía BotFather) para operar 24/7 y mantener una comunicación permanente y eficiente.
+*   **Portabilidad y Respaldo:** Permite el volcado completo de memoria en un archivo comprimido para respaldar todo tu asistente, incluyendo sesiones, personalizaciones, memoria, *skills* y claves de acceso.
+*   **Enfoque Windows-First:** Programado en Electron para escalabilidad, pero enfocado 100% en Windows para una perfecta integración nativa con **searXena**, sin planes a corto plazo para ser porteado a otros sistemas.
+
+---
+
+## 🤓 Under the Hood (Para Desarrolladores y Power Users)
+
+Debajo de su interfaz amigable, MikuBot es un entorno de ejecución de agentes autónomos de grado profesional diseñado para la soberanía tecnológica. Aquí está la "carne técnica" para quienes desean compilar, modificar o auditar el sistema.
 
 ### 🧠 Inteligencia Neural Multimodelo
+- **Ollama:** Inferencia 100% local y privada y acceso a modelos cloud con free Tier muy generoso.
+- **Google AI:** Modelos Masivos con ventanas Masivas de contexto, free Tier disponible.
+- **Groq:** Un amplio catálogo de modelos a escoger a precios razonables.
+- **Z.AI (BigModel):** Capacidades avanzadas de codificación a un precio inigualable.
+- **Neural Flow:** Interfaz que separa visualmente el pensamiento interno (*Internal Monologue*) de las acciones técnicas ejecutadas.
 
-**Proveedores Soportados:**
-- **Ollama** — Inferencia 100% local y privada y acceso a modelos cloud con free Tier muy generoso 
-- **Google AI** — Modelos Masivos con ventanas Masivas de contexto, free Tier disponible
-- **Groq** — Un amplio catálogo de modelos a escoger a precios razonables
-- **Z.AI (BigModel)** — Capacidades avanzadas de codificación a un precio inigualable
+### 🛠️ Ecosistema de Herramientas y Seguridad
+**Sistema de Archivos Multi-Raíz (`SafePathResolver`):**
+- `@WORKSPACE/` — Directorio de proyectos principal.
+- `@CORE/` — Lógica del sistema y prompts base.
+- `@LIBRARY/` — Protocolos y bases de conocimiento.
+- `@TOOLS/` — Blueprints de skills y scripts.
 
-**Características Principales:**
-- **Razonamiento Estructurado**: Motor de extracción propietario que permite que incluso modelos básicos sigan protocolos de herramientas (tool calling)
-- **Neural Flow**: Interfaz que separa visualmente el pensamiento interno (*Internal Monologue*) de las acciones técnicas ejecutadas
-- **Límites de Tokens Configurables**: Soporte hasta 128K tokens de salida para tareas complejas
+El sistema incluye herramientas nativas inyectadas al LLM como `read_file`, `smart_patch`, `search_files`, y protección contra inyecciones de shell (`run_console` whitelist).
 
-### ⏰ Neural Scheduler (Tareas Autónomas)
-- **Automated Workflows**: Programación de tareas mediante intervalos, cron o ejecuciones únicas
-- **Task Presets**: Briefings matutinos, reportes de estado periódicos y diarios nocturnos
-- **Activity Guard**: Detección proactiva de la actividad del usuario para encolar ejecuciones
-- **Multi-Canal**: Salida a UI, Telegram o ambos
-- **Native Logs**: Registro detallado de cada ejecución autónoma
-
-### 🛡️ Persistencia y Seguridad
-- **Session-Scoped Configuration**: Cada chat guarda su propio modo, estados de seguridad y borradores
-- **SafeStorage**: Encriptación nativa de credenciales API mediante el llavero del sistema
-- **Atomic Import/Export**: Sistema de backup/restore completo para exportar e importar todo el workspace
-- **Neural Resilience**: Persistencia de sesiones locales para ramificar conversaciones
-
-### 🛠️ Ecosistema de Herramientas
-
-**Sistema de Archivos Multi-Raíz:**
-- `@WORKSPACE/` — Directorio de proyectos principal (workspace)
-- `@CORE/` — Lógica del sistema, identidad y prompts base (core)
-- `@LIBRARY/` — Protocolos, bases de conocimiento y datos estáticos (library)
-- `@TOOLS/` — Blueprints de skills y scripts personalizados (tools)
-
-**Herramientas del Agente:**
-| Herramienta | Descripción |
-|-------------|-------------|
-| `read_file` | Leer contenido de archivos de cualquier fuente |
-| `update_file` | Crear o actualizar archivos (directorios auto-creados) |
-| `patch_file` | Aplicar parches inteligentes con backup automático (.bak) |
-| `undo_patch` | Revertir el último parche usando el backup |
-| `list_files` | Listar archivos en cualquier carpeta |
-| `search_files` | Búsqueda de alto rendimiento usando motores nativos |
-| `get_file_outline` | Extraer Clases, Funciones e Interfaces de código fuente |
-| `batch_operation` | Operaciones por lotes: copiar, mover, eliminar |
-| `get_system_metrics` | Métricas en tiempo real: CPU, RAM, Uptime |
-| `web_search` | Búsqueda web para noticias y documentación |
-| `read_url` | Extraer contenido de URLs |
-| `run_console` | Ejecutar comandos consola con aprobación |
-| `send_telegram_message` | Enviar notificaciones a Telegram |
-| `add_scheduled_task` | Programar tareas autónomas |
-| `final_answer` | Sintetizar resultados finales con fuentes |
-
-### 🔌 Neural Skills (Sistema de Plugins)
-- **Selective Skill Toggles**: Activar/desactivar skills en tiempo real
-- **Dynamic Tool Injection**: Solo skills activas se envían al modelo
-- **Blueprints de Creación**: Plantillas pre-construidas para Python, Node.js
-- **Blueprints de Persona**: SOUL.md, USER.md, AGENT_MODES.md para personalizar identidad
-
-### 🎨 Estética Cinema-Dark Premium
-- **Cinematic Transitions**: Animaciones de blur dinámico y escalado elástico
-- **Micro-interacciones**: Iconos reactivos con pulsos y rotaciones orgánicas
-- **Visual Feedback Loop**: Sincronización visual con el motor neural
-- **Glassmorphism UI**: Capas de profundidad y desenfoques dinámicos
-- **Markdown Avanzado**: Tablas auto-regenerables, checkboxes interactivos, bloques de código con botón de copiar
-
----
-
-## 🏆 ¿Por qué MikuCentral? (Análisis Competitivo)
-
-El ecosistema de agentes autónomos ha explotado recientemente. Sin embargo, la mayoría de las soluciones están diseñadas para interactuar a través de aplicaciones de mensajería (como WhatsApp o Slack) o requieren entornos de desarrollo complejos. 
-
-MikuCentral toma un camino distinto: somos un **Agent OS nativo de escritorio**, diseñado con una interfaz de usuario visual premium (Neural Flow) y controles de seguridad locales estrictos. Así es como nos comparamos con los líderes del sector open-source:
-
-| Característica / Enfoque | 🌐 **MikuCentral (Nuestro Enfoque)** | 🦞 **OpenClaw** | 🧠 **memUBot (NevaMind-AI)** |
+### 🏆 ¿Por qué MikuBot? (Análisis Competitivo)
+| Característica / Enfoque | 🌐 **MikuBot (Nuestro Enfoque)** | 🦞 **OpenClaw** | 🧠 **memUBot (NevaMind-AI)** |
 | :--- | :--- | :--- | :--- |
-| **Paradigma e Interfaz** | **App de Escritorio (GUI Premium).** Control visual total del razonamiento (Neural Flow) y gestión de archivos. | **Daemon Headless / Mensajería.** Se controla a través de WhatsApp, Telegram o la terminal (TUI). | **Bot Empresarial para Equipos.** Integrado principalmente en Slack, Discord o Feishu. |
-| **Ejecución en Windows** | **100% Nativo (`.exe`).** Optimizado para correr directamente sobre el kernel de Windows sin virtualización. | **Requiere WSL2 (Ubuntu).** Depende de un subsistema Linux y scripts bash manuales para funcionar estable. | Nativo / Multiplataforma, pero con una arquitectura pesada pensada para servidores empresariales. |
-| **Seguridad del Sistema** | **SafePathResolver.** Acceso restringido (`@WORKSPACE`) y lista blanca de comandos para terminal. *Zero-leak.* | **Riesgo Crítico.** Acceso profundo al sistema. Historial reciente de vulnerabilidades severas (ClawHub exploits). | **Seguridad Empresarial (SOC2).** Altamente seguro, pero requiere configuraciones de permisos complejas. |
-| **Gestión de Memoria** | **Aislamiento por Sesión.** Contextos limpios por tarea y backups atómicos del workspace completo. | **Markdown Plano.** Guarda todo globalmente en `MEMORY.md` y `AGENTS.md`. | **Framework memU.** Sistema avanzado de RAG jerárquico. Sobredimensionado para uso personal. |
-| **Autonomía** | **Neural Scheduler.** Cronjobs locales integrados con detección de actividad del usuario (Activity Guard). | **Heartbeat (30 min).** Despierta en intervalos fijos para revisar tareas, sin interfaz visual de logs. | **Proactivo 24/7.** Excelente autonomía, pero enfocado en reportes de equipo. |
+| **Paradigma e Interfaz** | **App de Escritorio (GUI Premium).** Control visual total del razonamiento y gestión de archivos. | **Daemon Headless / Mensajería.** Se controla a través de WhatsApp, Telegram o la terminal (TUI). | **Bot Empresarial para Equipos.** Integrado principalmente en Slack, Discord o Feishu. |
+| **Ejecución en Windows** | **100% Nativo (`.exe`).** Optimizado para correr directamente sobre el kernel de Windows. | **Requiere WSL2 (Ubuntu).** Depende de un subsistema Linux y scripts bash manuales. | Nativo / Multiplataforma, pero arquitectura pesada de servidores. |
+| **Seguridad del Sistema** | **SafePathResolver.** Acceso restringido y lista blanca de comandos. *Zero-leak.* | **Riesgo Crítico.** Historial reciente de vulnerabilidades severas (ClawHub exploits). | **Seguridad Empresarial (SOC2).** Requiere configuraciones de permisos complejas. |
 
-> **El Veredicto:** 
-> * Si quieres un asistente que viva en tu WhatsApp y no te importa lidiar con WSL2 y riesgos de seguridad en tu sistema de archivos, elige **OpenClaw**.
-> * Si estás desplegando un agente para una corporación entera en Slack que necesita auditar cada mensaje, usa **memUBot**.
-> * Pero si eres un desarrollador o creador en Windows que busca un **entorno de trabajo local, seguro, visualmente increíble y sin fricciones de instalación**, MikuCentral es tu plataforma definitiva.
-
----
-
-## 🛠️ Stack Tecnológico
-
+### 💻 Stack Tecnológico
 | Componente | Tecnología |
 | :--- | :--- |
 | **Frontend** | React 19 + TypeScript |
@@ -108,152 +54,29 @@ MikuCentral toma un camino distinto: somos un **Agent OS nativo de escritorio**,
 | **Desktop Runtime** | Electron 40.2 (Native Node.js integration) |
 | **Build Tool** | Vite 6.2 |
 | **State Management** | Zustand 5.0 |
-| **Inferencia** | Google GenAI SDK, fetch-proxy para Ollama, OpenAI-compatible para Groq/Z.AI |
+| **Inferencia** | Google GenAI SDK, fetch-proxy para Ollama, OpenAI-compatible |
 
----
+### 🚀 Instalación y Desarrollo Local
+```bash
+# 1. Clonar este repositorio
+git clone [https://github.com/NeuralArchLabs/mikuBot.git](https://github.com/NeuralArchLabs/mikuBot.git)
+cd mikuBot
 
-## 🚀 Instalación y Desarrollo
+# 2. Instalar dependencias
+npm install
 
-### Requisitos Previos:
-- **Node.js** (v20+ recomendado)
-- **npm** o **pnpm**
-- **Ollama** (Opcional, para ejecución 100% privada)
+# 3. Ejecutar en modo Desarrollo (con Electron HMR)
+npm run electron:dev
 
-### Pasos para Desarrolladores:
-
-1. **Clonar este repositorio:**
-    ```bash
-    git clone https://github.com/martinezpalomera92/mikuCentralv1.0.git
-    cd mikuCentralv1.0
-    ```
-
-2. **Instalar dependencias:**
-    ```bash
-    npm install
-    ```
-
-3. **Ejecutar en modo Desarrollo (con Electron HMR):**
-    ```bash
-    npm run electron:dev
-    ```
-
-4. **Compilar para Producción (Generar instalador .exe):**
-    ```bash
-    npm run electron:build
-    ```
-
-### Estructura de Directorios:
-
-```
-mikuCentralv1.0/
-├── electron/          # Proceso principal nativo (IPC, sistema de archivos)
-├── src/               # Frontend React
-│   ├── components/    # UI modular (Chat, Settings, Skills, Sidebar)
-│   ├── services/      # Capa lógica (Persistencia, AI Providers, Telegram)
-│   └── stores/        # Gestión de estado (Zustand)
-├── core/              # Identidad, herramientas y skills del agente
-└── config.json        # Configuración local (generado automáticamente)
+# 4. Compilar para Producción (Generar instalador .exe)
+npm run electron:build
 ```
 
----
+### ⚖️ Licencia y Atribuciones Open Source
+Este proyecto se distribuye bajo la licencia **GNU Affero General Public License v3.0 (AGPL-3.0)**. Si modificas este programa y lo ofreces como servicio en red, debes poner el código fuente a disposición de tus usuarios.
 
-## ⌨️ Atajos de Teclado
-
-| Atajo | Acción |
-| :--- | :--- |
-| `Enter` | Enviar señal / Reanudar tarea (input vacío) |
-| `Alt + Enter` | Enviar como Instrucción (⚡ Forces Tool Call) / Autorizar herramienta |
-| `Alt + Backspace` | Denegar ejecución de herramienta |
-| `Esc` | Cancelar operación del agente |
-| `Shift + Enter` | Nueva línea en el editor |
+**Reconocimientos a Terceros:**
+MikuBot es posible gracias a tecnologías de código abierto como React (MIT), Vite (MIT), Electron (MIT), Tailwind CSS (MIT), Zustand (MIT), FastAPI (MIT), y SDKs de IA como Ollama y Google GenAI (Apache 2.0). Consulta el archivo [`LICENSE`](./LICENSE) para más detalles.
 
 ---
-
-## 🔒 Seguridad
-
-### SafeStorage
-Las credenciales API (Gemini, Groq, Z.AI) se almacenan encriptadas utilizando el llavero nativo del sistema:
-- **Windows**: Credential Manager
-- **macOS**: Keychain
-- **Linux**: Secret Service API
-
-### SafePathResolver
-Sistema de validación de rutas "Zero Leak" que previene ataques de path traversal. Solo permite acceso a directorios autorizados (`@CORE/`, `@LIBRARY/`, `@TOOLS/`, `@WORKSPACE/`).
-
-### Console Protection
-El comando `run_console` utiliza una whitelist de comandos seguros y bloquea operadores peligrosos (`>`, `>>`, `|`, `&`, `;`) para prevenir inyecciones de shell.
-
----
-
-## 📦 Backup & Restore
-
-El sistema permite exportar e importar todo el workspace en un archivo ZIP:
-
-**Exportar:**
-1. Ve a Settings → Backup & Restore
-2. Clic en "Exportar Backup"
-3. Selecciona la ubicación de guardado
-4. El ZIP incluye: workspace, core, library, tools, config.json
-
-**Importar:**
-1. Ve a Settings → Backup & Restore
-2. Clic en "Importar Backup"
-3. Selecciona el archivo ZIP
-4. Confirma la sobrescritura de archivos existentes
-
-> **Nota:** La importación sobrescribe todos los archivos existentes. Se recomienda hacer un backup antes de importar.
-
----
-
-## ⚖️ Licencia y Atribuciones Open Source
-
-### Licencia Global (AGPL-3.0)
-
-Este proyecto se distribuye bajo la licencia **GNU Affero General Public License v3.0 (AGPL-3.0)**.
-
-Esto significa que eres libre de usar, modificar y distribuir este software. Sin embargo, si modificas este programa y lo ofreces como un servicio a través de una red (incluso si no distribuyes el binario), **debes poner el código fuente modificado a disposición de tus usuarios** bajo esta misma licencia.
-
-Consulta el archivo [`LICENSE`](./LICENSE) en la raíz del proyecto para leer los términos completos.
-
-### Reconocimientos a Terceros (Third-Party Acknowledgements)
-
-MikuCentral es posible gracias a las siguientes tecnologías y librerías de código abierto. Reconocemos y agradecemos el trabajo de sus respectivos autores:
-
-#### 🖥️ Frontend & Desktop Runtime
-| Dependencia | Licencia | Propósito |
-| :--- | :--- | :--- |
-| **[React](https://reactjs.org/)** | MIT | Librería principal de interfaz de usuario |
-| **[Vite](https://vitejs.dev/)** | MIT | Herramienta de compilación y servidor de desarrollo |
-| **[Electron](https://www.electronjs.org/)** | MIT | Framework para aplicaciones de escritorio multiplataforma |
-| **[Tailwind CSS](https://tailwindcss.com/)** | MIT | Framework CSS de utilidad |
-| **[Zustand](https://github.com/pmndrs/zustand)** | MIT | Gestión de estado ligero |
-| **[Font Awesome](https://fontawesome.com/)** | SIL OFL / MIT | Iconografía vectorial |
-| **[i18next](https://www.i18next.com/)** | MIT | Framework de internacionalización |
-
-#### ⚙️ Motor de Búsqueda & Backend (Python)
-| Dependencia | Licencia | Propósito |
-| :--- | :--- | :--- |
-| **[FastAPI](https://fastapi.tiangolo.com/)** | MIT | Framework web de alto rendimiento para el backend |
-| **[Uvicorn](https://www.uvicorn.org/)** | BSD | Servidor ASGI para Python |
-| **[Pydantic](https://docs.pydantic.dev/)** | MIT | Validación de datos y gestión de configuraciones |
-| **[Selectolax](https://github.com/rushter/selectolax)** | MIT | Procesador HTML ultra-rápido |
-| **[lxml](https://lxml.de/)** | BSD | Procesamiento de XML y HTML |
-| **[httpx](https://www.python-httpx.org/)** | BSD | Cliente HTTP asíncrono |
-
-#### 🧠 IA & Modelos (Opcionales / Proveedores Externos)
-*Nota: Las integraciones con APIs externas están sujetas a los términos de servicio de sus respectivos proveedores.*
-| Proveedor / Librería | Licencia / Tipo | Propósito |
-| :--- | :--- | :--- |
-| **[@google/genai](https://github.com/google/generative-ai-js)** | Apache 2.0 | SDK oficial para la API de Google Gemini |
-| **[Ollama](https://ollama.com/)** | MIT | Inferencia de modelos LLM en local |
-| **[Vosk](https://alphacephei.com/vosk/)** | Apache 2.0 | Herramienta de reconocimiento de voz offline (Opcional) |
-
----
-
-## 📜 Historial de Evolución
-
-Consulta el [CHANGELOG.md](./CHANGELOG.md) para detalles técnicos sobre las últimas actualizaciones.
-
----
-
 *Desarrollado con precisión por Antigravity AI para Armando.*

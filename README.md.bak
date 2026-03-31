@@ -78,6 +78,27 @@
 
 ---
 
+## 🏆 ¿Por qué MikuCentral? (Análisis Competitivo)
+
+El ecosistema de agentes autónomos ha explotado recientemente. Sin embargo, la mayoría de las soluciones están diseñadas para interactuar a través de aplicaciones de mensajería (como WhatsApp o Slack) o requieren entornos de desarrollo complejos. 
+
+MikuCentral toma un camino distinto: somos un **Agent OS nativo de escritorio**, diseñado con una interfaz de usuario visual premium (Neural Flow) y controles de seguridad locales estrictos. Así es como nos comparamos con los líderes del sector open-source:
+
+| Característica / Enfoque | 🌐 **MikuCentral (Nuestro Enfoque)** | 🦞 **OpenClaw** | 🧠 **memUBot (NevaMind-AI)** |
+| :--- | :--- | :--- | :--- |
+| **Paradigma e Interfaz** | **App de Escritorio (GUI Premium).** Control visual total del razonamiento (Neural Flow) y gestión de archivos. | **Daemon Headless / Mensajería.** Se controla a través de WhatsApp, Telegram o la terminal (TUI). | **Bot Empresarial para Equipos.** Integrado principalmente en Slack, Discord o Feishu. |
+| **Ejecución en Windows** | **100% Nativo (`.exe`).** Optimizado para correr directamente sobre el kernel de Windows sin virtualización. | **Requiere WSL2 (Ubuntu).** Depende de un subsistema Linux y scripts bash manuales para funcionar estable. | Nativo / Multiplataforma, pero con una arquitectura pesada pensada para servidores empresariales. |
+| **Seguridad del Sistema** | **SafePathResolver.** Acceso restringido (`@WORKSPACE`) y lista blanca de comandos para terminal. *Zero-leak.* | **Riesgo Crítico.** Acceso profundo al sistema. Historial reciente de vulnerabilidades severas (ClawHub exploits). | **Seguridad Empresarial (SOC2).** Altamente seguro, pero requiere configuraciones de permisos complejas. |
+| **Gestión de Memoria** | **Aislamiento por Sesión.** Contextos limpios por tarea y backups atómicos del workspace completo. | **Markdown Plano.** Guarda todo globalmente en `MEMORY.md` y `AGENTS.md`. | **Framework memU.** Sistema avanzado de RAG jerárquico. Sobredimensionado para uso personal. |
+| **Autonomía** | **Neural Scheduler.** Cronjobs locales integrados con detección de actividad del usuario (Activity Guard). | **Heartbeat (30 min).** Despierta en intervalos fijos para revisar tareas, sin interfaz visual de logs. | **Proactivo 24/7.** Excelente autonomía, pero enfocado en reportes de equipo. |
+
+> **El Veredicto:** 
+> * Si quieres un asistente que viva en tu WhatsApp y no te importa lidiar con WSL2 y riesgos de seguridad en tu sistema de archivos, elige **OpenClaw**.
+> * Si estás desplegando un agente para una corporación entera en Slack que necesita auditar cada mensaje, usa **memUBot**.
+> * Pero si eres un desarrollador o creador en Windows que busca un **entorno de trabajo local, seguro, visualmente increíble y sin fricciones de instalación**, MikuCentral es tu plataforma definitiva.
+
+---
+
 ## 🛠️ Stack Tecnológico
 
 | Componente | Tecnología |
