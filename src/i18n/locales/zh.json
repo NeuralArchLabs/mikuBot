@@ -292,7 +292,52 @@
         "searxena": {
             "title": "网页搜索引擎",
             "desc": "零 API 成本的无限搜索和提取。NeuralArchLabs 的官方项目，专为需要主权网页访问且无配额或跟踪的代理而设计。",
-            "open": "打开搜索器"
+            "open": "打开搜索器",
+            "status_detected": "检测到引擎",
+            "status_missing": "主权已禁用",
+            "status_running": "服务运行中(8000)",
+            "status_stopped": "服务已停止",
+            "btn_starting": "配置中...",
+            "btn_deploying": "部署中...",
+            "btn_active": "引擎活动",
+            "btn_start": "启动引擎",
+            "btn_syncing": "同步中...",
+            "btn_sync": "同步依赖项 (更新)",
+            "sync_desc": "如果您将 searXena 文件替换为较新版本，请使用此功能以确保安装了所需的库。",
+            "core_local": "本地核心",
+            "core_env": "基础环境",
+            "core_instance": "正在运行的实例",
+            "enabled": "» 已启用本地处理",
+            "offline": "» 引擎离线"
+        },
+        "searxena_alerts": {
+            "installing": "☕ 首次安装 searXena 引擎。在配置 Python 环境时可能需要一分钟...",
+            "started_first": "🚀 环境配置完成并成功启动引擎。",
+            "started": "✅ searXena 启动成功。",
+            "stop_confirm": "确定要停止 searXena 引擎吗？",
+            "stopped": "🛑 searXena 已停止。",
+            "sync_success": "✅ searXena 环境同步并更新成功。",
+            "sync_error": "❌ 更新环境时出错： "
+        },
+        "integration": {
+            "title": "系统行为及操作系统集成",
+            "autostart": "开机启动",
+            "autostart_desc": "系统启动时启动 Miku",
+            "mintotray": "最小化到托盘",
+            "mintotray_desc": "关闭应用程序时将其隐藏到托盘"
+        },
+        "backup": {
+            "title": "神经网络维护与备份",
+            "subtitle": "神经网络工作区备份",
+            "desc": "导出环境（配置、会话、计划任务、命令和技能）的完整副本到一个压缩文件中。非常适合迁移或附加安全性。",
+            "export_btn": "导出备份",
+            "restore_btn": "恢复备份",
+            "security_note": "安全说明：",
+            "security_desc": "备份文件包含您的 API 密钥和私密会话。请勿与不受信任的各方共享生成的 .zip 文件。"
+        },
+        "factory_reset": {
+            "title": "恢复出厂设置",
+            "desc": "重置配置并重新运行设置向导。"
         },
         "reset_btn": "重置并重新运行设置",
         "save_btn": "保存",

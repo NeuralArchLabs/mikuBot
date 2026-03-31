@@ -292,7 +292,52 @@
         "searxena": {
             "title": "Web Search Engine",
             "desc": "Búsquedas y extracciones ilimitadas con costo cero por API. Un proyecto oficial de NeuralArchLabs diseñado para agentes que requieren acceso soberano a la web sin cuotas ni rastreo.",
-            "open": "Abrir Buscador"
+            "open": "Abrir Buscador",
+            "status_detected": "Motor Detectado",
+            "status_missing": "Soberanía Desactivada",
+            "status_running": "Servicio Activo (8000)",
+            "status_stopped": "Servicio Detenido",
+            "btn_starting": "Configurando...",
+            "btn_deploying": "Desplegando...",
+            "btn_active": "Motor Activo",
+            "btn_start": "Arrancar Motor",
+            "btn_syncing": "Sincronizando...",
+            "btn_sync": "Sincronizar Dependencias (Update)",
+            "sync_desc": "Usa esto si reemplazas los archivos de searXena por una versión más reciente para asegurar que las librerías necesarias estén instaladas.",
+            "core_local": "Núcleo Local",
+            "core_env": "Entorno Base",
+            "core_instance": "Instancia Activa",
+            "enabled": "» PROCESAMIENTO LOCAL HABILITADO",
+            "offline": "» MOTOR FUERA DE LÍNEA"
+        },
+        "searxena_alerts": {
+            "installing": "☕ El motor searXena se instalará por primera vez. Esto puede tardar un minuto mientras configuramos el entorno de Python...",
+            "started_first": "🚀 Entorno configurado y motor arrancado con éxito.",
+            "started": "✅ searXena arrancado correctamente.",
+            "stop_confirm": "¿Estás seguro de que deseas detener el motor searXena?",
+            "stopped": "🛑 searXena se ha detenido.",
+            "sync_success": "✅ Entorno de searXena sincronizado y actualizado.",
+            "sync_error": "❌ Error al actualizar entorno: "
+        },
+        "integration": {
+            "title": "System Behavior & OS Integration",
+            "autostart": "Iniciar con Windows",
+            "autostart_desc": "Arrancar Miku al iniciar el sistema",
+            "mintotray": "Minimizar a la bandeja",
+            "mintotray_desc": "Cerrar oculta la app en la bandeja"
+        },
+        "backup": {
+            "title": "Neural Maintenance & Backup",
+            "subtitle": "Neural Workspace Backup",
+            "desc": "Exporta una copia completa de tu entorno (configuraciones, sesiones, tareas programadas, comandos y habilidades) en un solo archivo comprimido. Ideal para migraciones o seguridad adicional.",
+            "export_btn": "Exportar Backup",
+            "restore_btn": "Restaurar Copia",
+            "security_note": "Nota de Seguridad:",
+            "security_desc": "El archivo de respaldo contiene tus API Keys y sesiones privadas. No compartas los archivos .zip generados con personas en las que no confíes."
+        },
+        "factory_reset": {
+            "title": "Factory Reset",
+            "desc": "Reset configuration and re-run the setup wizard from scratch."
         },
         "reset_btn": "Reiniciar Configuración",
         "save_btn": "Guardar",

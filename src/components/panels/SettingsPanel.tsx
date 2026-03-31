@@ -117,7 +117,7 @@ export const SettingsPanel = ({
         if (!(window as any).electron) return;
         const isFirstTime = !searxenaStatus.envReady;
         if (isFirstTime) {
-            await askAlert("☕ El motor searXena se instalará por primera vez. Esto puede tardar un minuto mientras configuramos el entorno de Python...");
+            await askAlert(t('settings.searxena_alerts.installing'));
         }
 
         setStartingSearxena(true);
@@ -125,7 +125,7 @@ export const SettingsPanel = ({
         setStartingSearxena(false);
 
         if (res.ok) {
-            await askAlert(isFirstTime ? "🚀 Entorno configurado y motor arrancado con éxito." : "✅ searXena arrancado correctamente.");
+            await askAlert(isFirstTime ? t('settings.searxena_alerts.started_first') : t('settings.searxena_alerts.started'));
             const status = await (window as any).electron.getSearXenaStatus();
             setSearxenaStatus(status);
         } else {
@@ -135,10 +135,10 @@ export const SettingsPanel = ({
 
     const handleStopSearXena = async () => {
         if (!(window as any).electron) return;
-        if (await askConfirm("¿Estás seguro de que deseas detener el motor searXena?")) {
+        if (await askConfirm(t('settings.searxena_alerts.stop_confirm'))) {
             await (window as any).electron.stopSearXena();
             setSearxenaStatus(prev => ({ ...prev, running: false }));
-            await askAlert("🛑 searXena se ha detenido.");
+            await askAlert(t('settings.searxena_alerts.stopped'));
         }
     };
 
@@ -149,9 +149,9 @@ export const SettingsPanel = ({
         setUpdatingSearxena(false);
         
         if (res.ok) {
-            await askAlert("✅ Entorno de searXena sincronizado y actualizado.");
+            await askAlert(t('settings.searxena_alerts.sync_success'));
         } else {
-            await askAlert(`❌ Error al actualizar entorno: ${res.error}`);
+            await askAlert(`${t('settings.searxena_alerts.sync_error')}${res.error}`);
         }
     };
 
@@ -193,17 +193,17 @@ export const SettingsPanel = ({
     const currentProvider = PROVIDERS[config.provider];
 
     return (
-        <div className={`flex-1 ${settingsTab === 'skills' ? 'lg:overflow-hidden pb-2' : 'overflow-y-auto pb-8'} p-4 md:p-8 pt-6 md:pt-10 custom-scrollbar relative`} onScroll={handleScroll}>
+        <div className={`flex-1 ${settingsTab === 'skills' ? 'lg:overflow-hidden pb-2' : 'overflow-y-auto pb-6'} p-3 md:p-6 pt-4 md:pt-6 custom-scrollbar relative`} onScroll={handleScroll}>
             {/* Subdued ambient glow background */}
             <div className="absolute top-0 left-1/4 w-1/2 h-96 bg-blue-600/10 blur-[120px] pointer-events-none rounded-full transform-gpu" />
             <div className="absolute bottom-0 right-1/4 w-1/3 h-64 bg-purple-600/10 blur-[100px] pointer-events-none rounded-full transform-gpu" />
 
-            <div className={`mx-auto w-full relative z-10 transition-all duration-700 ease-in-out ${settingsTab === 'skills' ? 'max-w-7xl px-2 lg:px-4 space-y-0' : 'max-w-4xl space-y-10'}`}>
+            <div className={`mx-auto w-full relative z-10 transition-all duration-700 ease-in-out ${settingsTab === 'skills' ? 'max-w-7xl px-2 lg:px-4 space-y-0' : 'max-w-4xl space-y-6'}`}>
 
                 {/* ── Shared Macro-Tab Header ─────────────────────────── */}
-                <div className={`flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-4 relative transition-all duration-500 ease-in-out`}>
+                <div className={`flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 relative transition-all duration-500 ease-in-out`}>
                     <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-slate-800/80 to-transparent" />
-                    <div className="flex flex-col sm:flex-row items-baseline lg:flex lg:items-baseline gap-2 md:gap-3 lg:gap-2 xl:gap-8 w-full lg:w-auto">
+                    <div className="flex flex-col sm:flex-row items-baseline lg:flex lg:items-baseline gap-2 md:gap-2 lg:gap-2 xl:gap-4 w-full lg:w-auto">
                         {/* Core System Tab Title */}
                         <button
                             onClick={() => setSettingsTab('core')}
@@ -218,7 +218,7 @@ export const SettingsPanel = ({
                         </button>
 
                         {/* Separator */}
-                        <div className="hidden xl:block w-px h-12 flex-shrink-0 self-center rounded-full bg-gradient-to-b from-transparent via-cyan-400/30 to-transparent" />
+                        <div className="hidden xl:block w-px h-8 flex-shrink-0 self-center rounded-full bg-gradient-to-b from-transparent via-cyan-400/30 to-transparent" />
 
                         {/* Neural Skills Tab Title */}
                         <button
@@ -237,7 +237,7 @@ export const SettingsPanel = ({
 
                     {/* Action Buttons — contextual */}
                     {settingsTab === 'core' && (
-                        <div className="grid grid-cols-2 lg:flex lg:flex-row lg:items-center gap-2 md:gap-3 bg-slate-900/40 p-2 md:p-3 rounded-2xl border border-transparent shadow-xl flex-shrink-0 w-full lg:w-auto animate-in fade-in slide-in-from-top-1 duration-700">
+                        <div className="grid grid-cols-2 lg:flex lg:flex-row lg:items-center gap-2 md:gap-2 bg-slate-900/40 p-1.5 md:p-2 rounded-2xl border border-transparent shadow-xl flex-shrink-0 w-full lg:w-auto animate-in fade-in slide-in-from-top-1 duration-700">
                             <button
                                 onClick={onLoadConfig}
                                 className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-slate-800/40 hover:bg-cyan-600/20 text-cyan-400 rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-cyan-900/10 transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-transparent hover:border-cyan-500/40 whitespace-nowrap"
@@ -312,13 +312,10 @@ export const SettingsPanel = ({
 
                 {/* ── Core System Tab ─────────────────────────────────── */}
                 {
-                    settingsTab === 'core' && (<div className="animate-in fade-in duration-500 space-y-10">
+                    settingsTab === 'core' && (<div className="animate-in fade-in duration-500 space-y-6">
 
                         {/* Language Selection Section */}
-                        <div className="space-y-5">
-                            <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
-                                <Icon name="globe" className="text-indigo-400" /> {t('settings.language_select')}
-                            </label>
+                        <div className="space-y-3">
                             <div className="premium-card p-5 flex items-center justify-between gap-6">
                                 <div className="space-y-1">
                                     <div className="text-sm font-black text-white">{t('settings.language_select')}</div>
@@ -349,7 +346,7 @@ export const SettingsPanel = ({
                         <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
                         {/* Knowledge Base Section */}
-                        <div className="space-y-5">
+                        <div className="space-y-3">
                             <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
                                 <Icon name="database" className="text-blue-500" /> {t('settings.pathways.title')}
                             </label>
@@ -373,7 +370,7 @@ export const SettingsPanel = ({
                                         </button>
                                     )}
 
-                                    <div className="flex items-center gap-4 md:gap-3 xl:gap-4 mb-5 md:mb-4 xl:mb-5">
+                                    <div className="flex items-center gap-4 md:gap-3 xl:gap-4 mb-3 md:mb-2 xl:mb-3">
                                         <div className="w-14 h-14 md:w-12 md:h-12 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rounded-2xl bg-emerald-500/10 border border-transparent group-hover:border-emerald-500/30 text-emerald-400 flex flex-shrink-0 items-center justify-center shadow-inner premium-transition">
                                             <Icon name="box" className="text-3xl md:text-xl lg:text-lg xl:text-xl transition-all" />
                                         </div>
@@ -382,7 +379,7 @@ export const SettingsPanel = ({
                                             <div className="text-[11px] md:text-[9px] lg:text-[8px] xl:text-[9px] font-bold uppercase tracking-widest text-emerald-500/80 truncate transition-all">{t('settings.pathways.workspace_desc')}</div>
                                         </div>
                                     </div>
-                                    <div className="text-xs font-mono text-slate-400 mb-5 truncate bg-black/40 p-3 rounded-xl border border-white/5 shadow-inner leading-relaxed" title={workSpacePathName}>
+                                    <div className="text-xs font-mono text-slate-400 mb-3 truncate bg-black/40 p-3 rounded-xl border border-white/5 shadow-inner leading-relaxed" title={workSpacePathName}>
                                         {workSpacePathName || "Not configured"}
                                     </div>
                                     <button
@@ -413,7 +410,7 @@ export const SettingsPanel = ({
                                         </button>
                                     )}
 
-                                    <div className="flex items-center gap-4 md:gap-3 xl:gap-4 mb-5 md:mb-4 xl:mb-5">
+                                    <div className="flex items-center gap-4 md:gap-3 xl:gap-4 mb-3 md:mb-2 xl:mb-3">
                                         <div className="w-14 h-14 md:w-12 md:h-12 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rounded-2xl bg-indigo-500/10 border border-transparent group-hover:border-indigo-500/30 text-indigo-400 flex flex-shrink-0 items-center justify-center shadow-inner premium-transition">
                                             <Icon name="hdd" className="text-3xl md:text-xl lg:text-lg xl:text-xl transition-all" />
                                         </div>
@@ -453,7 +450,7 @@ export const SettingsPanel = ({
                                         </button>
                                     )}
 
-                                    <div className="flex items-center gap-4 md:gap-3 xl:gap-4 mb-5 md:mb-4 xl:mb-5">
+                                    <div className="flex items-center gap-4 md:gap-3 xl:gap-4 mb-3 md:mb-2 xl:mb-3">
                                         <div className="w-14 h-14 md:w-12 md:h-12 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rounded-2xl bg-pink-500/10 border border-transparent group-hover:border-pink-500/30 text-pink-400 flex flex-shrink-0 items-center justify-center shadow-inner premium-transition">
                                             <Icon name="book" className="text-3xl md:text-xl lg:text-lg xl:text-xl transition-all" />
                                         </div>
@@ -493,7 +490,7 @@ export const SettingsPanel = ({
                                         </button>
                                     )}
 
-                                    <div className="flex items-center gap-4 md:gap-3 xl:gap-4 mb-5 md:mb-4 xl:mb-5">
+                                    <div className="flex items-center gap-4 md:gap-3 xl:gap-4 mb-3 md:mb-2 xl:mb-3">
                                         <div className="w-14 h-14 md:w-12 md:h-12 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rounded-2xl bg-amber-500/10 border border-transparent group-hover:border-amber-500/30 text-amber-400 flex flex-shrink-0 items-center justify-center shadow-inner premium-transition">
                                             <Icon name="bolt" className="text-3xl md:text-xl lg:text-lg xl:text-xl transition-all" />
                                         </div>
@@ -519,7 +516,7 @@ export const SettingsPanel = ({
                         <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
                         {/* Dynamic Configuration per Mode */}
-                        <div className="space-y-6">
+                        <div className="space-y-4">
                             <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
                                 <Icon name="microchip" className="text-purple-400" /> {t('settings.orchestration.title')}
                             </label>
@@ -552,10 +549,17 @@ export const SettingsPanel = ({
                                             </div>
                                             <button
                                                 onClick={() => onTestConnection(config.chatProvider)}
-                                                disabled={loadingModels[config.chatProvider || 'groq']}
+                                                disabled={loadingModels[config.chatProvider || 'gemini'] || loadingModels[config.provider] || connectionStatus === 'testing'}
                                                 title={t('settings.orchestration.sync')}
+                                                className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all shadow-md border premium-emphasis bg-slate-800/80 text-slate-400 border-white/5 hover:bg-slate-700 hover:text-white active:scale-95 group/sync overflow-hidden`}
                                             >
-                                                {loadingModels[config.chatProvider || 'groq'] ? <Icon name="sync fa-spin" /> : <Icon name="sync" />} {t('settings.orchestration.sync')}
+                                                <Icon
+                                                    name="sync"
+                                                    className={`${(loadingModels[config.chatProvider || 'gemini'] || (connectionStatus === 'testing' && config.provider === config.chatProvider))
+                                                        ? 'fa-spin text-blue-400 opacity-100 !transition-none'
+                                                        : 'opacity-60 group-hover/sync:opacity-100 group-hover/sync:rotate-180 transition-all duration-500'
+                                                    }`}
+                                                />
                                             </button>
                                         </div>
                                     </div>
@@ -644,10 +648,17 @@ export const SettingsPanel = ({
                                             </div>
                                             <button
                                                 onClick={() => onTestConnection(config.agentProvider)}
-                                                disabled={loadingModels[config.agentProvider || 'groq']}
+                                                disabled={loadingModels[config.agentProvider || 'groq'] || loadingModels[config.provider] || connectionStatus === 'testing'}
                                                 title={t('settings.orchestration.sync')}
+                                                className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all shadow-md border premium-emphasis bg-slate-800/80 text-slate-400 border-white/5 hover:bg-slate-700 hover:text-white active:scale-95 group/sync overflow-hidden`}
                                             >
-                                                {loadingModels[config.agentProvider || 'groq'] ? <Icon name="sync fa-spin" /> : <Icon name="sync" />} {t('settings.orchestration.sync')}
+                                                <Icon
+                                                    name="sync"
+                                                    className={`${(loadingModels[config.agentProvider || 'groq'] || (connectionStatus === 'testing' && config.provider === config.agentProvider))
+                                                        ? 'fa-spin text-purple-400 opacity-100 !transition-none'
+                                                        : 'opacity-60 group-hover/sync:opacity-100 group-hover/sync:rotate-180 transition-all duration-500'
+                                                    }`}
+                                                />
                                             </button>
                                         </div>
                                     </div>
@@ -714,7 +725,7 @@ export const SettingsPanel = ({
                         <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
                         {/* Secure Credential Vault Section - Balanced Spacing */}
-                        <div className="space-y-6 pt-8 md:pt-14">
+                        <div className="space-y-4 pt-4 md:pt-6">
                             <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
                                 <Icon name="shield-alt" className="text-amber-500" /> {t('settings.security.title')}
                             </label>
@@ -913,7 +924,7 @@ export const SettingsPanel = ({
                             <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
                             {/* Vosk Recognition Engine Section */}
-                            <div className="space-y-6 pt-6 md:pt-8">
+                            <div className="space-y-4 pt-4 md:pt-6">
                                 <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
                                     <Icon name="microphone" className="text-emerald-400" /> {t('settings.vosk.title')}
                                 </label>
@@ -978,7 +989,7 @@ export const SettingsPanel = ({
                                 </div>
                             </div>
 
-                            <div className="space-y-6 pt-6 md:pt-8">
+                            <div className="space-y-4 pt-4 md:pt-6">
                                 <div className="flex items-center justify-between pr-2">
                                     <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
                                         <Icon name="search" className="text-blue-400" /> {t('settings.searxena.title')}
@@ -1015,7 +1026,7 @@ export const SettingsPanel = ({
                                         </svg>
                                     </div>
 
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 relative z-10">
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative z-10">
                                         <div className="space-y-6 relative h-full flex flex-col">
                                             <div className="space-y-5">
                                                 <div className="flex items-center oy-2">
@@ -1102,13 +1113,13 @@ export const SettingsPanel = ({
                                                 <div className="flex items-center gap-3">
                                                     <div className={`w-2 h-2 rounded-full ${searxenaStatus.installed ? 'bg-indigo-400 shadow-[0_0_8px_rgba(129,140,248,0.4)]' : 'bg-slate-700'}`} />
                                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] transition-all">
-                                                        {searxenaStatus.installed ? 'Motor Detectado' : 'Soberanía Desactivada'}
+                                                        {searxenaStatus.installed ? t('settings.searxena.status_detected') : t('settings.searxena.status_missing')}
                                                     </span>
                                                 </div>
                                                 <div className="flex items-center gap-3">
                                                     <div className={`w-2 h-2 rounded-full ${searxenaStatus.running ? 'bg-purple-400 shadow-[0_0_8px_rgba(192,132,252,0.4)]' : 'bg-slate-700'}`} />
                                                     <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em]">
-                                                        {searxenaStatus.running ? 'Servicio Activo (8000)' : 'Servicio Detenido'}
+                                                        {searxenaStatus.running ? t('settings.searxena.status_running') : t('settings.searxena.status_stopped')}
                                                     </span>
                                                 </div>
                                             </div>
@@ -1126,14 +1137,14 @@ export const SettingsPanel = ({
                                                     }`}
                                             >
                                                 <Icon name={startingSearxena ? "sync fa-spin" : (!searxenaStatus.envReady ? "magic" : "rocket")} className="text-base" />
-                                                {startingSearxena ? (searxenaStatus.envReady ? 'Desplegando...' : 'Configurando...') : searxenaStatus.running ? 'Motor Activo' : (!searxenaStatus.envReady ? 'Arrancar Motor' : 'Arrancar Motor')}
+                                                {startingSearxena ? (searxenaStatus.envReady ? t('settings.searxena.btn_deploying') : t('settings.searxena.btn_starting')) : searxenaStatus.running ? t('settings.searxena.btn_active') : (!searxenaStatus.envReady ? t('settings.searxena.btn_start') : t('settings.searxena.btn_start'))}
                                             </button>
                                             
                                             <div className="p-5 rounded-2xl bg-black/40 border border-white/5 space-y-4 backdrop-blur-sm">
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
                                                         <div className={`w-2 h-2 rounded-full ${searxenaStatus.installed ? 'bg-[#818cf8] shadow-[0_0_8px_rgba(129,140,248,0.4)]' : 'bg-slate-700'}`} />
-                                                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Núcleo Local</span>
+                                                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{t('settings.searxena.core_local')}</span>
                                                     </div>
                                                     <span className="text-[9px] font-mono text-indigo-400/80 uppercase">{searxenaStatus.installed ? 'ONLINE' : 'MISSING'}</span>
                                                 </div>
@@ -1141,7 +1152,7 @@ export const SettingsPanel = ({
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
                                                         <div className={`w-2 h-2 rounded-full ${searxenaStatus.envReady ? 'bg-[#c084fc] shadow-[0_0_8px_rgba(192,132,252,0.4)]' : 'bg-amber-500/40 shadow-[0_0_8px_rgba(245,158,11,0.2)]'}`} />
-                                                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Entorno Base</span>
+                                                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{t('settings.searxena.core_env')}</span>
                                                     </div>
                                                     <span className="text-[9px] font-mono text-purple-400/80 uppercase">{searxenaStatus.envReady ? 'READY' : 'SETUP REQUIRED'}</span>
                                                 </div>
@@ -1149,7 +1160,7 @@ export const SettingsPanel = ({
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
                                                         <div className={`w-2 h-2 rounded-full ${searxenaStatus.running ? 'bg-[#e879f9] shadow-[0_0_8px_rgba(232,121,249,0.5)] animate-pulse' : 'bg-slate-700'}`} />
-                                                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Instancia Activa</span>
+                                                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{t('settings.searxena.core_instance')}</span>
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         {searxenaStatus.running && (
@@ -1167,7 +1178,7 @@ export const SettingsPanel = ({
                                             </div>
                                             
                                             <p className="text-[8px] text-slate-600 px-4 leading-tight font-black uppercase tracking-[0.1em] text-center opacity-70">
-                                                {searxenaStatus.installed ? '» PROCESAMIENTO LOCAL HABILITADO' : '» MOTOR FUERA DE LÍNEA'}
+                                                {searxenaStatus.installed ? t('settings.searxena.enabled') : t('settings.searxena.offline')}
                                             </p>
 
                                             {searxenaStatus.installed && (
@@ -1184,10 +1195,10 @@ export const SettingsPanel = ({
                                                         title={searxenaStatus.running ? "Detén el motor antes de actualizar" : "Sincronizar librerías de Python"}
                                                     >
                                                         <Icon name={updatingSearxena ? "sync fa-spin" : "wrench"} />
-                                                        {updatingSearxena ? 'Sincronizando...' : 'Sincronizar Dependencias (Update)'}
+                                                        {updatingSearxena ? t('settings.searxena.btn_syncing') : t('settings.searxena.btn_sync')}
                                                     </button>
                                                     <p className="text-[8px] text-slate-500 mt-2 text-center leading-relaxed">
-                                                        Usa esto si reemplazas los archivos de searXena por una versión más reciente para asegurar que las librerías necesarias estén instaladas.
+                                                        {t('settings.searxena.sync_desc')}
                                                     </p>
                                                 </div>
                                             )}
@@ -1199,9 +1210,9 @@ export const SettingsPanel = ({
                             <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
                             {/* System Behavior & Integration */}
-                            <div className="space-y-6 pt-4 md:pt-6">
+                            <div className="space-y-4 pt-4 md:pt-4">
                                 <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
-                                    <Icon name="cog" className="text-slate-400" /> System Behavior & OS Integration
+                                    <Icon name="cog" className="text-slate-400" /> {t('settings.integration.title')}
                                 </label>
                                 <div className="premium-card p-8 transition-all duration-700 relative overflow-hidden group">
                                     <div className="absolute top-0 right-0 w-32 h-32 bg-slate-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-slate-500/10 transition-colors" />
@@ -1214,8 +1225,8 @@ export const SettingsPanel = ({
                                                     <Icon name="rocket" />
                                                 </div>
                                                 <div>
-                                                    <div className="text-sm font-bold text-white">Iniciar con Windows</div>
-                                                    <div className="text-[10px] text-slate-500 font-medium">Arrancar Miku al iniciar el sistema</div>
+                                                    <div className="text-sm font-bold text-white">{t('settings.integration.autostart')}</div>
+                                                    <div className="text-[10px] text-slate-500 font-medium">{t('settings.integration.autostart_desc')}</div>
                                                 </div>
                                             </div>
                                             <button
@@ -1234,8 +1245,8 @@ export const SettingsPanel = ({
                                                     <Icon name="window-minimize" />
                                                 </div>
                                                 <div>
-                                                    <div className="text-sm font-bold text-white">Minimizar a la bandeja</div>
-                                                    <div className="text-[10px] text-slate-500 font-medium">Cerrar oculta la app en la bandeja</div>
+                                                    <div className="text-sm font-bold text-white">{t('settings.integration.mintotray')}</div>
+                                                    <div className="text-[10px] text-slate-500 font-medium">{t('settings.integration.mintotray_desc')}</div>
                                                 </div>
                                             </div>
                                             <button
@@ -1253,9 +1264,9 @@ export const SettingsPanel = ({
                             <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
                             {/* Neural Maintenance & Backup Section */}
-                            <div className="space-y-6 pt-4 md:pt-6">
+                            <div className="space-y-4 pt-4 md:pt-4">
                                 <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
-                                    <Icon name="tools" className="text-cyan-400" /> Neural Maintenance & Backup
+                                    <Icon name="tools" className="text-cyan-400" /> {t('settings.backup.title')}
                                 </label>
 
                                 <div className="premium-card premium-cyan p-8 space-y-6 relative overflow-hidden group">
@@ -1263,9 +1274,9 @@ export const SettingsPanel = ({
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
                                         <div>
-                                            <h3 className="text-lg font-black text-white tracking-tight mb-2">Neural Workspace Backup</h3>
+                                            <h3 className="text-lg font-black text-white tracking-tight mb-2">{t('settings.backup.subtitle')}</h3>
                                             <p className="text-xs text-slate-400 leading-relaxed">
-                                                Exporta una copia completa de tu entorno (configuraciones, sesiones, tareas programadas, comandos y habilidades) en un solo archivo comprimido. Ideal para migraciones o seguridad adicional.
+                                                {t('settings.backup.desc')}
                                             </p>
                                         </div>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1279,7 +1290,7 @@ export const SettingsPanel = ({
                                                 className="py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all flex flex-col items-center justify-center gap-2 border shadow-lg group/btn premium-button premium-emphasis premium-cyan bg-cyan-600/10 text-cyan-400"
                                             >
                                                 <Icon name="archive" className="text-xl group-hover/btn:scale-110 transition-transform" />
-                                                <span>Exportar Backup</span>
+                                                <span>{t('settings.backup.export_btn')}</span>
                                             </button>
                                             <button
                                                 onClick={async () => {
@@ -1299,7 +1310,7 @@ export const SettingsPanel = ({
                                                 className="py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all flex flex-col items-center justify-center gap-2 border shadow-lg group/btn premium-button premium-emphasis premium-indigo bg-slate-800 text-slate-300"
                                             >
                                                 <Icon name="cloud-upload-alt" className="text-xl group-hover/btn:scale-110 transition-transform" />
-                                                <span>Restaurar Copia</span>
+                                                <span>{t('settings.backup.restore_btn')}</span>
                                             </button>
                                         </div>
                                     </div>
@@ -1307,7 +1318,7 @@ export const SettingsPanel = ({
                                     <div className="mt-4 p-4 bg-blue-950/20 border border-blue-500/20 rounded-2xl flex items-start gap-4">
                                         <Icon name="info-circle" className="text-blue-400 mt-1" />
                                         <div className="text-[10px] text-blue-200/60 leading-normal">
-                                            <b className="text-blue-300">Nota de Seguridad:</b> El archivo de respaldo contiene tus <b className="text-blue-300">API Keys</b> y sesiones privadas. No compartas los archivos `.zip` generados con personas en las que no confíes.
+                                            <b className="text-blue-300">{t('settings.backup.security_note')}</b> {t('settings.backup.security_desc')}
                                         </div>
                                     </div>
                                 </div>
@@ -1326,8 +1337,8 @@ export const SettingsPanel = ({
                                             <Icon name="exclamation-triangle" className="text-2xl animate-pulse" />
                                         </div>
                                         <div>
-                                            <h3 className="text-base font-black text-red-200/90 group-hover:text-red-100 tracking-tight mb-1 transition-colors">Factory Reset</h3>
-                                            <p className="text-[10px] text-red-400/30 group-hover:text-red-400/60 font-medium leading-relaxed max-w-sm transition-colors">Reset configuration and re-run the setup wizard from scratch.</p>
+                                            <h3 className="text-base font-black text-red-200/90 group-hover:text-red-100 tracking-tight mb-1 transition-colors">{t('settings.factory_reset.title')}</h3>
+                                            <p className="text-[10px] text-red-400/30 group-hover:text-red-400/60 font-medium leading-relaxed max-w-sm transition-colors">{t('settings.factory_reset.desc')}</p>
                                         </div>
                                     </div>
                                     

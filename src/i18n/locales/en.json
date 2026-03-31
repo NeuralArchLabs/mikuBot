@@ -292,7 +292,52 @@
         "searxena": {
             "title": "Web Search Engine",
             "desc": "Unlimited searches and extractions with zero API cost. An official NeuralArchLabs project designed for agents requiring sovereign web access without quotas or tracking.",
-            "open": "Open Searcher"
+            "open": "Open Search Engine",
+            "status_detected": "Engine Detected",
+            "status_missing": "Sovereignty Disabled",
+            "status_running": "Service Active (8000)",
+            "status_stopped": "Service Stopped",
+            "btn_starting": "Configuring...",
+            "btn_deploying": "Deploying...",
+            "btn_active": "Engine Active",
+            "btn_start": "Start Engine",
+            "btn_syncing": "Syncing...",
+            "btn_sync": "Sync Dependencies (Update)",
+            "sync_desc": "Use this if you replace searXena files with a newer version to ensure required libraries are installed.",
+            "core_local": "Local Core",
+            "core_env": "Base Env",
+            "core_instance": "Active Prod",
+            "enabled": "» LOCAL PROCESSING ENABLED",
+            "offline": "» ENGINE OFFLINE"
+        },
+        "searxena_alerts": {
+            "installing": "☕ The searXena engine is being installed for the first time. This may take a minute while we configure the Python environment...",
+            "started_first": "🚀 Environment configured and engine started successfully.",
+            "started": "✅ searXena started correctly.",
+            "stop_confirm": "Are you sure you want to stop the searXena engine?",
+            "stopped": "🛑 searXena has been stopped.",
+            "sync_success": "✅ searXena environment synchronized and updated.",
+            "sync_error": "❌ Error updating environment: "
+        },
+        "integration": {
+            "title": "System Behavior & OS Integration",
+            "autostart": "Start with Windows",
+            "autostart_desc": "Launch Miku at system startup",
+            "mintotray": "Minimize to tray",
+            "mintotray_desc": "Closing the app hides it in the tray"
+        },
+        "backup": {
+            "title": "Neural Maintenance & Backup",
+            "subtitle": "Neural Workspace Backup",
+            "desc": "Export a complete copy of your environment (configurations, sessions, scheduled tasks, commands, and skills) in a single compressed file. Ideal for migrations or additional security.",
+            "export_btn": "Export Backup",
+            "restore_btn": "Restore Backup",
+            "security_note": "Security Note:",
+            "security_desc": "The backup file contains your API Keys and private sessions. Do not share the generated .zip files with untrusted parties."
+        },
+        "factory_reset": {
+            "title": "Factory Reset",
+            "desc": "Reset configuration and re-run the setup wizard from scratch."
         },
         "reset_btn": "Reset & Re-run Setup",
         "save_btn": "Save",
