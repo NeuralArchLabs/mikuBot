@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.1.4] - 2026-03-31
+### Added
+- **Multilingual Auto-Ticking Engine**: Expanded `toolSynonyms` in `src/services/core/agent/chat.ts` to support English, Spanish, and Chinese verbs (e.g., `读取`, `写`, `运行`). This allows the agent to maintain high-accuracy progress tracking regardless of its persona's language.
+- **Normalization Helper**: Introduced `normalizeForMatch` to strip path prefixes (`@WORKSPACE/`, etc.) and extensions during task matching, significantly improving tick reliability across multi-root environments.
+
+### Changed
+- **Unified Core Documentation**: Fully localized `MODES.md`, `TOOLS.md`, and `TOOL_USAGE_LIBRARY.md` into English as the primary operational standard for optimized LLM reasoning.
+- **Synchronized Prompt Logic**: Refactored `App.tsx` and `agent.ts` to use unified English tags (e.g., `[AGENT_STATE]`, `[CURRENT_WORK_PLAN]`, `[OPERATION_FOCUS]`) and translated internal loop feedback messages.
+- **Refined Task Matching**: Fixed a "short-argument" bug where commands like `ls` or `npm` were ignored. The system now supports variable-length arguments for auto-ticking.
+
+### Fixed
+- **Prefix Collision**: Resolved an issue where absolute/prefixed paths in tool calls failed to match relative task descriptions in `tasks.md`.
+
 ## [2.1.2] - 2026-03-29
 ### Fixed
 - **batch_operation Zero Leak Enforcement**: Applied `SafePathResolver.resolvePath()` to destination parameter in `handleBatchOperation`. This ensures destination paths are validated against the Zero Leak sandbox, preventing unauthorized file operations outside configured workspace directories.

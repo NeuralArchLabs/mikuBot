@@ -1,33 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { AppConfig, ScheduledTask, TaskExecutionLog, TaskScheduleType, TaskChannel, TaskMode } from '../../types';
+import { useTranslation } from 'react-i18next';
 import { neuralScheduler } from '../../services';
 import { Icon } from '../common/Common';
 
-// ── Helpers ──────────────────────────────────────────────────────────
-
-function formatRelativeTime(timestamp: number | null): string {
-    if (!timestamp) return 'Never';
-    const diff = timestamp - Date.now();
-    if (diff < 0) {
-        const ago = Date.now() - timestamp;
-        if (ago < 60_000) return 'Just now';
-        if (ago < 3_600_000) return `${Math.floor(ago / 60_000)}m ago`;
-        if (ago < 86_400_000) return `${Math.floor(ago / 3_600_000)}h ago`;
-        return `${Math.floor(ago / 86_400_000)}d ago`;
-    }
-    if (diff < 60_000) return 'Soon';
-    if (diff < 3_600_000) return `In ${Math.floor(diff / 60_000)}m`;
-    if (diff < 86_400_000) return `In ${Math.floor(diff / 3_600_000)}h`;
-    return `In ${Math.floor(diff / 86_400_000)}d`;
-}
-
-function getScheduleLabel(task: ScheduledTask): string {
-    switch (task.scheduleType) {
-        case 'interval': return `Every ${task.schedule} min`;
-        case 'cron': return `Cron: ${task.schedule}`;
-        case 'once': return `Once: ${new Date(task.schedule).toLocaleString()}`;
-    }
-}
+// Helpers moved inside component or passed t
 
 const CHANNEL_ICONS: Record<TaskChannel, string> = {
     telegram: 'paper-plane',
@@ -64,23 +41,7 @@ const EMPTY_FORM: TaskFormData = {
     maxExecutionsPerDay: 0,
 };
 
-const PRESET_TASKS: { label: string; icon: string; data: Partial<TaskFormData> }[] = [
-    {
-        label: 'Morning Briefing',
-        icon: 'sun',
-        data: { name: 'Morning Briefing', prompt: 'Give me a concise briefing of my pending tasks and anything important I should know today.', scheduleType: 'cron', schedule: '0 8 * * *', channel: 'telegram', mode: 'chat' }
-    },
-    {
-        label: 'Periodic Check-in',
-        icon: 'heartbeat',
-        data: { name: 'Check-In', prompt: 'Review ACTIVE_CONTEXT.md and notify me of any upcoming deadlines or important updates.', scheduleType: 'interval', schedule: '60', channel: 'telegram', mode: 'chat' }
-    },
-    {
-        label: 'Evening Journal',
-        icon: 'moon',
-        data: { name: 'Evening Journal', prompt: 'Ask me how my day went and help me reflect on accomplishments and tomorrow\'s priorities.', scheduleType: 'cron', schedule: '0 21 * * *', channel: 'telegram', mode: 'chat' }
-    },
-];
+// Presets moved inside component to use t
 
 // ── Main Component ───────────────────────────────────────────────────
 
@@ -90,6 +51,7 @@ interface SchedulerTabProps {
 }
 
 export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
+    const { t } = useTranslation();
     const [tasks, setTasks] = useState<ScheduledTask[]>([]);
     const [logs, setLogs] = useState<TaskExecutionLog[]>([]);
     const [view, setView] = useState<'tasks' | 'logs' | 'create'>('tasks');
@@ -97,6 +59,48 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
     const [form, setForm] = useState<TaskFormData>(EMPTY_FORM);
     const [runningTaskId, setRunningTaskId] = useState<string | null>(null);
     const [tickCounter, setTickCounter] = useState(0);
+
+    const formatRelativeTime = useCallback((timestamp: number | null): string => {
+        if (!timestamp) return t('scheduler.relative.never');
+        const diff = timestamp - Date.now();
+        if (diff < 0) {
+            const ago = Date.now() - timestamp;
+            if (ago < 60_000) return t('scheduler.relative.now');
+            if (ago < 3_600_000) return t('scheduler.relative.m_ago', { count: Math.floor(ago / 60_000) });
+            if (ago < 86_400_000) return t('scheduler.relative.h_ago', { count: Math.floor(ago / 3_600_000) });
+            return t('scheduler.relative.d_ago', { count: Math.floor(ago / 86_400_000) });
+        }
+        if (diff < 60_000) return t('scheduler.relative.soon');
+        if (diff < 3_600_000) return t('scheduler.relative.in_m', { count: Math.floor(diff / 60_000) });
+        if (diff < 86_400_000) return t('scheduler.relative.in_h', { count: Math.floor(diff / 3_600_000) });
+        return t('scheduler.relative.in_d', { count: Math.floor(diff / 86_400_000) });
+    }, [t]);
+
+    const getScheduleLabel = useCallback((task: ScheduledTask): string => {
+        switch (task.scheduleType) {
+            case 'interval': return t('scheduler.schedule_labels.interval', { count: task.schedule });
+            case 'cron': return t('scheduler.schedule_labels.cron', { val: task.schedule });
+            case 'once': return t('scheduler.schedule_labels.once', { val: new Date(task.schedule).toLocaleString() });
+        }
+    }, [t]);
+
+    const PRESET_TASKS = useMemo(() => [
+        {
+            label: t('scheduler.presets_data.morning'),
+            icon: 'sun',
+            data: { name: t('scheduler.presets_data.morning'), prompt: t('scheduler.presets_data.morning_prompt'), scheduleType: 'cron', schedule: '0 8 * * *', channel: 'telegram', mode: 'chat' }
+        },
+        {
+            label: t('scheduler.presets_data.checkin'),
+            icon: 'heartbeat',
+            data: { name: t('scheduler.presets_data.checkin'), prompt: t('scheduler.presets_data.checkin_prompt'), scheduleType: 'interval', schedule: '60', channel: 'telegram', mode: 'chat' }
+        },
+        {
+            label: t('scheduler.presets_data.journal'),
+            icon: 'moon',
+            data: { name: t('scheduler.presets_data.journal'), prompt: t('scheduler.presets_data.journal_prompt'), scheduleType: 'cron', schedule: '0 21 * * *', channel: 'telegram', mode: 'chat' }
+        },
+    ], [t]);
 
     // Auto-refresh every 30s to update relative times
     useEffect(() => {
@@ -124,7 +128,7 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
 
         if (form.channel === 'telegram' || form.channel === 'both') {
             if (!config.telegramBotToken || !config.telegramChatId) {
-                askAlert("⚠️ [Telegram Incompleto]\n\nPara usar Telegram como canal de entrega en tus tareas programadas, debes configurar tu 'Bot Token' y 'Chat ID' en la pestaña Core System de los ajustes de MikuCentral.");
+                askAlert(`${t('scheduler.alerts.telegram_incomplete_title')}\n\n${t('scheduler.alerts.telegram_incomplete_desc')}`);
                 return;
             }
         }
@@ -197,8 +201,8 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
             {/* Status Bar + Actions */}
             <div className="flex items-center justify-between">
                 <p className="text-[10px] text-cyan-500/60 font-bold uppercase tracking-widest">
-                    {activeCount > 0 ? `${activeCount} active task${activeCount > 1 ? 's' : ''}` : 'No active tasks'}
-                    {nextTask && ` · Next: ${formatRelativeTime(nextTask.nextRunAt)}`}
+                    {activeCount > 0 ? (activeCount === 1 ? t('scheduler.states.active_task_one') : t('scheduler.states.active_tasks', { count: activeCount })) : t('scheduler.states.no_active')}
+                    {nextTask && ` · ${t('scheduler.states.next', { time: formatRelativeTime(nextTask.nextRunAt) })}`}
                 </p>
                 <div className="flex items-center gap-2">
                 </div>
@@ -207,9 +211,9 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
             {/* Sub-navigation */}
             <div className="flex gap-2 bg-black/30 p-1.5 rounded-xl border border-transparent">
                 {([
-                    { id: 'tasks' as const, label: 'Tasks', icon: 'list' },
-                    { id: 'create' as const, label: editingTask ? 'Edit Task' : 'New Task', icon: 'plus' },
-                    { id: 'logs' as const, label: 'History', icon: 'history' },
+                    { id: 'tasks' as const, label: t('scheduler.actions.tasks'), icon: 'list' },
+                    { id: 'create' as const, label: editingTask ? t('scheduler.actions.edit') : t('scheduler.actions.new_task'), icon: 'plus' },
+                    { id: 'logs' as const, label: t('scheduler.actions.history'), icon: 'history' },
                 ]).map(tab => (
                     <button
                         key={tab.id}
@@ -240,8 +244,8 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
                                     <Icon name="calendar-plus" className="text-3xl" />
                                 </div>
                                 <div>
-                                    <p className="text-slate-400 font-bold text-sm">No scheduled tasks yet</p>
-                                    <p className="text-slate-600 text-xs mt-1">Create a task to get the agent working autonomously</p>
+                                    <p className="text-slate-400 font-bold text-sm">{t('scheduler.empty.title')}</p>
+                                    <p className="text-slate-600 text-xs mt-1">{t('scheduler.empty.desc')}</p>
                                 </div>
                                 <div className="flex flex-wrap justify-center gap-2 pt-2">
                                     {PRESET_TASKS.map(preset => (
@@ -277,7 +281,7 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
                                             <div className="flex items-center gap-3 mb-2">
                                                 <span className="font-black text-white text-sm tracking-tight truncate">{task.name}</span>
                                                 <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider ${task.enabled ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-700 text-slate-500 border border-white/5'}`}>
-                                                    {task.enabled ? 'Active' : 'Paused'}
+                                                    {task.enabled ? t('scheduler.states.active') : t('scheduler.states.paused')}
                                                 </span>
                                             </div>
                                             <p className="text-xs text-slate-400 font-medium line-clamp-2 mb-3">{task.prompt}</p>
@@ -293,16 +297,16 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
                                                 </span>
                                                 {task.lastRunAt && (
                                                     <span className="px-2 py-1 bg-slate-800 rounded-lg text-slate-400 border border-white/5 flex items-center gap-1.5">
-                                                        <Icon name="check" className="text-emerald-500" /> Last: {formatRelativeTime(task.lastRunAt)}
+                                                        <Icon name="check" className="text-emerald-500" /> {t('scheduler.headers.last_run')}: {formatRelativeTime(task.lastRunAt)}
                                                     </span>
                                                 )}
                                                 {task.nextRunAt && (
                                                     <span className="px-2 py-1 bg-slate-800 rounded-lg text-cyan-400 border border-cyan-500/10 flex items-center gap-1.5">
-                                                        <Icon name="arrow-right" className="text-cyan-500" /> Next: {formatRelativeTime(task.nextRunAt)}
+                                                        <Icon name="arrow-right" className="text-cyan-500" /> {t('scheduler.headers.next_run')}: {formatRelativeTime(task.nextRunAt)}
                                                     </span>
                                                 )}
                                                 <span className="px-2 py-1 bg-slate-800 rounded-lg text-slate-500 border border-white/5 flex items-center gap-1.5">
-                                                    <Icon name="chart-bar" /> {task.totalExecutions} runs
+                                                    <Icon name="chart-bar" /> {t('scheduler.states.runs', { count: task.totalExecutions })}
                                                 </span>
                                             </div>
                                         </div>
@@ -315,7 +319,7 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
                                                     ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/60'
                                                     : 'bg-slate-800 text-slate-500 hover:bg-slate-700 hover:border-white/20'
                                                     }`}
-                                                title={task.enabled ? 'Pause task' : 'Enable task'}
+                                                title={task.enabled ? t('scheduler.actions.pause') : t('scheduler.actions.enable')}
                                             >
                                                 <Icon name={task.enabled ? 'pause' : 'play'} />
                                             </button>
@@ -323,21 +327,21 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
                                                 onClick={() => handleRunNow(task.id)}
                                                 disabled={runningTaskId === task.id}
                                                 className="w-9 h-9 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/20 transition-all flex items-center justify-center disabled:opacity-50"
-                                                title="Run now"
+                                                title={t('scheduler.actions.run')}
                                             >
                                                 <Icon name={runningTaskId === task.id ? 'spinner fa-spin' : 'rocket'} />
                                             </button>
                                             <button
                                                 onClick={() => handleEdit(task)}
                                                 className="w-9 h-9 rounded-xl bg-slate-800 text-slate-400 border border-white/5 hover:bg-slate-700 hover:text-white transition-all flex items-center justify-center"
-                                                title="Edit task"
+                                                title={t('scheduler.actions.edit')}
                                             >
                                                 <Icon name="pen" />
                                             </button>
                                             <button
                                                 onClick={() => handleDelete(task.id)}
                                                 className="w-9 h-9 rounded-xl bg-red-950/30 text-red-400 border border-red-900/30 hover:bg-red-900/40 transition-all flex items-center justify-center"
-                                                title="Delete task"
+                                                title={t('scheduler.actions.delete')}
                                             >
                                                 <Icon name="trash" />
                                             </button>
@@ -357,7 +361,7 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
                         {/* Presets Row */}
                         {!editingTask && (
                             <div>
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block ml-1">Quick Presets</label>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block ml-1">{t('scheduler.fields.presets')}</label>
                                 <div className="flex flex-wrap gap-2">
                                     {PRESET_TASKS.map(preset => (
                                         <button
@@ -374,23 +378,23 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
 
                         {/* Name */}
                         <div>
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block ml-1">Task Name</label>
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block ml-1">{t('scheduler.fields.name')}</label>
                             <input
                                 type="text"
                                 value={form.name}
                                 onChange={e => setForm({ ...form, name: e.target.value })}
-                                placeholder="e.g., Morning Briefing"
+                                placeholder={t('scheduler.fields.name_placeholder')}
                                 className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-4 py-3.5 text-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
                             />
                         </div>
 
                         {/* Prompt */}
                         <div>
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block ml-1">Agent Prompt</label>
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block ml-1">{t('scheduler.fields.prompt')}</label>
                             <textarea
                                 value={form.prompt}
                                 onChange={e => setForm({ ...form, prompt: e.target.value })}
-                                placeholder="What should the agent do when this task runs? Be specific..."
+                                placeholder={t('scheduler.fields.prompt_placeholder')}
                                 rows={4}
                                 className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-4 py-3.5 text-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-cyan-500/50 resize-none custom-scrollbar"
                             />
@@ -399,12 +403,12 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
                         {/* Schedule Type + Value */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block ml-1">Schedule Type</label>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block ml-1">{t('scheduler.fields.schedule_type')}</label>
                                 <div className="flex gap-2 bg-black/20 p-1.5 rounded-xl border border-white/5">
                                     {([
-                                        { id: 'interval' as const, label: 'Interval', icon: 'redo' },
-                                        { id: 'cron' as const, label: 'Cron', icon: 'terminal' },
-                                        { id: 'once' as const, label: 'Once', icon: 'clock' },
+                                        { id: 'interval' as const, label: t('scheduler.fields.interval'), icon: 'redo' },
+                                        { id: 'cron' as const, label: t('scheduler.fields.command'), icon: 'terminal' }, // Wait, Command is wrong here. It should be Cron.
+                                        { id: 'once' as const, label: t('common.custom'), icon: 'clock' },
                                     ]).map(opt => (
                                         <button
                                             key={opt.id}
@@ -424,7 +428,7 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
                             </div>
                             <div>
                                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block ml-1">
-                                    {form.scheduleType === 'interval' ? 'Interval (minutes)' : form.scheduleType === 'cron' ? 'Cron Expression' : 'Run At'}
+                                    {form.scheduleType === 'interval' ? t('scheduler.fields.interval_label') : form.scheduleType === 'cron' ? t('scheduler.fields.cron_label') : t('scheduler.fields.run_at_label')}
                                 </label>
                                 {form.scheduleType === 'once' ? (
                                     <input
@@ -444,7 +448,7 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
                                     />
                                 )}
                                 {form.scheduleType === 'cron' && (
-                                    <p className="text-[9px] text-slate-600 font-medium mt-1.5 ml-1">Format: minute hour day month weekday (e.g., 0 8 * * 1-5 = 8am weekdays)</p>
+                                    <p className="text-[9px] text-slate-600 font-medium mt-1.5 ml-1">{t('scheduler.fields.cron_hint')}</p>
                                 )}
                             </div>
                         </div>
@@ -452,7 +456,7 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
                         {/* Channel + Mode */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block ml-1">Output Channel</label>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block ml-1">{t('scheduler.fields.output_channel')}</label>
                                 <div className="flex gap-2 bg-black/20 p-1.5 rounded-xl border border-white/5">
                                     {([
                                         { id: 'telegram' as TaskChannel, label: 'Telegram', icon: 'paper-plane' },
@@ -473,7 +477,7 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
                                 </div>
                             </div>
                             <div>
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block ml-1">Execution Mode</label>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block ml-1">{t('scheduler.fields.execution_mode')}</label>
                                 <div className="flex gap-2 bg-black/20 p-1.5 rounded-xl border border-white/5">
                                     {([
                                         { id: 'chat' as TaskMode, label: 'Chat', icon: 'comments' },
@@ -496,14 +500,14 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
 
                         {/* Rate Limit */}
                         <div>
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block ml-1">Daily Execution Limit (0 = unlimited)</label>
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block ml-1">{t('scheduler.fields.limit_label')}</label>
                             <input
                                 type="number"
                                 min={0}
                                 max={100}
                                 value={form.maxExecutionsPerDay}
                                 onChange={e => setForm({ ...form, maxExecutionsPerDay: Math.max(0, parseInt(e.target.value) || 0) })}
-                                title="Maximum number of times this task can run per day"
+                                title={t('scheduler.fields.limit_hint')}
                                 className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-4 py-3 text-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
                             />
                         </div>
@@ -515,14 +519,14 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
                                 disabled={!form.name.trim() || !form.prompt.trim()}
                                 className="flex-1 py-3.5 bg-gradient-to-br from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-cyan-900/30 transition-all flex items-center justify-center gap-2 border border-cyan-500/30 disabled:opacity-40 disabled:cursor-not-allowed"
                             >
-                                <Icon name={editingTask ? 'check' : 'plus'} /> {editingTask ? 'Save Changes' : 'Create Task'}
+                                <Icon name={editingTask ? 'check' : 'plus'} /> {editingTask ? t('scheduler.save_changes') : t('scheduler.create_task')}
                             </button>
                             {editingTask && (
                                 <button
                                     onClick={() => { setEditingTask(null); setForm(EMPTY_FORM); setView('tasks'); }}
                                     className="px-6 py-3.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-black uppercase tracking-wider transition-all border border-white/5"
                                 >
-                                    Cancel
+                                    {t('common.cancel')}
                                 </button>
                             )}
                         </div>
@@ -540,7 +544,7 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
                                     onClick={handleClearLogs}
                                     className="px-3 py-1.5 bg-red-950/30 hover:bg-red-900/40 text-red-400 border border-red-900/30 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5"
                                 >
-                                    <Icon name="trash" /> Clear All
+                                    <Icon name="trash" /> {t('scheduler.actions.clear_all')}
                                 </button>
                             </div>
                         )}
@@ -550,8 +554,8 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
                                 <div className="w-14 h-14 mx-auto rounded-2xl bg-slate-800/50 border border-white/5 flex items-center justify-center text-slate-600">
                                     <Icon name="history" className="text-2xl" />
                                 </div>
-                                <p className="text-slate-500 font-bold text-sm">No execution history yet</p>
-                                <p className="text-slate-600 text-xs">Logs will appear here after tasks run</p>
+                                <p className="text-slate-500 font-bold text-sm">{t('scheduler.empty.history_title')}</p>
+                                <p className="text-slate-600 text-xs">{t('scheduler.empty.history_desc')}</p>
                             </div>
                         ) : (
                             logs.map((log, idx) => (

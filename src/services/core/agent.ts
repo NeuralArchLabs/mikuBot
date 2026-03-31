@@ -249,29 +249,28 @@ export async function sendAgentMessage(
 
                 
                 const taskLines = tasksContent.trim() ? tasksContent.split('\n') : [];
-
                 // Always show next action — guide the agent
-                let nextAction = 'Analizar la misión y ejecutar la acción más relevante';
+                let nextAction = 'Analyze the mission and execute the most relevant action';
                 if (taskLines.length > 0) {
                     const nextTodo = taskLines.find(l => l.includes('[ ]'))?.trim();
-                    nextAction = nextTodo || 'Todas las tareas completadas — Preparar respuesta final';
+                    nextAction = nextTodo || 'All tasks completed — Prepare final answer';
                 }
-                const taskProgressBlock = `\nSiguiente Acción: ${nextAction}`;
+                const taskProgressBlock = `\nNext Action: ${nextAction}`;
 
-                const autoTaskInfo = turnAutoTasks.length > 0 ? `\n✨ AUTO-SINC: Tareas tachadas automáticamente: ${turnAutoTasks.join(', ')}` : "";
+                const autoTaskInfo = turnAutoTasks.length > 0 ? `\n✨ AUTO-SYNC: Tasks automatically completed: ${turnAutoTasks.join(', ')}` : "";
                 const unplannedInfo = (successfulCalls.length > 0 && turnAutoTasks.length === 0 && tasksContent.includes('[ ]')) 
-                    ? "\n⚠️ NOTA: Has realizado acciones que no parecen coincidir con ninguna tarea pendiente en tu plan." : "";
+                    ? "\n⚠️ NOTE: You have performed actions that do not seem to match any pending task in your plan." : "";
 
-                const awarenessBlock = `[ESTADO_DEL_AGENTE]\nMisión Original: "${missionTrigger}"\nTurno Actual: ${iterations} de ${MAX_RETRIES}\n[/ESTADO_DEL_AGENTE]\n[FOCO_DE_OPERACIÓN]\nResultado Anterior: ${lastExecutionFeedback}${autoTaskInfo}${unplannedInfo}${taskProgressBlock}\n[/FOCO_DE_OPERACIÓN]`;
-                const workPlanBlock = `\n[PLAN_DE_TRABAJO_ACTUAL]\n${(tasksContent || '').trim() || 'No hay tareas activas.'}\n[/PLAN_DE_TRABAJO_ACTUAL]\n`;
+                const awarenessBlock = `[AGENT_STATE]\nOriginal Mission: "${missionTrigger}"\nCurrent Turn: ${iterations} of ${MAX_RETRIES}\n[/AGENT_STATE]\n[OPERATION_FOCUS]\nPrevious Result: ${lastExecutionFeedback}${autoTaskInfo}${unplannedInfo}${taskProgressBlock}\n[/OPERATION_FOCUS]`;
+                const workPlanBlock = `\n[CURRENT_WORK_PLAN]\n${(tasksContent || '').trim() || 'No active tasks.'}\n[/CURRENT_WORK_PLAN]\n`;
                 let sCurrent = agentMessages[0].content;
-                const wpStart = sCurrent.indexOf("[PLAN_DE_TRABAJO_ACTUAL]");
-                const wpEnd = sCurrent.indexOf("[/PLAN_DE_TRABAJO_ACTUAL]");
+                const wpStart = sCurrent.indexOf("[CURRENT_WORK_PLAN]");
+                const wpEnd = sCurrent.indexOf("[/CURRENT_WORK_PLAN]");
                 if (wpStart !== -1 && wpEnd !== -1) {
-                    sCurrent = sCurrent.substring(0, wpStart).trimEnd() + "\n" + workPlanBlock + "\n" + sCurrent.substring(wpEnd + "[/PLAN_DE_TRABAJO_ACTUAL]".length).trimStart();
+                    sCurrent = sCurrent.substring(0, wpStart).trimEnd() + "\n" + workPlanBlock + "\n" + sCurrent.substring(wpEnd + "[/CURRENT_WORK_PLAN]".length).trimStart();
                 }
-                const mStart = "[ESTADO_DEL_AGENTE]";
-                const mEnd = "[/FOCO_DE_OPERACIÓN]";
+                const mStart = "[AGENT_STATE]";
+                const mEnd = "[/OPERATION_FOCUS]";
                 const si = sCurrent.indexOf(mStart);
                 const ei = sCurrent.indexOf(mEnd);
                 if (si !== -1 && ei !== -1) {
@@ -434,10 +433,10 @@ export async function sendAgentMessage(
                 if (retries < MAX_RETRIES && (!content || content.trim() === '')) {
                     retries++;
                     const nudge = (turnHasFailure || lastExecutionFeedback.includes('⚠️')) 
-                        ? "⚠️ EL TURNO NO GENERÓ ACCIONES: Se detectaron bloqueos o errores. No te detengas, intenta un enfoque diferente o usa final_answer si no puedes proceder."
+                        ? "⚠️ TURN GENERATED NO ACTIONS: Blockers or errors detected. Do not stop, try a different approach or use final_answer if you cannot proceed."
                         : (isAgentMode || isInstructionMode) 
-                            ? "⚠️ PROTOCOLO DE AGENTE INCOMPLETO: Debes usar final_answer para concluir tu misión oficial."
-                            : "⚠️ RESPUESTA VACÍA: Por favor, emite una respuesta para continuar la conversación.";
+                            ? "⚠️ INCOMPLETE AGENT PROTOCOL: You must use final_answer to conclude your official mission."
+                            : "⚠️ EMPTY RESPONSE: Please provide a response to continue the conversation.";
                     agentMessages.push({ role: 'user', content: nudge });
                     continue;
                 }
@@ -523,7 +522,7 @@ export async function sendAgentMessage(
             const lastCall = successfulCalls[successfulCalls.length - 1] || uniqueToolCalls[0];
             if (lastCall) {
                 const actionDesc = `${lastCall.function.name}`;
-                lastExecutionFeedback = `[Turno ${iterations}] Ejecutado: ${actionDesc} -> ${turnHasFailure ? 'Hubo errores' : 'Éxito'}`;
+                lastExecutionFeedback = `[Turn ${iterations}] Executed: ${actionDesc} -> ${turnHasFailure ? 'Errors occurred' : 'Success'}`;
             }
 
             const { turnAutoTasks: autoT } = await applyBatchTaskTicking([...successfulCalls, ...(finalAnswerCall ? [finalAnswerCall] : [])], currentFiles, currentWorkSpace, saveFileFn, (m) => log('info', m));

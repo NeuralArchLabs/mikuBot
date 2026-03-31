@@ -177,54 +177,64 @@ export async function applyBatchTaskTicking(
 
     // Mapping tool names to natural language synonyms for better detection
     const toolSynonyms: Record<string, string[]> = {
-        'read_file': ['leer', 'consultar', 'revisar', 'analizar', 'ver'],
-        'update_file': ['escribir', 'crear', 'guardar', 'modificar', 'actualizar', 'generar'],
-        'patch_file': ['parchear', 'aplicar', 'arreglar', 'corregir', 'editar'],
-        'list_files': ['listar', 'explorar', 'ver archivos', 'inspeccionar'],
-        'search_files': ['buscar', 'encontrar', 'localizar'],
-        'web_search': ['investigar', 'noticias', 'google', 'buscar en internet', 'web_research', 'deep_research'],
-        'web_research': ['investigar', 'noticias', 'google', 'buscar en internet', 'web_search', 'deep_research'],
-        'deep_research': ['investigar', 'noticias', 'google', 'buscar en internet', 'web_search', 'web_research'],
-        'run_console': ['ejecutar', 'comando', 'terminal', 'consola', 'git'],
-        'get_system_metrics': ['métricas', 'cpu', 'ram', 'estado del sistema', 'salud'],
-        'list_available_skills': ['habilidades', 'skills', 'capacidades', 'funciones extra'],
-        'miku_clock': ['hora', 'reloj', 'tiempo', 'quién eres'],
-        'get_crypto_price': ['bitcoin', 'crypto', 'precio', 'cripto', 'cotización', 'moneda'],
-        'delete_file': ['borrar', 'eliminar', 'quitar', 'limpiar', 'suprimir'],
-        'final_answer': ['finalizar', 'terminar', 'concluir', 'respuesta', 'completar', 'reportar', 'informar', 'conclusión']
+        'read_file': ['leer', 'consultar', 'revisar', 'analizar', 'ver', 'read', 'check', 'inspect', 'view', '读取', '阅读', '查看', '浏览'],
+        'update_file': ['escribir', 'crear', 'guardar', 'modificar', 'actualizar', 'generar', 'write', 'create', 'save', 'update', 'generate', 'make', '写', '写入', '编写', '创建', '保存', '更新'],
+        'patch_file': ['parchear', 'aplicar', 'arreglar', 'corregir', 'editar', 'patch', 'apply', 'fix', 'correct', 'edit', 'refactor', '修补', '应用', '修复', '编辑'],
+        'list_files': ['listar', 'explorar', 'ver archivos', 'inspeccionar', 'list', 'explore', 'ls', 'dir', 'browse', '列出', '表', '浏览', '目录'],
+        'search_files': ['buscar', 'encontrar', 'localizar', 'search', 'find', 'locate', 'grep', '搜索', '查找', '搜寻'],
+        'web_search': ['investigar', 'noticias', 'google', 'buscar en internet', 'web_research', 'deep_research', 'research', 'search web', 'look up', '搜网', '网络搜索', '搜索网页'],
+        'web_research': ['investigar', 'noticias', 'google', 'buscar en internet', 'web_search', 'deep_research', 'research', 'search web', 'look up', '搜网', '网络搜索', '搜索网页'],
+        'deep_research': ['investigar', 'noticias', 'google', 'buscar en internet', 'web_search', 'web_research', 'research', 'deep research', '深度搜索', '深入搜索', '深入探查'],
+        'run_console': ['ejecutar', 'comando', 'terminal', 'consola', 'git', 'run', 'execute', 'command', 'terminal', 'console', 'npm', 'node', 'python', '运行', '执行', '命令'],
+        'get_system_metrics': ['métricas', 'cpu', 'ram', 'estado del sistema', 'salud', 'metrics', 'status', 'health', 'system info', '系统指标', '状态', '健康度'],
+        'list_available_skills': ['habilidades', 'skills', 'capacidades', 'funciones extra', 'list skills', 'show abilities', '列表技能', '展示能力', '技能列表'],
+        'miku_clock': ['hora', 'reloj', 'tiempo', 'quién eres', 'time', 'clock', 'greet', '时间', '小时', '问候', '打招呼'],
+        'get_crypto_price': ['bitcoin', 'crypto', 'precio', 'cripto', 'cotización', 'moneda', 'price', 'coin', 'market', '比特币', '加密货币', '价格', '行情', '汇率'],
+        'delete_file': ['borrar', 'eliminar', 'quitar', 'limpiar', 'suprimir', 'delete', 'remove', 'rm', 'clear', 'erase', '删除', '移除', '清理', '清除'],
+        'final_answer': ['finalizar', 'terminar', 'concluir', 'respuesta', 'completar', 'reportar', 'informar', 'conclusión', 'finish', 'complete', 'conclude', 'answer', 'report', 'done', '完成', '结束', '回答', '报告', '结论', '结论性报告']
+    };
+
+    const normalizeForMatch = (s: string) => {
+        return s.toLowerCase()
+            .replace(/@(?:CORE|WORKSPACE|TOOLS|LIBRARY|EXTRA|ROOT)\//gi, '') // Strip common prefixes
+            .replace(/\.[a-z0-9]+$/i, '') // Strip extensions for fuzzy matching
+            .trim();
     };
 
     for (const toolCall of toolCalls) {
         const toolName = toolCall.function.name;
         const args = toolCall.function.arguments || {};
-        const mainArg = (args.filename || args.query || args.topic || args.url || args.command || args.path || '').toString();
+        // Expanded mainArg detection to include text (for final_answer) and item/query variations
+        const mainRaw = (args.filename || args.query || args.topic || args.url || args.command || args.path || args.text || args.item || '').toString();
+        const mainArgClean = normalizeForMatch(mainRaw);
         
         let markedInThisPass = false;
         lines = lines.map(line => {
-            // Skip already done or empty
+            // Skip already checked lines or headers
             if (markedInThisPass || !line.trim().startsWith('- [ ]')) return line;
 
             const lowerLine = line.toLowerCase();
             const lowerTool = toolName.toLowerCase();
-            const lowerArg = mainArg.toLowerCase();
+            const cleanLine = normalizeForMatch(line.replace('- [ ]', ''));
             
             // Rule 1: Direct name match (e.g., "- [ ] @web_search")
             const directMatch = lowerLine.includes(lowerTool) || lowerLine.includes(`@${lowerTool}`);
             
             // Rule 2: Synonym match
-            const hasSynonym = (toolSynonyms[lowerTool] || []).some(s => lowerLine.includes(s));
+            const hasSynonym = (toolSynonyms[lowerTool] || []).some(s => lowerLine.includes(s.toLowerCase()));
             const toolMatch = directMatch || hasSynonym;
             
-            // Rule 3: Argument match (if applicable)
-            const argMatch = lowerArg.length > 2 && lowerLine.includes(lowerArg);
+            // Rule 3: Argument match (Improved: removed length > 2 restriction, added normalization)
+            // If mainArgClean is empty, we only care about toolMatch
+            const argMatch = mainArgClean.length > 0 && (cleanLine.includes(mainArgClean) || mainArgClean.includes(cleanLine));
             
-            // Exclude meta-updates to tasks.md
+            // Exclude meta-updates to tasks.md itself
             if (lowerTool === 'update_file' || lowerTool === 'patch_file') {
-                if (lowerArg.includes('tasks.md')) return line;
+                if (mainArgClean.includes('tasks')) return line;
             }
 
             // COHERENCE POLICY: Match if tool concept matches target concept
-            if (toolMatch && (argMatch || lowerArg === "")) {
+            if (toolMatch && (argMatch || mainArgClean === "")) {
                 modified = true;
                 markedInThisPass = true;
                 const taskName = line.replace('- [ ]', '').trim();

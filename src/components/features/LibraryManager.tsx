@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Icon, MarkdownRenderer } from '../common/Common';
+import { useTranslation } from 'react-i18next';
 import { AppConfig } from '../../types';
 
 interface Blueprint {
@@ -41,6 +42,7 @@ export const LibraryManager = ({
     editFileRequested,
     onClearEditRequest
 }: LibraryManagerProps) => {
+    const { t } = useTranslation();
     const [isClosing, setIsClosing] = useState(false);
     const [viewFile, setViewFile] = useState<string | null>(null);
     const [editMode, setEditMode] = useState(false);
@@ -148,7 +150,7 @@ export const LibraryManager = ({
     }, [renameInput, onRename, viewFile]);
 
     const handleDelete = useCallback(async (name: string) => {
-        if (await askConfirm(`Are you sure you want to permanently delete "${name}" from your library?`, 'center')) {
+        if (await askConfirm(t('library.confirm.delete', { name }), 'center')) {
             const ok = await onDelete(name);
             if (ok && viewFile === name) {
                 setViewFile(null);
@@ -179,8 +181,8 @@ export const LibraryManager = ({
                             <Icon name="book" className="text-xl" />
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-white">Library Manager</h2>
-                            <p className="text-xs text-slate-500">Inject additional context into your session</p>
+                            <h2 className="text-lg font-bold text-white">{t('library.title')}</h2>
+                            <p className="text-xs text-slate-500">{t('library.desc')}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -188,17 +190,17 @@ export const LibraryManager = ({
                             onClick={() => setShowBlueprints(!showBlueprints)}
                             className="px-3 py-1.5 bg-gradient-to-r from-violet-600/20 to-pink-600/20 hover:from-violet-600/30 hover:to-pink-600/30 text-violet-300 rounded ring-1 ring-transparent hover:ring-violet-500/50 transition-all text-xs font-medium flex items-center gap-2 hover:scale-[1.02]"
                         >
-                            <Icon name="magic" /> Blueprints
+                            <Icon name="magic" /> {t('library.blueprints.btn')}
                         </button>
                         <button
                             onClick={onAdd}
                             className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded ring-1 ring-transparent hover:ring-white/20 transition-all text-xs font-medium flex items-center gap-2 whitespace-nowrap"
                         >
                             <Icon name="plus" />
-                            <span className="hidden sm:inline">New Document</span>
-                            <span className="inline sm:hidden">New Doc</span>
+                            <span className="hidden sm:inline">{t('library.actions.new_doc')}</span>
+                            <span className="inline sm:hidden">{t('library.actions.new_doc_short')}</span>
                         </button>
-                        <button onClick={handleClose} title="Close Library Manager" className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 flex items-center justify-center transition-colors">
+                        <button onClick={handleClose} title={t('common.close') || 'Close'} className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 flex items-center justify-center transition-colors">
                             <Icon name="times" />
                         </button>
                     </div>
@@ -209,8 +211,8 @@ export const LibraryManager = ({
                     <div className="border-b border-slate-800 bg-slate-900/60 p-4 animate-in fade-in">
                         <div className="flex items-center gap-2 mb-3">
                             <Icon name="magic" className="text-violet-400 text-sm" />
-                            <span className="text-xs font-bold text-violet-300 uppercase tracking-wider">Assistant Blueprints</span>
-                            <span className="text-[10px] text-slate-600 ml-2">Pre-built templates for common use cases</span>
+                            <span className="text-xs font-bold text-violet-300 uppercase tracking-wider">{t('library.blueprints.title')}</span>
+                            <span className="text-[10px] text-slate-600 ml-2">{t('library.blueprints.desc')}</span>
                         </div>
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                             {blueprints.map((bp) => (
@@ -226,7 +228,7 @@ export const LibraryManager = ({
                                             <Icon name={bp.icon} />
                                         </div>
                                         <div className="font-bold text-slate-200 text-sm mb-1">{bp.title}</div>
-                                        <div className="text-[10px] text-slate-500 leading-tight">Create a new {bp.title.toLowerCase()} document</div>
+                                        <div className="text-[10px] text-slate-500 leading-tight">{t('library.blueprints.create', { title: bp.title.toLowerCase() })}</div>
                                     </div>
                                 </button>
                             ))}
@@ -241,8 +243,8 @@ export const LibraryManager = ({
                         <div className="p-3 bg-slate-900/80">
                             <input
                                 type="text"
-                                placeholder="Search files..."
-                                title="Search library files"
+                                placeholder={t('library.actions.search')}
+                                title={t('library.actions.search')}
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full bg-slate-800 border-none rounded px-3 py-1.5 text-xs text-slate-300 outline-none focus:ring-1 focus:ring-pink-500/50"
@@ -251,7 +253,7 @@ export const LibraryManager = ({
                         <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
                             {filteredFiles.length === 0 ? (
                                 <div className="p-8 text-center text-slate-600 text-xs italic">
-                                    {searchQuery ? 'No matching files found.' : 'No files in library folder. Select a folder in settings or create a file.'}
+                                    {searchQuery ? t('library.actions.no_match') : t('library.actions.empty')}
                                 </div>
                             ) : (
                                 filteredFiles.map(name => {
@@ -286,8 +288,8 @@ export const LibraryManager = ({
                                                                 if (e.key === 'Escape') setRenamingFile(null);
                                                             }}
                                                             onClick={(e) => e.stopPropagation()}
-                                                            placeholder="New filename..."
-                                                            title="Enter new filename"
+                                                            placeholder={t('editor.placeholder')}
+                                                            title={t('library.actions.rename')}
                                                             className="w-full bg-slate-700 ring-1 ring-pink-500/40 rounded px-1.5 py-0.5 text-xs text-white outline-none"
                                                         />
                                                     ) : (
@@ -304,7 +306,7 @@ export const LibraryManager = ({
                                                         setRenameInput(name);
                                                     }}
                                                     className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-blue-400 rounded hover:bg-blue-500/10"
-                                                    title="Rename file"
+                                                    title={t('library.actions.rename')}
                                                 >
                                                     <Icon name="edit" className="text-xs" />
                                                 </button>
@@ -314,7 +316,7 @@ export const LibraryManager = ({
                                                         handleDelete(name);
                                                     }}
                                                     className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-red-400 rounded hover:bg-red-500/10"
-                                                    title="Delete file"
+                                                    title={t('library.actions.delete')}
                                                 >
                                                     <Icon name="times" className="text-sm" />
                                                 </button>
@@ -334,21 +336,21 @@ export const LibraryManager = ({
                                     <div className="flex items-center gap-4">
                                         <span className="text-xs font-mono text-slate-500">{viewFile}</span>
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2">
                                         {editMode ? (
                                             <>
                                                 <button
                                                     onClick={handleCancelEdit}
                                                     className="px-2 py-1 text-[10px] text-slate-400 hover:text-slate-200 transition-colors"
                                                 >
-                                                    Cancel
+                                                    {t('editor.cancel')}
                                                 </button>
                                                 <button
                                                     onClick={handleSaveEdit}
                                                     disabled={saving}
                                                     className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-medium transition-colors disabled:opacity-50"
                                                 >
-                                                    {saving ? 'Saving...' : '💾 Save'}
+                                                    {saving ? t('editor.saving') : t('editor.save_btn')}
                                                 </button>
                                             </>
                                         ) : (
@@ -356,7 +358,7 @@ export const LibraryManager = ({
                                                 onClick={() => handleStartEdit(viewFile)}
                                                 className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] font-medium transition-colors flex items-center gap-1"
                                             >
-                                                <Icon name="edit" /> Edit
+                                                <Icon name="edit" /> {t('editor.edit')}
                                             </button>
                                         )}
                                     </div>
@@ -367,7 +369,7 @@ export const LibraryManager = ({
                                         {/* Editor */}
                                         <div className="w-1/2 flex flex-col">
                                             <div className="px-3 py-1 bg-slate-900/50">
-                                                <span className="text-[10px] text-slate-600 uppercase tracking-widest">Editor</span>
+                                                <span className="text-[10px] text-slate-600 uppercase tracking-widest">{t('editor.editor')}</span>
                                             </div>
                                             <textarea
                                                 value={editContent}
@@ -380,7 +382,7 @@ export const LibraryManager = ({
                                         {/* Live Preview */}
                                         <div className="w-1/2 flex flex-col">
                                             <div className="px-3 py-1 bg-slate-900/50">
-                                                <span className="text-[10px] text-slate-600 uppercase tracking-widest">Live Preview</span>
+                                                <span className="text-[10px] text-slate-600 uppercase tracking-widest">{t('editor.live_preview')}</span>
                                             </div>
                                             <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
                                                 <MarkdownRenderer content={editContent} />
@@ -396,9 +398,9 @@ export const LibraryManager = ({
                         ) : (
                             <div className="flex-1 flex items-center justify-center flex-col gap-4 text-slate-700">
                                 <Icon name="eye" className="text-4xl opacity-20" />
-                                <p className="text-sm font-mono">Select a file to preview</p>
+                                <p className="text-sm font-mono">{t('library.actions.preview_select')}</p>
                                 <p className="text-xs text-slate-600 max-w-xs text-center">
-                                    Or use <span className="text-violet-400 font-medium">Blueprints</span> to create a pre-built template
+                                    {t('library.blueprints.desc')}
                                 </p>
                             </div>
                         )}
@@ -408,13 +410,13 @@ export const LibraryManager = ({
                 {/* ── Footer ─────────────────────────────────────────── */}
                 <div className="h-14 bg-slate-950/40 px-6 flex items-center justify-between">
                     <div className="text-xs text-slate-500">
-                        {selectedFiles.length} files selected for injection • {Object.keys(files).length} total
+                        {t('sidebar.sessions_count', { count: selectedFiles.length })} • {t('sidebar.sessions_count', { count: Object.keys(files).length })}
                     </div>
                     <button
                         onClick={onClose}
                         className="px-6 py-2 bg-pink-600 hover:bg-pink-500 text-white rounded font-medium text-sm transition-colors shadow-lg shadow-pink-900/20"
                     >
-                        Apply Application Context
+                        {t('library.actions.save')}
                     </button>
                 </div>
             </div>

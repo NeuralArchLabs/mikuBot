@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Icon } from './Common';
+import { useTranslation } from 'react-i18next';
 
 export interface SystemDialogConfig {
     isOpen: boolean;
@@ -14,6 +15,7 @@ interface SystemDialogProps {
 }
 
 export const SystemDialog = ({ config }: SystemDialogProps) => {
+    const { t } = useTranslation();
     const [isClosing, setIsClosing] = useState(false);
     const [activeConfig, setActiveConfig] = useState<SystemDialogConfig | null>(null);
 
@@ -63,7 +65,7 @@ export const SystemDialog = ({ config }: SystemDialogProps) => {
                         <Icon name={iconName} className="text-lg" />
                     </div>
                     <span className="font-bold text-white uppercase tracking-wider text-sm">
-                        {isError ? 'System Alert' : isAlert ? 'System Notice' : 'System Request'}
+                        {isError ? t('common.system_alert') : isAlert ? t('common.system_notice') : t('common.system_request')}
                     </span>
                 </div>
 
@@ -79,14 +81,14 @@ export const SystemDialog = ({ config }: SystemDialogProps) => {
                             onClick={() => handleClose(false)}
                             className="px-4 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors text-sm font-medium"
                         >
-                            Cancel
+                            {t('common.cancel')}
                         </button>
                     )}
                     <button
                         onClick={() => handleClose(true)}
                         className={`px-4 py-2 rounded-xl text-white shadow-md transition-colors text-sm font-medium flex items-center gap-2 ${isError ? 'bg-red-600 hover:bg-red-500 shadow-red-500/20' : isSuccess ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20' : 'bg-blue-600 hover:bg-blue-500 shadow-blue-500/20'}`}
                     >
-                        {isAlert ? 'OK' : 'Confirm'}
+                        {isAlert ? t('common.ok') : t('common.confirm')}
                     </button>
                 </div>
             </div>

@@ -1,6 +1,6 @@
-# 🌐 MikuCentral v2.1.3 — Neural AI Interface & Agent OS
+# 🌐 MikuCentral v2.1.4 — Neural AI Interface & Agent OS
 
-![Version](https://img.shields.io/badge/version-2.1.3-cyan.svg?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.1.4-cyan.svg?style=for-the-badge)
 ![Status](https://img.shields.io/badge/status-stable-green.svg?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-private-red.svg?style=for-the-badge)
 

@@ -20,6 +20,7 @@ config.json
 sessions/
 scheduler-tasks.json
 scheduler-logs.json
+proyectosMap/
 .vscode/*
 !.vscode/extensions.json
 .idea

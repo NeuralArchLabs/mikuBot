@@ -45,25 +45,25 @@ export interface HydrationResult {
 // ─── Defaults ────────────────────────────────────────────────────────
 
 const DEFAULT_VARIABLES: Record<string, string> = {
-    LANGUAGE: 'Español',
-    TONE: 'Profesional y amigable',
-    VERBOSITY: 'Medio',
-    HUMOR_LEVEL: 'Bajo',
-    USER_NAME: 'Usuario',
+    LANGUAGE: 'English',
+    TONE: 'Professional',
+    VERBOSITY: 'Medium',
+    HUMOR_LEVEL: 'Low',
+    USER_NAME: 'User',
     ASSISTANT_ALIAS: 'mikuBot',
-    TECHNICAL_SKILL: 'Intermedio',
-    CURRENT_GOAL: 'Asistencia general',
-    AUTONOMY_MODE: 'Semi-autónomo',
-    USER_CONTEXT_DUMP: 'Sin contexto adicional proporcionado.',
-    CUSTOM_RULES: 'Sin instrucciones adicionales.',
+    TECHNICAL_SKILL: 'Intermediate',
+    CURRENT_GOAL: 'General assistance',
+    AUTONOMY_MODE: 'Semi-autonomous',
+    USER_CONTEXT_DUMP: 'No additional context provided.',
+    CUSTOM_RULES: 'No additional instructions.',
 };
 
 // ─── Template → Output mapping ───────────────────────────────────────
 
-const TEMPLATE_MAP: { template: string; output: string; target: 'core' | 'tools' }[] = [
-    { template: 'IDENTITY.template.md', output: 'IDENTITY.md', target: 'tools' },
-    { template: 'SOUL.template.md',     output: 'SOUL.md',     target: 'core' },
-    { template: 'USER.template.md',     output: 'USER.md',     target: 'core' },
+const TEMPLATE_BASES: { base: string; output: string; target: 'core' | 'tools' }[] = [
+    { base: 'IDENTITY', output: 'IDENTITY.md', target: 'tools' },
+    { base: 'SOUL',     output: 'SOUL.md',     target: 'core' },
+    { base: 'USER',     output: 'USER.md',     target: 'core' },
 ];
 
 // ─── Core Functions ─────────────────────────────────────────────────
@@ -126,8 +126,8 @@ export function extractTemplatesFromFolderContent(
 
     for (const [relPath, content] of Object.entries(folderContent)) {
         const normalizedPath = relPath.replace(/\\/g, '/');
-        // Match files in blueprints/templates/ that end with .template.md
-        if (normalizedPath.includes('blueprints/templates/') && normalizedPath.endsWith('.template.md')) {
+        // Match files in blueprints/templates/ that end with .md
+        if (normalizedPath.includes('blueprints/templates/') && normalizedPath.endsWith('.md')) {
             const filename = normalizedPath.split('/').pop() || '';
             if (filename) templates[filename] = content;
         }
@@ -147,14 +147,26 @@ export function extractTemplatesFromFolderContent(
  */
 export function hydrateAllTemplates(
     variables: PromptVariables,
-    templateContent: Record<string, string>
+    templateContent: Record<string, string>,
+    language: string = 'en'
 ): HydrationResult[] {
     const results: HydrationResult[] = [];
 
-    for (const { template, output, target } of TEMPLATE_MAP) {
-        const raw = templateContent[template];
+    for (const { base, output, target } of TEMPLATE_BASES) {
+        // Try language specific template: base.template.en.md
+        const langTemplate = `${base}.template.${language}.md`;
+        const fallbackTemplate = `${base}.template.md`;
+        
+        let raw = templateContent[langTemplate];
         if (!raw) {
-            console.warn(`[BlueprintHydrator] Template "${template}" not found in provided content, skipping.`);
+            raw = templateContent[fallbackTemplate];
+            if (raw) {
+                console.log(`[BlueprintHydrator] Template "${langTemplate}" not found, falling back to "${fallbackTemplate}"`);
+            }
+        }
+
+        if (!raw) {
+            console.warn(`[BlueprintHydrator] No template found for base "${base}" (tried ${langTemplate}, ${fallbackTemplate}), skipping.`);
             continue;
         }
 
@@ -175,9 +187,10 @@ export function hydrateAllTemplates(
 export async function hydrateAndPersistTemplates(
     variables: PromptVariables,
     templateContent: Record<string, string>,
-    saveFn: (filename: string, content: string, target: 'core' | 'tools') => Promise<boolean>
+    saveFn: (filename: string, content: string, target: 'core' | 'tools') => Promise<boolean>,
+    language: string = 'en'
 ): Promise<string[]> {
-    const hydrated = hydrateAllTemplates(variables, templateContent);
+    const hydrated = hydrateAllTemplates(variables, templateContent, language);
     const saved: string[] = [];
 
     for (const file of hydrated) {

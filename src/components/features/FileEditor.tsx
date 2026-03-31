@@ -1,5 +1,6 @@
 import React from 'react';
 import { Icon } from '../common/Common';
+import { useTranslation } from 'react-i18next';
 
 interface FileEditorProps {
     files: Record<string, string>;
@@ -24,14 +25,15 @@ export const FileEditor = ({
     onDelete,
     askConfirm
 }: FileEditorProps) => {
+    const { t } = useTranslation();
     const content = unsavedChanges[selectedFile] ?? files[selectedFile] ?? '';
     const isDirty = selectedFile in unsavedChanges;
 
     const handleDelete = async (filename: string) => {
-        const disclaimer = "⚠️ WARNING: Deleting files from the Cortex or Command paths is a high-risk operation. Removing essential system files or custom commands could break MikuCentral functionality or result in data loss that cannot be undone.";
+        const disclaimer = t('editor.confirm.delete_warning');
 
         if (await askConfirm(disclaimer, 'center')) {
-            if (await askConfirm(`Are you absolutely sure you want to permanently delete "${filename}"? This action is irreversible.`, 'center')) {
+            if (await askConfirm(t('editor.confirm.delete_last', { filename }), 'center')) {
                 const success = await onDelete(filename);
                 if (success && selectedFile === filename) {
                     setSelectedFile('');
@@ -47,8 +49,8 @@ export const FileEditor = ({
         <div className="flex-1 flex h-full overflow-hidden text-slate-200">
             <div className="w-auto min-w-[120px] max-w-[160px] md:min-w-[160px] md:max-w-56 lg:min-w-[200px] lg:max-w-72 xl:min-w-[240px] xl:max-w-[320px] bg-slate-900/30 border-r border-slate-800/50 flex flex-col flex-shrink-0 overflow-hidden">
                 <div className="p-3 flex items-center justify-between border-b border-slate-800/50">
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Storage Explorer</span>
-                    <button onClick={onAddFile} className="text-slate-500 hover:text-cyan-400 transition-colors" title="Add new file">
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">{t('editor.title')}</span>
+                    <button onClick={onAddFile} className="text-slate-500 hover:text-cyan-400 transition-colors" title={t('editor.add')}>
                         <Icon name="plus" />
                     </button>
                 </div>
@@ -61,7 +63,7 @@ export const FileEditor = ({
                                     ? 'bg-slate-800 border-cyan-500 text-cyan-400'
                                     : 'border-transparent text-slate-500 hover:bg-slate-800/30 hover:text-slate-300'
                                     }`}
-                                title={`Edit file: ${filename}`}
+                                title={t('editor.edit_file', { filename })}
                             >
                                 <span className="truncate flex-1">{filename}</span>
                                 {unsavedChanges[filename] !== undefined && (
@@ -74,7 +76,7 @@ export const FileEditor = ({
                                     handleDelete(filename);
                                 }}
                                 className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all rounded"
-                                title={`Delete ${filename}`}
+                                title={t('editor.delete_file', { filename })}
                             >
                                 <Icon name="times" />
                             </button>
@@ -91,14 +93,14 @@ export const FileEditor = ({
                                 <Icon name="file-alt" className="text-cyan-500 flex-shrink-0" />
                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest truncate">{selectedFile}</span>
                                 {unsavedChanges[selectedFile] !== undefined && (
-                                    <span className="text-[8px] px-1.5 py-0.5 bg-cyan-500/10 text-cyan-500 border border-cyan-500/20 rounded font-black uppercase">Unsaved</span>
+                                    <span className="text-[8px] px-1.5 py-0.5 bg-cyan-500/10 text-cyan-500 border border-cyan-500/20 rounded font-black uppercase">{t('editor.unsaved')}</span>
                                 )}
                             </div>
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => handleDelete(selectedFile)}
                                     className="p-1.5 text-slate-500 hover:text-red-400 transition-colors rounded hover:bg-red-500/10"
-                                    title="Delete this file"
+                                    title={t('editor.delete_file', { filename: selectedFile })}
                                 >
                                     <Icon name="trash" />
                                 </button>
@@ -112,16 +114,16 @@ export const FileEditor = ({
                                                 setUnsavedChanges(next);
                                             }}
                                             className="px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-white transition-colors"
-                                            title="Discard changes"
+                                            title={t('editor.discard')}
                                         >
-                                            Discard
+                                            {t('editor.discard')}
                                         </button>
                                         <button
                                             onClick={() => onSave(selectedFile, content)}
                                             className="px-3 py-1.5 text-xs font-black uppercase tracking-wider bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition-all flex items-center gap-1"
-                                            title="Save changes"
+                                            title={t('editor.save')}
                                         >
-                                            <Icon name="save" /> Save
+                                            <Icon name="save" /> {t('editor.save')}
                                         </button>
                                     </>
                                 )}
@@ -132,8 +134,8 @@ export const FileEditor = ({
                             onChange={(e) => {
                                 setUnsavedChanges(prev => ({ ...prev, [selectedFile]: e.target.value }));
                             }}
-                            title={`Edit content of ${selectedFile}`}
-                            placeholder="Type neural logic here..."
+                            title={t('editor.edit_file', { filename: selectedFile })}
+                            placeholder={t('editor.placeholder')}
                             className="flex-1 bg-slate-950/60 text-slate-300 font-mono text-xs p-4 focus:outline-none resize-none custom-scrollbar"
                             spellCheck={false}
                         />
@@ -141,8 +143,8 @@ export const FileEditor = ({
                 ) : (
                     <div className="flex-1 flex flex-col items-center justify-center text-slate-600 opacity-40 p-10 sm:p-16 text-center">
                         <Icon name="file-contract" className="text-5xl sm:text-7xl mb-5 sm:mb-8 animate-pulse" />
-                        <h3 className="text-sm sm:text-base font-black uppercase tracking-[0.3em] text-slate-400 mb-2">Neural Standby</h3>
-                        <p className="text-[10px] sm:text-xs max-w-[240px] sm:max-w-xs leading-relaxed font-bold uppercase tracking-widest">Select a file to begin editing</p>
+                        <h3 className="text-sm sm:text-base font-black uppercase tracking-[0.3em] text-slate-400 mb-2">{t('editor.standby_title')}</h3>
+                        <p className="text-[10px] sm:text-xs max-w-[240px] sm:max-w-xs leading-relaxed font-bold uppercase tracking-widest">{t('editor.standby_desc')}</p>
                     </div>
                 )}
             </div>

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AgentStatus, AgentPhase } from '../../types';
+import { useTranslation } from 'react-i18next';
 
 interface AgentStatusPanelProps {
     status: AgentStatus;
@@ -29,6 +30,7 @@ export const AgentStatusPanel = React.memo(({
     onAbort,
     onReprompt,
 }: AgentStatusPanelProps) => {
+    const { t } = useTranslation();
     const logContainerRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
         if (logContainerRef.current) {
@@ -64,14 +66,14 @@ export const AgentStatusPanel = React.memo(({
         aborted: 'text-red-500',
     };
     const phaseLabels: Record<AgentPhase, string> = {
-        idle: 'IDLE',
-        thinking: 'THINKING...',
-        streaming: 'STREAMING',
-        tool_calling: 'TOOL CALL',
-        tool_executing: 'EXECUTING',
-        waiting_approval: 'WAITING APPROVAL',
-        error: 'ERROR',
-        aborted: 'ABORTED',
+        idle: t('status.phases.idle'),
+        thinking: t('status.phases.thinking'),
+        streaming: t('status.phases.streaming'),
+        tool_calling: t('status.phases.tool_calling'),
+        tool_executing: t('status.phases.tool_executing'),
+        waiting_approval: t('status.phases.waiting_approval'),
+        error: t('status.phases.error'),
+        aborted: t('status.phases.aborted'),
     };
 
     const canReprompt = ['idle', 'error', 'aborted'].includes(status.phase) && status.iteration > 0;
@@ -87,7 +89,7 @@ export const AgentStatusPanel = React.memo(({
                     {/* Step counter — always grows, purely informational */}
                     {status.iteration > 0 && (
                         <span className="text-slate-400">
-                            Step {status.iteration}
+                            {t('status.step', { count: status.iteration })}
                         </span>
                     )}
                     {/* Elapsed timer */}
@@ -108,7 +110,7 @@ export const AgentStatusPanel = React.memo(({
                             status.retries >= 3 ? 'text-amber-400 bg-amber-900/20' :
                                 'text-yellow-400 bg-yellow-900/20'
                             }`}>
-                            ↻ {status.retries}/{status.maxRetries} retries
+                            {t('status.retries', { count: status.retries, max: status.maxRetries })}
                         </span>
                     )}
                 </div>
@@ -117,9 +119,9 @@ export const AgentStatusPanel = React.memo(({
                         <button
                             onClick={onReprompt}
                             className="px-2 py-0.5 bg-amber-700 hover:bg-amber-600 text-white rounded text-[10px] transition-colors"
-                            title="Force agent to continue from where it stopped"
+                            title={t('status.actions.reprompt_title')}
                         >
-                            ↻ Reprompt
+                            ↻ {t('status.actions.reprompt')}
                         </button>
                     )}
                     {isActive && (
@@ -127,7 +129,7 @@ export const AgentStatusPanel = React.memo(({
                             onClick={onAbort}
                             className="px-2 py-0.5 bg-red-700 hover:bg-red-600 text-white rounded text-[10px] transition-colors"
                         >
-                            ■ Abort
+                            ■ {t('status.actions.abort')}
                         </button>
                     )}
                 </div>
@@ -183,7 +185,7 @@ export const AgentStatusPanel = React.memo(({
                 <div className="p-2 border-t border-slate-700/50 bg-slate-900/20 text-slate-400 italic">
                     {status.streamedReasoning && (
                         <div className="mb-1 text-cyan-500/80 border-l-2 border-cyan-500/20 pl-2 text-[10px]">
-                            [Thinking] {status.streamedReasoning}
+                            [{t('status.phases.thinking')}] {status.streamedReasoning}
                         </div>
                     )}
                     {status.streamedText && (

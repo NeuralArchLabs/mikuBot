@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MessageBlock } from '../../types';
 import { Icon as IconComp } from './Common';
 
@@ -8,6 +9,7 @@ interface ToolBlockProps {
 }
 
 export const ToolBlock: React.FC<ToolBlockProps> = ({ block, isOld }) => {
+    const { t, i18n } = useTranslation();
     const [isExpanded, setIsExpanded] = useState(false);
     const { toolCall, result } = block;
 
@@ -23,14 +25,14 @@ export const ToolBlock: React.FC<ToolBlockProps> = ({ block, isOld }) => {
     const [isTyping, setIsTyping] = useState(false);
     
     // Captured timestamps for the 'Execution Log'
-    const [startTime] = useState(() => new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
+    const [startTime] = useState(() => new Date().toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
     const [endTime, setEndTime] = useState<string | null>(null);
 
     useEffect(() => {
         if (result && !endTime) {
-            setEndTime(new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
+            setEndTime(new Date().toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
         }
-    }, [result, endTime]);
+    }, [result, endTime, i18n.language]);
 
     if (!toolCall) return null;
 
@@ -39,46 +41,46 @@ export const ToolBlock: React.FC<ToolBlockProps> = ({ block, isOld }) => {
     const isPending = !result;
 
     const getFriendlySummary = () => {
-        if (!result) return 'Procesando...';
+        if (!result) return t('common.processing');
         const data = result.data || {};
         const args = toolCall.function.arguments || {};
         const name = toolCall.function.name;
 
         if (!isSuccess && hasError) {
-            return `Error: ${result.error || data.error || 'Operación fallida'}`;
+            return `${t('common.error')}: ${result.error || data.error || t('common.operation_failed')}`;
         }
 
         switch (name) {
             case 'get_system_metrics':
-                return `Métricas del sistema obtenidas: ${data.platform || 'OS'} [CPU: ${data.cpu || '?'}%, RAM: ${data.ram || '?'}]`;
+                return t('tools.metrics_summary', { platform: data.platform || 'OS', cpu: data.cpu || '?', ram: data.ram || '?' });
             case 'web_search':
-                return `Búsqueda en la red finalizada para: "${args.query}". Se encontraron resultados relevantes.`;
+                return t('tools.web_search_summary', { query: args.query });
             case 'list_files':
-                return `Exploración de archivos completada en "${args.source || 'workSpace'}". ${data.files?.length || 0} elementos encontrados.`;
+                return t('tools.list_files_summary', { source: args.source || 'workSpace', count: data.files?.length || 0 });
             case 'read_file':
-                return `Lectura del archivo "${args.filename}" completada con éxito.`;
+                return t('tools.read_file_summary', { filename: args.filename });
             case 'update_file':
-                return typeof result.data === 'string' ? result.data : `Archivo "${args.filename}" guardado correctamente.`;
+                return typeof result.data === 'string' ? result.data : t('tools.update_file_summary', { filename: args.filename });
             case 'patch_file':
-                return `Parche "Smart" aplicado a "${args.filename}". Cambios integrados.`;
+                return t('tools.patch_file_summary', { filename: args.filename });
             case 'search_files':
-                return `Búsqueda de texto finalizada. Coincidencias encontradas para: "${args.query}".`;
+                return t('tools.search_files_summary', { query: args.query });
             case 'run_console':
-                return `Comando "${args.command}${args.args ? ' ' + args.args : ''}" ejecutado en la terminal.`;
+                return t('tools.run_console_summary', { command: `${args.command}${args.args ? ' ' + args.args : ''}` });
             case 'read_url':
-                return `Contenido extraído y analizado de la URL: ${args.url}`;
+                return t('tools.read_url_summary', { url: args.url });
             case 'delete_file':
-                return `Archivo "${args.filename}" eliminado satisfactoriamente.`;
+                return t('tools.delete_file_summary', { filename: args.filename });
             case 'add_scheduled_task':
-                return `Tarea autónoma programada: "${args.name}". Próxima ejecución: ${args.schedule}.`;
+                return t('tools.add_task_summary', { name: args.name, schedule: args.schedule });
             case 'send_telegram_message':
-                return `Transmisión enviada a Telegram con éxito.`;
+                return t('tools.telegram_summary');
             case 'batch_operation':
-                return `Operación por lotes (${args.operation}) realizada sobre "${args.source_path}".`;
+                return t('tools.batch_summary', { operation: args.operation, source_path: args.source_path });
             case 'get_file_outline':
-                return `Mapa estructural de "${args.filename}" generado correctamente.`;
+                return t('tools.outline_summary', { filename: args.filename });
             default:
-                return typeof result.data === 'string' ? result.data : result.data?.message || `Operación "${name}" completada.`;
+                return typeof result.data === 'string' ? result.data : result.data?.message || t('tools.default_summary', { name });
         }
     };
 
@@ -136,7 +138,7 @@ export const ToolBlock: React.FC<ToolBlockProps> = ({ block, isOld }) => {
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
                             {toolCall.function.name}
                         </span>
-                        {isSuccess && <span className="text-[9px] text-emerald-500/50 font-mono font-bold ml-1 hidden sm:inline">READY</span>}
+                        {isSuccess && <span className="text-[9px] text-emerald-500/50 font-mono font-bold ml-1 hidden sm:inline">{t('common.ready')}</span>}
                     </div>
 
                     {!isExpanded && (
@@ -166,18 +168,18 @@ export const ToolBlock: React.FC<ToolBlockProps> = ({ block, isOld }) => {
                     <div className="tool-block-content bg-slate-900/40 p-3 pt-4 space-y-4 animate-in fade-in duration-500">
                         <div className="space-y-2">
                             <div className="text-[9px] text-slate-600 uppercase tracking-widest font-bold flex items-center gap-1">
-                                <IconComp name="stream" /> Execution Log
+                                <IconComp name="stream" /> {t('common.execution_log')}
                             </div>
                             <div className="text-[10px] text-slate-500 font-mono leading-relaxed bg-black/20 p-2 rounded-lg border border-white/5">
-                                Status: {isSuccess ? 'SUCCESS' : hasError ? 'ERROR' : 'PENDING'}<br />
-                                Executed: {endTime || startTime}<br />
+                                {t('common.status')}: {isSuccess ? t('common.status_success') : hasError ? t('common.status_error') : t('common.status_pending')}<br />
+                                {t('common.executed')}: {endTime || startTime}<br />
                                 ID: {toolCall.id}
                             </div>
                         </div>
 
                         <div className="space-y-2">
                             <div className="text-[9px] text-slate-600 uppercase tracking-widest font-bold flex items-center gap-1">
-                                <IconComp name="code" /> Arguments
+                                <IconComp name="code" /> {t('common.arguments')}
                             </div>
                             <pre className="custom-scrollbar overflow-y-auto max-h-32 p-3 bg-black/40 rounded-lg text-[10px] whitespace-pre-wrap break-all text-indigo-300/60 border border-white/5 shadow-inner">
                                 {JSON.stringify(toolCall.function.arguments, null, 2)}
@@ -188,7 +190,7 @@ export const ToolBlock: React.FC<ToolBlockProps> = ({ block, isOld }) => {
                             <div className="space-y-2">
                                 <div className={`text-[9px] uppercase tracking-widest font-bold flex items-center justify-between gap-1 ${isSuccess ? 'text-emerald-600' : 'text-rose-600'}`}>
                                     <div className="flex items-center gap-1">
-                                        <IconComp name={isSuccess ? 'check-double' : 'exclamation-triangle'} /> Detailed Response
+                                        <IconComp name={isSuccess ? 'check-double' : 'exclamation-triangle'} /> {t('common.detailed_response')}
                                     </div>
                                     {isSuccess && result.data?.engine === 'searXena' && (
                                         <div className="text-[8px] font-black text-slate-600 bg-slate-800/40 px-2 py-0.5 rounded border border-slate-800 tracking-[0.2em] animate-in fade-in slide-in-from-right-2 duration-700">
@@ -198,7 +200,7 @@ export const ToolBlock: React.FC<ToolBlockProps> = ({ block, isOld }) => {
                                 </div>
                                 <pre className={`custom-scrollbar overflow-y-auto max-h-60 p-3 bg-black/40 rounded-lg text-[10px] whitespace-pre-wrap break-all border transition-colors duration-500 ${isSuccess ? 'text-emerald-400/70 border-emerald-500/10' : 'text-rose-400/70 border-rose-500/10'}`}>
                                     {isTyping ? displayText : JSON.stringify(result.data || result.error, null, 2)}
-                                    {!isTyping && !isSuccess && hasError && <span className="block mt-2 text-rose-500/50 italic font-sans">// System encountered an exception.</span>}
+                                    {!isTyping && !isSuccess && hasError && <span className="block mt-2 text-rose-500/50 italic font-sans">{t('common.system_exception')}</span>}
                                 </pre>
                             </div>
                         )}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { InteractionContext } from './services/core/InteractionContext';
 import { AppState, AgentStatus, Message, PendingToolApproval, AgentMode, ModelInfo, FileSystemDirectoryHandle, FileSystemFileHandle, FileTarget, Session, ApprovalMode, SessionMetadata, PermissionStatus, Provider, AppConfig, Attachment } from './types';
 import { DEFAULT_CONFIG, DEFAULT_FILES, AGENT_TOOLS } from './constants';
@@ -30,6 +31,7 @@ import {
 } from './services';
 
 export const App = () => {
+    const { i18n, t } = useTranslation();
     const [state, setState] = useState<AppState>({
         config: DEFAULT_CONFIG,
         files: DEFAULT_FILES,
@@ -51,7 +53,7 @@ export const App = () => {
         folderPermissions: { core: 'prompt', extra: 'prompt', workSpace: 'prompt', tools: 'prompt', root: 'prompt' }
     });
 
-    // Zustand store - estado atómico para alta frecuencia (streaming)
+    // Zustand store - atomic state for high frequency (streaming)
     const messages = useAgentStore(selectMessages);
     const agentStatus = useAgentStore(selectAgentStatus);
     const isLoading = useAgentStore(selectIsLoading);
@@ -146,7 +148,7 @@ export const App = () => {
 
     const onSaveGlobal = useCallback(async (silent: boolean = false, extraConfig?: Partial<AppConfig>) => {
         if (!(window as any).electron) {
-            if (!silent) await askAlert("⚠️ Desktop Engine Not Detected: Settings can only be saved to config.json when running MikuCentral as a desktop application.");
+            if (!silent) await askAlert(t('common.desktop_engine_not_detected'));
             return { ok: false, error: 'No electron' };
         }
 
@@ -163,14 +165,14 @@ export const App = () => {
                 if (extraConfig) {
                     setState(prev => ({ ...prev, config: { ...prev.config, ...extraConfig } }));
                 }
-                if (silent !== true) await askAlert("✅ Neural Engine: Configuration saved successfully to config.json", "right");
+                if (silent !== true) await askAlert(`✅ ${t('common.config_save_success')}`, "right");
             } else {
-                if (silent !== true) await askAlert(`❌ Configuration Error: ${result.error || 'Unknown error occurred in main process.'}`);
+                if (silent !== true) await askAlert(`❌ ${t('common.config_error')}: ${result.error || 'Unknown error occurred in main process.'}`);
             }
             return result;
         } catch (e) {
             console.error("Critical failure during save:", e);
-            if (!silent) await askAlert("💥 Fatal Error: The connection to the Neural Engine was lost. Check terminal for details.");
+            if (!silent) await askAlert(`💥 ${t('common.fatal_error')}: ${t('common.connection_lost')}`);
             return { ok: false, error: (e as any)?.message };
         }
     }, [state.config, state.agentMode, state.safeMode, state.approvalMode, askAlert]);
@@ -191,7 +193,7 @@ export const App = () => {
         const id = `session_${Date.now()}`;
         const newSession: Session = {
             id,
-            title: 'New Neural Branch',
+            title: t('common.new_neural_branch'),
             messages: [],
             timestamp: Date.now(),
             agentMode: 'chat',
@@ -282,7 +284,7 @@ export const App = () => {
         } else if (state.sessionId === id) {
             persistence.exportSession({
                 id,
-                title: sessions.find(s => s.id === id)?.title || 'Active Session',
+                title: sessions.find(s => s.id === id)?.title || t('common.active_session'),
                 messages,
                 timestamp: Date.now()
             });
@@ -310,7 +312,7 @@ export const App = () => {
         const msg = messages[index];
         if (msg.role !== 'user') return;
 
-        if (await askConfirm("Rewind conversation to this point? All subsequent messages will be lost.", 'right')) {
+        if (await askConfirm(t('common.rewind_confirm'), 'right')) {
             const newHistory = messages.slice(0, index);
             setMessagesStore(newHistory);
             setInputStore(msg.text);
@@ -329,12 +331,12 @@ export const App = () => {
 
                 // A title is "default" (and thus replaceable) if it matches our generic strings OR matches the first message content
                 const isDefaultTitle = !currentSession?.title ||
-                    currentSession.title === 'New Neural Branch' ||
-                    currentSession.title === 'Active Session' ||
+                    currentSession.title === t('common.new_neural_branch') ||
+                    currentSession.title === t('common.active_session') ||
                     (candidateContent && currentSession.title === candidateContent);
 
                 const title = isDefaultTitle
-                    ? (candidateContent || currentSession?.title || 'New Neural Branch')
+                    ? (candidateContent || currentSession?.title || t('common.new_neural_branch'))
                     : currentSession!.title;
 
                 persistence.saveSession({
@@ -369,6 +371,12 @@ export const App = () => {
         loadGlobalSettings();
         loadSessions();
     }, [loadGlobalSettings, loadSessions]);
+
+    useEffect(() => {
+        if (state.config?.isConfigured && state.config.language && i18n.language !== state.config.language) {
+            i18n.changeLanguage(state.config.language);
+        }
+    }, [state.config.language, i18n.language, state.config?.isConfigured]);
 
     // Ensure there is always an active session
     useEffect(() => {
@@ -524,7 +532,7 @@ export const App = () => {
             // 3. Trigger immediate sync with new paths
             await restoreAndSync(mergedConfig);
 
-            await askAlert("✅ Neural Engine: Configuration imported and synchronized successfully.");
+            await askAlert(`✅ ${t('common.config_import_success')}`);
         }
     }, [askAlert, restoreAndSync]);
 
@@ -533,7 +541,7 @@ export const App = () => {
     }, [state.config, state.agentMode, state.safeMode, state.approvalMode]);
 
     const onResetGlobal = useCallback(async () => {
-        if (await askConfirm("Are you sure? This will reset all settings to defaults. Folder paths will be cleared.")) {
+        if (await askConfirm(t('common.reset_confirm') || "Are you sure? This will reset all settings to defaults. Folder paths will be cleared.")) {
             setState(prev => ({
                 ...prev,
                 config: DEFAULT_CONFIG,
@@ -586,7 +594,7 @@ export const App = () => {
                 await writable.write(content);
                 await writable.close();
             } else {
-                throw new Error(`No folder configured for "${target}". Select one in Settings.`);
+                throw new Error(t('common.no_folder_configured', { target }));
             }
 
             setState(prev => {
@@ -769,7 +777,7 @@ export const App = () => {
                     ...prev,
                     folderPermissions: { core: 'granted', extra: 'granted', workSpace: 'granted', tools: 'granted' }
                 }));
-                await askAlert("✅ Neural Subsystems Online!\n\nLinkages restored automatically via internal framework.", "center");
+                await askAlert(`✅ ${t('common.subsystems_online')}`, "center");
                 return;
             }
 
@@ -929,7 +937,7 @@ export const App = () => {
         };
 
         const now = new Date();
-        const timeStr = now.toLocaleString('es-MX', {
+        const timeStr = now.toLocaleString('en-US', {
             weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
             hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: 'short'
         });
@@ -941,10 +949,10 @@ export const App = () => {
             const top3 = dynamicSkills.slice(0, 3);
             const names = top3.map(s => s.function.name).join(', ');
 
-            return `\n\n[NEURAL SKILLS DISPONIBLES (Context Lite)]
-Habilidades destacadas: ${names}
-Para ver todas tus habilidades adicionales habilitadas y sus parámetros técnicos completos, DEBES usar la herramienta: list_available_skills()
-[/NEURAL SKILLS DISPONIBLES]`;
+            return `\n\n[AVAILABLE NEURAL SKILLS (Context Lite)]
+Featured skills: ${names}
+To see all your additional enabled skills and their full technical parameters, you MUST use the tool: list_available_skills()
+[/AVAILABLE NEURAL SKILLS]`;
         };
 
         const buildSkillsConfigBlock = () => {
@@ -973,7 +981,7 @@ Para ver todas tus habilidades adicionales habilitadas y sus parámetros técnic
         if (isAgentOrInstruction) {
             const identity = getFileDeep('IDENTITY.md') || getFileDeep('IDENTITY.MD') || '';
             const tasksContent = getFileDeep('TASKS.md') || getFileDeep('TASKS.MD');
-            const workingMemory = `\n[PLAN_DE_TRABAJO_ACTUAL]\n${tasksContent || 'No hay tareas activas.'}\n[/PLAN_DE_TRABAJO_ACTUAL]\n`;
+            const workingMemory = `\n[CURRENT_WORK_PLAN]\n${tasksContent || 'No active tasks.'}\n[/CURRENT_WORK_PLAN]\n`;
 
             let modePart = "";
             if (modesContent) {

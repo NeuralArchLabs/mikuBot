@@ -1,35 +1,35 @@
 # TOOLS.md - Workspace Cartography & Toolkit
 
-## 🗺️ Topografía del Sistema
+## 🗺️ System Topography
 
-Este archivo define las reglas para la interacción con el sistema de archivos y las herramientas disponibles. mikuBot debe utilizar las rutas base configuradas en el entorno para asegurar precisión.
+This file defines the rules for interacting with the file system and available tools. mikuBot must use the base paths configured in the environment to ensure precision.
 
-### 📍 Puntos de Montaje (Mount Points)
+### 📍 Mount Points
 
-El sistema utiliza los siguientes alias internos para referirse a las carpetas configuradas:
-- **@CORE:** Carpeta de identidad y memoria (SOUL.md, ACTIVE_CONTEXT.md).
-- **@DEV:** Carpeta de proyectos de desarrollo.
-- **@MAP:** Biblioteca de referencia y documentación.
-- **@WORKSPACE:** Directorio de trabajo por defecto para pruebas y outputs temporales.
-- **@ROOT:** Directorio Raíz del proyecto (donde vive `config.json`).
+The system uses the following internal aliases to refer to configured folders:
+- **@CORE:** Identity and memory folder (SOUL.md, ACTIVE_CONTEXT.md).
+- **@DEV:** Development projects folder.
+- **@MAP:** Reference library and documentation.
+- **@WORKSPACE:** Default working directory for tests and temporary outputs.
+- **@ROOT:** Project Root directory (where `config.json` lives).
 
-Las rutas reales son inyectadas dinámicamente según la configuración de Armando. No asumas rutas absolutas fijas a menos que sean necesarias para un comando específico del sistema.
+Actual paths are injected dynamically according to Armando's configuration. Do not assume fixed absolute paths unless required for a specific system command.
 
-## ⚙️ Reglas de Generación de Comandos (CLI Protocol)
+## ⚙️ Command Generation Rules (CLI Protocol)
 
-Cuando mikuBot sugiera comandos de terminal, debe adherirse a lo siguiente:
+When mikuBot suggests terminal commands, it must adhere to the following:
 
-1.  **Navegación:** Usa rutas relativas al punto de montaje actual o solicita confirmación si necesitas moverte entre unidades.
-2.  **Sintaxis Windows:**
-    * Usar comillas dobles `""` para rutas con espacios.
-    * Los comandos se ejecutan sobre PowerShell / CMD según disponibilidad.
-3.  **Contexto:** El agente inicia por defecto en el directorio @WORKSPACE.
+1.  **Navigation:** Use paths relative to the current mount point or request confirmation if you need to move between drives.
+2.  **Windows Syntax:**
+    * Use double quotes `""` for paths with spaces.
+    * Commands are executed over PowerShell / CMD depending on availability.
+3.  **Context:** The agent starts by default in the @WORKSPACE directory.
 
 ## 🛠️ Stack & Environment
-- **Sistema Operativo:** Windows 11.
-- **Herramientas de desarrollo** Antigravity, Jules, Google AI studio.
-- **Gestor de Paquetes:** npm / pip / maven (según proyecto).
-- **Git:** Instalado y configurado globalmente.
+- **Operating System:** Windows 11.
+- **Development Tools:** Antigravity, Jules, Google AI Studio.
+- **Package Manager:** npm / pip / maven (according to project).
+- **Git:** Installed and configured globally.
 
 ## 🖥️ Console Access (`run_console`)
 
@@ -107,7 +107,7 @@ Extract classes, functions, and interfaces from a source file.
 Perform bulk file operations (copy, move, delete) using glob patterns.
 - **Param:** `operation` (copy, move, delete), `source_path`, `destination_path` (optional), `pattern` (optional glob)
 
-## 🛰️ System & Environment tools (`get_system_metrics`)
+## 🛰️ System & Environment Tools (`get_system_metrics`)
 
 ### `get_system_metrics`
 Get real-time OS metrics (CPU, Memory, Uptime, Hostname).
@@ -115,19 +115,19 @@ Get real-time OS metrics (CPU, Memory, Uptime, Hostname).
 ### `get_git_info`
 Get repository status, branch name, and modified files count.
 
-## 🛰️ Jerarquía de Investigación (Tiers 1-4)
+## 🛰️ Research Hierarchy (Tiers 1-4)
 
 ### Tier 1: `web_search` [Base Tool]
-Búsqueda superficial rápida. Devuelve títulos y resúmenes cortos (snippets).
+Quick superficial search. Returns short titles and snippets.
 
 ### Tier 2: `read_url` [Base Tool]
-Lectura directa de una URL para extraer contenido textual y limpiar el HTML.
+Directly read a URL to extract textual content and clean HTML.
 
 ### Tier 3: `web_research` / `deep_research` [Skills]
-Investigación profunda con auditoría y lectura múltiple. Evita alucinaciones.
+Deep research with auditing and multiple sources. Avoids hallucinations.
 
 ### Tier 4: `api_fetcher` [Universal Skill]
-Interacción directa con APIs REST (GET, POST, JSON). Permite al agente consumir cualquier servicio web externo con autenticación y parámetros complejos.
+Direct interaction with REST APIs (GET, POST, JSON). Allows the agent to consume any external web service with authentication and complex parameters.
 
 ## ⏳ Neural Scheduling (`add_scheduled_task`)
 
@@ -141,22 +141,23 @@ Program a proactive task for the agent to execute in the future.
 - **Param:** `mode` (chat, agent)
 
 ## 🧠 Neural Skills Library (Dynamic)
-Habilidades modulares instaladas en `@TOOLS/skills/`:
-- **`api_fetcher`**: Cliente HTTP universal para APIs REST.
-- **`deep_research`**: Agente de investigación exhaustiva con auditoría.
-- **`web_research`**: Navegación y lectura de múltiples fuentes web.
-- **`crypto_tracker`**: Seguimiento de precios de criptomonedas en tiempo real.
-- **`list_available_skills`**: Auto-descubrimiento de nuevas habilidades instaladas.
-- **`gmail_imap`**: Lectura y gestión básica de correos vía IMAP.
-- **`miku_clock`**: Gestión de tiempo y saludos personalizados.
+Modular skills installed in `@TOOLS/skills/`:
+- **`api_fetcher`**: Universal HTTP client for REST APIs.
+- **`deep_research`**: Exhaustive research agent with auditing.
+- **`web_research`**: Browsing and reading from multiple web sources.
+- **`crypto_tracker`**: Real-time cryptocurrency price tracking.
+- **`list_available_skills`**: Auto-discovery of new installed skills.
+- **`gmail_imap`**: Basic email reading and management via IMAP.
+- **`miku_clock`**: Time management and personalized greetings.
 
 ## 🏁 Conclusion (`final_answer`)
 
 ### `final_answer`
 Conclude the task with a synthesis.
 - **Param:** `text` (The answer)
+- **Param:** `reasoning` (Brief explanation of reasoning)
 - **Param:** `sources` (Array of files or URLs actually used)
 - **Rule:** Do NOT hallucinate sources. Only cite what you actually touched.
 
 ---
-*Nota: Este archivo sirve como referencia espacial y técnica. El sistema inyectará estas reglas automáticamente si detecta fallos.*
+*Note: This file serves as a spatial and technical reference. The system will automatically inject these rules if failures are detected.*

@@ -26,5 +26,6 @@ export const DEFAULT_CONFIG: AppConfig = {
     skillsConfig: {},
     disabledSkills: [],
     voskModelPath: '',
-    maxOutputTokens: 128000
+    maxOutputTokens: 128000,
+    language: 'es'
 };

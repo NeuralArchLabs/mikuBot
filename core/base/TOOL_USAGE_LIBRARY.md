@@ -1,13 +1,13 @@
 # 📚 Toolkit Snippets Library (Neural JIT)
 
-Este archivo contiene fragmentos de código JSON válidos para cada herramienta. El sistema extrae estos bloques automáticamente cuando el agente comete errores de sintaxis o parámetros.
+This file contains valid JSON code snippets for each tool. The system extracts these blocks automatically when the agent makes syntax or parameter errors.
 
 ## [read_file]
 ```json
 {
   "name": "read_file",
   "arguments": {
-    "filename": "nombre_archivo.md",
+    "filename": "filename.md",
     "source": "workSpace"
   }
 }
@@ -18,8 +18,8 @@ Este archivo contiene fragmentos de código JSON válidos para cada herramienta.
 {
   "name": "update_file",
   "arguments": {
-    "filename": "ruta/nuevo_archivo.txt",
-    "content": "Contenido completo del archivo aquí...",
+    "filename": "path/new_file.txt",
+    "content": "Full file content goes here...",
     "source": "workSpace"
   }
 }
@@ -30,9 +30,9 @@ Este archivo contiene fragmentos de código JSON válidos para cada herramienta.
 {
   "name": "patch_file",
   "arguments": {
-    "filename": "archivo.js",
-    "find": "bloque de texto exacto a buscar",
-    "replace": "nuevo bloque de texto",
+    "filename": "file.js",
+    "find": "exact text block to find",
+    "replace": "new text block",
     "strategy": "auto",
     "source": "workSpace"
   }
@@ -44,7 +44,7 @@ Este archivo contiene fragmentos de código JSON válidos para cada herramienta.
 {
   "name": "undo_patch",
   "arguments": {
-    "filename": "archivo.js",
+    "filename": "file.js",
     "source": "workSpace"
   }
 }
@@ -65,7 +65,7 @@ Este archivo contiene fragmentos de código JSON válidos para cada herramienta.
 {
   "name": "search_files",
   "arguments": {
-    "query": "patrón o texto a buscar",
+    "query": "pattern or text to search for",
     "source": "workSpace"
   }
 }
@@ -100,7 +100,7 @@ Este archivo contiene fragmentos de código JSON válidos para cada herramienta.
 {
   "name": "web_search",
   "arguments": {
-    "query": "pregunta o término de búsqueda",
+    "query": "question or search term",
     "search_depth": "basic"
   }
 }
@@ -111,7 +111,7 @@ Este archivo contiene fragmentos de código JSON válidos para cada herramienta.
 {
   "name": "web_research",
   "arguments": {
-    "query": "Investigación sobre la arquitectura de microfrontends",
+    "query": "Research on microfrontends architecture",
     "max_sites": 3
   }
 }
@@ -122,7 +122,7 @@ Este archivo contiene fragmentos de código JSON válidos para cada herramienta.
 {
   "name": "deep_research",
   "arguments": {
-    "topic": "avances en reactores de fusión nuclear 2024",
+    "topic": "advancements in nuclear fusion reactors 2024",
     "target_language": "both"
   }
 }
@@ -133,7 +133,7 @@ Este archivo contiene fragmentos de código JSON válidos para cada herramienta.
 {
   "name": "read_url",
   "arguments": {
-    "url": "https://ejemplo.com/articulo"
+    "url": "https://example.com/article"
   }
 }
 ```
@@ -155,8 +155,8 @@ Este archivo contiene fragmentos de código JSON válidos para cada herramienta.
 {
   "name": "send_telegram_message",
   "arguments": {
-    "text": "Mensaje para enviar al bot",
-    "chat_id": "opcional_id"
+    "text": "Message to send to the bot",
+    "chat_id": "optional_id"
   }
 }
 ```
@@ -166,9 +166,9 @@ Este archivo contiene fragmentos de código JSON válidos para cada herramienta.
 {
   "name": "final_answer",
   "arguments": {
-    "text": "Respuesta final sintetizada...",
-    "reasoning": "Breve explicación de los pasos seguidos.",
-    "sources": ["archivo1.md", "https://url-usada.com"]
+    "text": "Synthesized final answer...",
+    "reasoning": "Brief explanation of the steps followed.",
+    "sources": ["file1.md", "https://url-used.com"]
   }
 }
 ```
@@ -190,7 +190,7 @@ Este archivo contiene fragmentos de código JSON válidos para cada herramienta.
   "name": "add_scheduled_task",
   "arguments": {
     "name": "Check Bitcoin Price",
-    "prompt": "Usa get_crypto_price para bitcoin y dime si subió de 90k.",
+    "prompt": "Use get_crypto_price for bitcoin and tell me if it went above 90k.",
     "scheduleType": "interval",
     "schedule": "60",
     "channel": "both",
@@ -222,7 +222,7 @@ Este archivo contiene fragmentos de código JSON válidos para cada herramienta.
 {
   "name": "gmail_imap",
   "arguments": {
-    "email": "tu_correo@gmail.com",
+    "email": "your_email@gmail.com",
     "app_password": "abcd efgh ijkl mnop",
     "action": "list",
     "limit": 5

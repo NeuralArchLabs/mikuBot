@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AppState, SessionMetadata } from '../../types';
 import { Icon } from '../common/Common';
 import { SessionList } from '../features/SessionList';
@@ -21,6 +22,7 @@ interface SidebarProps {
     triggerNeuralEgg?: number;
 }
 export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState, onClear, triggerNeuralEgg }: SidebarProps) => {
+     const { t } = useTranslation();
      const [sessionModalOpen, setSessionModalOpen] = useState(false);
     const [isClosing, setIsClosing] = useState(false);
     const [windowHeight, setWindowHeight] = useState(window.innerHeight);
@@ -198,11 +200,11 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                         {/* Dynamic Sliding Indicator Dot Wrapper */}
                         {(() => {
                             const navTabs = [
-                                { id: 'chat', label: 'Neural Chat', icon: 'comments', color: 'text-blue-400', bg: 'bg-blue-400', hex: '#60a5fa' },
-                                { id: 'cortex', label: 'Cortex Editor', icon: 'project-diagram', color: 'text-indigo-400', bg: 'bg-indigo-400', hex: '#818cf8' },
-                                { id: 'commands', label: 'Command Editor', icon: 'bolt', color: 'text-amber-400', bg: 'bg-amber-400', hex: '#fbbf24' },
-                                { id: 'scheduler', label: 'Neural Tasks', icon: 'clock', color: 'text-cyan-400', bg: 'bg-cyan-400', hex: '#22d3ee' },
-                                { id: 'settings', label: 'Control Room', icon: 'cog', color: 'text-purple-400', bg: 'bg-purple-400', hex: '#c084fc' }
+                                { id: 'chat', label: t('sidebar.tabs.chat'), icon: 'comments', color: 'text-blue-400', bg: 'bg-blue-400', hex: '#60a5fa' },
+                                { id: 'cortex', label: t('sidebar.tabs.cortex'), icon: 'project-diagram', color: 'text-indigo-400', bg: 'bg-indigo-400', hex: '#818cf8' },
+                                { id: 'commands', label: t('sidebar.tabs.commands'), icon: 'bolt', color: 'text-amber-400', bg: 'bg-amber-400', hex: '#fbbf24' },
+                                { id: 'scheduler', label: t('sidebar.tabs.scheduler'), icon: 'clock', color: 'text-cyan-400', bg: 'bg-cyan-400', hex: '#22d3ee' },
+                                { id: 'settings', label: t('sidebar.tabs.settings'), icon: 'cog', color: 'text-purple-400', bg: 'bg-purple-400', hex: '#c084fc' }
                             ];
                             const activeIndex = navTabs.findIndex(t => t.id === state.activeTab);
                             const activeTab = navTabs[activeIndex] || navTabs[0];
@@ -245,14 +247,14 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                          <button
                             onClick={() => setSessionModalOpen(true)}
                             className="w-10 h-10 mx-auto flex items-center justify-center rounded-xl bg-slate-800/40 border border-slate-700/50 text-slate-400 hover:text-blue-400 hover:bg-blue-400/10 hover:border-blue-500/20 transition-all active:scale-90"
-                            title="Neural Sessions"
+                            title={t('sidebar.tooltips.sessions')}
                         >
                             <Icon name="history" />
                         </button>
                         <button
                             onClick={() => setState(p => ({ ...p, isLibraryExpanded: true }))}
                             className="w-10 h-10 mx-auto flex items-center justify-center rounded-xl bg-slate-800/40 border border-slate-700/50 text-slate-400 hover:text-indigo-400 hover:bg-indigo-400/10 hover:border-indigo-500/20 transition-all active:scale-90"
-                            title="Context Library"
+                            title={t('sidebar.tooltips.library')}
                         >
                             <Icon name="book" />
                         </button>
@@ -291,16 +293,16 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                 <button
                                     onClick={() => setState(prev => ({ ...prev, isLibraryExpanded: true }))}
                                     className="text-[10px] font-extrabold text-slate-500 hover:text-indigo-400 uppercase tracking-[0.18em] flex items-center gap-1.5 transition-colors group cursor-pointer"
-                                    title="Expand Library Viewer"
+                                    title={t('sidebar.tooltips.expand_library')}
                                 >
                                     <Icon name="book" className="text-[9px] opacity-30 group-hover:opacity-100 transition-all" />
-                                    Context Library
+                                    {t('sidebar.tooltips.library')}
                                 </button>
                                 {!isCompactMode && (
                                     <button
                                         onClick={(e) => { e.stopPropagation(); (state as any).onAddFile(`Doc_${Date.now()}.md`, 'extra'); }}
                                         className="text-slate-500 hover:text-indigo-400 transition-colors p-1 px-2 cursor-pointer group"
-                                        title="New Context Document"
+                                        title={t('sidebar.tooltips.new_doc')}
                                     >
                                         <Icon name="plus" className="text-[10px] group-hover:scale-110 transition-transform" />
                                     </button>
@@ -312,7 +314,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                 <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1 pt-3 pb-3 min-h-0">
                                     {Object.keys(state.additionalFiles || {}).length === 0 ? (
                                         <div className="text-center py-6 px-2 border border-dashed border-slate-800/50 rounded-xl bg-slate-800/10">
-                                            <p className="text-[9px] text-slate-600 italic">No cortex expansion</p>
+                                            <p className="text-[9px] text-slate-600 italic">{t('sidebar.footer.no_cortex')}</p>
                                         </div>
                                     ) : (
                                         Object.keys(state.additionalFiles || {}).map(filename => {
@@ -339,12 +341,12 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                                     <button
                                                         onClick={async (e) => {
                                                             e.stopPropagation();
-                                                            if (await state.askConfirm(`Delete ${filename}?`, 'right')) {
+                                                            if (await state.askConfirm(t('sidebar.tooltips.delete_file', { filename }), 'right')) {
                                                                 await state.onDeleteFile(filename, 'extra');
                                                             }
                                                         }}
                                                         className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all rounded-lg hover:bg-red-400/10"
-                                                        title={`Delete ${filename}`}
+                                                        title={t('sidebar.tooltips.delete_file', { filename })}
                                                     >
                                                         <Icon name="times" className="text-[9px]" />
                                                     </button>
@@ -371,7 +373,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                     <Icon name="history" className="text-xl" />
                                 </div>
                                 <div>
-                                    <h2 className="text-lg font-bold text-white tracking-wider">Session Manager</h2>
+                                    <h2 className="text-lg font-bold text-white tracking-wider">{t('sidebar.tooltips.sessions')}</h2>
                                     <p className="text-xs text-slate-500">Manage, load and branch conversation states</p>
                                 </div>
                             </div>
@@ -379,19 +381,19 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                 <button
                                     onClick={() => { (state as any).onImportSession(); handleClose(); }}
                                     className="px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-lg border border-indigo-500/20 transition-all flex items-center gap-2 text-xs font-bold uppercase tracking-wider"
-                                    title="Import Session"
+                                    title={t('sidebar.tooltips.import_session')}
                                 >
-                                    <Icon name="download" /> Import
+                                    <Icon name="download" /> {t('common.import')}
                                 </button>
                                 <button
                                     onClick={() => { (state as any).onNewSession(); handleClose(); }}
                                     className="px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg border border-blue-500/20 transition-all flex items-center gap-2 text-xs font-bold uppercase tracking-wider"
-                                    title="New Session"
+                                    title={t('sidebar.tooltips.new_session')}
                                 >
-                                    <Icon name="plus" /> New
+                                    <Icon name="plus" /> {t('common.new')}
                                 </button>
                                 <div className="w-px h-6 bg-slate-800 mx-1" />
-                                <button onClick={handleClose} className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 flex items-center justify-center transition-colors" title="Close Session Manager">
+                                <button onClick={handleClose} className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 flex items-center justify-center transition-colors" title={t('sidebar.tooltips.close_manager')}>
                                     <Icon name="times" />
                                 </button>
                             </div>

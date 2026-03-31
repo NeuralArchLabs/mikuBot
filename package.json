@@ -60,8 +60,10 @@
     "@fortawesome/fontawesome-free": "^7.1.0",
     "@google/genai": "^1.40.0",
     "@tailwindcss/vite": "^4.1.18",
+    "i18next": "^26.0.2",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "react-i18next": "^17.0.1",
     "unzipper": "^0.12.3",
     "zustand": "^5.0.12"
   },
