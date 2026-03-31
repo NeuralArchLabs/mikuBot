@@ -224,10 +224,10 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                         <button
                                             key={tab.id}
                                             onClick={() => setState(prev => ({ ...prev, activeTab: tab.id as any, selectedFile: '' }))}
-                                            className={`w-full h-[53px] flex items-center justify-center lg:justify-start gap-4 px-3 lg:px-4 rounded-xl transition-all duration-200 group premium-button ${state.activeTab === tab.id
-                                                ? 'bg-slate-800 text-white shadow-md border-slate-700/50'
+                                            className={`w-full h-[53px] flex items-center justify-center lg:justify-start gap-4 px-3 lg:px-4 rounded-xl transition-all duration-300 group premium-button border ${state.activeTab === tab.id
+                                                ? 'bg-slate-800 text-white shadow-md border-slate-800 shadow-blue-500/5'
                                                 : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                                                }`}
+                                                } hover:border-slate-700/50`}
                                             title={tab.label}
                                         >
                                             <Icon name={tab.icon} className={`text-2xl lg:text-lg flex-shrink-0 ${state.activeTab === tab.id ? tab.color : 'group-hover:text-slate-300'} transition-colors`} />
@@ -328,10 +328,10 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                                                 return { ...prev, selectedLibraryFiles: updated };
                                                             });
                                                         }}
-                                                        className={`w-full text-left px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-[11px] font-mono truncate flex items-center gap-2.5 transition-all border ${isSelected
-                                                            ? 'bg-blue-600/15 text-blue-300 border-blue-500/30'
-                                                            : 'premium-card !bg-transparent !border-transparent text-slate-500 hover:text-slate-200 hover:bg-slate-800/60'
-                                                            }`}
+                                                        className={`w-full text-left px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-[11px] font-mono truncate flex items-center gap-2.5 transition-all duration-300 border border-transparent ${isSelected
+                                                            ? 'bg-blue-600/15 text-blue-300'
+                                                            : 'text-slate-500 hover:text-slate-200 hover:bg-slate-800/40'
+                                                            } hover:border-blue-500/50 hover:shadow-[0_0_15px_-3px_rgba(59,130,246,0.3)]`}
                                                     >
                                                         <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${isSelected ? 'bg-blue-400 shadow-glow' : 'bg-slate-700'}`} />
                                                         <span className="truncate pr-5">{filename}</span>

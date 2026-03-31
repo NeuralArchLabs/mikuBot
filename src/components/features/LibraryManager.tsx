@@ -170,10 +170,10 @@ export const LibraryManager = ({
     return (
         <div className={`fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-8 transition-opacity duration-300 border-none ${isClosing ? 'opacity-0' : 'opacity-100'}`}>
             <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onClick={handleClose} />
-            <div className={`relative bg-slate-950 border border-slate-700 w-full max-w-6xl h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden ${isClosing ? 'animate-macos-shrink-bottom' : 'animate-macos-expand-bottom'}`}>
+            <div className={`relative bg-slate-900 border border-slate-900 hover:border-pink-500/50 transition-all duration-700 w-full max-w-6xl h-[85vh] shadow-[0_60px_150px_-30px_rgba(0,0,0,1)] hover:shadow-[0_0_50px_-10px_rgba(236,72,153,0.3)] flex flex-col overflow-hidden rounded-[2.5rem] ${isClosing ? 'animate-macos-shrink-bottom' : 'animate-macos-expand-bottom'}`}>
 
                 {/* ── Header ─────────────────────────────────────────── */}
-                <div className="h-16 border-b border-slate-800 flex items-center justify-between px-6 bg-slate-900">
+                <div className="h-16 flex items-center justify-between px-6 bg-slate-950/20">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-pink-500/10 text-pink-400 flex items-center justify-center">
                             <Icon name="book" className="text-xl" />
@@ -186,13 +186,13 @@ export const LibraryManager = ({
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => setShowBlueprints(!showBlueprints)}
-                            className="px-3 py-1.5 bg-gradient-to-r from-violet-600/20 to-pink-600/20 hover:from-violet-600/30 hover:to-pink-600/30 text-violet-300 rounded border border-violet-500/30 transition-all text-xs font-medium flex items-center gap-2 hover:scale-[1.02]"
+                            className="px-3 py-1.5 bg-gradient-to-r from-violet-600/20 to-pink-600/20 hover:from-violet-600/30 hover:to-pink-600/30 text-violet-300 rounded ring-1 ring-transparent hover:ring-violet-500/50 transition-all text-xs font-medium flex items-center gap-2 hover:scale-[1.02]"
                         >
                             <Icon name="magic" /> Blueprints
                         </button>
                         <button
                             onClick={onAdd}
-                            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700 transition-colors text-xs font-medium flex items-center gap-2 whitespace-nowrap"
+                            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded ring-1 ring-transparent hover:ring-white/20 transition-all text-xs font-medium flex items-center gap-2 whitespace-nowrap"
                         >
                             <Icon name="plus" />
                             <span className="hidden sm:inline">New Document</span>
@@ -218,7 +218,7 @@ export const LibraryManager = ({
                                     key={bp.id}
                                     onClick={() => handleCreateBlueprint(bp)}
                                     disabled={saving}
-                                    className="group relative p-4 rounded-xl border border-slate-700/50 bg-slate-800/30 hover:bg-slate-800/60 hover:border-violet-500/30 transition-all text-left overflow-hidden"
+                                    className="group relative p-4 rounded-xl bg-slate-800/30 hover:bg-slate-800/60 transition-all text-left overflow-hidden"
                                 >
                                     <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                                     <div className="relative z-10">
@@ -237,8 +237,8 @@ export const LibraryManager = ({
                 {/* ── Body ───────────────────────────────────────────── */}
                 <div className="flex-1 flex overflow-hidden">
                     {/* ── Sidebar ────────────────────────────────────── */}
-                    <div className="w-1/3 border-r border-slate-800 bg-slate-900/50 flex flex-col">
-                        <div className="p-3 bg-slate-900/80 border-b border-slate-800">
+                    <div className="w-1/3 bg-slate-950/20 flex flex-col">
+                        <div className="p-3 bg-slate-900/80">
                             <input
                                 type="text"
                                 placeholder="Search files..."
@@ -267,9 +267,9 @@ export const LibraryManager = ({
                                             <div className="flex items-center gap-3 overflow-hidden flex-1">
                                                 <div
                                                     onClick={(e) => { e.stopPropagation(); onToggleSelect(name); }}
-                                                    className={`w-5 h-5 rounded border flex items-center justify-center transition-colors cursor-pointer flex-shrink-0 ${isSelected
-                                                        ? 'bg-pink-600 border-pink-500 text-white'
-                                                        : 'bg-slate-800 border-slate-600 text-transparent hover:border-slate-500'
+                                                    className={`w-5 h-5 rounded border flex items-center justify-center transition-all cursor-pointer flex-shrink-0 ${isSelected
+                                                        ? 'bg-pink-600 border-pink-600 text-white shadow-[0_0_15px_rgba(236,72,153,0.3)]'
+                                                        : 'bg-slate-800 border-transparent text-transparent hover:bg-slate-700 hover:border-slate-700'
                                                         }`}
                                                 >
                                                     <Icon name="check" className="text-[10px]" />
@@ -288,7 +288,7 @@ export const LibraryManager = ({
                                                             onClick={(e) => e.stopPropagation()}
                                                             placeholder="New filename..."
                                                             title="Enter new filename"
-                                                            className="w-full bg-slate-700 border border-pink-500/50 rounded px-1.5 py-0.5 text-xs text-white outline-none"
+                                                            className="w-full bg-slate-700 ring-1 ring-pink-500/40 rounded px-1.5 py-0.5 text-xs text-white outline-none"
                                                         />
                                                     ) : (
                                                         <div className={`text-sm font-mono truncate ${isActive ? 'text-pink-300' : 'text-slate-300'}`}>{name}</div>
@@ -330,7 +330,7 @@ export const LibraryManager = ({
                     <div className="flex-1 bg-slate-950 flex flex-col relative">
                         {viewFile ? (
                             <>
-                                <div className="h-10 border-b border-slate-800 flex items-center justify-between px-4 bg-slate-900/30">
+                                <div className="h-10 flex items-center justify-between px-4 bg-slate-950/40">
                                     <div className="flex items-center gap-4">
                                         <span className="text-xs font-mono text-slate-500">{viewFile}</span>
                                     </div>
@@ -365,8 +365,8 @@ export const LibraryManager = ({
                                 {editMode ? (
                                     <div className="flex-1 flex overflow-hidden">
                                         {/* Editor */}
-                                        <div className="w-1/2 border-r border-slate-800 flex flex-col">
-                                            <div className="px-3 py-1 border-b border-slate-800 bg-slate-900/50">
+                                        <div className="w-1/2 flex flex-col">
+                                            <div className="px-3 py-1 bg-slate-900/50">
                                                 <span className="text-[10px] text-slate-600 uppercase tracking-widest">Editor</span>
                                             </div>
                                             <textarea
@@ -379,7 +379,7 @@ export const LibraryManager = ({
                                         </div>
                                         {/* Live Preview */}
                                         <div className="w-1/2 flex flex-col">
-                                            <div className="px-3 py-1 border-b border-slate-800 bg-slate-900/50">
+                                            <div className="px-3 py-1 bg-slate-900/50">
                                                 <span className="text-[10px] text-slate-600 uppercase tracking-widest">Live Preview</span>
                                             </div>
                                             <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
@@ -406,7 +406,7 @@ export const LibraryManager = ({
                 </div>
 
                 {/* ── Footer ─────────────────────────────────────────── */}
-                <div className="h-14 border-t border-slate-800 bg-slate-900 px-6 flex items-center justify-between">
+                <div className="h-14 bg-slate-950/40 px-6 flex items-center justify-between">
                     <div className="text-xs text-slate-500">
                         {selectedFiles.length} files selected for injection • {Object.keys(files).length} total
                     </div>

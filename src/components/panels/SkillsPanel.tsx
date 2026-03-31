@@ -140,7 +140,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                             }`}
                     >
                         Properties
-                        {editMode === 'config' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-500 shadow-[0_0_10px_#06b6d4]" />}
+                        {editMode === 'config' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-500 shadow-[0_0_10px_#06b6d4] animate-in fade-in duration-500" />}
                     </button>
                     <button
                         onClick={() => setEditMode('code')}
@@ -148,7 +148,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                             }`}
                     >
                         Neural Logic
-                        {editMode === 'code' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-500 shadow-[0_0_10px_#06b6d4]" />}
+                        {editMode === 'code' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-500 shadow-[0_0_10px_#06b6d4] animate-in fade-in duration-500" />}
                     </button>
                 </div>
 
@@ -219,15 +219,15 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                 <div className="flex items-center gap-2 font-mono">
                                     <button
                                         onClick={() => setActiveFile('manifest.json')}
-                                        className={`px-3 py-1.5 rounded-lg text-[10px] lg:text-xs border transition-all ${activeFile === 'manifest.json' ? 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30' : 'border-slate-800 text-slate-500 hover:text-slate-300'
-                                            }`}
+                                        className={`px-3 py-1.5 rounded-lg text-[10px] lg:text-xs border transition-all duration-300 ${activeFile === 'manifest.json' ? 'bg-cyan-500/10 text-cyan-300 border-cyan-500/10' : 'border-transparent text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                                            } hover:border-cyan-500/40`}
                                     >
                                         manifest.json
                                     </button>
                                     <button
                                         onClick={() => setActiveFile(currentSkill.entry)}
-                                        className={`px-3 py-1.5 rounded-lg text-[10px] lg:text-xs border transition-all ${activeFile === currentSkill.entry ? 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30' : 'border-slate-800 text-slate-500 hover:text-slate-300'
-                                            }`}
+                                        className={`px-3 py-1.5 rounded-lg text-[10px] lg:text-xs border transition-all duration-300 ${activeFile === currentSkill.entry ? 'bg-cyan-500/10 text-cyan-300 border-cyan-500/10' : 'border-transparent text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                                            } hover:border-cyan-500/40`}
                                     >
                                         {currentSkill.entry}
                                     </button>
@@ -235,7 +235,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                 <button
                                     onClick={handleSaveCode}
                                     disabled={isSavingCode}
-                                    className="px-4 py-2 bg-cyan-600/20 border border-cyan-500/40 text-cyan-400 rounded-xl text-[10px] lg:text-xs font-bold uppercase tracking-widest hover:bg-cyan-600/30 transition-all flex items-center gap-2 group"
+                                    className="px-4 py-2 bg-cyan-600/20 border border-transparent hover:border-cyan-500/40 text-cyan-400 rounded-xl text-[10px] lg:text-xs font-bold uppercase tracking-widest hover:bg-cyan-600/30 transition-all flex items-center gap-2 group"
                                 >
                                     {isSavingCode ? <Icon name="circle-notch" className="animate-spin" /> : <Icon name="cloud-upload-alt" className="group-hover:translate-y-[-2px] transition-transform" />}
                                     Commit

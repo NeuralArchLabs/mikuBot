@@ -144,28 +144,34 @@ export const App = () => {
         }
     }, []);
 
-    const onSaveGlobal = useCallback(async () => {
+    const onSaveGlobal = useCallback(async (silent: boolean = false, extraConfig?: Partial<AppConfig>) => {
         if (!(window as any).electron) {
-            await askAlert("⚠️ Desktop Engine Not Detected: Settings can only be saved to config.json when running MikuCentral as a desktop application.");
-            return;
+            if (!silent) await askAlert("⚠️ Desktop Engine Not Detected: Settings can only be saved to config.json when running MikuCentral as a desktop application.");
+            return { ok: false, error: 'No electron' };
         }
 
         try {
+            const finalConfig = extraConfig ? { ...state.config, ...extraConfig } : state.config;
             const result = await (window as any).electron.saveSettings({
-                config: state.config,
+                config: finalConfig,
                 agentMode: state.agentMode,
                 safeMode: state.safeMode,
                 approvalMode: state.approvalMode
             });
 
             if (result.ok) {
-                await askAlert("✅ Neural Engine: Configuration saved successfully to config.json", "right");
+                if (extraConfig) {
+                    setState(prev => ({ ...prev, config: { ...prev.config, ...extraConfig } }));
+                }
+                if (silent !== true) await askAlert("✅ Neural Engine: Configuration saved successfully to config.json", "right");
             } else {
-                await askAlert(`❌ Configuration Error: ${result.error || 'Unknown error occurred in main process.'}`);
+                if (silent !== true) await askAlert(`❌ Configuration Error: ${result.error || 'Unknown error occurred in main process.'}`);
             }
+            return result;
         } catch (e) {
             console.error("Critical failure during save:", e);
-            await askAlert("💥 Fatal Error: The connection to the Neural Engine was lost. Check terminal for details.");
+            if (!silent) await askAlert("💥 Fatal Error: The connection to the Neural Engine was lost. Check terminal for details.");
+            return { ok: false, error: (e as any)?.message };
         }
     }, [state.config, state.agentMode, state.safeMode, state.approvalMode, askAlert]);
 
@@ -1791,13 +1797,13 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                                                 const res = await neuralScheduler.importTasks();
                                                 if (res) window.dispatchEvent(new CustomEvent('scheduler-data-updated'));
                                             }}
-                                            className="px-4 py-2.5 bg-slate-900/60 hover:bg-slate-800 text-slate-300 rounded-xl font-bold uppercase tracking-widest flex items-center gap-2 transition-all border border-slate-700/50 text-xs"
+                                            className="px-4 py-2.5 bg-slate-900/60 hover:bg-slate-800 text-slate-300 rounded-xl font-bold uppercase tracking-widest flex items-center gap-2 transition-all border border-transparent hover:border-slate-700/50 text-xs"
                                         >
                                             <Icon name="download" /> Import
                                         </button>
                                         <button
                                             onClick={() => neuralScheduler.exportTasks()}
-                                            className="px-4 py-2.5 bg-slate-900/60 hover:bg-slate-800 text-slate-300 rounded-xl font-bold uppercase tracking-widest flex items-center gap-2 transition-all border border-slate-700/50 text-xs"
+                                            className="px-4 py-2.5 bg-slate-900/60 hover:bg-slate-800 text-slate-300 rounded-xl font-bold uppercase tracking-widest flex items-center gap-2 transition-all border border-transparent hover:border-slate-700/50 text-xs"
                                         >
                                             <Icon name="file-export" /> Export
                                         </button>

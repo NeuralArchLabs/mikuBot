@@ -205,7 +205,7 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
             </div>
 
             {/* Sub-navigation */}
-            <div className="flex gap-2 bg-black/30 p-1.5 rounded-xl border border-white/5">
+            <div className="flex gap-2 bg-black/30 p-1.5 rounded-xl border border-transparent">
                 {([
                     { id: 'tasks' as const, label: 'Tasks', icon: 'list' },
                     { id: 'create' as const, label: editingTask ? 'Edit Task' : 'New Task', icon: 'plus' },
@@ -220,10 +220,10 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
                             }
                             setView(tab.id);
                         }}
-                        className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${view === tab.id
-                            ? 'bg-cyan-500/10 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.15)] border border-cyan-500/30 ring-1 ring-cyan-500/20'
-                            : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 border border-transparent'
-                            }`}
+                        className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 border border-transparent ${view === tab.id
+                            ? 'bg-cyan-500/10 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.1)]'
+                            : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                            } hover:border-cyan-500/50`}
                     >
                         <Icon name={tab.icon} /> {tab.label}
                     </button>
@@ -251,7 +251,7 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
                                                 setForm({ ...EMPTY_FORM, ...preset.data });
                                                 setView('create');
                                             }}
-                                            className="px-4 py-2 bg-cyan-600/10 hover:bg-cyan-600/20 border border-cyan-500/20 text-cyan-400 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-2"
+                                            className="px-4 py-2 bg-cyan-600/10 hover:bg-cyan-600/20 border border-transparent hover:border-cyan-500/50 text-cyan-400 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-2"
                                         >
                                             <Icon name={preset.icon} /> {preset.label}
                                         </button>
@@ -262,10 +262,10 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
                             tasks.map(task => (
                                 <div
                                     key={task.id}
-                                    className={`bg-slate-900/60 rounded-2xl p-5 border transition-all relative overflow-hidden group ${task.enabled
-                                        ? 'border-cyan-500/20 hover:border-cyan-500/40'
-                                        : 'border-white/5 opacity-60 hover:opacity-80'
-                                        }`}
+                                    className={`bg-slate-900/60 rounded-2xl p-5 border border-transparent transition-all duration-500 relative overflow-hidden group hover:border-cyan-500/50 ${task.enabled
+                                        ? 'opacity-100'
+                                        : 'opacity-60 hover:opacity-80'
+                                        } hover:shadow-[0_0_30px_-5px_rgba(6,182,212,0.15)]`}
                                 >
                                     {/* Active indicator bar */}
                                     {task.enabled && (
@@ -311,9 +311,9 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
                                         <div className="flex flex-col gap-1.5 flex-shrink-0">
                                             <button
                                                 onClick={() => handleToggle(task.id)}
-                                                className={`w-9 h-9 rounded-xl transition-all flex items-center justify-center border ${task.enabled
-                                                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
-                                                    : 'bg-slate-800 text-slate-500 border-white/5 hover:bg-slate-700'
+                                                className={`w-9 h-9 rounded-xl transition-all flex items-center justify-center border border-transparent ${task.enabled
+                                                    ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/60'
+                                                    : 'bg-slate-800 text-slate-500 hover:bg-slate-700 hover:border-white/20'
                                                     }`}
                                                 title={task.enabled ? 'Pause task' : 'Enable task'}
                                             >
@@ -363,7 +363,7 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
                                         <button
                                             key={preset.label}
                                             onClick={() => setForm({ ...EMPTY_FORM, ...preset.data })}
-                                            className="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-white/5 text-slate-300 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-2"
+                                            className="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-transparent hover:border-white/20 text-slate-300 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-2"
                                         >
                                             <Icon name={preset.icon} className="text-cyan-400" /> {preset.label}
                                         </button>

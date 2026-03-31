@@ -18,7 +18,7 @@ interface SettingsPanelProps {
     onWorkSpaceSelect: () => void;
     onToolsSelect: () => void;
     onRootSelect: () => void;
-    onSaveGlobal: () => void;
+    onSaveGlobal: (silent?: boolean, extraConfig?: Partial<AppConfig>) => Promise<any>;
     onResetGlobal: () => void;
     onLoadConfig: () => void;
     onExportConfig: () => void;
@@ -234,30 +234,30 @@ export const SettingsPanel = ({
 
                     {/* Action Buttons — contextual */}
                     {settingsTab === 'core' && (
-                        <div className="grid grid-cols-2 lg:flex lg:flex-row lg:items-center gap-2 md:gap-3 bg-slate-900/40 p-2 md:p-3 rounded-2xl border border-white/5 shadow-xl flex-shrink-0 w-full lg:w-auto animate-in fade-in slide-in-from-top-1 duration-700">
+                        <div className="grid grid-cols-2 lg:flex lg:flex-row lg:items-center gap-2 md:gap-3 bg-slate-900/40 p-2 md:p-3 rounded-2xl border border-transparent shadow-xl flex-shrink-0 w-full lg:w-auto animate-in fade-in slide-in-from-top-1 duration-700">
                             <button
                                 onClick={onLoadConfig}
-                                className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-gradient-to-br from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-emerald-900/20 transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-emerald-500/30 whitespace-nowrap"
-                                title="Auto-detect saved config, or browse for a config.json file"
+                                className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-slate-800/40 hover:bg-cyan-600/20 text-cyan-400 rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-cyan-900/10 transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-transparent hover:border-cyan-500/40 whitespace-nowrap"
+                                title="Load config from file"
                             >
-                                <Icon name="download" className="text-sm xl:text-base flex-shrink-0" /> <span className="inline lg:hidden min-[1150px]:inline">Load</span>
+                                <Icon name="upload" className="text-sm xl:text-base flex-shrink-0" /> <span className="inline lg:hidden min-[1150px]:inline">Load</span>
                             </button>
                             <button
                                 onClick={onExportConfig}
-                                className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-slate-600 shadow-lg whitespace-nowrap"
-                                title="Download current config as JSON file"
+                                className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-slate-800/40 hover:bg-slate-700/60 text-slate-300 rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-transparent hover:border-slate-500/40 shadow-lg whitespace-nowrap"
+                                title="Download current config as JSON"
                             >
-                                <Icon name="file-export" className="text-sm xl:text-base flex-shrink-0" /> <span className="inline lg:hidden min-[1150px]:inline">Export</span>
+                                <Icon name="download" className="text-sm xl:text-base flex-shrink-0" /> <span className="inline lg:hidden min-[1150px]:inline">Export</span>
                             </button>
                             <button
                                 onClick={onResetGlobal}
-                                className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-red-950/30 hover:bg-red-900/40 text-red-400 rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-red-900/50 shadow-lg whitespace-nowrap"
+                                className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-slate-800/40 hover:bg-red-500/10 text-slate-400 hover:text-red-400 rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-transparent hover:border-red-500/40 shadow-lg whitespace-nowrap"
                             >
                                 <Icon name="history" className="text-sm xl:text-base flex-shrink-0" /> <span className="inline lg:hidden min-[1150px]:inline">Default</span>
                             </button>
                             <button
                                 onClick={onSaveGlobal}
-                                className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-gradient-to-br from-blue-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-blue-900/30 transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-blue-500/30 whitespace-nowrap"
+                                className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-gradient-to-br from-indigo-600/80 to-blue-700/80 hover:from-indigo-500 hover:to-blue-600 text-white rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-blue-900/30 transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-transparent hover:border-cyan-400/50 whitespace-nowrap"
                             >
                                 <Icon name="save" className="text-sm xl:text-base flex-shrink-0" /> <span className="inline lg:hidden min-[1150px]:inline">Save</span>
                             </button>
@@ -265,13 +265,13 @@ export const SettingsPanel = ({
                     )}
 
                     {settingsTab === 'skills' && (
-                        <div className="grid grid-cols-2 lg:flex lg:flex-row lg:items-center bg-slate-900/40 p-1.5 md:p-2 xl:p-3 rounded-2xl border border-white/5 shadow-xl flex-shrink-0 w-full lg:w-auto animate-in fade-in slide-in-from-top-1 duration-700 gap-1.5 xl:gap-3 transition-all duration-500 ease-in-out">
+                        <div className="grid grid-cols-2 lg:flex lg:flex-row lg:items-center bg-slate-900/40 p-1.5 md:p-2 xl:p-3 rounded-2xl border border-transparent shadow-xl flex-shrink-0 w-full lg:w-auto animate-in fade-in slide-in-from-top-1 duration-700 gap-1.5 xl:gap-3 transition-all duration-500 ease-in-out">
                              <button
                                 onClick={() => setShowSkillsBlueprints(!showSkillsBlueprints)}
                                 className={`w-full lg:w-11 min-[1150px]:w-auto h-11 xl:h-auto py-3 px-3 lg:px-4 xl:px-6 rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-widest transition-all duration-500 ease-in-out flex items-center justify-center gap-2 border hover:scale-105 active:scale-95 ${
                                     showSkillsBlueprints 
-                                    ? 'bg-cyan-500 text-black border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.4)]' 
-                                    : 'bg-slate-800/50 text-slate-300 border-slate-700/50 hover:bg-slate-800 hover:text-white'
+                                    ? 'bg-cyan-500 text-black border-transparent shadow-[0_0_20px_rgba(6,182,212,0.4)]' 
+                                    : 'bg-slate-800/50 text-slate-300 border-transparent hover:bg-slate-800 hover:text-white hover:border-slate-700/50'
                                 }`}
                                 title="New Directive"
                             >
@@ -280,7 +280,7 @@ export const SettingsPanel = ({
                             </button>
                              <button
                                 onClick={onSaveGlobal}
-                                className="btn-halo w-full lg:w-11 min-[1150px]:w-auto h-11 xl:h-auto py-3 px-3 lg:px-4 xl:px-6 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-widest transition-all duration-500 ease-in-out shadow-[0_0_30px_rgba(6,182,212,0.3)] flex items-center justify-center gap-2 border border-cyan-500/30 hover:scale-105 active:scale-95 group/sync"
+                                className="btn-halo w-full lg:w-11 min-[1150px]:w-auto h-11 xl:h-auto py-3 px-3 lg:px-4 xl:px-6 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-widest transition-all duration-500 ease-in-out shadow-[0_0_30px_rgba(6,182,212,0.3)] flex items-center justify-center gap-2 border border-transparent hover:border-cyan-500/40 hover:scale-105 active:scale-95 group/sync"
                                 title="Save Sync"
                             >
                                 <Icon name="sync" className="group-hover/sync:rotate-180 transition-transform duration-500" />
@@ -1312,10 +1312,9 @@ export const SettingsPanel = ({
                                             if (!second) return;
 
                                             try {
-                                                onUpdatePartialConfig({ isConfigured: false } as any);
-                                                onSaveGlobal();
+                                                await onSaveGlobal(true, { isConfigured: false });
                                                 await askAlert("♻️ Reiniciando aplicación...");
-                                                window.location.reload();
+                                                // La UI se actualizará automáticamente activando el Onboarding Wizard al cambiar isConfigured
                                             } catch (e) {
                                                 await askAlert("❌ Error al reiniciar: " + (e as any)?.message);
                                             }
@@ -1332,7 +1331,7 @@ export const SettingsPanel = ({
                         <div className={`md:hidden pt-2 pb-6 flex justify-center sticky bottom-0 z-20 pointer-events-none transition-all duration-300 ${showFloatingSave ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
                             <button
                                 onClick={onSaveGlobal}
-                                className="pointer-events-auto w-[70%] max-w-[280px] py-3.5 bg-blue-600/50 hover:bg-blue-600/90 border border-blue-400/30 text-blue-50 hover:text-white rounded-full text-[11px] font-extrabold uppercase tracking-widest shadow-[0_4px_15px_rgba(37,99,235,0.2)] hover:shadow-[0_4px_25px_rgba(37,99,235,0.5)] transition-all duration-300 opacity-70 hover:opacity-100 flex items-center justify-center gap-2"
+                                className="pointer-events-auto w-[70%] max-w-[280px] py-3.5 bg-blue-600/80 hover:bg-blue-600 border border-transparent hover:border-blue-400/50 text-blue-50 hover:text-white rounded-full text-[11px] font-extrabold uppercase tracking-widest shadow-[0_4px_15px_rgba(37,99,235,0.2)] hover:shadow-[0_4px_25px_rgba(37,99,235,0.5)] transition-all duration-300 opacity-70 hover:opacity-100 flex items-center justify-center gap-2"
                             >
                                 <Icon name="save" className="text-sm flex-shrink-0" /> Save Config
                             </button>
@@ -1346,7 +1345,7 @@ export const SettingsPanel = ({
 
                                 <button
                                     onClick={onSaveGlobal}
-                                    className={`pointer-events-auto h-12 bg-slate-950/20 hover:bg-slate-900/40 border border-white/5 hover:border-blue-500/20 text-slate-500 hover:text-blue-200 rounded-full transition-all duration-700 ease-in-out flex items-center justify-center shadow-[0_10px_40px_rgba(0,0,0,0.3)] backdrop-blur-2xl group relative overflow-hidden premium-button px-0 ${isAtBottom ? 'w-36 px-6' : 'w-12 group-hover:w-36 group-hover:px-6'}`}
+                                    className={`pointer-events-auto h-12 bg-slate-900 hover:bg-slate-800 border border-transparent hover:border-blue-500/50 text-slate-400 hover:text-blue-200 rounded-full transition-all duration-700 ease-in-out flex items-center justify-center shadow-[0_10px_40px_rgba(0,0,0,0.4)] group relative overflow-hidden premium-button px-0 ${isAtBottom ? 'w-36 px-6' : 'w-12 group-hover:w-36 group-hover:px-6'}`}
                                     title="Save All Global Settings"
                                 >
                                     {/* Liquid Shine Effect */}

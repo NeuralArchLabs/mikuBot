@@ -84,10 +84,10 @@ export const SessionList = React.memo(({ sessions, loading, currentSessionId, on
                                 return (
                                     <div
                                         key={ss.id}
-                                        className={`group relative flex flex-col gap-1.5 rounded-xl p-4 transition-all duration-200 cursor-pointer border ${isActive
-                                            ? 'bg-blue-600/20 text-blue-300 border-blue-500/30 shadow-lg shadow-blue-900/10'
-                                            : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200 border-transparent'
-                                            }`}
+                                        className={`group relative flex flex-col gap-1.5 rounded-xl p-4 transition-all duration-300 cursor-pointer border border-transparent ${isActive
+                                            ? 'bg-blue-600/20 text-blue-300 shadow-lg shadow-blue-900/10'
+                                            : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
+                                            } hover:border-blue-500/50 hover:shadow-[0_0_20px_-5px_rgba(59,130,246,0.3)]`}
                                         onClick={() => onSelect(ss.id)}
                                     >
                                         <div className="flex items-center gap-3 w-full">
@@ -128,10 +128,10 @@ export const SessionList = React.memo(({ sessions, loading, currentSessionId, on
                             return (
                                 <div
                                     key={ss.id}
-                                    className={`session-card group relative grid grid-cols-[auto_1fr] gap-x-2.5 items-center rounded-xl p-2.5 transition-all duration-200 cursor-pointer border session-card-sidebar ${isActive
-                                        ? 'bg-blue-600/20 text-blue-300 border-blue-500/30'
-                                        : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200 border-transparent'
-                                        }`}
+                                    className={`session-card group relative grid grid-cols-[auto_1fr] gap-x-2.5 items-center rounded-xl p-2.5 transition-all duration-300 cursor-pointer border border-transparent ${isActive
+                                        ? 'bg-blue-600/20 text-blue-300'
+                                        : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
+                                        } hover:border-blue-500/50 hover:shadow-[0_0_15px_-3px_rgba(59,130,246,0.3)]`}
                                     onClick={() => onSelect(ss.id)}
                                 >
                                     {/* Status Indicator */}
