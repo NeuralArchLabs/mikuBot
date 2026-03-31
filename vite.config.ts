@@ -24,11 +24,11 @@ export default defineConfig(({ mode }) => {
       }
     },
     build: {
-      chunkSizeWarningLimit: 600,
+      chunkSizeWarningLimit: 1000,
       rollupOptions: {
         output: {
           manualChunks: {
-            vendor: ['react', 'react-dom']
+            vendor: ['react', 'react-dom', 'zustand', 'i18next', 'react-i18next', '@fortawesome/fontawesome-free']
           }
         }
       }

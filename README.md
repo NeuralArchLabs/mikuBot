@@ -1,4 +1,4 @@
-# 🌟 MikuBot — Tu Asistente de IA Personal para Windows
+# 🌟 MikuBot v2.1.4 — Tu Asistente de IA Personal para Windows
 
 ![Estado](https://img.shields.io/badge/Estado-Estable-green.svg?style=for-the-badge)
 ![Plataforma](https://img.shields.io/badge/Plataforma-Windows_10%2F11-0078D4.svg?style=for-the-badge&logo=windows)

@@ -162,8 +162,8 @@ const resourcesPath = app.isPackaged ? process.resourcesPath : process.cwd();
 
 // ── Native Engine Configuration (searXena) ───────────────────────────
 const SEARXENA_DIR = app.isPackaged 
-    ? path.join(process.resourcesPath, 'engine', 'searxena')
-    : path.join(process.cwd(), 'engine', 'searxena');
+    ? path.join(process.resourcesPath, 'engine', 'searXena')
+    : path.join(process.cwd(), 'engine', 'searXena');
 const ENGINE_PYTHON = path.join(SEARXENA_DIR, 'local', 'py3', 'Scripts', 'python.exe');
 
 console.log('Main Process: Active Workspace Path:', currentWorkspacePath);
