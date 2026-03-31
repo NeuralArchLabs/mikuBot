@@ -2,7 +2,6 @@
   "name": "mikucentral",
   "private": true,
   "version": "2.1.3",
-  "license": "AGPL-3.0",
   "type": "module",
   "description": "MikuCentral - Neural AI Interface",
   "author": "Armando Martinez",
