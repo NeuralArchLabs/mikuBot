@@ -1,32 +1,32 @@
 {
     "name": "api_fetcher",
-    "description": "Herramienta universal para realizar peticiones HTTP (GET, POST, PUT, DELETE) a cualquier API REST o endpoint. Úsala cuando necesites interactuar con servicios externos mediante JSON.",
+    "description": "Universal tool for making HTTP requests (GET, POST, PUT, DELETE) to any REST API or endpoint. Use it when you need to interact with external services via JSON.",
     "parameters": {
         "type": "object",
         "properties": {
-            "url": { "type": "string", "description": "La URL completa del endpoint (ej. https://api.example.com/v1/data)" },
+            "url": { "type": "string", "description": "Full endpoint URL (e.g., https://api.example.com/v1/data)" },
             "method": { 
                 "type": "string", 
                 "enum": ["GET", "POST", "PUT", "DELETE"], 
                 "default": "GET",
-                "description": "El método HTTP a utilizar." 
+                "description": "The HTTP method to use." 
             },
             "headers": { 
                 "type": "object", 
-                "description": "Cabeceras opcionales (ej. {'Authorization': 'Bearer ...', 'Content-Type': 'application/json'})" 
+                "description": "Optional headers (e.g., {'Authorization': 'Bearer ...', 'Content-Type': 'application/json'})" 
             },
             "params": {
                 "type": "object",
-                "description": "Parámetros de consulta para la URL (ej. ?id=123)"
+                "description": "Query parameters for the URL (e.g., ?id=123)"
             },
             "body": { 
                 "type": "object", 
-                "description": "Cuerpo de la petición para métodos POST/PUT (se enviará como JSON)." 
+                "description": "Request body for POST/PUT methods (sent as JSON)." 
             },
             "timeout": {
                 "type": "number",
                 "default": 15,
-                "description": "Tiempo máximo de espera en segundos."
+                "description": "Maximum wait time (timeout) in seconds."
             }
         },
         "required": ["url"]

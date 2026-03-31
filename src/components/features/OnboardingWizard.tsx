@@ -33,15 +33,62 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
     const [verbosity, setVerbosity] = useState('');
     const [humorLevel, setHumorLevel] = useState('');
 
-    // Initialize localized defaults
+    // Predefined Keys for Migration
+    const PERSONALITY_KEYS = ['formal', 'casual', 'direct', 'teacher'];
+    const VERBOSITY_KEYS = ['verbosity_concise', 'verbosity_medium', 'verbosity_detailed'];
+    const HUMOR_KEYS = ['humor_none', 'humor_low', 'humor_high'];
+    const TECH_KEYS = ['beginner', 'intermediate', 'expert'];
+    const AUTONOMY_KEYS = ['autonomy_manual', 'autonomy_assisted', 'autonomy_automatic'];
+
+    // Track previous language to allow value migration
+    const prevLangRef = useRef(i18n.language);
+
+    // Initialize/Migrate localized defaults
     useEffect(() => {
-        if (!userTone) setUserTone(t('onboarding.personality.formal'));
-        if (!technicalLevel) setTechnicalLevel(t('onboarding.status.intermediate'));
-        if (!currentGoal) setCurrentGoal(t('onboarding.status.goals.assistant'));
-        if (!autonomyMode) setAutonomyMode(t('onboarding.status.autonomy_assisted'));
-        if (!verbosity) setVerbosity(t('onboarding.personality.verbosity_medium'));
-        if (!humorLevel) setHumorLevel(t('onboarding.personality.humor_low'));
-    }, [t]);
+        const prevLang = prevLangRef.current;
+        const currentLang = i18n.language;
+
+        // Helper to migrate a value if it was a predefined option in the previous language
+        const migrate = (currentVal: string, keys: string[], prefix: string) => {
+            if (!currentVal) return t(`${prefix}.${keys[0]}`); // Initial default
+            
+            // Try to find which key the current value belongs to by checking translations in ALL languages
+            // (Standard i18next approach: check if it matches a translation in the old language)
+            for (const key of keys) {
+                const oldTranslation = i18n.getResource(prevLang, 'translation', `${prefix}.${key}`);
+                if (currentVal === oldTranslation) {
+                    return t(`${prefix}.${key}`);
+                }
+            }
+            return currentVal; // Keep manual entry
+        };
+
+        // Special migration for goals (dynamic object)
+        const migrateGoal = (currentVal: string) => {
+            const goalsObjOld = i18n.getResource(prevLang, 'translation', 'onboarding.status.goals');
+            if (goalsObjOld && typeof goalsObjOld === 'object') {
+                const goalKeys = Object.keys(goalsObjOld);
+                for (const key of goalKeys) {
+                    if (currentVal === (goalsObjOld as any)[key]) {
+                        return t(`onboarding.status.goals.${key}`);
+                    }
+                }
+            }
+            return currentVal;
+        };
+
+        setUserTone(prev => migrate(prev, PERSONALITY_KEYS, 'onboarding.personality'));
+        setTechnicalLevel(prev => migrate(prev, TECH_KEYS, 'onboarding.status'));
+        setAutonomyMode(prev => migrate(prev, AUTONOMY_KEYS, 'onboarding.status'));
+        setVerbosity(prev => migrate(prev, VERBOSITY_KEYS, 'onboarding.personality'));
+        setHumorLevel(prev => migrate(prev, HUMOR_KEYS, 'onboarding.personality'));
+        setCurrentGoal(prev => {
+            if (!prev) return t('onboarding.status.goals.assistant');
+            return migrateGoal(prev);
+        });
+
+        prevLangRef.current = currentLang;
+    }, [i18n.language]); // Run whenever language changes
     
     // Dynamic List States
     const [newContext, setNewContext] = useState('');
@@ -140,7 +187,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                 if (folderRes.ok && folderRes.files) {
                     const templateContent = extractTemplatesFromFolderContent(folderRes.files);
                     const variables: PromptVariables = {
-                        LANGUAGE: i18n.language === 'es' ? 'Spanish' : i18n.language === 'zh' ? 'Chinese' : 'English',
+                        LANGUAGE: i18n.language === 'es' ? 'Español' : i18n.language === 'zh' ? '中文' : 'English',
                         TONE: userTone, VERBOSITY: verbosity, HUMOR_LEVEL: humorLevel,
                         USER_NAME: userName || (i18n.language === 'es' ? 'Usuario' : 'User'), ASSISTANT_ALIAS: assistantAlias || 'mikuBot',
                         TECHNICAL_SKILL: technicalLevel, CURRENT_GOAL: currentGoal, AUTONOMY_MODE: autonomyMode,
@@ -187,8 +234,8 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                         {/* Language Selector */}
                         <div className="flex gap-1.5 bg-slate-950/40 p-1.5 rounded-2xl border border-white/5 backdrop-blur-3xl shrink-0">
                             {[
-                                { code: 'es', label: 'ESP', icon: '🇪🇸' },
-                                { code: 'en', label: 'ENG', icon: '🇺🇸' },
+                                { code: 'es', label: 'Español', icon: '🇪🇸' },
+                                { code: 'en', label: 'English', icon: '🇺🇸' },
                                 { code: 'zh', label: '中文', icon: '🇨🇳' }
                             ].map(lang => (
                                 <button
@@ -374,7 +421,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                             <div className="grid grid-cols-2 gap-6">
                                 <div className="space-y-4">
                                     <label className="text-[10px] font-black text-slate-500 uppercase block text-center tracking-[0.5em]">{t('onboarding.personality.verbosity')}</label>
-                                    {![t('onboarding.personality.verbosity_concise'), t('onboarding.personality.verbosity_medium'), t('onboarding.personality.verbosity_detailed')].includes(verbosity) && verbosity !== '' ? (
+                                    {!VERBOSITY_KEYS.map(k => t(`onboarding.personality.${k}`)).includes(verbosity) && verbosity !== '' ? (
                                         <div className="relative animate-premium">
                                             <input title={t('onboarding.personality.verbosity')} placeholder={t('onboarding.personality.custom_placeholder')} value={verbosity} onChange={(e)=>setVerbosity(e.target.value)} autoFocus className="w-full bg-slate-950/70 border-2 border-transparent hover:border-blue-500/30 focus:border-blue-500/50 rounded-2xl px-8 py-5 text-xs text-white outline-none transition-all font-black text-center shadow-inner" />
                                             <button onClick={()=>setVerbosity(t('onboarding.personality.verbosity_medium'))} className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center border border-white/10 transition-all">×</button>
@@ -405,7 +452,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                                 </div>
                                 <div className="space-y-4">
                                     <label className="text-[10px] font-black text-slate-500 uppercase block text-center tracking-[0.5em]">{t('onboarding.personality.humor')}</label>
-                                    {![t('onboarding.personality.humor_none'), t('onboarding.personality.humor_low'), t('onboarding.personality.humor_high')].includes(humorLevel) && humorLevel !== '' ? (
+                                    {!HUMOR_KEYS.map(k => t(`onboarding.personality.${k}`)).includes(humorLevel) && humorLevel !== '' ? (
                                         <div className="relative animate-premium">
                                             <input title={t('onboarding.personality.humor')} placeholder={t('onboarding.personality.custom_placeholder')} value={humorLevel} onChange={(e)=>setHumorLevel(e.target.value)} autoFocus className="w-full bg-slate-950/70 border-2 border-transparent hover:border-teal-500/30 focus:border-teal-500/50 rounded-2xl px-8 py-5 text-xs text-white outline-none transition-all font-black text-center shadow-inner" />
                                             <button onClick={()=>setHumorLevel(t('onboarding.personality.humor_low'))} className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center border border-white/10 transition-all">×</button>
@@ -447,7 +494,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                              <div className="grid grid-cols-2 gap-8 items-start">
                                 <div className="space-y-5">
                                     <label className="text-[10px] font-black text-slate-500 uppercase block text-center tracking-[0.5em]">{t('onboarding.status.technical_level')}</label>
-                                    {![t('onboarding.status.beginner'), t('onboarding.status.intermediate'), t('onboarding.status.expert')].includes(technicalLevel) && technicalLevel !== '' ? (
+                                    {!TECH_KEYS.map(k => t(`onboarding.status.${k}`)).includes(technicalLevel) && technicalLevel !== '' ? (
                                         <div className="relative animate-premium">
                                             <input title="Nivel Técnico Personalizado" placeholder={t('onboarding.status.technical_placeholder')} value={technicalLevel} onChange={(e)=>setTechnicalLevel(e.target.value)} autoFocus className="w-full bg-slate-950/70 border-2 border-transparent hover:border-orange-500/30 focus:border-orange-500/50 rounded-2xl px-6 py-4 text-xs text-white outline-none transition-all font-black text-center shadow-inner" />
                                             <button onClick={()=>setTechnicalLevel(t('onboarding.status.intermediate'))} className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center border border-white/10 transition-all">×</button>
@@ -463,7 +510,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                                 </div>
                                 <div className="space-y-5">
                                     <label className="text-[10px] font-black text-slate-500 uppercase block text-center tracking-[0.5em]">{t('onboarding.status.autonomy_mode')}</label>
-                                    {![t('onboarding.status.autonomy_manual'), t('onboarding.status.autonomy_assisted'), t('onboarding.status.autonomy_automatic')].includes(autonomyMode) && autonomyMode !== '' ? (
+                                    {!AUTONOMY_KEYS.map(k => t(`onboarding.status.${k}`)).includes(autonomyMode) && autonomyMode !== '' ? (
                                         <div className="relative animate-premium">
                                             <input title="Modo de Autonomía Personalizado" placeholder={t('onboarding.status.autonomy_placeholder')} value={autonomyMode} onChange={(e)=>setAutonomyMode(e.target.value)} autoFocus className="w-full bg-slate-950/70 border-2 border-transparent hover:border-indigo-500/30 focus:border-indigo-500/50 rounded-2xl px-6 py-4 text-xs text-white outline-none transition-all font-black text-center shadow-inner" />
                                             <button onClick={()=>setAutonomyMode(t('onboarding.status.autonomy_assisted'))} className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center border border-white/10 transition-all">×</button>

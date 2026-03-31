@@ -3,6 +3,7 @@
 ## Active Profile
 - **Preferred Name:** {{USER_NAME}}
 - **Technical Level:** {{TECHNICAL_SKILL}}
+- **Language:** {{LANGUAGE}}
 
 
 ## Context and Preferences

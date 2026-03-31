@@ -1,6 +1,6 @@
 {
     "name": "miku_clock",
-    "description": "Obtiene la hora actual con un mensaje personalizado de Miku.",
+    "description": "Gets the current system time with a personalized Miku-style message.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -10,7 +10,7 @@
                     "12h",
                     "24h"
                 ],
-                "description": "Formato de hora"
+                "description": "Time format (12h or 24h)"
             }
         }
     },

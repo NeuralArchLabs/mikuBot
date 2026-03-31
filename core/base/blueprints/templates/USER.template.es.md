@@ -3,6 +3,7 @@
 ## Perfil Activo
 - **Nombre preferido:** {{USER_NAME}}
 - **Nivel Técnico:** {{TECHNICAL_SKILL}}
+- **Idioma:** {{LANGUAGE}}
 
 
 ## Contexto y Preferencias

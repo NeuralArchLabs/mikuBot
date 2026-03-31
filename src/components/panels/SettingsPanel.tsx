@@ -326,9 +326,9 @@ export const SettingsPanel = ({
                                 </div>
                                 <div className="flex gap-2 bg-black/20 p-1.5 rounded-2xl border border-white/5">
                                     {[
-                                        { id: 'es', label: t('common.spanish') },
-                                        { id: 'en', label: t('common.english') },
-                                        { id: 'zh', label: t('common.chinese') }
+                                        { id: 'es', label: 'Español' },
+                                        { id: 'en', label: 'English' },
+                                        { id: 'zh', label: '中文' }
                                     ].map(lang => (
                                         <button
                                             key={lang.id}

@@ -238,18 +238,18 @@
             "default": "默认",
             "save": "保存",
             "new_directive": "新指令",
-            "save_sync": "同步保存"
+            "save_sync": "保存"
         },
         "pathways": {
-            "title": "神经系统路径",
-            "workspace": "工作空间",
-            "workspace_desc": "默认目录",
-            "core": "核心",
-            "core_desc": "灵魂, 用户, 上下文",
-            "library": "库",
-            "library_desc": "辅助上下文",
-            "commands": "命令",
-            "commands_desc": "工具与技能",
+            "title": "系统路径",
+            "workspace": "WorkSpace",
+            "workspace_desc": "DEFAULT DIRECTORY",
+            "core": "Core",
+            "core_desc": "SOUL, USER, CONTEXT",
+            "library": "Library",
+            "library_desc": "AUXILIARY CONTEXT",
+            "commands": "Commands",
+            "commands_desc": "TOOLS & SKILLS",
             "select": "选择"
         },
         "orchestration": {
@@ -295,7 +295,7 @@
             "open": "打开搜索器"
         },
         "reset_btn": "重置并重新运行设置",
-        "save_btn": "保存配置",
+        "save_btn": "保存",
         "alerts": {
             "ollama_error_title": "本地神经引擎无响应",
             "ollama_error_desc": "请确认 Ollama 已在 {{url}} 上运行，且至少有一个模型已初始化。"

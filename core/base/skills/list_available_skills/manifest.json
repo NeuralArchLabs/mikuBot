@@ -1,6 +1,6 @@
 {
     "name": "list_available_skills",
-    "description": "Lista todas las Neural Skills (herramientas dinámicas) instaladas y habilitadas en el sistema. Úsala para saber qué habilidades extra tienes.",
+    "description": "Lists all installed and enabled Neural Skills (dynamic tools) in the system. Use it to discover your additional capabilities.",
     "parameters": {
         "type": "object",
         "properties": {},

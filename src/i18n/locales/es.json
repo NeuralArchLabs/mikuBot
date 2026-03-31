@@ -238,18 +238,18 @@
             "default": "Predeterminado",
             "save": "Guardar",
             "new_directive": "Nueva Directiva",
-            "save_sync": "Guardar Sincro"
+            "save_sync": "Guardar"
         },
         "pathways": {
             "title": "Rutas del Sistema Neural",
-            "workspace": "Espacio de Trabajo",
-            "workspace_desc": "Directorio Predeterminado",
-            "core": "Núcleo",
-            "core_desc": "ALMA, USUARIO, CONTEXTO",
-            "library": "Biblioteca",
-            "library_desc": "Contexto Auxiliar",
-            "commands": "Comandos",
-            "commands_desc": "Herramientas y Habilidades",
+            "workspace": "WorkSpace",
+            "workspace_desc": "DEFAULT DIRECTORY",
+            "core": "Core",
+            "core_desc": "SOUL, USER, CONTEXT",
+            "library": "Library",
+            "library_desc": "AUXILIARY CONTEXT",
+            "commands": "Commands",
+            "commands_desc": "TOOLS & SKILLS",
             "select": "Seleccionar"
         },
         "orchestration": {
@@ -295,7 +295,7 @@
             "open": "Abrir Buscador"
         },
         "reset_btn": "Reiniciar Configuración",
-        "save_btn": "Guardar Config",
+        "save_btn": "Guardar",
         "alerts": {
             "ollama_error_title": "Motor Neural Local no Responde",
             "ollama_error_desc": "Verifica que Ollama esté activo en {{url}} y que al menos un modelo esté inicializado."

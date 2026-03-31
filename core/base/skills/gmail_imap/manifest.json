@@ -1,16 +1,16 @@
 {
     "name": "gmail_imap",
-    "description": "Acceso neural a correos electrónicos mediante IMAP. Permite listar, leer y buscar mensajes en Gmail y otros proveedores compatibles.",
+    "description": "Neural access to emails via IMAP. Allows listing, reading, and searching messages in Gmail and other compatible providers.",
     "parameters": {
         "type": "object",
         "properties": {
             "email": {
                 "type": "string",
-                "description": "Tu dirección de correo electrónico completa."
+                "description": "Your full email address."
             },
             "app_password": {
                 "type": "string",
-                "description": "Contraseña de aplicación de 16 caracteres (generada en la seguridad de tu cuenta de Google)."
+                "description": "16-character App Password (generated in your Google account security settings)."
             },
             "action": {
                 "type": "string",
@@ -19,16 +19,16 @@
                     "search"
                 ],
                 "default": "list",
-                "description": "Acción a realizar: 'list' para los más recientes o 'search' para buscar por remitente o asunto."
+                "description": "Action to perform: 'list' for the most recent emails or 'search' to find by sender or subject."
             },
             "query": {
                 "type": "string",
-                "description": "Término de búsqueda (ej. 'FROM google' o 'SUBJECT reporte'). Opcional para 'list'."
+                "description": "Search term (e.g., 'FROM google' or 'SUBJECT report'). Optional for 'list'."
             },
             "limit": {
                 "type": "integer",
                 "default": 5,
-                "description": "Cantidad de correos a recuperar."
+                "description": "Number of emails to retrieve."
             }
         },
         "required": [

@@ -1,12 +1,12 @@
 {
     "name": "get_crypto_price",
-    "description": "Obtiene el precio actual de una criptomoneda en tiempo real (USD).",
+    "description": "Gets the current price of a cryptocurrency in real-time (USD).",
     "parameters": {
         "type": "object",
         "properties": {
             "coin_id": {
                 "type": "string",
-                "description": "El ID de la moneda en CoinGecko (ej: bitcoin, ethereum, solana, cardano)."
+                "description": "The CoinGecko ID for the cryptocurrency (e.g., bitcoin, ethereum, solana, cardano)."
             }
         },
         "required": [

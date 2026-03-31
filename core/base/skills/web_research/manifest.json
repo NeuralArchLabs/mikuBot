@@ -1,16 +1,16 @@
 {
     "name": "web_research",
-    "description": "Búsqueda web inteligente que no solo busca snippets, sino que extrae y analiza el contenido real de los sitios más relevantes para evitar información superficial o errónea.",
+    "description": "Intelligent web research tool that not only searches for snippets but also extracts and analyzes the true content of the most relevant sites to avoid superficial or inaccurate information.",
     "parameters": {
         "type": "object",
         "properties": {
             "query": {
                 "type": "string",
-                "description": "El tema o pregunta específica a investigar."
+                "description": "The specific topic or question to investigate."
             },
             "max_sites": {
                 "type": "integer",
-                "description": "Número de sitios a leer y extraer (1-5). Por defecto 3.",
+                "description": "Number of sites to read and extract (1-5). Default is 3.",
                 "default": 3
             }
         },

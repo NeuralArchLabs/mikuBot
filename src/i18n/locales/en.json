@@ -238,18 +238,18 @@
             "default": "Default",
             "save": "Save",
             "new_directive": "New Directive",
-            "save_sync": "Save Sync"
+            "save_sync": "Save"
         },
         "pathways": {
             "title": "Neural System Pathways",
             "workspace": "WorkSpace",
-            "workspace_desc": "Default Directory",
+            "workspace_desc": "DEFAULT DIRECTORY",
             "core": "Core",
             "core_desc": "SOUL, USER, CONTEXT",
             "library": "Library",
-            "library_desc": "Auxiliary Context",
+            "library_desc": "AUXILIARY CONTEXT",
             "commands": "Commands",
-            "commands_desc": "Tools & Skills",
+            "commands_desc": "TOOLS & SKILLS",
             "select": "Select"
         },
         "orchestration": {
@@ -295,7 +295,7 @@
             "open": "Open Searcher"
         },
         "reset_btn": "Reset & Re-run Setup",
-        "save_btn": "Save Config",
+        "save_btn": "Save",
         "alerts": {
             "ollama_error_title": "Local Neural Engine Unresponsive",
             "ollama_error_desc": "Verify Ollama is active on {{url}} and that at least one model is initialized."

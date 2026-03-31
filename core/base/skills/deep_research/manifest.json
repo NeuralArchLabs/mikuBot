@@ -1,12 +1,12 @@
 {
     "name": "deep_research",
-    "description": "Investigación exhaustiva y multi-idioma. Realiza búsquedas cruzadas (Español e Inglés), filtra información irrelevante y extrae el contenido técnico real de múltiples fuentes para reportar datos precisos y actualizados.",
+    "description": "Exhaustive multi-language research tool. Performs cross-searches (Spanish and English), filters irrelevant information, and extracts core technical content from multiple sources to report precise and updated data.",
     "parameters": {
         "type": "object",
         "properties": {
             "topic": {
                 "type": "string",
-                "description": "El tema técnico o complejo a investigar."
+                "description": "The technical or complex topic to investigate."
             },
             "target_language": {
                 "type": "string",
@@ -15,7 +15,7 @@
                     "en",
                     "both"
                 ],
-                "description": "Idioma de búsqueda. 'both' es el recomendado para precisión técnica.",
+                "description": "Search language. 'both' is recommended for technical precision.",
                 "default": "both"
             }
         },
