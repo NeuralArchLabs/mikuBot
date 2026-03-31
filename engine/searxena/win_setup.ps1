@@ -11,9 +11,21 @@ Write-Host "Configurando entorno local en $PY_DIR ...`n" -ForegroundColor Gray
 # Create virtual environment if it doesn't exist
 if (-not (Test-Path $PY_DIR)) {
     Write-Host "[1/3] Creando entorno virtual (venv)..." -ForegroundColor Yellow
-    python -m venv $PY_DIR
+    
+    # Try finding the best python available to bootstrap
+    $PY_BOOTSTRAP = "python"
+    try {
+        & python --version | Out-Null
+    } catch {
+        try {
+            & py --version | Out-Null
+            $PY_BOOTSTRAP = "py"
+        } catch { }
+    }
+
+    & $PY_BOOTSTRAP -m venv $PY_DIR
     if (-not $?) {
-        Write-Host "ERROR: No se pudo crear el venv. Asegurate de tener Python instalado." -ForegroundColor Red
+        Write-Host "ERROR: No se pudo crear el venv. Asegurate de tener Python instalado y accesible (python o py)." -ForegroundColor Red
         exit 1
     }
 } else {

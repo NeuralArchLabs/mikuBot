@@ -164,9 +164,34 @@ const resourcesPath = app.isPackaged ? process.resourcesPath : process.cwd();
 const SEARXENA_DIR = app.isPackaged 
     ? path.join(process.resourcesPath, 'engine', 'searXena')
     : path.join(process.cwd(), 'engine', 'searXena');
-const ENGINE_PYTHON = path.join(SEARXENA_DIR, 'local', 'py3', 'Scripts', 'python.exe');
+
+// Dynamic Resolution: returns the path to the executable to use
+function getEnginePython() {
+    const venvPython = path.join(SEARXENA_DIR, 'local', 'py3', 'Scripts', 'python.exe');
+    if (fs.existsSync(venvPython)) return venvPython;
+
+    // Check for 'py' (Windows Launcher) which is present if 'python' is not in PATH but installed
+    try {
+        const { execSync } = require('child_process');
+        execSync('py --version', { stdio: 'ignore' });
+        return 'py';
+    } catch { }
+
+    // Fallback: system default 'python'
+    return 'python';
+}
+
+// Initial definition for backward compatibility in the rest of the file
+let ENGINE_PYTHON = getEnginePython();
+
+// Helper to refresh ENGINE_PYTHON (useful after installation)
+function refreshEnginePython() {
+    ENGINE_PYTHON = getEnginePython();
+}
 
 console.log('Main Process: Active Workspace Path:', currentWorkspacePath);
+console.log('Main Process: SearXena Dir:', SEARXENA_DIR);
+console.log('Main Process: Initial Python Executable:', ENGINE_PYTHON);
 
 // ── SafePathResolver Initialization ──────────────────────────────────
 function reinitSafePathResolver(workspacePath) {
@@ -1962,7 +1987,9 @@ async function installSearXenaEnv() {
                 return resolve({ ok: false, error: 'No se pudo crear el entorno virtual. Asegúrate de tener Python instalado en el sistema.' });
             }
 
-            console.log('[Main Process] Virtual Env Ready. Upgrading core tools...');
+            // REFRESH Python path now that it might have been created
+            refreshEnginePython();
+            console.log('[Main Process] Virtual Env Ready. Using executor:', ENGINE_PYTHON);
             
             // Step 2: Upgrade core tools (like win_setup.ps1 does)
             const upgradeCmd = `"${ENGINE_PYTHON}" -m pip install -U pip wheel setuptools`;

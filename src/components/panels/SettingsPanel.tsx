@@ -243,14 +243,14 @@ export const SettingsPanel = ({
                                 className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-slate-800/40 hover:bg-cyan-600/20 text-cyan-400 rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-cyan-900/10 transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-transparent hover:border-cyan-500/40 whitespace-nowrap"
                                 title={t('settings.actions.load')}
                             >
-                                <Icon name="download" className="text-sm xl:text-base flex-shrink-0" /> <span className="inline lg:hidden min-[1150px]:inline">{t('settings.actions.load')}</span>
+                                <Icon name="upload" className="text-sm xl:text-base flex-shrink-0" /> <span className="inline lg:hidden min-[1150px]:inline">{t('settings.actions.load')}</span>
                             </button>
                             <button
                                 onClick={onExportConfig}
                                 className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-slate-800/40 hover:bg-slate-700/60 text-slate-300 rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-transparent hover:border-slate-500/40 shadow-lg whitespace-nowrap"
                                 title={t('settings.actions.export')}
                             >
-                                <Icon name="upload" className="text-sm xl:text-base flex-shrink-0" /> <span className="inline lg:hidden min-[1150px]:inline">{t('settings.actions.export')}</span>
+                                <Icon name="download" className="text-sm xl:text-base flex-shrink-0" /> <span className="inline lg:hidden min-[1150px]:inline">{t('settings.actions.export')}</span>
                             </button>
                             <button
                                 onClick={onResetGlobal}
@@ -1289,7 +1289,7 @@ export const SettingsPanel = ({
                                                 }}
                                                 className="py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all flex flex-col items-center justify-center gap-2 border shadow-lg group/btn premium-button premium-emphasis premium-cyan bg-cyan-600/10 text-cyan-400"
                                             >
-                                                <Icon name="archive" className="text-xl group-hover/btn:scale-110 transition-transform" />
+                                                <Icon name="file-download" className="text-xl group-hover/btn:scale-110 transition-transform" />
                                                 <span>{t('settings.backup.export_btn')}</span>
                                             </button>
                                             <button
@@ -1309,7 +1309,7 @@ export const SettingsPanel = ({
                                                 }}
                                                 className="py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all flex flex-col items-center justify-center gap-2 border shadow-lg group/btn premium-button premium-emphasis premium-indigo bg-slate-800 text-slate-300"
                                             >
-                                                <Icon name="cloud-upload-alt" className="text-xl group-hover/btn:scale-110 transition-transform" />
+                                                <Icon name="file-upload" className="text-xl group-hover/btn:scale-110 transition-transform" />
                                                 <span>{t('settings.backup.restore_btn')}</span>
                                             </button>
                                         </div>
