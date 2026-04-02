@@ -161,24 +161,81 @@ const getEffectivePaths = () => {
 const resourcesPath = app.isPackaged ? process.resourcesPath : process.cwd();
 
 // ── Native Engine Configuration (searXena) ───────────────────────────
-const SEARXENA_DIR = app.isPackaged 
+const SEARXENA_DIR = app.isPackaged
     ? path.join(process.resourcesPath, 'engine', 'searXena')
     : path.join(process.cwd(), 'engine', 'searXena');
 
-// Dynamic Resolution: returns the path to the executable to use
-function getEnginePython() {
-    const venvPython = path.join(SEARXENA_DIR, 'local', 'py3', 'Scripts', 'python.exe');
-    if (fs.existsSync(venvPython)) return venvPython;
+// ── Embedded Python Engine (General Python Motor for MikuCentral) ────
+const ENGINE_PYTHON_DIR = app.isPackaged
+    ? path.join(process.resourcesPath, 'engine', 'python')
+    : path.join(process.cwd(), 'engine', 'python');
+const ENGINE_PYTHON_EXE = path.join(ENGINE_PYTHON_DIR, 'python.exe');
 
-    // Check for 'py' (Windows Launcher) which is present if 'python' is not in PATH but installed
+// ── SearXena Venv (created at runtime using embedded Python) ────────
+const SEARXENA_VENV_DIR = path.join(SEARXENA_DIR, '.venv');
+const SEARXENA_VENV_PYTHON = path.join(SEARXENA_VENV_DIR, 'Scripts', 'python.exe');
+
+// Helper to check if a python command is available and works
+function isPythonAvailable(pythonCmd) {
     try {
         const { execSync } = require('child_process');
-        execSync('py --version', { stdio: 'ignore' });
-        return 'py';
-    } catch { }
+        execSync(`"${pythonCmd}" --version`, { stdio: 'ignore', timeout: 5000 });
+        return true;
+    } catch {
+        return false;
+    }
+}
 
-    // Fallback: system default 'python'
-    return 'python';
+// Check if the python path is an embedded Python or system command
+function isEmbeddedPython(pythonPath) {
+    if (!pythonPath) return false;
+    return pythonPath.includes(path.join('engine', 'python')) || pythonPath.includes('ENGINE_PYTHON_DIR');
+}
+
+// Check if the python path is SearXena's venv
+function isSearXenaVenv(pythonPath) {
+    if (!pythonPath) return false;
+    return pythonPath.includes(path.join('searXena', '.venv'));
+}
+
+// Dynamic Resolution: returns the path to the Python executable to use
+// Priority: SearXena Venv → Embedded Python → System Python
+function getEnginePython() {
+    // 1. Check for SearXena venv (if context requires SearXena-specific)
+    if (fs.existsSync(SEARXENA_VENV_PYTHON)) {
+        if (isPythonAvailable(SEARXENA_VENV_PYTHON)) {
+            console.log('[getEnginePython] Using SearXena venv:', SEARXENA_VENV_PYTHON);
+            return SEARXENA_VENV_PYTHON;
+        }
+    }
+
+    // 2. Check for embedded Python (general motor)
+    if (fs.existsSync(ENGINE_PYTHON_EXE)) {
+        if (isPythonAvailable(ENGINE_PYTHON_EXE)) {
+            console.log('[getEnginePython] Using embedded Python:', ENGINE_PYTHON_EXE);
+            return ENGINE_PYTHON_EXE;
+        }
+    }
+
+    // 3. Check for 'py' (Windows Launcher)
+    if (isPythonAvailable('py')) {
+        console.log('[getEnginePython] Using system: py');
+        return 'py';
+    }
+
+    // 4. Fallback: system default 'python'
+    if (isPythonAvailable('python')) {
+        console.log('[getEnginePython] Using system: python');
+        return 'python';
+    }
+
+    // 5. Last resort: try 'python3'
+    if (isPythonAvailable('python3')) {
+        console.log('[getEnginePython] Using system: python3');
+        return 'python3';
+    }
+
+    return null; // No python found
 }
 
 // Initial definition for backward compatibility in the rest of the file
@@ -191,7 +248,8 @@ function refreshEnginePython() {
 
 console.log('Main Process: Active Workspace Path:', currentWorkspacePath);
 console.log('Main Process: SearXena Dir:', SEARXENA_DIR);
-console.log('Main Process: Initial Python Executable:', ENGINE_PYTHON);
+console.log('Main Process: Engine Python Dir:', ENGINE_PYTHON_DIR);
+console.log('Main Process: Initial Python Executable:', ENGINE_PYTHON || 'NOT FOUND');
 
 // ── SafePathResolver Initialization ──────────────────────────────────
 function reinitSafePathResolver(workspacePath) {
@@ -383,12 +441,36 @@ async function startSearXena() {
     const pythonExe = ENGINE_PYTHON;
     const appScript = path.join(SEARXENA_DIR, 'core', 'app.py');
 
-    if (!fs.existsSync(pythonExe)) {
-        console.warn('[searXena] Python environment not found in searXena directory.');
-        return { ok: false, error: 'Engine environment not found' };
+    // Check if Python is available (can be venv path or system command)
+    if (!pythonExe) {
+        console.error('[searXena] No Python executable found. Please install Python 3.8+.');
+        return { ok: false, error: 'No Python found on this system. Please install Python 3.8 or later and ensure it is in your PATH.' };
+    }
+
+    // Check if SearXena venv exists, create if missing
+    if (!fs.existsSync(SEARXENA_VENV_PYTHON)) {
+        console.warn('[searXena] Venv not found, creating...');
+        const setupResult = await installSearXenaEnv();
+        if (!setupResult.ok) {
+            return { ok: false, error: `Failed to create SearXena environment: ${setupResult.error}` };
+        }
+        refreshEnginePython();
+    }
+
+    // Verify Python is actually executable
+    if (!isPythonAvailable(pythonExe)) {
+        console.error(`[searXena] Python command '${pythonExe}' is not executable.`);
+        return { ok: false, error: `Python executable '${pythonExe}' is not working. Please check your Python installation.` };
+    }
+
+    // Verify Python is actually executable
+    if (!isPythonAvailable(pythonExe)) {
+        console.error(`[searXena] Python command '${pythonExe}' is not executable.`);
+        return { ok: false, error: `Python executable '${pythonExe}' is not working. Please check your Python installation.` };
     }
 
     console.log('[Main Process] Starting searXena Engine (Native Core)...');
+    console.log(`[Main Process] Using Python: ${pythonExe}`);
 
     searxenaProcess = spawn(pythonExe, [appScript], {
         cwd: SEARXENA_DIR,
@@ -397,7 +479,8 @@ async function startSearXena() {
         env: {
             ...process.env,
             PORT: "8000",
-            DEBUG: "0"
+            DEBUG: "0",
+            PYTHONPATH: SEARXENA_DIR
         }
     });
 
@@ -776,22 +859,28 @@ const getVoskBundledRoot = () => getVoskModelsRoot();
 
 /**
  * Parallel Dependency Bootstrap (Silent)
- * Installs libraries like Vosk in the background to ensure they are ready 
+ * Installs libraries like Vosk in the background to ensure they are ready
  * without delaying the main search engine setup.
  */
 async function bootstrapHeavyDependencies() {
-    if (!fs.existsSync(ENGINE_PYTHON)) {
-        console.warn('[Bootstrap] Python engine not ready yet. Skipping parallel install.');
+    // Always use embedded Python for bootstrap, not system Python
+    const pythonForBootstrap = ENGINE_PYTHON_EXE;
+
+    if (!pythonForBootstrap || !fs.existsSync(pythonForBootstrap)) {
+        console.warn('[Bootstrap] Embedded Python not found yet. Skipping Vosk bootstrap.');
+        console.warn('[Bootstrap] Embedded Python expected at:', pythonForBootstrap);
         return;
     }
 
     console.log('[Bootstrap] Checking critical heavy dependencies (Vosk)...');
-    const checkVoskCmd = `"${ENGINE_PYTHON}" -c "import vosk"`;
-    
+    console.log('[Bootstrap] Using Python:', pythonForBootstrap);
+
+    const checkVoskCmd = `"${pythonForBootstrap}" -c "import vosk"`;
+
     exec(checkVoskCmd, (err) => {
         if (err) {
             console.log('[Bootstrap] Vosk missing. Starting parallel installation...');
-            const installVoskCmd = `"${ENGINE_PYTHON}" -m pip install vosk --quiet`;
+            const installVoskCmd = `"${pythonForBootstrap}" -m pip install vosk --quiet`;
             exec(installVoskCmd, (vErr) => {
                 if (vErr) console.error('[Bootstrap] Failed to install Vosk automatically:', vErr.message);
                 else console.log('[Bootstrap] Vosk successfully installed in parallel.');
@@ -805,6 +894,18 @@ async function bootstrapHeavyDependencies() {
 ipcMain.handle('voice:status', async () => {
     try {
         const { exec } = require('child_process');
+
+        // Check if Python is available first
+        if (!ENGINE_PYTHON) {
+            return { ok: true, online: false, error: 'No Python found', latencyMs: 0 };
+        }
+        if (isEmbeddedPython(ENGINE_PYTHON) && !fs.existsSync(ENGINE_PYTHON)) {
+            return { ok: true, online: false, error: 'Python environment not found', latencyMs: 0 };
+        }
+        if (!isPythonAvailable(ENGINE_PYTHON)) {
+            return { ok: true, online: false, error: 'Python is not working', latencyMs: 0 };
+        }
+
         return new Promise((resolve) => {
             // Check if vosk can be imported in the current engine python
             const checkCmd = `"${ENGINE_PYTHON}" -c "import vosk; print('OK')"`;
@@ -915,7 +1016,12 @@ ipcMain.handle('voice:start-recognition', async (event, { modelName }) => {
     const pythonExe = ENGINE_PYTHON;
     const engineScript = path.join(resourcesPath, 'engine', 'voice_engine.py');
 
-    if (!fs.existsSync(pythonExe)) return { ok: false, error: 'Engine environment not found (searXena).' };
+    // Check Python availability
+    if (!pythonExe) return { ok: false, error: 'No Python found. Please install Python 3.8+.' };
+    if (isEmbeddedPython(pythonExe) && !fs.existsSync(pythonExe)) {
+        return { ok: false, error: 'Python environment not found (searXena). Please install the searXena environment.' };
+    }
+    if (!isPythonAvailable(pythonExe)) return { ok: false, error: 'Python is not working properly.' };
     if (!fs.existsSync(engineScript)) return { ok: false, error: 'Voice engine script missing.' };
 
     try {
@@ -999,7 +1105,12 @@ ipcMain.handle('telegram:process-voice', async (event, fileId) => {
     const pythonExe = ENGINE_PYTHON;
     const engineScript = path.join(resourcesPath, 'engine', 'voice_engine.py');
 
-    if (!fs.existsSync(pythonExe)) return { ok: false, error: 'Engine environment not found (searXena).' };
+    // Check Python availability
+    if (!pythonExe) return { ok: false, error: 'No Python found. Please install Python 3.8+.' };
+    if (isEmbeddedPython(pythonExe) && !fs.existsSync(pythonExe)) {
+        return { ok: false, error: 'Python environment not found (searXena). Please install the searXena environment.' };
+    }
+    if (!isPythonAvailable(pythonExe)) return { ok: false, error: 'Python is not working properly.' };
     if (!fs.existsSync(engineScript)) return { ok: false, error: 'Voice engine script missing.' };
 
     let modelPath = path.join(getVoskModelsRoot(), voskModelName);
@@ -1610,6 +1721,13 @@ ipcMain.handle('execute-skill', async (event, { toolsPath, skillName, args }) =>
             const { execFile } = require('child_process');
             const pythonExe = ENGINE_PYTHON;
 
+            // Check Python availability
+            if (!pythonExe) return { ok: false, error: 'No Python found. Please install Python 3.8+.' };
+            if (isEmbeddedPython(pythonExe) && !fs.existsSync(pythonExe)) {
+                return { ok: false, error: 'Python environment not found (searXena). Please install the searXena environment.' };
+            }
+            if (!isPythonAvailable(pythonExe)) return { ok: false, error: 'Python is not working properly.' };
+
             // Security: Use execFile to avoid shell injection
             return new Promise((resolve) => {
                 execFile(pythonExe, [entryFile, JSON.stringify(args)], (error, stdout, stderr) => {
@@ -1967,52 +2085,104 @@ ipcMain.handle('searxena:install-env', async () => {
 async function installSearXenaEnv() {
     const { exec } = require('child_process');
     const requirementsFile = path.join(SEARXENA_DIR, 'requirements.txt');
-    const venvDir = path.join(SEARXENA_DIR, 'local', 'py3');
+    const venvDir = SEARXENA_VENV_DIR;
+    const venvPython = SEARXENA_VENV_PYTHON;
 
     if (!fs.existsSync(requirementsFile)) {
         return { ok: false, error: 'No se encontró el archivo requirements.txt' };
     }
 
     return new Promise((resolve) => {
-        console.log('[Main Process] Initializing searXena Environment Setup (replicating win_setup.ps1)...');
-        
-        // Step 1: Create VENV if missing
-        const createVenvCmd = fs.existsSync(ENGINE_PYTHON) 
-            ? 'echo Venv already exists' 
-            : `python -m venv "${venvDir}"`;
+        console.log('[Main Process] Initializing SearXena Environment Setup...');
 
-        exec(createVenvCmd, (err) => {
+        // Step 0: Find a working Python to bootstrap the venv
+        let bootstrapPython = null;
+
+        // Priority: Engine embedded Python → System Python
+        if (fs.existsSync(ENGINE_PYTHON_EXE)) {
+            bootstrapPython = ENGINE_PYTHON_EXE;
+            console.log('[Main Process] Using embedded Python as bootstrap:', bootstrapPython);
+        } else {
+            if (isPythonAvailable('py')) bootstrapPython = 'py';
+            else if (isPythonAvailable('python')) bootstrapPython = 'python';
+            else if (isPythonAvailable('python3')) bootstrapPython = 'python3';
+        }
+
+        if (!bootstrapPython) {
+            return resolve({
+                ok: false,
+                error: 'No Python found. Please ensure the embedded Python is available in engine/python/ or install Python 3.8+ on your system.'
+            });
+        }
+
+        console.log(`[Main Process] Bootstrap Python: ${bootstrapPython}`);
+
+        // Step 1: Create/recreate venv using embedded Python with virtualenv
+        console.log('[Main Process] Creating SearXena virtual environment...');
+
+        // Remove existing venv if present
+        if (fs.existsSync(venvDir)) {
+            console.log('[Main Process] Removing existing venv...');
+            fs.rmSync(venvDir, { recursive: true, force: true });
+        }
+
+        // Use virtualenv instead of venv module (which is not available in embedded Python)
+        const createVenvCmd = `"${bootstrapPython}" -m virtualenv "${venvDir}"`;
+
+        exec(createVenvCmd, { cwd: SEARXENA_DIR }, (err, stdout, stderr) => {
             if (err) {
-                console.error('[searXena Venv Error] Failed to create venv. Make sure Python is in PATH.', err.message);
-                return resolve({ ok: false, error: 'No se pudo crear el entorno virtual. Asegúrate de tener Python instalado en el sistema.' });
+                console.error('[SearXena Venv Error]', stderr || err.message);
+                return resolve({
+                    ok: false,
+                    error: `Failed to create virtual environment: ${stderr || err.message}. Python: ${bootstrapPython}`
+                });
             }
 
-            // REFRESH Python path now that it might have been created
-            refreshEnginePython();
-            console.log('[Main Process] Virtual Env Ready. Using executor:', ENGINE_PYTHON);
-            
-            // Step 2: Upgrade core tools (like win_setup.ps1 does)
-            const upgradeCmd = `"${ENGINE_PYTHON}" -m pip install -U pip wheel setuptools`;
-            exec(upgradeCmd, (err) => {
-                if (err) console.warn('[Main Process] Non-critical error upgrading pip tools.');
+            console.log('[Main Process] Virtual environment created successfully at:', venvDir);
 
-                console.log('[Main Process] Installing dependencies from requirements.txt...');
-                
+            // Refresh Python path to use the venv
+            refreshEnginePython();
+
+            if (!ENGINE_PYTHON || !fs.existsSync(ENGINE_PYTHON)) {
+                return resolve({
+                    ok: false,
+                    error: 'Failed to locate Python executable after venv creation.'
+                });
+            }
+
+            console.log('[Main Process] Using venv Python:', ENGINE_PYTHON);
+
+            // Step 2: Upgrade pip
+            console.log('[Main Process] Upgrading pip...');
+            exec(`"${ENGINE_PYTHON}" -m pip install --upgrade pip`, { cwd: SEARXENA_DIR }, (err) => {
+                if (err) {
+                    console.warn('[Main Process] Warning upgrading pip');
+                }
+
                 // Step 3: Install requirements
-                const installCmd = `"${ENGINE_PYTHON}" -m pip install -r "${requirementsFile}"`;
-                exec(installCmd, (err, stdout, stderr) => {
+                console.log('[Main Process] Installing dependencies from requirements.txt...');
+                exec(`"${ENGINE_PYTHON}" -m pip install -r "${requirementsFile}"`, { cwd: SEARXENA_DIR }, (err, stdout, stderr) => {
                     if (err) {
-                        console.error('[searXena Install Error]', stderr);
-                        resolve({ ok: false, error: stderr || err.message });
-                    } else {
-                        console.log('[searXena Install Success] Dependencies ready. Installing Vosk...');
-                        // Manually install vosk into this shared environment
-                        const voskCmd = `"${ENGINE_PYTHON}" -m pip install vosk`;
-                        exec(voskCmd, (vErr) => {
-                            if (vErr) console.warn('[Main Process] Non-critical error installing vosk automatically:', vErr.message);
-                            resolve({ ok: true, output: stdout });
+                        console.error('[SearXena Install Error]', stderr);
+                        return resolve({
+                            ok: false,
+                            error: `Failed to install dependencies: ${stderr || err.message}`
                         });
                     }
+
+                    console.log('[SearXena Install Success] Dependencies ready.');
+
+                    // Step 4: Install Vosk
+                    console.log('[Main Process] Installing Vosk for voice recognition...');
+                    exec(`"${ENGINE_PYTHON}" -m pip install vosk`, { cwd: SEARXENA_DIR }, (vErr) => {
+                        if (vErr) {
+                            console.warn('[Main Process] Warning: Vosk installation failed:', vErr.message);
+                        } else {
+                            console.log('[Main Process] Vosk installed successfully.');
+                        }
+
+                        resolve({ ok: true, message: 'SearXena environment setup completed successfully.' });
+                    });
                 });
             });
         });
@@ -2131,10 +2301,34 @@ ipcMain.handle('searxena:status', async () => {
         isRunning = await checkPort8000();
     }
     const engineSourceExists = fs.existsSync(path.join(SEARXENA_DIR, 'core', 'app.py'));
+
+    // Check Python availability
+    const embeddedPythonExists = fs.existsSync(ENGINE_PYTHON_EXE);
+    const searxenaVenvExists = fs.existsSync(SEARXENA_VENV_PYTHON);
+
+    // Determine if Python is ready (either embedded or venv)
+    let envReady = false;
+    if (ENGINE_PYTHON) {
+        if (isSearXenaVenv(ENGINE_PYTHON)) {
+            // Using SearXena venv - check if it exists
+            envReady = searxenaVenvExists;
+        } else if (isEmbeddedPython(ENGINE_PYTHON)) {
+            // Using embedded Python - check if it exists
+            envReady = embeddedPythonExists;
+        } else {
+            // System Python - check if it works
+            envReady = isPythonAvailable(ENGINE_PYTHON);
+        }
+    }
+
     return {
         installed: engineSourceExists,
-        envReady: fs.existsSync(ENGINE_PYTHON),
-        running: isRunning
+        embeddedPython: embeddedPythonExists,
+        venvExists: searxenaVenvExists,
+        envReady,
+        running: isRunning,
+        pythonPath: ENGINE_PYTHON,
+        searxenaVenvPath: searxenaVenvExists ? SEARXENA_VENV_PYTHON : null
     };
 });
 

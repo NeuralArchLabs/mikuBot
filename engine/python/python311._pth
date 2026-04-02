@@ -1,0 +1,6 @@
+python311.zip
+.
+Lib/site-packages
+
+# Enable site module for venv and pip support
+import site
