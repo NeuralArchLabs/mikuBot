@@ -21,6 +21,8 @@ sessions/
 scheduler-tasks.json
 scheduler-logs.json
 proyectosMap/
+
+# Editor
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -42,6 +44,26 @@ release/
 *.pyc
 *.pyo
 
-# Engines
+# ── Embedded Python Engine ────────────────────────────────────────────
+# Keep: engine/python/, engine/Lib/, engine/Scripts/, engine/models/
+# Ignore: nothing - all embedded files are needed
+
+# ── SearXena Engine ───────────────────────────────────────────────────
+# SearXena is an external project embedded in MikuCentral
+# We track its source code but ignore runtime-generated files
+
+# Runtime venv (created at runtime using embedded Python)
+engine/SEARXENA/.venv/
+
+# Local configuration and cache
+engine/SEARXENA/local/
+engine/SEARXENA/.miku/
+
+# SearXena's own git (submodule)
+engine/SEARXENA/.git/
+
+# Backward compatibility (case-insensitive systems)
+engine/searxena/.venv/
 engine/searxena/local/
 engine/searxena/.miku/
+engine/searxena/.git/
