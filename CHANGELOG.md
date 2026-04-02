@@ -1,4 +1,20 @@
 # Changelog
+ 
+## [2.1.5] - 2026-04-02
+### Added
+- **Full UI Localization**: Refactored `TitleBar` and `AboutDialog` to use `i18next`, ensuring 100% language parity across the core interface in English, Spanish, and Chinese.
+- **Dynamic Identity Integration**: Integrated configured `userName` and `assistantAlias` directly into chat role labels, replacing static translations with dynamic, personality-driven identity.
+- **Iconography Consistency**: Migrated manual unicode symbols and text-based markers to the unified `Icon` component across the `ChatArea` and `AgentStatusPanel`.
+
+### Changed
+- **"Zero-Border" Aesthetic**: Implemented a minimalist, high-density design for chat bubbles and input controls. Borders are now hidden by default (`border-transparent`) and only reveal on `hover` to create a reactive, clutter-free experience.
+- **Asymmetric Dialogue Bubbles**: Refined chat bubble geometry with sharp external corners to simulate a character dialogue tail, improving visual storytelling.
+- **Compact Control Layout**: Optimized the spatial footprint and alignment of mode toggle buttons (Auto, Safe, Debug) with a standardized height (`h-6`) and robust centering logic.
+- **Input Area Refinement**: Restored a subtle persistent border specifically for the main textarea to provide a clear interaction target while maintaining the overall minimalist look.
+
+### Fixed
+- **Internationalization Gaps**: Resolved missing translation keys in the `About` and `TitleBar` components and standardized the `close` action across all locales.
+
 
 ## [2.1.4] - 2026-03-31
 ### Added
