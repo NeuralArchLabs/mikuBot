@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AgentStatus, AgentPhase } from '../../types';
 import { useTranslation } from 'react-i18next';
+import { Icon } from '../common/Common';
 
 interface AgentStatusPanelProps {
     status: AgentStatus;
@@ -124,18 +125,18 @@ export const AgentStatusPanel = React.memo(({
                     {canReprompt && (
                         <button
                             onClick={onReprompt}
-                            className="px-2 py-0.5 bg-amber-700 hover:bg-amber-600 text-white rounded text-[10px] transition-colors"
+                            className="flex items-center justify-center gap-1.5 px-2 h-5 bg-amber-700 hover:bg-amber-600 text-white rounded text-[10px] transition-colors font-bold uppercase tracking-wider leading-none"
                             title={t('status.actions.reprompt_title')}
                         >
-                            ↻ {t('status.actions.reprompt')}
+                            <Icon name="history" className="text-[8px]" /> {t('status.actions.reprompt')}
                         </button>
                     )}
                     {isActive && (
                         <button
                             onClick={onAbort}
-                            className="px-2 py-0.5 bg-red-700 hover:bg-red-600 text-white rounded text-[10px] transition-colors"
+                            className="flex items-center justify-center gap-1.5 px-2 h-5 bg-red-700 hover:bg-red-600 text-white rounded text-[10px] transition-colors font-bold uppercase tracking-wider leading-none"
                         >
-                            ■ {t('status.actions.abort')}
+                            <Icon name="stop" className="text-[8px]" /> {t('status.actions.abort')}
                         </button>
                     )}
                 </div>

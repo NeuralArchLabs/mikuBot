@@ -472,9 +472,9 @@ export const ChatArea = ({
                                         <MarkdownRenderer content={msg.text} />
                                     </div>
                                 ) : (
-                                    <div className={`relative w-auto max-w-[98%] sm:max-w-[90%] lg:max-w-[80%] rounded-2xl p-5 sm:px-8 sm:py-6 shadow-xl transition-[opacity,transform,background-color] duration-300 break-words message-pop-in transform-gpu ${msg.role === 'user'
-                                        ? 'bg-blue-600/20 border border-blue-500/30 text-blue-50'
-                                        : 'bg-slate-800 border border-slate-700 text-slate-200'
+                                    <div className={`relative w-auto max-w-[98%] sm:max-w-[90%] lg:max-w-[80%] p-5 sm:px-8 sm:py-6 shadow-xl transition-all duration-300 break-words message-pop-in transform-gpu rounded-2xl ${msg.role === 'user'
+                                        ? 'bg-blue-600/20 border border-transparent group-hover:border-blue-500/30 text-blue-50 rounded-br-none'
+                                        : 'bg-slate-800 border border-transparent group-hover:border-slate-700 text-slate-200 rounded-bl-none'
                                         }`}>
 
                                         {/* --- Action Bar --- */}
@@ -634,7 +634,7 @@ export const ChatArea = ({
                 <div className="max-w-5xl mx-auto flex items-center gap-2 mb-2 flex-wrap">
                     <button
                         onClick={() => onAgentModeChange(agentMode === 'chat' ? 'agent' : 'chat')}
-                        className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-200 bg-slate-800/50 border-slate-700/50 text-slate-500 hover:text-slate-300 hover:border-slate-600 active:scale-95"
+                        className="flex items-center justify-center gap-1.5 px-2 h-6 min-w-[70px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-200 bg-slate-800/50 border-transparent hover:text-slate-300 hover:border-slate-600 active:scale-95 text-slate-500"
                         title={t('chat.actions.toggle_mode')}
                     >
                         <Icon name="sliders-h" />
@@ -643,7 +643,7 @@ export const ChatArea = ({
                     <select
                         value={agentMode}
                         onChange={(e) => onAgentModeChange(e.target.value as AgentMode)}
-                        className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-slate-300 font-mono focus:ring-1 focus:ring-blue-500 outline-none"
+                        className="bg-slate-800 border border-transparent hover:border-slate-700 rounded px-2 py-1 text-xs text-slate-300 font-mono focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
                         title={t('chat.actions.mode_selector')}
                     >
                         <option value="chat">💬 {t('chat.modes.chat')}</option>
@@ -658,9 +658,9 @@ export const ChatArea = ({
                             {/* Approval Mode Toggle */}
                             <button
                                 onClick={() => onApprovalModeChange(approvalMode === 'auto' ? 'manual' : 'auto')}
-                                className={`flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-200 ${approvalMode === 'manual'
-                                    ? 'bg-blue-500/15 border-blue-500/30 text-blue-400 shadow-sm shadow-blue-500/10'
-                                    : 'bg-amber-500/15 border-amber-500/30 text-amber-400 shadow-sm shadow-amber-500/10'
+                                className={`flex items-center justify-center gap-1.5 px-2 h-6 min-w-[75px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-200 ${approvalMode === 'manual'
+                                    ? 'bg-blue-500/15 border-transparent hover:border-blue-500/30 text-blue-400 shadow-sm shadow-blue-500/10'
+                                    : 'bg-amber-500/15 border-transparent hover:border-amber-500/30 text-amber-400 shadow-sm shadow-amber-500/10'
                                     }`}
                                 title={approvalMode === 'manual'
                                     ? t('chat.actions.manual_approval_desc')
@@ -674,9 +674,9 @@ export const ChatArea = ({
                             {/* Safe Mode Toggle */}
                             <button
                                 onClick={() => onSafeModeChange(!safeMode)}
-                                className={`flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-200 ${safeMode
-                                    ? 'bg-blue-500/15 border-blue-500/30 text-blue-400 shadow-sm shadow-blue-500/10'
-                                    : 'bg-amber-500/15 border-amber-500/30 text-amber-400 shadow-sm shadow-amber-500/10'
+                                className={`flex items-center justify-center gap-1.5 px-2 h-6 min-w-[75px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-200 ${safeMode
+                                    ? 'bg-blue-500/15 border-transparent hover:border-blue-500/30 text-blue-400 shadow-sm shadow-blue-500/10'
+                                    : 'bg-amber-500/15 border-transparent hover:border-amber-500/30 text-amber-400 shadow-sm shadow-amber-500/10'
                                     }`}
                                 title={safeMode
                                     ? t('chat.actions.safe_mode_on_desc')
@@ -699,9 +699,9 @@ export const ChatArea = ({
                     <div className="ml-auto">
                         <button
                             onClick={() => onDebugModeChange(!debugMode)}
-                            className={`flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-200 ${debugMode
-                                ? 'bg-purple-500/15 border-purple-500/30 text-purple-400 shadow-sm shadow-purple-500/10'
-                                : 'bg-slate-800/50 border-slate-700/50 text-slate-500 hover:text-slate-400 hover:border-slate-600'
+                            className={`flex items-center justify-center gap-1.5 px-2 h-6 min-w-[75px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-200 ${debugMode
+                                ? 'bg-purple-500/15 border-transparent hover:border-purple-500/30 text-purple-400 shadow-sm shadow-purple-500/10'
+                                : 'bg-slate-800/50 border-transparent hover:text-slate-400 hover:border-slate-600 text-slate-500'
                                 }`}
                             title={debugMode ? t('chat.actions.disable_debug') : t('chat.actions.enable_debug')}
                         >
@@ -748,7 +748,7 @@ export const ChatArea = ({
                             />
                             <button
                                 onClick={() => fileInputRef.current?.click()}
-                                className="h-[50px] w-[50px] bg-slate-800/40 border border-slate-700/50 text-slate-400 hover:text-slate-200 hover:bg-slate-700/60 rounded-xl flex items-center justify-center transition-all duration-300 shadow-lg shadow-black/20"
+                                className="h-[50px] w-[50px] bg-slate-800/40 border border-transparent hover:text-slate-200 hover:bg-slate-700/60 hover:border-slate-700/50 rounded-xl flex items-center justify-center transition-all duration-300 shadow-lg shadow-black/20 text-slate-400"
                                 title={t('chat.actions.attach')}
                             >
                                 <Icon name="plus" className="text-lg" />
