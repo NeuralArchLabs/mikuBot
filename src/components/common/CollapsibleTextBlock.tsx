@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { MarkdownRenderer, Icon } from './Common';
+import { useTranslation } from 'react-i18next';
 
 interface CollapsibleTextBlockProps {
     content: string;
@@ -83,6 +84,7 @@ const StreamingRenderer: React.FC<ContentRendererProps> = ({ content, onHeightCh
 // ── Main Component ──────────────────────────────────────────────────
 
 export const CollapsibleTextBlock: React.FC<CollapsibleTextBlockProps> = ({ content, forceCollapse, isThought }) => {
+    const { t } = useTranslation();
     const [isCollapsed, setIsCollapsed] = useState(forceCollapse !== undefined ? forceCollapse : (isThought || false));
     const hasInteractedRef = React.useRef(false);
 
@@ -143,7 +145,7 @@ export const CollapsibleTextBlock: React.FC<CollapsibleTextBlockProps> = ({ cont
                 >
                     <div className="flex-shrink-0 flex items-center gap-2">
                         <Icon name="brain" className={`text-[11px] ${isThought ? 'text-blue-400' : 'text-slate-500'}`} />
-                        <span className="text-[9px] uppercase tracking-[0.2em] font-black text-blue-500/70">Razonamiento</span>
+                        <span className="text-[9px] uppercase tracking-[0.2em] font-black text-blue-500/70">{t('chat.labels.reasoning')}</span>
                     </div>
                     <div className="w-px h-3 bg-white/10" />
                     <span className="truncate opacity-50 group-hover/inner:opacity-100 font-mono tracking-tight transition-opacity flex-1">
@@ -159,13 +161,13 @@ export const CollapsibleTextBlock: React.FC<CollapsibleTextBlockProps> = ({ cont
                     <div className="flex items-center justify-between mb-2 px-1">
                         <div className="flex items-center gap-2">
                             <Icon name="brain" className="text-[10px] text-blue-400 animate-pulse" />
-                            <span className="text-[9px] uppercase tracking-[0.25em] font-black text-blue-400/80">Active Reasoning</span>
+                            <span className="text-[9px] uppercase tracking-[0.25em] font-black text-blue-400/80">{t('chat.labels.active_reasoning')}</span>
                         </div>
                         <button
                             onClick={handleToggle}
                             className="text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-white transition-colors flex items-center gap-1.5 focus:outline-none"
                         >
-                            Hide <Icon name="chevron-up" className="text-[8px]" />
+                            {t('chat.actions.hide')} <Icon name="chevron-up" className="text-[8px]" />
                         </button>
                     </div>
                     <div className={`text-[13px] sm:text-[14px] leading-relaxed text-slate-300 rounded-2xl p-4 overflow-hidden transition-[background-color,transform] duration-500 ${isThought ? 'bg-blue-500/[0.03] border border-blue-500/10 shadow-[inner_0_0_20px_rgba(59,130,246,0.01)]' : 'bg-white/[0.01] border border-white/5'}`}>

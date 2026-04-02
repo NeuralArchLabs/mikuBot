@@ -74,7 +74,7 @@ def create_pool(**args: Any) -> Union[urllib3.PoolManager, Any]:
 
 DEFAULT_HEADERS = urllib3.util.make_headers(accept_encoding=True)  # type: ignore[no-untyped-call]
 USER_AGENT = (
-    "O-ZEN/2.0.0 (+https://github.com/martinezpalomera92/searXena)"
+    "O-ZEN/2.0.0 (+https://github.com/neuralarchlabs/searXena)"
 )
 DEFAULT_HEADERS["User-Agent"] = USER_AGENT
 

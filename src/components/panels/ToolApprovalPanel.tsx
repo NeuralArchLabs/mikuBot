@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { PendingToolApproval } from '../../types';
 import { Icon } from '../common/Common';
+import { useTranslation } from 'react-i18next';
 
 interface ToolApprovalPanelProps {
     pending: PendingToolApproval;
@@ -13,6 +14,7 @@ export const ToolApprovalPanel = React.memo(({
     onApprove: onApproveProp,
     onReject: onRejectProp,
 }: ToolApprovalPanelProps) => {
+    const { t } = useTranslation();
     const [status, setStatus] = useState<'waiting' | 'approved' | 'rejected'>('waiting');
 
     React.useEffect(() => {
@@ -59,9 +61,9 @@ export const ToolApprovalPanel = React.memo(({
                         <Icon name="check" />
                     </div>
                 </div>
-                <div className="text-sm font-mono tracking-[0.3em] uppercase animate-pulse">System Synchronized</div>
+                <div className="text-sm font-mono tracking-[0.3em] uppercase animate-pulse">{t('chat.approval.sync_success')}</div>
                 <div className="text-[10px] text-emerald-500/40 mt-3 font-mono tracking-widest uppercase">
-                    Executing: {pending.toolCall.function.name}
+                    {t('chat.approval.executing')} {pending.toolCall.function.name}
                 </div>
             </div>
         );
@@ -71,7 +73,7 @@ export const ToolApprovalPanel = React.memo(({
         return (
             <div className="approval-panel-glass p-6 flex flex-col items-center justify-center text-red-400">
                 <div className="text-3xl mb-2"><Icon name="ban" /></div>
-                <div className="text-sm font-mono tracking-widest uppercase">Access Denied</div>
+                <div className="text-sm font-mono tracking-widest uppercase">{t('chat.approval.denied')}</div>
             </div>
         );
     }
@@ -97,7 +99,7 @@ export const ToolApprovalPanel = React.memo(({
                 <div className="px-5 py-2 bg-red-900/30 border-b border-red-500/30 flex items-center gap-2">
                     <Icon name="exclamation-triangle" className="text-red-400 text-sm" />
                     <span className="text-[10px] text-red-300 font-bold uppercase tracking-widest">
-                        ⚠ ELEVATED RISK — Console Execution
+                        ⚠ {t('chat.approval.elevated_risk')}
                     </span>
                 </div>
             )}
@@ -107,7 +109,7 @@ export const ToolApprovalPanel = React.memo(({
                 <div className="px-5 py-2 bg-amber-900/20 border-b border-amber-500/20 flex items-center gap-2">
                     <Icon name="exclamation-circle" className="text-amber-400 text-sm" />
                     <span className="text-[10px] text-amber-300 font-bold uppercase tracking-widest">
-                        Modifying {toolArgs.source?.toUpperCase()} files — not workSpace
+                        {t('chat.approval.modifying_core', { source: toolArgs.source?.toUpperCase() })}
                     </span>
                 </div>
             )}
@@ -124,7 +126,7 @@ export const ToolApprovalPanel = React.memo(({
                     <div>
                         <div className={`text-[10px] uppercase tracking-widest font-bold ${isConsoleCommand ? 'text-red-500/80' : 'text-amber-500/80'
                             }`}>
-                            {isConsoleCommand ? 'Console Access' : 'Security Check'}
+                            {isConsoleCommand ? t('chat.approval.console_access') : t('chat.approval.security_check')}
                         </div>
                         <div className="text-sm text-slate-200 font-bold tracking-wide">
                             {toolName}
@@ -139,7 +141,7 @@ export const ToolApprovalPanel = React.memo(({
             {/* Console-specific command preview */}
             {isConsoleCommand && toolArgs.command && (
                 <div className="px-5 py-2 bg-black/40 border-b border-red-500/10">
-                    <div className="text-[10px] text-red-400/70 uppercase tracking-wide mb-1">Command Preview:</div>
+                    <div className="text-[10px] text-red-400/70 uppercase tracking-wide mb-1">{t('chat.approval.cmd_preview')}</div>
                     <code className="text-xs text-red-300 font-mono">
                         $ {toolArgs.command} {toolArgs.args || ''}
                     </code>
@@ -148,7 +150,7 @@ export const ToolApprovalPanel = React.memo(({
 
             {/* Content */}
             <div className="p-4 bg-slate-900/20">
-                <div className="text-[10px] text-slate-400 mb-2 uppercase tracking-wide opacity-70">Parameters Requested:</div>
+                <div className="text-[10px] text-slate-400 mb-2 uppercase tracking-wide opacity-70">{t('chat.approval.params_requested')}</div>
                 <pre className="text-[11px] text-indigo-300/90 font-mono bg-black/40 rounded-lg p-3 border border-indigo-500/10 custom-scrollbar max-h-40 overflow-y-auto whitespace-pre-wrap break-all shadow-inner">
                     {displayArgs}
                 </pre>
@@ -160,7 +162,7 @@ export const ToolApprovalPanel = React.memo(({
                     onClick={handleReject}
                     className="approval-btn px-4 py-2 rounded-lg border border-red-500/20 text-red-400 hover:bg-red-500/10 text-xs font-bold uppercase tracking-wider flex items-center gap-2"
                 >
-                    <Icon name="times" /> Deny
+                    <Icon name="times" /> {t('chat.approval.deny')}
                 </button>
                 <button
                     onClick={handleApprove}
@@ -169,7 +171,7 @@ export const ToolApprovalPanel = React.memo(({
                         : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/20 border-emerald-500/50'
                         }`}
                 >
-                    <Icon name="check" /> {isConsoleCommand ? 'Authorize Console' : 'Authorize Execution'}
+                    <Icon name="check" /> {isConsoleCommand ? t('chat.approval.authorize_console') : t('chat.approval.authorize_exec')}
                 </button>
             </div>
 

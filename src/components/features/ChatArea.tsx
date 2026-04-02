@@ -38,6 +38,8 @@ interface ChatAreaProps {
     onWakeUpAll: () => void;
     askAlert: (message: string, position?: 'left' | 'right' | 'center') => Promise<void>;
     voskModelPath?: string;
+    userName?: string;
+    assistantAlias?: string;
 }
 
 export const ChatArea = ({
@@ -68,7 +70,9 @@ export const ChatArea = ({
     onRequestPermission,
     onWakeUpAll,
     askAlert,
-    voskModelPath
+    voskModelPath,
+    userName,
+    assistantAlias
 }: ChatAreaProps) => {
     const { t } = useTranslation();
     const inputRef = React.useRef<HTMLTextAreaElement>(null);
@@ -294,9 +298,9 @@ export const ChatArea = ({
         if (!displayHistory) return;
 
         const text = displayHistory.map((m: any) => {
-            let content = `[${m.role.toUpperCase()}]\n${m.content || ''}`;
-            if (m.tool_calls) content += `\n[TOOL CALLS]\n${JSON.stringify(m.tool_calls, null, 2)}`;
-            if (m.tool_call_id) content += `\n[TOOL CALL ID]: ${m.tool_call_id}`;
+            let content = `[${t(`chat.labels.role_${m.role}`).toUpperCase()}]\n${m.content || ''}`;
+            if (m.tool_calls) content += `\n[${t('chat.labels.tool_calls').toUpperCase()}]\n${JSON.stringify(m.tool_calls, null, 2)}`;
+            if (m.tool_call_id) content += `\n[${t('chat.labels.tool_call_id').toUpperCase()}]: ${m.tool_call_id}`;
             return content;
         }).join('\n\n' + '='.repeat(60) + '\n\n');
 
@@ -396,18 +400,18 @@ export const ChatArea = ({
                                                 m.role === 'assistant' ? 'brain' :
                                                     m.role === 'tool' ? 'cog' : 'user'
                                         } />
-                                        [{m.role}]
+                                        [{t(`chat.labels.role_${m.role}`)}]
                                         {m.timestamp && (
                                             <span className="ml-auto opacity-30 font-normal text-[9px] tabular-nums">
-                                                {new Date(m.timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+                                                {new Date(m.timestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
                                             </span>
                                         )}
                                     </div>
                                     <div className="text-slate-400 leading-relaxed whitespace-pre-wrap break-all border-l-2 border-white/10 pl-4">
-                                        {m.content || '[Empty Body]'}
+                                        {m.content || t('chat.labels.empty_body')}
                                         {m.tool_calls && (
                                             <div className="mt-2 p-2 bg-blue-500/10 rounded border border-blue-500/20 text-blue-300">
-                                                <strong>Tool Calls:</strong> {JSON.stringify(m.tool_calls, null, 2)}
+                                                <strong>{t('chat.labels.tool_calls')}:</strong> {JSON.stringify(m.tool_calls, null, 2)}
                                             </div>
                                         )}
                                     </div>
@@ -507,18 +511,18 @@ export const ChatArea = ({
                                                 ) : (
                                                     <img src="./mikuBotICON.png" alt="Miku Core Icon" className="w-3 h-3 rounded-sm object-cover brightness-110" />
                                                 )}
-                                                {msg.role === 'user' ? t('chat.labels.transmitter') : t('chat.labels.neural_core')}
+                                                {msg.role === 'user' ? (userName || 'User') : (assistantAlias || 'Miku Core')}
                                                 
                                                 {!msg.isStreaming && (
                                                     <span className="opacity-60 lowercase tracking-tighter flex items-center gap-1 ml-1 border-l border-white/10 pl-2">
                                                         <Icon name="clock" className="text-[8px]" />
-                                                        {new Date(msg.timestamp).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '')}
+                                                        {new Date(msg.timestamp).toLocaleString(undefined, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '')}
                                                     </span>
                                                 )}
                                             </div>
                                             {msg.source === 'telegram' && (
                                                 <div className="flex items-center gap-1 text-[#0088cc] font-black lowercase tracking-tighter">
-                                                    <Icon name="paper-plane" /> telegram
+                                                    <Icon name="paper-plane" /> {t('chat.labels.telegram')}
                                                 </div>
                                             )}
                                         </div>
@@ -582,7 +586,7 @@ export const ChatArea = ({
                                                     <span className="bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700/50 text-blue-400 font-bold uppercase">
                                                         {msg.provider}
                                                     </span>
-                                                    <span className="opacity-60">{msg.model || 'Default Model'}</span>
+                                                    <span className="opacity-60">{msg.model || t('chat.labels.default_model')}</span>
                                                 </div>
                                             </div>
                                         )}
@@ -634,7 +638,7 @@ export const ChatArea = ({
                         title={t('chat.actions.toggle_mode')}
                     >
                         <Icon name="sliders-h" />
-                        MODE:
+                        {t('chat.labels.mode')}
                     </button>
                     <select
                         value={agentMode}
@@ -767,7 +771,7 @@ export const ChatArea = ({
                             {isRecording && (
                                 <div className="absolute right-12 flex items-center gap-2 px-2.5 py-1 bg-slate-950/80 backdrop-blur-md rounded-full border border-emerald-500/30 animate-pulse pointer-events-none shadow-[0_0_15px_rgba(16,185,129,0.15)]">
                                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-                                    <span className="text-[8px] font-black text-emerald-400 uppercase tracking-[0.15em]">Live Rec</span>
+                                    <span className="text-[8px] font-black text-emerald-400 uppercase tracking-[0.15em]">{t('chat.placeholders.live_rec')}</span>
                                 </div>
                             )}
 

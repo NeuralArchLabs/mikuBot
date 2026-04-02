@@ -13,6 +13,7 @@
         "success": "成功",
         "warning": "警告",
         "ok": "确定",
+        "close": "关闭",
         "explore": "浏览",
         "add": "添加",
         "remove": "移除",
@@ -373,7 +374,8 @@
             "idle": "发送消息给 Miku...",
             "agent": "代理指令...",
             "recording": "正在聆听...",
-            "analyzing": "正在分析参数..."
+            "analyzing": "正在分析参数...",
+            "live_rec": "实时录音"
         },
         "actions": {
             "rewind": "编辑并重绕",
@@ -403,7 +405,8 @@
             "remove_attachment": "移除附件",
             "select_files": "选择文件",
             "resume_task": "继续任务",
-            "close_debug": "关闭调试界面"
+            "close_debug": "关闭调试界面",
+            "hide": "隐藏"
         },
         "alerts": {
             "voice_error": "❌ 语音错误：{{error}}",
@@ -417,14 +420,38 @@
             "agent": "代理"
         },
         "labels": {
-            "transmitter": "Transmitter",
-            "neural_core": "Neural Core",
-            "debug_interface": "Neural Debugging Interface",
-            "debug_desc": "Raw Context & Internal Log Streaming",
+            "debug_interface": "神经调试界面",
+            "debug_desc": "原始上下文与内部日志流",
             "no_data": "此会话尚未记录原始神经数据。",
             "free_conversation": "自由对话",
-            "link_intermittent": "Neural Link Intermittent: Local directories sleeping.",
-            "wake_up": "Wake Up Linkages"
+            "link_intermittent": "神经链接中断：本地目录休眠中。",
+            "wake_up": "唤醒链接",
+            "mode": "模式:",
+            "telegram": "telegram",
+            "empty_body": "[主体为空]",
+            "tool_calls": "工具调用",
+            "tool_call_id": "工具调用ID",
+            "default_model": "默认模型",
+            "role_system": "系统",
+            "role_assistant": "助手",
+            "role_user": "用户",
+            "role_tool": "工具",
+            "reasoning": "推理",
+            "active_reasoning": "活跃推理"
+        },
+        "approval": {
+            "sync_success": "系统已同步",
+            "executing": "正在执行:",
+            "denied": "拒绝访问",
+            "elevated_risk": "高风险 — 控制台执行",
+            "modifying_core": "修改 {{source}} 文件 — 超出安全区域",
+            "console_access": "控制台访问",
+            "security_check": "安全检查",
+            "cmd_preview": "命令预览:",
+            "params_requested": "请求的参数:",
+            "deny": "拒绝",
+            "authorize_console": "授权控制台",
+            "authorize_exec": "授权执行"
         }
     },
     "library": {
@@ -485,6 +512,13 @@
             "waiting_approval": "等待批准",
             "error": "错误",
             "aborted": "已中断"
+        },
+        "log_types": {
+            "error": "错误",
+            "tool_call": "调用",
+            "tool_result": "结果",
+            "warn": "警告",
+            "enhanced_engine": "增强引擎"
         },
         "step": "第 {{count}} 步",
         "retries": "↻ {{count}}/{{max}} 次重试",
@@ -589,5 +623,39 @@
             "telegram_incomplete_title": "⚠️ [Telegram 未完成]",
             "telegram_incomplete_desc": "要将 Telegram 用作计划任务的交付渠道，您必须在 MikuCentral 设置的 Core System 选项卡中配置您的 'Bot Token' 和 'Chat ID'。"
         }
+    },
+    "titlebar": {
+        "file": "文件",
+        "edit": "编辑",
+        "view": "视图",
+        "neural_engine": "神经引擎",
+        "help": "帮助",
+        "options": {
+            "new_session": "新建会话",
+            "export_config": "导出配置",
+            "load_config": "加载配置",
+            "open_sessions": "打开会话文件夹",
+            "exit": "退出",
+            "undo": "撤销",
+            "redo": "重做",
+            "cut": "剪切",
+            "copy": "复制",
+            "paste": "粘贴",
+            "select_all": "全选",
+            "reload": "重新加载",
+            "force_reload": "强制重新加载",
+            "toggle_devtools": "切换开发者工具",
+            "toggle_fullscreen": "切换全屏",
+            "sync_models": "同步模型",
+            "reset_config": "重置全局配置",
+            "documentation": "文档",
+            "about": "关于 MikuBot"
+        }
+    },
+    "about": {
+        "description": "先进的自主虚拟助手界面，集成了本地 Python 引擎和多提供商认知能力。",
+        "author": "作者",
+        "repository": "仓库",
+        "engine": "引擎"
     }
 }

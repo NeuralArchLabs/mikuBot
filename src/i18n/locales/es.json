@@ -13,6 +13,7 @@
         "success": "Éxito",
         "warning": "Advertencia",
         "ok": "Aceptar",
+        "close": "Cerrar",
         "explore": "Explorar",
         "add": "Añadir",
         "remove": "Quitar",
@@ -373,7 +374,8 @@
             "idle": "Escribe un mensaje...",
             "agent": "Instrucción para el agente...",
             "recording": "Escuchando...",
-            "analyzing": "Analizando Parámetros..."
+            "analyzing": "Analizando Parámetros...",
+            "live_rec": "GRABANDO"
         },
         "actions": {
             "rewind": "Editar y Rebobinar",
@@ -403,7 +405,8 @@
             "remove_attachment": "Eliminar adjunto",
             "select_files": "Seleccionar archivos",
             "resume_task": "Reanudar Tarea",
-            "close_debug": "Cerrar Interfaz de Depuración"
+            "close_debug": "Cerrar Interfaz de Depuración",
+            "hide": "Ocultar"
         },
         "alerts": {
             "voice_error": "❌ Error de Voz: {{error}}",
@@ -417,14 +420,38 @@
             "agent": "Agente"
         },
         "labels": {
-            "transmitter": "Transmitter",
-            "neural_core": "Neural Core",
-            "debug_interface": "Neural Debugging Interface",
-            "debug_desc": "Raw Context & Internal Log Streaming",
+            "debug_interface": "Interfaz de Depuración Neural",
+            "debug_desc": "Contexto Bruto y Streaming de Registros Internos",
             "no_data": "Aún no se han registrado datos neurales brutos para esta sesión.",
             "free_conversation": "Conversación Libre",
-            "link_intermittent": "Neural Link Intermittent: Local directories sleeping.",
-            "wake_up": "Wake Up Linkages"
+            "link_intermittent": "Enlace Neural Intermitente: Directorios locales inactivos.",
+            "wake_up": "Despertar Enlaces",
+            "mode": "MODO:",
+            "telegram": "telegram",
+            "empty_body": "[Cuerpo Vacío]",
+            "tool_calls": "Llamadas a Herramientas",
+            "tool_call_id": "ID de Llamada",
+            "default_model": "Modelo Predeterminado",
+            "role_system": "Sistema",
+            "role_assistant": "Asistente",
+            "role_user": "Usuario",
+            "role_tool": "Herramienta",
+            "reasoning": "Razonamiento",
+            "active_reasoning": "Razonamiento Activo"
+        },
+        "approval": {
+            "sync_success": "Sistema Sincronizado",
+            "executing": "Ejecutando:",
+            "denied": "Acceso Denegado",
+            "elevated_risk": "RIESGO ELEVADO — Ejecución de Consola",
+            "modifying_core": "Modificando archivos {{source}} — Fuera del área segura",
+            "console_access": "Acceso a Consola",
+            "security_check": "Chequeo de Seguridad",
+            "cmd_preview": "Vista Previa del Comando:",
+            "params_requested": "Parámetros Solicitados:",
+            "deny": "Denegar",
+            "authorize_console": "Autorizar Consola",
+            "authorize_exec": "Autorizar Ejecución"
         }
     },
     "library": {
@@ -485,6 +512,13 @@
             "waiting_approval": "ESPERANDO APROBACIÓN",
             "error": "ERROR",
             "aborted": "ABORTADO"
+        },
+        "log_types": {
+            "error": "ERROR",
+            "tool_call": "LLAMADA",
+            "tool_result": "RESULTADO",
+            "warn": "AVISO",
+            "enhanced_engine": "MOTOR MEJORADO"
         },
         "step": "Paso {{count}}",
         "retries": "↻ {{count}}/{{max}} reintentos",
@@ -589,5 +623,39 @@
             "telegram_incomplete_title": "⚠️ [Telegram Incompleto]",
             "telegram_incomplete_desc": "Para usar Telegram como canal de entrega en tus tareas programadas, debes configurar tu 'Bot Token' y 'Chat ID' en la pestaña Core System de los ajustes de MikuCentral."
         }
+    },
+    "titlebar": {
+        "file": "Archivo",
+        "edit": "Editar",
+        "view": "Vista",
+        "neural_engine": "Motor Neuronal",
+        "help": "Ayuda",
+        "options": {
+            "new_session": "Nueva Sesión",
+            "export_config": "Exportar Configuración",
+            "load_config": "Cargar Configuración",
+            "open_sessions": "Abrir Carpeta de Sesiones",
+            "exit": "Salir",
+            "undo": "Deshacer",
+            "redo": "Rehacer",
+            "cut": "Cortar",
+            "copy": "Copiar",
+            "paste": "Pegar",
+            "select_all": "Seleccionar Todo",
+            "reload": "Recargar",
+            "force_reload": "Forzar Recarga",
+            "toggle_devtools": "Alternar DevTools",
+            "toggle_fullscreen": "Pantalla Completa",
+            "sync_models": "Sincronizar Modelos",
+            "reset_config": "Restablecer Configuración Global",
+            "documentation": "Documentación",
+            "about": "Acerca de MikuBot"
+        }
+    },
+    "about": {
+        "description": "Interfaz de Asistente Virtual Autónomo Avanzado, integrada con motores de Python locales y capacidades cognitivas multiproveedor.",
+        "author": "Autor",
+        "repository": "Repositorio",
+        "engine": "Motor"
     }
 }

@@ -10,13 +10,17 @@ interface AgentStatusPanelProps {
 
 /**
  * Formats milliseconds into a human-readable elapsed time string.
- * < 60s  →  "12.3s"
+ * < 60s  →  "12s"
  * < 60m  →  "2m 34s"
  * >= 60m →  "1h 02m"
  */
 function formatElapsed(ms: number): string {
+    // Guard against invalid values (undefined, NaN, null, etc.)
+    if (typeof ms !== 'number' || isNaN(ms) || ms < 0) {
+        return '0s';
+    }
     const totalSeconds = Math.floor(ms / 1000);
-    if (totalSeconds < 60) return `${(ms / 1000).toFixed(1)}s`;
+    if (totalSeconds < 60) return `${totalSeconds}s`;
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
     if (minutes < 60) return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
@@ -39,12 +43,14 @@ export const AgentStatusPanel = React.memo(({
     }, [status.log]);
 
     // Live timer — ticks every second while agent is active
-    const [liveElapsed, setLiveElapsed] = useState(status.elapsedMs);
+    const [liveElapsed, setLiveElapsed] = useState(typeof status.elapsedMs === 'number' ? status.elapsedMs : 0);
     const isActive = !['idle', 'aborted', 'error'].includes(status.phase);
 
     useEffect(() => {
-        // Sync with actual elapsed from status updates
-        setLiveElapsed(status.elapsedMs);
+        // Sync with actual elapsed from status updates (guard against invalid values)
+        if (typeof status.elapsedMs === 'number' && !isNaN(status.elapsedMs)) {
+            setLiveElapsed(status.elapsedMs);
+        }
     }, [status.elapsedMs]);
 
     useEffect(() => {
@@ -93,9 +99,9 @@ export const AgentStatusPanel = React.memo(({
                         </span>
                     )}
                     {/* Elapsed timer */}
-                    {(isActive || status.elapsedMs > 0) && (
+                    {(isActive || (typeof status.elapsedMs === 'number' && status.elapsedMs > 0)) && (
                         <span className="text-slate-500 tabular-nums">
-                            ⏱ {formatElapsed(isActive ? liveElapsed : status.elapsedMs)}
+                            ⏱ {formatElapsed(isActive ? liveElapsed : (typeof status.elapsedMs === 'number' ? status.elapsedMs : 0))}
                         </span>
                     )}
                     {/* Current tool badge */}
@@ -157,7 +163,7 @@ export const AgentStatusPanel = React.memo(({
                                             <span className="engine-arrow engine-arrow-2">&gt;</span>
                                             <span className="engine-arrow engine-arrow-3">&gt;</span>
                                         </div>
-                                        <div className="engine-label uppercase tracking-widest">ENHANCED_ENGINE</div>
+                                        <div className="engine-label uppercase tracking-widest">{t('status.log_types.enhanced_engine')}</div>
                                     </div>
                                 </div>
                             </div>
@@ -166,14 +172,14 @@ export const AgentStatusPanel = React.memo(({
 
                     return (
                         <div key={i} className="flex gap-2">
-                            <span className="text-slate-600 shrink-0">[{new Date(entry.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}]</span>
+                            <span className="text-slate-600 shrink-0">[{new Date(entry.timestamp).toLocaleTimeString(undefined, { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}]</span>
                             <span className={`shrink-0 font-bold uppercase ${entry.type === 'error' ? 'text-red-500' :
                                 entry.type === 'tool_call' ? 'text-amber-500' :
                                     entry.type === 'tool_result' ? 'text-emerald-500' :
                                         entry.type === 'warn' ? 'text-yellow-500' :
                                             'text-slate-400'
                                 }`}>
-                                {entry.type}:
+                                {t(`status.log_types.${entry.type}`)}:
                             </span>
                             <span className="text-slate-300 break-all">{entry.message}</span>
                         </div>

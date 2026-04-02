@@ -1289,7 +1289,7 @@ export const SettingsPanel = ({
                                                 }}
                                                 className="py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all flex flex-col items-center justify-center gap-2 border shadow-lg group/btn premium-button premium-emphasis premium-cyan bg-cyan-600/10 text-cyan-400"
                                             >
-                                                <Icon name="file-download" className="text-xl group-hover/btn:scale-110 transition-transform" />
+                                                <Icon name="file-upload" className="text-xl group-hover/btn:scale-110 transition-transform" />
                                                 <span>{t('settings.backup.export_btn')}</span>
                                             </button>
                                             <button
@@ -1309,7 +1309,7 @@ export const SettingsPanel = ({
                                                 }}
                                                 className="py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all flex flex-col items-center justify-center gap-2 border shadow-lg group/btn premium-button premium-emphasis premium-indigo bg-slate-800 text-slate-300"
                                             >
-                                                <Icon name="file-upload" className="text-xl group-hover/btn:scale-110 transition-transform" />
+                                                <Icon name="file-download" className="text-xl group-hover/btn:scale-110 transition-transform" />
                                                 <span>{t('settings.backup.restore_btn')}</span>
                                             </button>
                                         </div>

@@ -13,6 +13,7 @@
         "success": "Success",
         "warning": "Warning",
         "ok": "OK",
+        "close": "Close",
         "explore": "Explore",
         "add": "Add",
         "remove": "Remove",
@@ -373,7 +374,8 @@
             "idle": "Message Miku...",
             "agent": "Agent instruction...",
             "recording": "Listening...",
-            "analyzing": "Analyzing Parameters..."
+            "analyzing": "Analyzing Parameters...",
+            "live_rec": "LIVE REC"
         },
         "actions": {
             "rewind": "Edit & Rewind",
@@ -403,7 +405,8 @@
             "remove_attachment": "Remove attachment",
             "select_files": "Select files",
             "resume_task": "Resume Task",
-            "close_debug": "Close Debug Interface"
+            "close_debug": "Close Debug Interface",
+            "hide": "Hide"
         },
         "alerts": {
             "voice_error": "❌ Voice Error: {{error}}",
@@ -417,14 +420,38 @@
             "agent": "Agent"
         },
         "labels": {
-            "transmitter": "Transmitter",
-            "neural_core": "Neural Core",
             "debug_interface": "Neural Debugging Interface",
             "debug_desc": "Raw Context & Internal Log Streaming",
             "no_data": "No raw neural data recorded yet for this session.",
             "free_conversation": "Free Conversation",
             "link_intermittent": "Neural Link Intermittent: Local directories sleeping.",
-            "wake_up": "Wake Up Linkages"
+            "wake_up": "Wake Up Linkages",
+            "mode": "MODE:",
+            "telegram": "telegram",
+            "empty_body": "[Empty Body]",
+            "tool_calls": "Tool Calls",
+            "tool_call_id": "Tool Call ID",
+            "default_model": "Default Model",
+            "role_system": "System",
+            "role_assistant": "Assistant",
+            "role_user": "User",
+            "role_tool": "Tool",
+            "reasoning": "Reasoning",
+            "active_reasoning": "Active Reasoning"
+        },
+        "approval": {
+            "sync_success": "System Synchronized",
+            "executing": "Executing:",
+            "denied": "Access Denied",
+            "elevated_risk": "ELEVATED RISK — Console Execution",
+            "modifying_core": "Modifying {{source}} files — outside safe area",
+            "console_access": "Console Access",
+            "security_check": "Security Check",
+            "cmd_preview": "Command Preview:",
+            "params_requested": "Parameters Requested:",
+            "deny": "Deny",
+            "authorize_console": "Authorize Console",
+            "authorize_exec": "Authorize Execution"
         }
     },
     "library": {
@@ -485,6 +512,13 @@
             "waiting_approval": "WAITING APPROVAL",
             "error": "ERROR",
             "aborted": "ABORTED"
+        },
+        "log_types": {
+            "error": "ERROR",
+            "tool_call": "CALL",
+            "tool_result": "RESULT",
+            "warn": "WARNING",
+            "enhanced_engine": "ENHANCED ENGINE"
         },
         "step": "Step {{count}}",
         "retries": "↻ {{count}}/{{max}} retries",
@@ -589,5 +623,39 @@
             "telegram_incomplete_title": "⚠️ [Telegram Incomplete]",
             "telegram_incomplete_desc": "To use Telegram as a delivery channel for your scheduled tasks, you must configure your 'Bot Token' and 'Chat ID' in the Core System tab of the MikuCentral settings."
         }
+    },
+    "titlebar": {
+        "file": "File",
+        "edit": "Edit",
+        "view": "View",
+        "neural_engine": "Neural Engine",
+        "help": "Help",
+        "options": {
+            "new_session": "New Session",
+            "export_config": "Export Configuration",
+            "load_config": "Load Configuration",
+            "open_sessions": "Open Sessions Folder",
+            "exit": "Exit",
+            "undo": "Undo",
+            "redo": "Redo",
+            "cut": "Cut",
+            "copy": "Copy",
+            "paste": "Paste",
+            "select_all": "Select All",
+            "reload": "Reload",
+            "force_reload": "Force Reload",
+            "toggle_devtools": "Toggle DevTools",
+            "toggle_fullscreen": "Toggle Fullscreen",
+            "sync_models": "Sync Models",
+            "reset_config": "Reset Global Config",
+            "documentation": "Documentation",
+            "about": "About MikuBot"
+        }
+    },
+    "about": {
+        "description": "Advanced Autonomous Virtual Assistant Interface, integrated with local Python engines and multi-provider cognitive capabilities.",
+        "author": "Author",
+        "repository": "Repository",
+        "engine": "Engine"
     }
 }

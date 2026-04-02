@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, Menu, shell, Tray, nativeImage, safeStorage } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu, shell, Tray, nativeImage, safeStorage, nativeTheme } = require('electron');
 const { spawn, exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
@@ -27,6 +27,33 @@ let mainWin = null;
 let tray = null;
 let isQuitting = false;
 let searxenaProcess = null;
+
+/**
+ * Robust App Icon Loader
+ * Fetches the icon from public or dist and ensures high-quality resizing
+ * to prevent cropping in the Windows native taskbar and title bars.
+ */
+function getAppIcon() {
+    const iconPath = app.isPackaged
+        ? path.join(__dirname, '../dist/mikuBotICON.png')
+        : path.join(__dirname, '../public/mikuBotICON.png');
+    
+    if (!fs.existsSync(iconPath)) {
+        console.warn('[Main Process] App icon file not found at:', iconPath);
+        return null;
+    }
+
+    const icon = nativeImage.createFromPath(iconPath);
+    if (icon.isEmpty()) {
+        console.error('[Main Process] Failed to create nativeImage from:', iconPath);
+        return null;
+    }
+
+    // Windows native title bars (16x16) and taskbars (32x32+) often crop 
+    // images with large transparent margins or odd aspect ratios. 
+    // We normalize to a 256x256 square to ensure clean downsampling.
+    return icon.resize({ width: 256, height: 256, quality: 'best' });
+}
 
 // Global Error Handler for Production Debugging
 process.on('uncaughtException', (error) => {
@@ -513,20 +540,15 @@ async function startSearXena() {
         return { ok: false, error: 'No Python found on this system. Please install Python 3.8 or later and ensure it is in your PATH.' };
     }
 
-    // Check if SearXena venv exists, create if missing
-    if (!fs.existsSync(SEARXENA_VENV_PYTHON)) {
-        console.warn('[searXena] Venv not found, creating...');
+    // Check if SearXena venv is complete (exists and has dependencies)
+    const venvComplete = await isSearXenaVenvComplete();
+    if (!venvComplete) {
+        console.warn('[searXena] Venv is missing or incomplete, creating/updating...');
         const setupResult = await installSearXenaEnv();
         if (!setupResult.ok) {
             return { ok: false, error: `Failed to create SearXena environment: ${setupResult.error}` };
         }
         refreshEnginePython();
-    }
-
-    // Verify Python is actually executable
-    if (!isPythonAvailable(pythonExe)) {
-        console.error(`[searXena] Python command '${pythonExe}' is not executable.`);
-        return { ok: false, error: `Python executable '${pythonExe}' is not working. Please check your Python installation.` };
     }
 
     // Verify Python is actually executable
@@ -2002,7 +2024,7 @@ function setupAppMenu(win) {
                 { type: 'separator' },
                 {
                     label: 'Open Sessions Folder',
-                    click: () => { shell.openPath(SESSIONS_DIR); }
+                    click: () => { shell.openPath(getEffectivePaths().sessions); }
                 },
                 isMac ? { role: 'close' } : { role: 'quit' }
             ]
@@ -2053,7 +2075,7 @@ function setupAppMenu(win) {
             submenu: [
                 {
                     label: 'Documentation',
-                    click: async () => { await shell.openExternal('https://github.com/martinezpalomera92/mikuCentralv1.0#readme'); }
+                    click: async () => { await shell.openExternal('https://github.com/neuralarchlabs/mikuCentralv1.0#readme'); }
                 },
                 {
                     label: 'About MikuCentral',
@@ -2093,12 +2115,11 @@ function updateAutoLaunch(enabled) {
 function createTray() {
     if (tray) return;
 
-    const iconPath = app.isPackaged
-        ? path.join(__dirname, '../dist/mikuBotICON.png')
-        : path.join(__dirname, '../public/mikuBotICON.png');
+    const icon = getAppIcon();
+    if (!icon) return;
 
-    const icon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
-    tray = new Tray(icon);
+    const trayIcon = icon.resize({ width: 16, height: 16, quality: 'best' });
+    tray = new Tray(trayIcon);
 
     const contextMenu = Menu.buildFromTemplate([
         { label: 'MikuCentral', enabled: false },
@@ -2409,6 +2430,35 @@ ipcMain.handle('searxena:status', async () => {
     };
 });
 
+ipcMain.on('menu-action-trigger', (event, action) => {
+    if (action === 'open-sessions-folder') {
+        shell.openPath(getEffectivePaths().sessions);
+    } else if (action === 'documentation') {
+        shell.openExternal('https://github.com/NeuralArchLabs/mikuBot#readme');
+    } else if (action === 'exit') {
+        app.quit();
+    } else if (mainWin) {
+        mainWin.webContents.send('menu-action', action);
+    }
+});
+
+ipcMain.on('menu-role-trigger', (event, role) => {
+    const win = BrowserWindow.getFocusedWindow();
+    if (!win) return;
+    switch (role) {
+        case 'undo': win.webContents.undo(); break;
+        case 'redo': win.webContents.redo(); break;
+        case 'cut': win.webContents.cut(); break;
+        case 'copy': win.webContents.copy(); break;
+        case 'paste': win.webContents.paste(); break;
+        case 'selectAll': win.webContents.selectAll(); break;
+        case 'reload': win.webContents.reload(); break;
+        case 'force-reload': win.webContents.reloadIgnoringCache(); break;
+        case 'toggle-devtools': win.webContents.toggleDevTools(); break;
+        case 'toggle-fullscreen': win.setFullScreen(!win.isFullScreen()); break;
+    }
+});
+
 // Note: Settings are also checked during 'save-settings'
 // ...
 
@@ -2419,17 +2469,18 @@ function createWindow() {
         height: 800,
         minWidth: 768,
         minHeight: 650,
-        icon: (() => {
-            const iconPath = app.isPackaged
-                ? path.join(__dirname, '../dist/mikuBotICON.png')
-                : path.join(__dirname, '../public/mikuBotICON.png');
-            return nativeImage.createFromPath(iconPath);
-        })(),
+        icon: getAppIcon(),
         webPreferences: {
             preload: path.join(__dirname, 'preload.cjs'),
             contextIsolation: true,
             nodeIntegration: false,
             backgroundThrottling: false,
+        },
+        titleBarStyle: 'hidden',
+        titleBarOverlay: {
+            color: '#0f172a',
+            symbolColor: '#94a3b8',
+            height: 35
         },
         backgroundColor: '#0f172a',
         show: false,
@@ -2444,6 +2495,17 @@ function createWindow() {
     }
 
     setupAppMenu(mainWin);
+
+    mainWin.webContents.setWindowOpenHandler((details) => {
+        return {
+            action: 'allow',
+            overrideBrowserWindowOptions: {
+                icon: getAppIcon(),
+                backgroundColor: '#0f172a',
+                autoHideMenuBar: true
+            }
+        };
+    });
 
     mainWin.on('closed', () => {
         mainWin = null;
@@ -2472,6 +2534,12 @@ function createWindow() {
         } catch (e) {
             console.error('Error checking tray settings on startup:', e);
         }
+    });
+
+    // Handle subsidiary / secondary windows (like SearXena console/popups)
+    app.on('web-contents-created', (event, contents) => {
+        // Force dark mode for all native UI components/scrollbars/native frames
+        nativeTheme.themeSource = 'dark';
     });
 
     mainWin.on('close', (event) => {
@@ -2527,8 +2595,25 @@ if (!gotTheLock) {
         } else {
             console.log('[Main Process] searXena engine is currently STOPPED.');
         }
-        
+
         createWindow();
+
+        // Check if SearXena venv is complete before starting
+        const venvComplete = await isSearXenaVenvComplete();
+        if (!venvComplete) {
+            console.log('[Main Process] SearXena venv is missing or incomplete. Triggering installation...');
+            const setup = await installSearXenaEnv();
+            if (!setup.ok) {
+                console.error('[Main Process] SearXena installation failed:', setup.error);
+            } else {
+                console.log('[Main Process] SearXena venv installation completed.');
+            }
+            // Refresh Python path after installation
+            refreshEnginePython();
+        } else {
+            console.log('[Main Process] SearXena venv is complete and ready.');
+        }
+
         startSearXena();
         app.on('activate', () => {
             if (BrowserWindow.getAllWindows().length === 0) {

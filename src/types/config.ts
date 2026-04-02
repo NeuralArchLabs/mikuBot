@@ -93,4 +93,5 @@ export interface AppState {
     approvalMode: ApprovalMode;
     debugMode: boolean;
     folderPermissions: Record<FileTarget, PermissionStatus>;
+    isAboutOpen?: boolean;
 }

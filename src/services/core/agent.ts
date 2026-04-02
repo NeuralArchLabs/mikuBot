@@ -555,7 +555,7 @@ export async function sendAgentMessage(
         onChunk(`\n\n❌ ERROR EN EL NÚCLEO:\n${errorMsg}`, false, [...allBlocks, { type: 'answer', content: `\n\n⚠️ ${errorMsg}` }]);
         throw err;
     } finally {
-        if (!hasFatalError) onStatus({ phase: 'idle' });
+        if (!hasFatalError) onStatus({ phase: 'idle', elapsedMs: Date.now() - startTime });
         if (onFinalRawHistory) onFinalRawHistory([...agentMessages]);
     }
 }

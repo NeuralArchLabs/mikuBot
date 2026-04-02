@@ -1,4 +1,5 @@
 export * from './layout/Sidebar';
+export * from './layout/TitleBar';
 export * from './features/ChatArea';
 export * from './features/FileEditor';
 export * from './features/LibraryManager';

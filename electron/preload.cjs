@@ -115,5 +115,11 @@ contextBridge.exposeInMainWorld('electron', {
         const listener = (event, action) => callback(action);
         ipcRenderer.on('menu-action', listener);
         return () => ipcRenderer.removeListener('menu-action', listener);
-    }
+    },
+
+    // Trigger menu action from renderer (for custom titlebar)
+    sendMenuAction: (action) => ipcRenderer.send('menu-action-trigger', action),
+
+    // Trigger standard menu roles (undo, redo, etc.)
+    sendMenuRole: (role) => ipcRenderer.send('menu-role-trigger', role)
 });

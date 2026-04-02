@@ -7,6 +7,7 @@ import { createDefaultAgentStatus } from './utils';
 import { useAgentStore, selectMessages, selectAgentStatus, selectIsLoading, selectInput, selectPendingToolApproval } from './stores/useAgentStore';
 import {
     Sidebar,
+    TitleBar,
     ChatArea,
     FileEditor,
     LibraryManager,
@@ -16,6 +17,7 @@ import {
     SystemDialog,
     SystemDialogConfig,
     OnboardingWizard,
+    AboutDialog,
     Icon
 } from './components';
 import {
@@ -1624,6 +1626,9 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                     case 'reset-config':
                         onResetGlobal();
                         break;
+                    case 'about':
+                        setState(prev => ({ ...prev, isAboutOpen: true }));
+                        break;
                     default:
                         console.warn(`Unknown menu action: ${action}`);
                 }
@@ -1681,11 +1686,14 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
     };
 
     return (
-        <div className="flex h-screen w-full bg-[#0f172a] text-slate-200 overflow-hidden font-sans miku-app-isolate">
+        <div className="flex flex-col h-screen w-full bg-[#0f172a] text-slate-200 overflow-hidden font-sans miku-app-isolate">
+            {state.config.isConfigured && <TitleBar />}
+            <div className="flex flex-1 overflow-hidden relative">
             {!state.config.isConfigured && (
                 <OnboardingWizard onComplete={handleOnboardingComplete} />
             )}
             <SystemDialog config={dialogConfig} />
+            <AboutDialog isOpen={!!state.isAboutOpen} onClose={() => setState(p => ({ ...p, isAboutOpen: false }))} />
             <LibraryManager
                 isOpen={state.isLibraryExpanded} onClose={() => setState(p => ({ ...p, isLibraryExpanded: false }))}
                 files={state.additionalFiles} selectedFiles={state.selectedLibraryFiles}
@@ -1727,6 +1735,8 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                             onWakeUpAll={wakeUpAllFolders}
                             askAlert={askAlert}
                             voskModelPath={state.config.voskModelPath}
+                            userName={state.config.userName}
+                            assistantAlias={state.config.assistantAlias}
                         />
                     </div>
                 )}
@@ -1822,6 +1832,7 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                         </div>
                     </div>
                 )}
+                </div>
             </div>
         </div>
     );
