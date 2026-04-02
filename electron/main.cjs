@@ -198,14 +198,50 @@ function isSearXenaVenv(pythonPath) {
     return pythonPath.includes(path.join('searXena', '.venv'));
 }
 
+/**
+ * Check if SearXena venv is complete and has required dependencies installed
+ * Returns true if venv exists and can import key modules (fastapi is required)
+ */
+async function isSearXenaVenvComplete() {
+    if (!fs.existsSync(SEARXENA_VENV_PYTHON)) {
+        return false;
+    }
+
+    if (!isPythonAvailable(SEARXENA_VENV_PYTHON)) {
+        return false;
+    }
+
+    // Try to import a key module (fastapi is required by SearXena)
+    const { execSync } = require('child_process');
+    try {
+        execSync(`"${SEARXENA_VENV_PYTHON}" -c "import fastapi; print('OK')"`, {
+            stdio: 'ignore',
+            timeout: 5000
+        });
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 // Dynamic Resolution: returns the path to the Python executable to use
 // Priority: SearXena Venv → Embedded Python → System Python
 function getEnginePython() {
     // 1. Check for SearXena venv (if context requires SearXena-specific)
     if (fs.existsSync(SEARXENA_VENV_PYTHON)) {
         if (isPythonAvailable(SEARXENA_VENV_PYTHON)) {
-            console.log('[getEnginePython] Using SearXena venv:', SEARXENA_VENV_PYTHON);
-            return SEARXENA_VENV_PYTHON;
+            // Verify venv has key dependencies (synchronous check for fastapi)
+            const { execSync } = require('child_process');
+            try {
+                execSync(`"${SEARXENA_VENV_PYTHON}" -c "import fastapi"`, {
+                    stdio: 'ignore',
+                    timeout: 3000
+                });
+                console.log('[getEnginePython] Using SearXena venv:', SEARXENA_VENV_PYTHON);
+                return SEARXENA_VENV_PYTHON;
+            } catch {
+                console.log('[getEnginePython] SearXena venv exists but dependencies are missing. Falling back to embedded Python.');
+            }
         }
     }
 
@@ -252,20 +288,50 @@ console.log('Main Process: Engine Python Dir:', ENGINE_PYTHON_DIR);
 console.log('Main Process: Initial Python Executable:', ENGINE_PYTHON || 'NOT FOUND');
 
 // ── SafePathResolver Initialization ──────────────────────────────────
-function reinitSafePathResolver(workspacePath) {
-    if (!workspacePath) return;
-    
+/**
+ * Read custom folder paths from config.json
+ * Returns the configured custom paths or defaults based on workspacePath
+ */
+function getCustomPaths(workspacePath) {
+    const configPath = path.join(workspacePath, 'config.json');
     const normalizedPath = path.normalize(workspacePath);
-    
-    SafePathResolver.init({
+
+    try {
+        if (fs.existsSync(configPath)) {
+            const raw = fs.readFileSync(configPath, 'utf8');
+            const parsed = JSON.parse(raw);
+            const folderPaths = parsed.config?.folderPaths || {};
+
+            return {
+                '@CORE': folderPaths.core ? path.normalize(folderPaths.core) : path.join(normalizedPath, 'core'),
+                '@LIBRARY': folderPaths.extra ? path.normalize(folderPaths.extra) : path.join(normalizedPath, 'library'),
+                '@TOOLS': folderPaths.tools ? path.normalize(folderPaths.tools) : path.join(normalizedPath, 'commands'),
+                '@WORKSPACE': folderPaths.workSpace ? path.normalize(folderPaths.workSpace) : path.join(normalizedPath, 'workspace'),
+                '@ROOT': folderPaths.root ? path.normalize(folderPaths.root) : normalizedPath
+            };
+        }
+    } catch (e) {
+        console.warn('[Main Process] Failed to read custom paths from config.json:', e.message);
+    }
+
+    // Fallback to default structure
+    return {
         '@CORE': path.join(normalizedPath, 'core'),
         '@LIBRARY': path.join(normalizedPath, 'library'),
         '@TOOLS': path.join(normalizedPath, 'commands'),
         '@WORKSPACE': path.join(normalizedPath, 'workspace'),
         '@ROOT': normalizedPath
-    });
-    
-    console.log('[Main Process] SafePathResolver re-initialized with ROOT:', normalizedPath);
+    };
+}
+
+function reinitSafePathResolver(workspacePath) {
+    if (!workspacePath) return;
+
+    const paths = getCustomPaths(workspacePath);
+
+    SafePathResolver.init(paths);
+
+    console.log('[Main Process] SafePathResolver re-initialized with paths:', paths);
 }
 
 // Initial Call
@@ -2194,12 +2260,23 @@ ipcMain.handle('searxena:update-env', async () => {
 });
 
 ipcMain.handle('searxena:start', async () => {
-    // Check if env exists before starting
-    if (!fs.existsSync(ENGINE_PYTHON)) {
-        console.log('[Main Process] Engine environment missing. Triggering auto-install...');
+    // Check if SearXena venv is complete (exists and has dependencies)
+    const venvComplete = await isSearXenaVenvComplete();
+
+    if (!venvComplete) {
+        console.log('[Main Process] SearXena venv is missing or incomplete. Triggering installation...');
         const setup = await installSearXenaEnv();
-        if (!setup.ok) return setup;
+        if (!setup.ok) {
+            console.error('[Main Process] SearXena installation failed:', setup.error);
+            return setup;
+        }
+        // Refresh Python path after installation
+        refreshEnginePython();
+        console.log('[Main Process] SearXena venv installation completed.');
+    } else {
+        console.log('[Main Process] SearXena venv is complete and ready.');
     }
+
     return startSearXena();
 });
 
