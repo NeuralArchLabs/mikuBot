@@ -302,6 +302,7 @@
             "btn_deploying": "Deploying...",
             "btn_active": "Engine Active",
             "btn_start": "Start Engine",
+            "btn_install_start": "Install and Start",
             "btn_syncing": "Syncing...",
             "btn_sync": "Sync Dependencies (Update)",
             "sync_desc": "Use this if you replace searXena files with a newer version to ensure required libraries are installed.",
@@ -653,7 +654,7 @@
         }
     },
     "about": {
-        "description": "Advanced Autonomous Virtual Assistant Interface, integrated with local Python engines and multi-provider cognitive capabilities.",
+        "description": "Advanced cognitive orchestration ecosystem designed for intelligent automation and sovereign management of autonomous workflows. Powered by a hybrid architecture of local processing (Ollama/searXena), integrated Neural Toolkits, and state-of-the-art language models.",
         "author": "Author",
         "repository": "Repository",
         "engine": "Engine"

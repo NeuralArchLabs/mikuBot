@@ -653,7 +653,7 @@
         }
     },
     "about": {
-        "description": "先进的自主虚拟助手界面，集成了本地 Python 引擎和多提供商认知能力。",
+        "description": "先进的认知编排生态系统，专为智能自动化和自主工作流的主权管理而设计。由本地处理（Ollama/searXena）、集成的神经工具箱（Neural Toolkits）和最先进的语言模型组成的混合架构提供支持。",
         "author": "作者",
         "repository": "仓库",
         "engine": "引擎"

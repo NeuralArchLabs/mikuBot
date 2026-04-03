@@ -59,7 +59,7 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({ isOpen, onClose }) => 
                     <div className="flex flex-col gap-2 text-xs font-mono text-slate-500 bg-slate-900/50 p-4 rounded-xl text-left border border-slate-800/80">
                         <div className="flex justify-between">
                             <span>{t('about.author')}:</span>
-                            <span className="text-slate-300">Armando Martínez / Neural Arch Labs</span>
+                            <span className="text-slate-300">J.A. Martínez / Neural Arch Labs</span>
                         </div>
                         <div className="flex justify-between">
                             <span>{t('about.repository')}:</span>

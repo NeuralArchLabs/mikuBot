@@ -32,6 +32,8 @@ import {
     formatTelegramResponse
 } from './services';
 
+const electron = (window as any).electron;
+
 export const App = () => {
     const { i18n, t } = useTranslation();
     const [state, setState] = useState<AppState>({
@@ -67,6 +69,10 @@ export const App = () => {
     const [workSpaceHandle, setWorkSpaceHandle] = useState<FileSystemDirectoryHandle | null>(null);
     const [toolsHandle, setToolsHandle] = useState<FileSystemDirectoryHandle | null>(null);
     const [rootHandle, setRootHandle] = useState<FileSystemDirectoryHandle | null>(null);
+
+    // SearXena installation state
+    const [searxenaInstalling, setSearxenaInstalling] = useState(false);
+    const [searxenaInstallMessage, setSearxenaInstallMessage] = useState('');
     const {
         setMessages: setMessagesStore,
         addMessage,
@@ -404,6 +410,33 @@ export const App = () => {
         return () => telegramService.stopPolling();
     }, [state.config.telegramBotToken, state.config.telegramChatId]);
 
+    // ── SearXena Status Listener ──────────────────────────────────────
+    useEffect(() => {
+        if (electron?.onSearXenaStatusUpdate) {
+            const cleanup = electron.onSearXenaStatusUpdate((data: { type: string; installing?: boolean; ready?: boolean; message?: string; error?: string; running?: boolean }) => {
+                console.log('[App] SearXena status update:', data);
+
+                if (data.type === 'installation') {
+                    if (data.installing) {
+                        setSearxenaInstalling(true);
+                        setSearxenaInstallMessage(data.message || 'Installing dependencies...');
+                    } else if (data.ready) {
+                        setSearxenaInstalling(false);
+                        setSearxenaInstallMessage('');
+                    } else if (data.error) {
+                        setSearxenaInstalling(false);
+                        setSearxenaInstallMessage(`Error: ${data.error}`);
+                    }
+                } else if (data.type === 'running') {
+                    setSearxenaInstalling(false);
+                    setSearxenaInstallMessage('');
+                }
+            });
+
+            return cleanup;
+        }
+    }, []);
+
     // ── File System Handlers ─────────────────────────────────────────────
 
     const syncFiles = useCallback(async (
@@ -543,7 +576,7 @@ export const App = () => {
     }, [state.config, state.agentMode, state.safeMode, state.approvalMode]);
 
     const onResetGlobal = useCallback(async () => {
-        if (await askConfirm(t('common.reset_confirm') || "Are you sure? This will reset all settings to defaults. Folder paths will be cleared.")) {
+        if (await askConfirm(t('common.reset_confirm') || "Are you sure? This will reset all settings to defaults.")) {
             setState(prev => ({
                 ...prev,
                 config: DEFAULT_CONFIG,
@@ -551,8 +584,13 @@ export const App = () => {
                 safeMode: true,
                 approvalMode: 'auto'
             }));
+            // Persist the reset immediately
+            if (electron) {
+                await persistence.saveSettings(DEFAULT_CONFIG, 'chat', true, 'auto');
+            }
+            await askAlert(`✅ ${t('common.config_reset_success')}`);
         }
-    }, [askConfirm]);
+    }, [askConfirm, t, askAlert]);
 
     const saveFile = async (name: string, content: string, target: FileTarget) => {
         if (!name) return false;
@@ -1621,7 +1659,10 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                         onLoadConfig();
                         break;
                     case 'sync-models':
-                        handleTestConnection();
+                        // Sync all configured providers to refresh lists
+                        handleTestConnection('ollama');
+                        handleTestConnection('gemini');
+                        handleTestConnection('groq');
                         break;
                     case 'reset-config':
                         onResetGlobal();
@@ -1629,8 +1670,13 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                     case 'about':
                         setState(prev => ({ ...prev, isAboutOpen: true }));
                         break;
+                    case 'open-sessions-folder':
+                    case 'documentation':
+                    case 'exit':
+                        // Handled in main process
+                        break;
                     default:
-                        console.warn(`Unknown menu action: ${action}`);
+                        console.warn(`[MenuAction] Unhandled in renderer: ${action}`);
                 }
             });
             return cleanup;
@@ -1833,6 +1879,20 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                     </div>
                 )}
                 </div>
+
+            {/* SearXena Installation Progress Overlay */}
+            {searxenaInstalling && (
+                <div className="fixed inset-0 bg-[#0f172a]/95 backdrop-blur-sm z-[9999] flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-6 max-w-md mx-auto px-6">
+                        <div className="w-16 h-16 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+                        <div className="text-center">
+                            <h2 className="text-2xl font-bold text-white mb-2">Setting Up SearXena</h2>
+                            <p className="text-slate-400">{searxenaInstallMessage}</p>
+                            <p className="text-sm text-slate-500 mt-4">Please wait, this may take a few minutes...</p>
+                        </div>
+                    </div>
+                </div>
+            )}
             </div>
         </div>
     );

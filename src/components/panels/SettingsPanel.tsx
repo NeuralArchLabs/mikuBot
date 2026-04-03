@@ -1137,7 +1137,15 @@ export const SettingsPanel = ({
                                                     }`}
                                             >
                                                 <Icon name={startingSearxena ? "sync fa-spin" : (!searxenaStatus.envReady ? "magic" : "rocket")} className="text-base" />
-                                                {startingSearxena ? (searxenaStatus.envReady ? t('settings.searxena.btn_deploying') : t('settings.searxena.btn_starting')) : searxenaStatus.running ? t('settings.searxena.btn_active') : (!searxenaStatus.envReady ? t('settings.searxena.btn_start') : t('settings.searxena.btn_start'))}
+                                                                                    {startingSearxena ? (
+                                        searxenaStatus.envReady ? t('settings.searxena.btn_deploying') : t('settings.searxena.btn_starting')
+                                    ) : searxenaStatus.running ? (
+                                        t('settings.searxena.btn_active')
+                                    ) : !searxenaStatus.envReady ? (
+                                        t('settings.searxena.btn_install_start')
+                                    ) : (
+                                        t('settings.searxena.btn_start')
+                                    )}
                                             </button>
                                             
                                             <div className="p-5 rounded-2xl bg-black/40 border border-white/5 space-y-4 backdrop-blur-sm">

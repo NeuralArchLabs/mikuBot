@@ -102,6 +102,11 @@ contextBridge.exposeInMainWorld('electron', {
     stopSearXena: () => ipcRenderer.invoke('searxena:stop'),
     updateSearXenaEnv: () => ipcRenderer.invoke('searxena:update-env'),
     getSearXenaStatus: () => ipcRenderer.invoke('searxena:status'),
+    onSearXenaStatusUpdate: (callback) => {
+        const listener = (event, data) => callback(data);
+        ipcRenderer.on('searxena:status-update', listener);
+        return () => ipcRenderer.removeListener('searxena:status-update', listener);
+    },
 
     // API streaming: listen for chunks from main process proxy
     onApiStreamChunk: (callback) => {

@@ -6,6 +6,7 @@ interface MenuOption {
     label?: string;
     action?: string;
     role?: string;
+    icon?: string;
     separator?: boolean;
     submenu?: MenuOption[];
 }
@@ -28,51 +29,52 @@ export const TitleBar: React.FC = () => {
         'file': {
             label: t('titlebar.file'),
             options: [
-                { label: t('titlebar.options.new_session'), action: 'new-session' },
+                { label: t('titlebar.options.new_session'), action: 'new-session', icon: 'plus' },
                 { separator: true },
-                { label: t('titlebar.options.export_config'), action: 'export-config' },
-                { label: t('titlebar.options.load_config'), action: 'load-config' },
+                { label: t('titlebar.options.export_config'), action: 'export-config', icon: 'file-export' },
+                { label: t('titlebar.options.load_config'), action: 'load-config', icon: 'file-import' },
                 { separator: true },
-                { label: t('titlebar.options.open_sessions'), action: 'open-sessions-folder' },
+                { label: t('titlebar.options.open_sessions'), action: 'open-sessions-folder', icon: 'folder-open' },
                 { separator: true },
-                { label: t('titlebar.options.exit'), action: 'exit' }
+                { label: t('titlebar.options.exit'), action: 'exit', icon: 'power-off' }
             ]
         },
         'edit': {
             label: t('titlebar.edit'),
             options: [
-                { label: t('titlebar.options.undo'), role: 'undo' },
-                { label: t('titlebar.options.redo'), role: 'redo' },
+                { label: t('titlebar.options.undo'), role: 'undo', icon: 'undo' },
+                { label: t('titlebar.options.redo'), role: 'redo', icon: 'redo' },
                 { separator: true },
-                { label: t('titlebar.options.cut'), role: 'cut' },
-                { label: t('titlebar.options.copy'), role: 'copy' },
-                { label: t('titlebar.options.paste'), role: 'paste' },
-                { label: t('titlebar.options.select_all'), role: 'selectAll' }
+                { label: t('titlebar.options.cut'), role: 'cut', icon: 'cut' },
+                { label: t('titlebar.options.copy'), role: 'copy', icon: 'copy' },
+                { label: t('titlebar.options.paste'), role: 'paste', icon: 'paste' },
+                { separator: true },
+                { label: t('titlebar.options.select_all'), role: 'selectAll', icon: 'mouse-pointer' }
             ]
         },
         'view': {
             label: t('titlebar.view'),
             options: [
-                { label: t('titlebar.options.reload'), action: 'reload' },
-                { label: t('titlebar.options.force_reload'), action: 'force-reload' },
-                { label: t('titlebar.options.toggle_devtools'), action: 'toggle-devtools' },
+                { label: t('titlebar.options.reload'), role: 'reload', icon: 'sync-alt' },
+                { label: t('titlebar.options.force_reload'), role: 'force-reload', icon: 'redo-alt' },
+                { label: t('titlebar.options.toggle_devtools'), role: 'toggle-devtools', icon: 'code' },
                 { separator: true },
-                { label: t('titlebar.options.toggle_fullscreen'), action: 'toggle-fullscreen' }
+                { label: t('titlebar.options.toggle_fullscreen'), role: 'toggle-fullscreen', icon: 'expand' }
             ]
         },
         'engine': {
             label: t('titlebar.neural_engine'),
             options: [
-                { label: t('titlebar.options.sync_models'), action: 'sync-models' },
+                { label: t('titlebar.options.sync_models'), action: 'sync-models', icon: 'brain' },
                 { separator: true },
-                { label: t('titlebar.options.reset_config'), action: 'reset-config' }
+                { label: t('titlebar.options.reset_config'), action: 'reset-config', icon: 'trash-alt' }
             ]
         },
         'help': {
             label: t('titlebar.help'),
             options: [
-                { label: t('titlebar.options.documentation'), action: 'documentation' },
-                { label: t('titlebar.options.about'), action: 'about' }
+                { label: t('titlebar.options.documentation'), action: 'documentation', icon: 'book' },
+                { label: t('titlebar.options.about'), action: 'about', icon: 'info-circle' }
             ]
         }
     };

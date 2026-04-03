@@ -302,6 +302,7 @@
             "btn_deploying": "Desplegando...",
             "btn_active": "Motor Activo",
             "btn_start": "Arrancar Motor",
+            "btn_install_start": "Instalar y Arrancar",
             "btn_syncing": "Sincronizando...",
             "btn_sync": "Sincronizar Dependencias (Update)",
             "sync_desc": "Usa esto si reemplazas los archivos de searXena por una versión más reciente para asegurar que las librerías necesarias estén instaladas.",
@@ -653,7 +654,7 @@
         }
     },
     "about": {
-        "description": "Interfaz de Asistente Virtual Autónomo Avanzado, integrada con motores de Python locales y capacidades cognitivas multiproveedor.",
+        "description": "Ecosistema de orquestación cognitiva avanzada diseñado para la automatización inteligente y la gestión soberana de flujos de trabajo autónomos. Impulsado por una arquitectura híbrida de procesamiento local (Ollama/searXena), Neural Skills integradas y modelos de lenguaje de última generación.",
         "author": "Autor",
         "repository": "Repositorio",
         "engine": "Motor"

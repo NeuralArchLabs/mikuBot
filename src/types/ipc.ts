@@ -34,7 +34,7 @@ export type IpcChannel =
     // Telegram Voice Processing
     | 'telegram:process-voice'
     // searXena Search Engine
-    | 'searxena:start' | 'searxena:stop' | 'searxena:update-env' | 'searxena:status'
+    | 'searxena:start' | 'searxena:stop' | 'searxena:update-env' | 'searxena:status' | 'searxena:status-update'
     // API streaming
     | 'api-stream-chunk'
     // Menu events
