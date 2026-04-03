@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AppConfig } from '../../types';
 import { Icon } from '../common/Common';
 
@@ -36,6 +37,7 @@ interface SkillBlueprint {
 }
 
 export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, onSaveTools, updateConfig, onSaveGlobal, showBlueprints, setShowBlueprints }) => {
+    const { i18n } = useTranslation();
     const [skills, setSkills] = useState<Skill[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeSkill, setActiveSkill] = useState<string | null>(null);
@@ -51,7 +53,8 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
             if (isElectron && config.folderPaths?.tools) {
                 const response = await (window as any).electron.listBlueprints({
                     toolsPath: config.folderPaths.tools,
-                    corePath: config.folderPaths.core
+                    corePath: config.folderPaths.core,
+                    language: i18n.language
                 });
                 if (response.ok) {
                     setBlueprints(response.blueprints.filter((b: any) => b.category === 'skills'));
@@ -59,7 +62,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
             }
         };
         if (showBlueprints) loadBlueprints();
-    }, [showBlueprints, config.folderPaths?.tools]);
+    }, [showBlueprints, config.folderPaths?.tools, i18n.language]);
 
     useEffect(() => {
         const loadSkills = async () => {

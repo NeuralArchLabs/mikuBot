@@ -42,7 +42,7 @@ export const LibraryManager = ({
     editFileRequested,
     onClearEditRequest
 }: LibraryManagerProps) => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const [isClosing, setIsClosing] = useState(false);
     const [viewFile, setViewFile] = useState<string | null>(null);
     const [editMode, setEditMode] = useState(false);
@@ -60,7 +60,8 @@ export const LibraryManager = ({
             if (isElectron && config.folderPaths?.tools) {
                 const response = await (window as any).electron.listBlueprints({
                     toolsPath: config.folderPaths.tools,
-                    corePath: config.folderPaths.core
+                    corePath: config.folderPaths.core,
+                    language: i18n.language
                 });
                 if (response.ok) {
                     setBlueprints(response.blueprints.filter((b: any) => b.category === 'library'));
@@ -68,7 +69,7 @@ export const LibraryManager = ({
             }
         };
         if (showBlueprints) loadBlueprints();
-    }, [showBlueprints, config.folderPaths?.tools]);
+    }, [showBlueprints, config.folderPaths?.tools, i18n.language]);
  
     useEffect(() => {
         if (isOpen && editFileRequested && files[editFileRequested]) {

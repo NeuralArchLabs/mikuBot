@@ -1,0 +1,7 @@
+{
+    "id": "project",
+    "title": "Project Master Plan",
+    "icon": "project-diagram",
+    "category": "library",
+    "content": "# 🎯 Master Plan — [Project Name]\n\n## Vision\n> Describe in 1-2 sentences what problem this solves and for whom.\n\n## SMART Objectives\n1. **Specific**: —\n2. **Measurable**: —\n3. **Achievable**: —\n4. **Relevant**: —\n5. **Time-bound**: Deadline: [MM/DD/YYYY]\n\n## Phases and Deliverables\n| Phase | Description | Deliverable | Deadline | Status |\n|-------|-------------|-------------|----------|--------|\n| 1. Research | — | Findings Document | — | ⬜ |\n| 2. Design | — | Wireframes / Mockups | — | ⬜ |\n| 3. Development | — | Functional MVP | — | ⬜ |\n| 4. Testing | — | QA Report | — | ⬜ |\n| 5. Launch | — | Version 1.0 | — | ⬜ |\n\n## Technology Stack\n- **Frontend**: —\n- **Backend**: —\n- **Database**: —\n- **Deployment**: —\n\n## Identified Risks\n| Risk | Probability | Impact | Mitigation |\n|------|-------------|--------|------------|\n| — | Low/Medium/High | — | — |\n\n## Notes and Decisions\n- [Date]: —\n"
+}

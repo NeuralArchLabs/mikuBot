@@ -207,6 +207,7 @@ const getEffectivePaths = () => {
 // Localizamos el directorio base basándonos en la ubicación física del archivo actual
 // main.cjs está en electron/, por lo que subimos un nivel para llegar a la raíz del repo/app
 const baseDir = app.isPackaged ? process.resourcesPath : path.join(__dirname, '..');
+const resourcesPath = baseDir; // Alias for compatibility with other code references
 
 // ── Native Engine Configuration (searXena) ───────────────────────────
 const SEARXENA_DIR = path.join(baseDir, 'engine', 'searXena');
@@ -1741,7 +1742,7 @@ ipcMain.handle('list-skills', async (event, { toolsPath }) => {
     }
 });
 
-ipcMain.handle('list-blueprints', async (event, { toolsPath, corePath }) => {
+ipcMain.handle('list-blueprints', async (event, { toolsPath, corePath, language = 'es' }) => {
     try {
         let blueprintsRoot = '';
 
@@ -1784,17 +1785,60 @@ ipcMain.handle('list-blueprints', async (event, { toolsPath, corePath }) => {
         const blueprints = [];
         const categories = fs.readdirSync(blueprintsRoot);
 
+        // Map language codes to file suffixes
+        const langMap = {
+            'es': 'es',
+            'en': 'en',
+            'zh': 'zh'
+        };
+        
+        const langSuffix = langMap[language] || 'es'; // Default to Spanish
+
         for (const cat of categories) {
             const catDir = path.join(blueprintsRoot, cat);
             if (fs.statSync(catDir).isDirectory()) {
-                const files = fs.readdirSync(catDir).filter(f => f.endsWith('.json'));
+                const files = fs.readdirSync(catDir);
+                
+                // Track which base files we've already processed to avoid duplicates
+                const processedBases = new Set();
+                
                 for (const file of files) {
-                    try {
-                        const content = JSON.parse(fs.readFileSync(path.join(catDir, file), 'utf8'));
-                        if (!content.category) content.category = cat;
-                        blueprints.push(content);
-                    } catch (e) {
-                        console.warn(`[Main Process] Failed to parse blueprint ${file}:`, e.message);
+                    if (!file.endsWith('.json')) continue;
+                    
+                    // Extract base filename (e.g., "project" from "project.en.json" or "project.json")
+                    // First try to remove locale suffix, then remove .json
+                    let baseName = file;
+                    if (/\.(es|en|zh)\.json$/.test(baseName)) {
+                        baseName = baseName.replace(/\.(es|en|zh)\.json$/, '');
+                    } else {
+                        baseName = baseName.replace(/\.json$/, '');
+                    }
+                    
+                    // Skip if we already processed this base with a locale-specific version
+                    if (processedBases.has(baseName)) continue;
+                    
+                    // Check if a locale-specific version exists
+                    const localeFile = `${baseName}.${langSuffix}.json`;
+                    const defaultFile = `${baseName}.json`;
+                    
+                    let fileToUse = null;
+                    
+                    // Priority: locale-specific > default (base)
+                    if (fs.existsSync(path.join(catDir, localeFile))) {
+                        fileToUse = localeFile;
+                    } else if (fs.existsSync(path.join(catDir, defaultFile))) {
+                        fileToUse = defaultFile;
+                    }
+                    
+                    if (fileToUse) {
+                        try {
+                            processedBases.add(baseName);
+                            const content = JSON.parse(fs.readFileSync(path.join(catDir, fileToUse), 'utf8'));
+                            if (!content.category) content.category = cat;
+                            blueprints.push(content);
+                        } catch (e) {
+                            console.warn(`[Main Process] Failed to parse blueprint ${fileToUse}:`, e.message);
+                        }
                     }
                 }
             }
