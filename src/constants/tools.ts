@@ -172,6 +172,12 @@ export const AGENT_TOOLS: ToolDefinition[] = [
                 type: 'object',
                 properties: {
                     query: { type: 'string', description: 'The search query' },
+                    category: { 
+                        type: 'string', 
+                        description: 'Specifies the SearXena search category. "it" is recommended for code and technical documentation.',
+                        enum: ['general', 'images', 'videos', 'news', 'maps', 'shopping', 'it', 'social'],
+                        default: 'general'
+                    },
                     search_depth: { type: 'string', description: 'Search depth', enum: ['basic', 'advanced'] }
                 },
                 required: ['query']

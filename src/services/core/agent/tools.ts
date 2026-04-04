@@ -320,7 +320,10 @@ export async function executeToolCall(
                 // Prioritize Native Internal Search (Python bridge) if in Electron
                 if (typeof window !== 'undefined' && (window as any).electron?.runSearch) {
                     try {
-                        const response = await (window as any).electron.runSearch({ query: args.query });
+                        const response = await (window as any).electron.runSearch({ 
+                            query: args.query,
+                            category: args.category || 'general'
+                        });
                         if (response.ok) {
                             return { success: true, data: response.data };
                         }

@@ -119,6 +119,9 @@ Get repository status, branch name, and modified files count.
 
 ### Tier 1: `web_search` [Base Tool]
 Quick superficial search. Returns short titles and snippets.
+- **Param:** `query`
+- **Param:** `category` (general, images, videos, news, maps, shopping, it, social)
+- **Param:** `search_depth` (basic, advanced)
 
 ### Tier 2: `read_url` [Base Tool]
 Directly read a URL to extract textual content and clean HTML.
@@ -143,8 +146,8 @@ Program a proactive task for the agent to execute in the future.
 ## 🧠 Neural Skills Library (Dynamic)
 Modular skills installed in `@TOOLS/skills/`:
 - **`api_fetcher`**: Universal HTTP client for REST APIs.
-- **`deep_research`**: Exhaustive research agent with auditing.
-- **`web_research`**: Browsing and reading from multiple web sources.
+- **`deep_research`**: Multi-language technical investigation with multi-category audit.
+- **`web_research`**: Content extraction from multiple sources using diverse search categories.
 - **`crypto_tracker`**: Real-time cryptocurrency price tracking.
 - **`list_available_skills`**: Auto-discovery of new installed skills.
 - **`gmail_imap`**: Basic email reading and management via IMAP.

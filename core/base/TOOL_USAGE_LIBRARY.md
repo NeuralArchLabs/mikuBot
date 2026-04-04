@@ -100,8 +100,9 @@ This file contains valid JSON code snippets for each tool. The system extracts t
 {
   "name": "web_search",
   "arguments": {
-    "query": "question or search term",
-    "search_depth": "basic"
+    "query": "claudecode vs antigravity comparison",
+    "category": "it",
+    "search_depth": "advanced"
   }
 }
 ```
@@ -111,7 +112,8 @@ This file contains valid JSON code snippets for each tool. The system extracts t
 {
   "name": "web_research",
   "arguments": {
-    "query": "Research on microfrontends architecture",
+    "query": "Microfrontends arch with Module Federation",
+    "categories": ["it", "general"],
     "max_sites": 3
   }
 }
@@ -122,7 +124,8 @@ This file contains valid JSON code snippets for each tool. The system extracts t
 {
   "name": "deep_research",
   "arguments": {
-    "topic": "advancements in nuclear fusion reactors 2024",
+    "topic": "Rust memory safety in embedded systems",
+    "categories": ["it", "science", "general"],
     "target_language": "both"
   }
 }

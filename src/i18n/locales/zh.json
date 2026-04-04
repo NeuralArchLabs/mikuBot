@@ -66,6 +66,8 @@
         "add_task_summary": "已安排自主任务：\"{{name}}\"。下次执行时间：{{schedule}}。",
         "telegram_summary": "成功向 Telegram 发送传输。",
         "batch_summary": "对 \"{{source_path}}\" 执行了批量操作 ({{operation}})。",
+        "web_research_summary": "针对 \"{{query}}\" 的网络研究已完成，研究类别: [{{categories}}]。已分析 {{count}} 个站点。",
+        "deep_research_summary": "深度研究已完成：针对类别 [{{categories}}] 生成了包含 {{count}} 个验证来源的分析报告。",
         "outline_summary": "成功生成 \"{{filename}}\" 的结构图。",
         "default_summary": "操作 \"{{name}}\" 已完成。"
     },

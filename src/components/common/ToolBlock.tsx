@@ -65,6 +65,18 @@ export const ToolBlock: React.FC<ToolBlockProps> = ({ block, isOld }) => {
                 return t('tools.metrics_summary', { platform: data.platform || 'OS', cpu: data.cpu || '?', ram: data.ram || '?' });
             case 'web_search':
                 return t('tools.web_search_summary', { query: args.query });
+            case 'web_research':
+                return t('tools.web_research_summary', { 
+                    query: args.query, 
+                    count: data.extracted_sources?.length || 0,
+                    categories: (args.categories || ['general']).join(', ')
+                });
+            case 'deep_research':
+                return t('tools.deep_research_summary', { 
+                    topic: args.topic, 
+                    count: data.report?.stats?.validated || 0,
+                    categories: (args.categories || ['general']).join(', ')
+                });
             case 'list_files':
                 return t('tools.list_files_summary', { source: getSourceLabel(args.source), count: data.files?.length || 0 });
             case 'read_file':

@@ -66,6 +66,8 @@
         "add_task_summary": "Tarea autónoma programada: \"{{name}}\". Próxima ejecución: {{schedule}}.",
         "telegram_summary": "Transmisión enviada a Telegram con éxito.",
         "batch_summary": "Operación por lotes ({{operation}}) realizada sobre \"{{source_path}}\".",
+        "web_research_summary": "Investigación web completada para: \"{{query}}\" en categorías: [{{categories}}]. Se han analizado {{count}} sitios.",
+        "deep_research_summary": "Investigación profunda finalizada: Dossier técnico generado con {{count}} fuentes validadas tras auditar categorías [{{categories}}].",
         "outline_summary": "Mapa estructural de \"{{filename}}\" generado correctamente.",
         "default_summary": "Operación \"{{name}}\" completada."
     },

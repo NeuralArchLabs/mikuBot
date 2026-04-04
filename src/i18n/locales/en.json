@@ -66,6 +66,8 @@
         "add_task_summary": "Autonomous task scheduled: \"{{name}}\". Next execution: {{schedule}}.",
         "telegram_summary": "Transmission sent to Telegram successfully.",
         "batch_summary": "Batch operation ({{operation}}) performed on \"{{source_path}}\".",
+        "web_research_summary": "Web research completed for: \"{{query}}\" in categories: [{{categories}}]. Analyzed {{count}} sites.",
+        "deep_research_summary": "Deep research finalized: Technical dossier generated with {{count}} validated sources across categories [{{categories}}].",
         "outline_summary": "Structural map of \"{{filename}}\" generated successfully.",
         "default_summary": "Operation \"{{name}}\" completed."
     },

@@ -6,11 +6,17 @@
         "properties": {
             "query": {
                 "type": "string",
-                "description": "The specific topic or question to investigate."
+                "description": "Topic to investigate."
+            },
+            "categories": {
+                "type": "array",
+                "items": { "type": "string", "enum": ["general", "images", "videos", "news", "maps", "shopping", "it", "social"] },
+                "description": "SearXena categories. Default: ['general']. For tech/code, ['it', 'general'] is highly effective.",
+                "default": ["general"]
             },
             "max_sites": {
                 "type": "integer",
-                "description": "Number of sites to read and extract (1-5). Default is 3.",
+                "description": "Sites to read/extract (1-5). Default: 3.",
                 "default": 3
             }
         },

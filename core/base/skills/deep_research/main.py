@@ -52,81 +52,106 @@ def extract_and_audit(client, url, query, snippet=""):
     except Exception as e:
         return {"url": url, "status": "ERROR", "audit_trail": [str(e)], "content": snippet, "relevance": 0, "justification": "Fallo crítico en extracción"}
 
-def perform_heavy_artillery(client, query, lang="es", limit=8):
-    """Ejecuta una búsqueda de alto nivel con SearXena."""
-    try:
-        payload = {"query": query, "limit": limit, "language": lang, "category": "it" if "tecn" in query or "ai" in query else "general"}
-        response = client.post(f"{SEARXENA_BASE}/search", json=payload)
-        if response.status_code != 200: return []
-        
-        results = response.json().get("results", [])
-        items = [{"url": r.get("url"), "snippet": r.get("content", "")} for r in results]
-        
-        # Extract content from each URL using SearXena extract API
-        with ThreadPoolExecutor(max_workers=min(len(items), 4) if items else 1) as executor:
-            audited_results = list(executor.map(
-                lambda x: extract_and_audit(httpx.Client(timeout=15.0), x["url"], query, x["snippet"]),
-                items
-            ))
-        
-        return audited_results
-    except: return []
+def perform_heavy_artillery(client, query, lang="es", limit=8, categories=None):
+    """Ejecuta una búsqueda de alto nivel con SearXena en múltiples categorías."""
+    if not categories: categories = ["general"]
+    
+    total_results = []
+    seen_urls = set()
 
-def deep_research_artillery(topic, lang="both"):
+    for cat in categories:
+        try:
+            payload = {"query": query, "limit": limit, "language": lang, "category": cat}
+            response = client.post(f"{SEARXENA_BASE}/search", json=payload)
+            if response.status_code == 200:
+                results = response.json().get("results", [])
+                for r in results:
+                    url = r.get("url")
+                    if url and url not in seen_urls:
+                        seen_urls.add(url)
+                        total_results.append({"url": url, "snippet": r.get("content", ""), "category": cat})
+        except: continue
+    
+    if not total_results: return []
+
+    # Extract content using SearXena extract API
+    # Usamos ThreadPool para paralelizar extracciones (mismo host, SearXena lo maneja)
+    with ThreadPoolExecutor(max_workers=min(len(total_results), 5)) as executor:
+        audited_results = list(executor.map(
+            lambda x: {**extract_and_audit(httpx.Client(timeout=15.0), x["url"], query, x["snippet"]), "category": x["category"]},
+            total_results
+        ))
+    
+    return audited_results
+
+def deep_research_artillery(topic, lang="both", categories=None):
     """
     DEEP RESEARCH (Heavy Artillery):
     Proceso de Auditoría -> Descarte -> Construcción -> Reporte final.
-    Uses SearXena API for both search and content extraction.
+    Explora múltiples categorías de SearXena para una cobertura total.
     """
+    if not categories: categories = ["general"]
     audit_report = {"discarded": [], "validated": [], "warnings": []}
     combined_data = []
 
-    with httpx.Client(timeout=30.0) as client:
-        # Búsqueda en Español
-        if lang in ["es", "both"]:
-            es_results = perform_heavy_artillery(client, topic, lang="es")
-            combined_data.extend(es_results)
-        
-        # Búsqueda en Inglés (Ampliación de contexto)
-        if lang in ["en", "both"]:
-            en_queries = [topic, f"{topic} deep dive analysis"]
-            for q in en_queries:
-                en_results = perform_heavy_artillery(client, q, lang="en", limit=5)
-                combined_data.extend(en_results)
+    try:
+        with httpx.Client(timeout=60.0) as client:
+            # Búsqueda en Español
+            if lang in ["es", "both"]:
+                es_results = perform_heavy_artillery(client, topic, lang="es", limit=5, categories=categories)
+                combined_data.extend(es_results)
+            
+            # Búsqueda en Inglés (Ampliación de contexto técnico)
+            if lang in ["en", "both"]:
+                en_queries = [topic, f"{topic} technical documentation"]
+                for q in en_queries:
+                    en_results = perform_heavy_artillery(client, q, lang="en", limit=4, categories=categories)
+                    combined_data.extend(en_results)
 
-    # Procesar Auditoría y Construcción
-    for item in combined_data:
-        if item["status"] == "KEEP":
-            audit_report["validated"].append(item)
-        elif item["status"] in ["DISCARD", "ERROR"]:
-            audit_report["discarded"].append({"url": item["url"], "reason": item["audit_trail"]})
-        else:
-            audit_report["warnings"].append(item)
+        # Procesar Auditoría y Construcción
+        # Usamos un set para evitar URLs duplicadas entre búsquedas/categorías
+        seen_urls = set()
+        for item in combined_data:
+            if item["url"] in seen_urls: continue
+            seen_urls.add(item["url"])
 
-    # Generar Reporte de Síntesis (Justificación)
-    summary_report = {
-        "title": f"Dossier de Investigación: {topic}",
-        "methodology": "Artillería Pesada (SearXena Multi-Lang + Native Extract Audit Layer)",
-        "total_sources_scanned": len(combined_data),
-        "validated_sources": len(audit_report["validated"]),
-        "discarded_sources": len(audit_report["discarded"]),
-        "executive_summary": "Este reporte constituye la base autorizada para la toma de decisiones. Se han descartado fuentes redundantes y optimizado la información técnica."
-    }
+            if item["status"] == "KEEP":
+                audit_report["validated"].append(item)
+            elif item["status"] in ["DISCARD", "ERROR"]:
+                audit_report["discarded"].append({"url": item["url"], "reason": item["audit_trail"], "category": item.get("category")})
+            else:
+                audit_report["warnings"].append(item)
 
-    return {
-        "success": True,
-        "report": summary_report,
-        "audit_logs": audit_report,
-        "raw_authorized_data": audit_report["validated"] + audit_report["warnings"]
-    }
+        # Generar Reporte de Síntesis (Justificación)
+        summary_report = {
+            "title": f"Dossier de Investigación: {topic}",
+            "methodology": f"Artillería Pesada (SearXena Multi-Lang + Multi-Category: {', '.join(categories)})",
+            "stats": {
+                "total_scanned": len(seen_urls),
+                "validated": len(audit_report["validated"]),
+                "warnings": len(audit_report["warnings"]),
+                "discarded": len(audit_report["discarded"])
+            },
+            "executive_summary": f"Reporte exhaustivo generado mediante el análisis de {len(seen_urls)} fuentes a través de las categorías {', '.join(categories)}."
+        }
+
+        return {
+            "success": True,
+            "report": summary_report,
+            "audit_logs": audit_report,
+            "raw_authorized_data": audit_report["validated"] + audit_report["warnings"]
+        }
+    except Exception as e:
+        return {"success": False, "error": f"Fallo en motor de investigación: {str(e)}"}
 
 if __name__ == "__main__":
     try:
         args = json.loads(sys.argv[1]) if len(sys.argv) > 1 else {}
         topic = args.get('topic')
         lang = args.get('target_language', 'both')
+        categories = args.get('categories', ['general'])
         if not topic: sys.exit(1)
-        output = deep_research_artillery(topic, lang)
+        output = deep_research_artillery(topic, lang, categories)
         sys.stdout.write(json.dumps(output, ensure_ascii=False) + "\n")
     except Exception as e:
         print(json.dumps({"success": False, "error": str(e)}))

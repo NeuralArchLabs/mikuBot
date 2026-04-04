@@ -43,53 +43,70 @@ def extract_one(client, url, query, snippet=""):
     except:
         return {"url": url, "content": snippet, "relevance": calculate_relevance(query, snippet), "method": "error_fallback"}
 
-def web_research(query, max_sites=3):
+def web_research(query, max_sites=3, categories=None):
     """
     WEB RESEARCH (Mid-Point): 
     Diferente de web_search por leer el contenido real de los sitios via SearXena extract API.
-    A diferencia de deep_research, es lineal y no genera reportes ni auditorías.
+    Permite seleccionar múltiples categorías para una búsqueda diversa.
     """
+    if not categories: categories = ["general"]
+    
+    seen_urls = set()
+    total_results = []
+    
     try:
         with httpx.Client(timeout=20.0) as client:
-            # Step 1: Search
-            payload = {"query": query, "limit": 6, "category": "general"}
-            response = client.post(f"{SEARXENA_BASE}/search", json=payload)
-            if response.status_code != 200:
-                return {"success": False, "error": "Motor SearXena fuera de línea."}
-            
-            search_results = response.json().get("results", [])
-            if not search_results:
-                return {"success": False, "error": "No se encontraron resultados."}
+            # Step 1: Multi-Category Search
+            for cat in categories:
+                payload = {"query": query, "limit": max_sites + 2, "category": cat}
+                try:
+                    response = client.post(f"{SEARXENA_BASE}/search", json=payload)
+                    if response.status_code == 200:
+                        results = response.json().get("results", [])
+                        for r in results:
+                            url = r.get("url")
+                            if url and url not in seen_urls:
+                                seen_urls.add(url)
+                                total_results.append({"url": url, "snippet": r.get("content", ""), "category": cat})
+                except: continue
 
-            items_to_process = [{"url": r.get("url"), "snippet": r.get("content", "")} for r in search_results[:max_sites]]
+            if not total_results:
+                return {"success": False, "error": f"No se encontraron resultados para: {query}"}
+
+            # Step 2: Extract & Analyze
+            # Limitamos para no saturar si hay muchas categorías
+            items_to_process = total_results[:max_sites + 2]
             
-            # Step 2: Extract content from each URL using SearXena extract API
-            with ThreadPoolExecutor(max_workers=len(items_to_process)) as executor:
-                results = list(executor.map(
-                    lambda x: extract_one(httpx.Client(timeout=15.0), x["url"], query, x["snippet"]),
-                    items_to_process
-                ))
-                extracted_data = [r for r in results if r is not None]
+            extracted_data = []
+            for item in items_to_process:
+                res = extract_one(client, item["url"], query, item["snippet"])
+                if res:
+                    res["category"] = item["category"]
+                    extracted_data.append(res)
 
             extracted_data.sort(key=lambda x: x["relevance"], reverse=True)
+            final_selection = extracted_data[:max_sites]
 
             return {
                 "success": True,
                 "type": "mid_point_research",
                 "query": query,
-                "extracted_sources": extracted_data
+                "categories_used": categories,
+                "extracted_sources": final_selection,
+                "summary": f"Análisis completado en {len(final_selection)} fuentes de categorías: {', '.join(categories)}."
             }
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Error en web_research: {str(e)}"}
 
 if __name__ == "__main__":
     try:
         args = json.loads(sys.argv[1]) if len(sys.argv) > 1 else {}
         query = args.get('query')
         max_sites = args.get('max_sites', 3)
+        categories = args.get('categories', ['general'])
         if not query:
             sys.exit(1)
-        output = web_research(query, max_sites)
+        output = web_research(query, max_sites, categories)
         sys.stdout.write(json.dumps(output, ensure_ascii=False) + "\n")
     except Exception as e:
         print(json.dumps({"success": False, "error": str(e)}))

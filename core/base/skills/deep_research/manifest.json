@@ -6,16 +6,18 @@
         "properties": {
             "topic": {
                 "type": "string",
-                "description": "The technical or complex topic to investigate."
+                "description": "Technical/complex topic."
+            },
+            "categories": {
+                "type": "array",
+                "items": { "type": "string", "enum": ["general", "images", "videos", "news", "maps", "shopping", "it", "social"] },
+                "description": "SearXena categories. Default: ['general']. Combinations like ['it', 'general'] are recommended.",
+                "default": ["general"]
             },
             "target_language": {
                 "type": "string",
-                "enum": [
-                    "es",
-                    "en",
-                    "both"
-                ],
-                "description": "Search language. 'both' is recommended for technical precision.",
+                "enum": ["es", "en", "both"],
+                "description": "Language strategy.",
                 "default": "both"
             }
         },
