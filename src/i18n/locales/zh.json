@@ -41,7 +41,8 @@
         "status": "状态",
         "executed": "执行时间",
         "desktop_engine_not_detected": "未检测到桌面引擎：仅在将 MikuCentral 作为桌面应用程序运行时，才能将设置保存到 config.json。",
-        "config_save_success": "神经引擎：配置已成功保存到 config.json",
+        "config_save_success": "配置已成功保存到 config.json",
+        "config_reset_success": "配置重置成功。",
         "config_error": "配置错误",
         "fatal_error": "致命错误",
         "connection_lost": "与神经引擎的连接已断开。请检查终端了解详情。",
@@ -703,5 +704,24 @@
         "error_loading": "加载神经技能时出错。",
         "error_creating": "技能创建管道出错。",
         "error_saving": "保存技能文件失败，请检查权限。"
+    },
+    "dialogs": {
+        "backup_success": "✅ 备份已创建\n\n文件已保存至：\n{{path}}",
+        "backup_error": "❌ 创建备份时出错：{{error}}",
+        "restore_confirm": "⚠️ 注意！重要提示\n\n导入备份将覆盖工作区中的所有当前文件，包括：\n\n• 配置\n• 会话\n• 计划任务\n• 命令和技能\n\n此操作无法撤销。\n\n⚠️ 警告：该过程将覆盖现有文件，且不再询问。\n\n您确定要继续吗？",
+        "restore_success": "✅ 恢复完成\n\n您的系统已成功恢复。建议重启应用程序以应用所有更改。",
+        "restore_error": "❌ 导入备份时出错：{{error}}",
+        "factory_reset_first": "⚠️ 这将重置配置并强制启动安装向导。\n\n您的会话和核心文件不会被删除，但您的路径和偏好设置将被重置。\n\n是否继续？",
+        "factory_reset_second": "🔴 最终确认\n\n您确定吗？应用程序将重启，您必须重新完成设置。",
+        "factory_reset_rebooting": "♻️ 正在重启应用程序...",
+        "factory_reset_error": "❌ 重置时出错：{{error}}",
+        "telegram_cancelled": "⚠️ [操作已取消]\n\n尝试向 Telegram 发送消息（例如：计划任务），但缺少凭据。请在设置中配置 'Bot Token' 和 'Chat ID'。",
+        "telegram_error": "⚠️ [Telegram 错误 - 第 {{index}} 部分]\n\n发送消息失败：{{error}}",
+        "voice_model_downloaded": "✅ 模型 ({{lang}}) 下载并提取成功。",
+        "voice_model_error": "❌ 下载模型时出错：{{error}}",
+        "voice_model_delete_confirm": "您确定要删除模型 {{name}} 吗？",
+        "voice_model_select": "请先选择一个模型。",
+        "setup_complete": "✅ 设置完成！\n\n您的环境已就绪。请前往设置以链接创建在 {{path}} 的文件夹",
+        "subsystems_online": "✅ 神经子系统已上线！\n\n您的环境已完全链接并准备就绪。"
     }
 }

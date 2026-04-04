@@ -168,15 +168,15 @@ export const SettingsPanel = ({
         if (res.ok) {
             const listRes = await (window as any).electron.listVoiceModels();
             if (listRes.ok) setLocalModels(listRes.models);
-            await askAlert(`✅ Modelo (${lang}) descargado y extraído correctamente.`);
+            await askAlert(t('dialogs.voice_model_downloaded', { lang }));
         } else {
-            await askAlert(`❌ Error al descargar modelo: ${res.error}`);
+            await askAlert(t('dialogs.voice_model_error', { error: res.error }));
         }
     };
 
     const handleDeleteModel = async (modelName: string) => {
         if (!(window as any).electron) return;
-        const confirm = await askConfirm(`¿Seguro que deseas eliminar el modelo ${modelName}?`);
+        const confirm = await askConfirm(t('dialogs.voice_model_delete_confirm', { name: modelName }));
         if (!confirm) return;
 
         const res = await (window as any).electron.deleteVoiceModel({ modelName });
@@ -1274,8 +1274,8 @@ export const SettingsPanel = ({
                                                 onClick={async () => {
                                                     if (!(window as any).electron) return;
                                                     const res = await (window as any).electron.exportBackup();
-                                                    if (res.ok) await askAlert(`✅ Respaldo Creado\n\nEl archivo se ha guardado en:\n${res.path}`);
-                                                    else if (!res.canceled) await askAlert(`❌ Error al crear respaldo: ${res.error}`);
+                                                    if (res.ok) await askAlert(t('dialogs.backup_success', { path: res.path }));
+                                                    else if (!res.canceled) await askAlert(t('dialogs.backup_error', { error: res.error }));
                                                 }}
                                                 className="py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all flex flex-col items-center justify-center gap-2 border shadow-lg group/btn premium-button premium-emphasis premium-cyan bg-cyan-600/10 text-cyan-400"
                                             >
@@ -1285,16 +1285,16 @@ export const SettingsPanel = ({
                                             <button
                                                 onClick={async () => {
                                                     if (!(window as any).electron) return;
-                                                    const confirm = window.confirm("⚠️ ¡ATENCIÓN! IMPORTANTE\n\nImportar un respaldo SOBREESCRIBIRÁ TODOS tus archivos actuales en el Workspace, incluyendo:\n\n• Configuraciones\n• Sesiones\n• Tareas programadas\n• Comandos y habilidades\n\nEsta acción NO SE PUEDE DESHACER.\n\n⚠️ ALERTA: El comando de PowerShell usa '-Force' que sobreescribirá archivos existentes sin preguntar nuevamente.\n\n¿Estás SEGURO de que deseas continuar?");
+                                                    const confirm = await askConfirm(t('dialogs.restore_confirm'));
 
                                                     if (!confirm) return;
 
                                                     const res = await (window as any).electron.importBackup();
                                                     if (res.ok) {
-                                                        await askAlert("✅ Restauración Completada\n\nTu sistema ha sido restaurado con éxito. Se recomienda reiniciar la aplicación para aplicar todos los cambios.");
+                                                        await askAlert(t('dialogs.restore_success'));
                                                         window.location.reload();
                                                     } else if (!res.canceled) {
-                                                        await askAlert(`❌ Error al importar respaldo: ${res.error}`);
+                                                        await askAlert(t('dialogs.restore_error', { error: res.error }));
                                                     }
                                                 }}
                                                 className="py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all flex flex-col items-center justify-center gap-2 border shadow-lg group/btn premium-button premium-emphasis premium-indigo bg-slate-800 text-slate-300"
@@ -1336,21 +1336,21 @@ export const SettingsPanel = ({
                                         type="button"
                                         onClick={async () => {
                                             const first = await askConfirm(
-                                                "⚠️ Esto reiniciará la configuración y forzará el asistente de instalación.\n\nTus sesiones y archivos de core NO se eliminarán, pero tus rutas y preferencias se restablecerán.\n\n¿Deseas continuar?"
+                                                t('dialogs.factory_reset_first')
                                             );
                                             if (!first) return;
 
                                             const second = await askConfirm(
-                                                "🔴 CONFIRMACIÓN FINAL\n\n¿Estás absolutamente seguro? La aplicación se reiniciará y deberás completar el setup nuevamente."
+                                                t('dialogs.factory_reset_second')
                                             );
                                             if (!second) return;
 
                                             try {
                                                 await onSaveGlobal(true, { isConfigured: false });
-                                                await askAlert("♻️ Reiniciando aplicación...");
+                                                await askAlert(t('dialogs.factory_reset_rebooting'));
                                                 // La UI se actualizará automáticamente activando el Onboarding Wizard al cambiar isConfigured
                                             } catch (e) {
-                                                await askAlert("❌ Error al reiniciar: " + (e as any)?.message);
+                                                await askAlert(t('dialogs.factory_reset_error', { error: (e as any)?.message }));
                                             }
                                         }}
                                         className="h-11 px-6 bg-red-500/[0.02] hover:bg-red-500/15 border border-transparent hover:border-red-500/40 text-red-400/60 hover:text-red-100 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 shadow-lg hover:shadow-red-500/10 active:scale-95 group/btn"

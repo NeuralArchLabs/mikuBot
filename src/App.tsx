@@ -578,7 +578,7 @@ export const App = () => {
             // 3. Trigger immediate sync with new paths
             await restoreAndSync(mergedConfig);
 
-            await askAlert(`✅ ${t('common.config_import_success')}`);
+            await askAlert(t('common.config_import_success'));
         }
     }, [askAlert, restoreAndSync, t]);
 
@@ -587,19 +587,13 @@ export const App = () => {
     }, [state.config, state.agentMode, state.safeMode, state.approvalMode]);
 
     const onResetGlobal = useCallback(async () => {
-        if (await askConfirm(t('common.reset_confirm') || "Are you sure? This will reset all settings to defaults.")) {
-            setState(prev => ({
-                ...prev,
-                config: DEFAULT_CONFIG,
-                agentMode: 'chat',
-                safeMode: true,
-                approvalMode: 'auto'
-            }));
-            // Persist the reset immediately
-            if (electron) {
-                await persistence.saveSettings(DEFAULT_CONFIG, 'chat', true, 'auto');
-            }
-            await askAlert(`✅ ${t('common.config_reset_success')}`);
+        if (await askConfirm(t('common.reset_confirm'))) {
+            return; // Logic placeholder for actual reset if needed, already handled in SettingsPanel
+        }
+
+        const result = await (window as any).electron.resetConfig();
+        if (result.ok) {
+            await askAlert(t('common.config_reset_success'));
         }
     }, [askConfirm, t, askAlert]);
 
@@ -836,7 +830,7 @@ export const App = () => {
                         root: 'granted'
                     }
                 }));
-                await askAlert(`✅ ${t('common.subsystems_online')}`, "center");
+                await askAlert(t('dialogs.subsystems_online'), "center");
                 return;
             }
 
@@ -877,7 +871,7 @@ export const App = () => {
                     }
                 }));
 
-                await askAlert("✅ Neural Subsystems Online!\n\nYour environment is fully linked and ready to operate.", "center");
+                await askAlert(t('dialogs.subsystems_online'), "center");
             }
         } catch (e) {
             console.log("Wake up failed or cancelled", e);
@@ -1121,7 +1115,7 @@ To see all your additional enabled skills and their full technical parameters, y
     const sendToTelegramDirectly = useCallback((text: string) => {
         if (!state.config.telegramBotToken || !state.config.telegramChatId) {
             console.warn("[Telegram Notifier] Missing Telegram configuration (Bot Token or Chat ID). Skipping notification.");
-            askAlert("⚠️ [Acción Cancelada]\n\nSe intentó enviar un mensaje a Telegram (ej. Tarea Programada), pero faltan las credenciales. Configura el 'Bot Token' y el 'Chat ID' en los ajustes.");
+            askAlert(t('dialogs.telegram_cancelled'));
             return;
         }
 
@@ -1145,7 +1139,7 @@ To see all your additional enabled skills and their full technical parameters, y
                         if (!res.ok) {
                             const errData = await res.json().catch(() => ({}));
                             console.error("Telegram API Error:", errData);
-                            askAlert(`⚠️ [Error de Telegram - Parte ${index + 1}]\n\nFallo al enviar mensaje: ${errData.description || res.statusText}`);
+                            askAlert(t('dialogs.telegram_error', { index: index + 1, error: errData.description || res.statusText }));
                         }
                     })
                     .catch(err => console.error("Remote response error:", err));
@@ -1239,7 +1233,7 @@ To see all your additional enabled skills and their full technical parameters, y
             : (hasChatOverride ? currentState.config.chatModel : currentState.config.model);
 
         if (!resolvedModel) {
-            await askAlert('Select a model first.');
+            await askAlert(t('dialogs.voice_model_select'));
             return;
         }
 
@@ -1740,7 +1734,7 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                 await db.set('extraHandle', library);
                 syncFiles('extra', library);
             }
-            await askAlert("✅ Neural Subsystems Online!\n\nYour environment is fully linked and ready to operate.", "center");
+            await askAlert(t('dialogs.setup_complete', { path: setupData.targetPath }), "center");
         } else if (isElectron && newConfig.folderPaths) {
             await syncFiles('core', null, newConfig.folderPaths.core);
             await syncFiles('tools', null, newConfig.folderPaths.tools);
@@ -1751,9 +1745,9 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                 ...prev,
                 folderPermissions: { core: 'granted', extra: 'granted', workSpace: 'granted', tools: 'granted' }
             }));
-            await askAlert("✅ Neural Subsystems Online!\n\nYour environment is fully linked and auto-configured via internal channels.", "center");
+            await askAlert(t('dialogs.subsystems_online'), "center");
         } else {
-            await askAlert(`✅ Setup Complete!\n\nYour environment is ready. Please go to Settings to link the 'core', 'commands', 'workspace', and 'library' folders created at ${setupData.targetPath}`, "center");
+            await askAlert(t('dialogs.setup_complete', { path: setupData.targetPath }), "center");
         }
     };
 

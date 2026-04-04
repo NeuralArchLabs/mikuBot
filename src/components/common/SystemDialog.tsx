@@ -40,11 +40,12 @@ export const SystemDialog = ({ config }: SystemDialogProps) => {
     };
 
     const isAlert = activeConfig.type === 'alert';
-    const isError = activeConfig.message.includes('❌') || activeConfig.message.includes('⚠️') || activeConfig.message.includes('💥');
-    const isSuccess = activeConfig.message.includes('✅');
+    const isError = activeConfig.message.includes('❌') || activeConfig.message.includes('⚠️') || activeConfig.message.includes('💥') || activeConfig.message.includes('🔴') || activeConfig.message.includes('🛑');
+    const isSuccess = activeConfig.message.includes('✅') || activeConfig.message.includes('🚀');
+    const isInfo = activeConfig.message.includes('☕') || activeConfig.message.includes('♻️') || activeConfig.message.includes('ℹ️');
 
-    const iconName = isError ? 'exclamation-triangle' : isSuccess ? 'check-circle' : isAlert ? 'info-circle' : 'question-circle';
-    const iconColor = isError ? 'text-red-400 border-red-500/20 bg-red-500/10' : isSuccess ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/10' : 'text-blue-400 border-blue-500/20 bg-blue-500/10';
+    const iconName = isError ? 'exclamation-triangle' : isSuccess ? 'check-circle' : isInfo ? 'info-circle' : isAlert ? 'info-circle' : 'question-circle';
+    const iconColor = isError ? 'text-red-400 border-red-500/20 bg-red-500/10' : isSuccess ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/10' : isInfo ? 'text-blue-400 border-blue-500/20 bg-blue-500/10' : 'text-blue-400 border-blue-500/20 bg-blue-500/10';
 
     const isRight = activeConfig.position === 'right';
     const isLeft = activeConfig.position === 'left';
@@ -71,7 +72,7 @@ export const SystemDialog = ({ config }: SystemDialogProps) => {
 
                 {/* Body */}
                 <div className="p-6 text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">
-                    {activeConfig.message.replace(/^[❌⚠️💥✅]\s*/, '')}
+                    {activeConfig.message.replace(/^[❌⚠️💥✅🔴☕🚀🛑♻️ℹ️]\s*/, '')}
                 </div>
 
                 {/* Footer */}
