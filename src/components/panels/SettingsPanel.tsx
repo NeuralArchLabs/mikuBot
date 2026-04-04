@@ -789,12 +789,12 @@ export const SettingsPanel = ({
                                     <div className="md:col-span-7 premium-card p-5 border transition-all duration-700 flex flex-col">
                                         <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">{t('settings.security.key_mgmt')}</h4>
 
-                                        <div className="flex gap-2 premium-card !bg-slate-900/60 p-1.5 rounded-xl mb-4">
+                                        <div className="flex gap-2 premium-card !bg-slate-900/60 p-1.5 rounded-2xl mb-4">
                                             {(Object.keys(PROVIDERS) as Provider[]).map(pId => (
                                                 <button
                                                     key={pId}
                                                     onClick={() => setEditingProvider(pId)}
-                                                    className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${editingProvider === pId ? 'bg-slate-700 text-white shadow' : 'text-slate-500 hover:text-slate-300'
+                                                    className={`flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all ${editingProvider === pId ? 'bg-slate-700/80 text-white shadow-lg shadow-black/20 ring-1 ring-white/5' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
                                                         }`}
                                                 >
                                                     {PROVIDERS[pId].name.split(' ')[0]}
