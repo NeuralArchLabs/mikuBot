@@ -272,8 +272,8 @@
         },
         "orchestration": {
             "title": "Enrutamiento de Modelos",
-            "chat_runtime": "Ejecución de Chat",
-            "agent_runtime": "Ejecución de Agente",
+            "chat_runtime": "Ejecución para Chat",
+            "agent_runtime": "Ejecución del Agente",
             "provider": "Proveedor Activo",
             "model": "Modelo Activo",
             "sync": "Sincronizar Arquitecturas",
