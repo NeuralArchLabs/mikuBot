@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppConfig, Provider, ModelInfo } from '../../types';
 import { Icon, ModernSelect } from '../common/Common';
-import { DEFAULT_CONFIG, PROVIDERS } from '../../constants';
+import { DEFAULT_CONFIG, PROVIDERS, APP_VERSION } from '../../constants';
 import { runHealthCheck, type HealthCheckResult } from '../../services/core/HealthCheck';
 import { hydrateAllTemplates, extractTemplatesFromFolderContent, type PromptVariables } from '../../services/core/BlueprintHydrator';
 
@@ -238,7 +238,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                     <div className="flex items-center gap-3.5">
                         <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_15px_rgba(59,130,246,0.6)] shrink-0" />
                         <div className="flex flex-col items-start">
-                            <h2 className="text-sm md:text-base lg:text-lg font-black text-white tracking-tight leading-none mb-1">{t('onboarding.subtitle')}</h2>
+                            <h2 className="text-sm md:text-base lg:text-lg font-black text-white tracking-tight leading-none mb-1">{t('onboarding.subtitle')} <span className="text-[10px] text-blue-400 opacity-60">v{APP_VERSION}</span></h2>
                             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none">{t('onboarding.title')}</p>
                         </div>
                     </div>

@@ -1,5 +1,15 @@
-# Changelog
- 
+## [2.1.5.1] - 2026-04-04
+### Fixed
+- **UTF-8 Encoding Restoration**: Successfully repaired corrupted accented characters (á, é, í, ó, ú, ñ) in `es.json` caused by previous tool interactions. All Spanish text now renders correctly with proper encoding.
+- **System Dialog Localization**: Fully migrated all hardcoded strings in backup, restore, factory reset, and voice download dialogs to the i18n layer. All alerts now respect the active system language.
+- **UI Icon Stabilization**: Removed broken diagnostic symbols (diamond-question marks) from dialog titles. Implemented a robust emoji-based detection system in `SystemDialog` to trigger matching status colors (Red/Success/Warning).
+- **Architectural Nomenclature Preservation**: Reverted accidental translations of core directory headers. Routes now correctly display as `WorkSpace`, `Core`, `Library`, and `Commands` to maintain technical nomenclature while keeping descriptions in the user's language.
+
+### Added
+- **Diagnostic Emoji Logic**: Added support for standard status emojis (✅, 🔴, ⚠️, ♻️) as triggers for automated dialog skinning, ensuring a "High-Tech" reactive aesthetic without manual icon overrides.
+- **Enhanced Restore Warnings**: Updated the restoration confirmation with explicit, localized warnings about irreversible data overwrites.
+
+
 ## [2.1.5] - 2026-04-02
 ### Added
 - **Full UI Localization**: Refactored `TitleBar` and `AboutDialog` to use `i18next`, ensuring 100% language parity across the core interface in English, Spanish, and Chinese.
@@ -77,7 +87,8 @@
 - **Atomic Persistence Reliability**: Refactored the file-saving bridge to use native file descriptors for guaranteed write completion.
 
 ### Changed
-- **Version Bump**: Global application version updated to v1.9.8.
+- **Version Bump**: Global application  "version": "2.1.5.1",
+ updated.
 
 ## [1.9.7] - 2026-03-24
 ### Added

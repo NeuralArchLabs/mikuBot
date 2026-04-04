@@ -5,6 +5,8 @@
 
 import type { AppConfig } from '../types';
 
+export const APP_VERSION = '2.1.5.1';
+
 export const DEFAULT_FILES: Record<string, string> = {};
 
 export const DEFAULT_CONFIG: AppConfig = {

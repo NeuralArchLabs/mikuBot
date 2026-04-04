@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Icon } from './Common';
 import { useTranslation } from 'react-i18next';
+import { APP_VERSION } from '../../constants';
 
 interface AboutDialogProps {
     isOpen: boolean;
@@ -49,7 +50,7 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({ isOpen, onClose }) => 
                         mikuBot Dashboard
                     </h2>
                     <div className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">
-                        v2.1.4
+                        v{APP_VERSION}
                     </div>
                     
                     <p className="text-sm text-slate-300 leading-relaxed mb-6 font-medium text-justify">
