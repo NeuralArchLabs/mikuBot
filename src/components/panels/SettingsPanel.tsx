@@ -4,7 +4,7 @@ import './SettingsPanel.css';
 import { neuralScheduler } from '../../services';
 import { AppConfig, ModelInfo, Provider } from '../../types';
 import { PROVIDERS } from '../../constants';
-import { Icon } from '../common/Common';
+import { Icon, ModernSelect, SelectOption } from '../common/Common';
 import { SchedulerTab } from './SchedulerTab';
 import { SkillsPanel } from './SkillsPanel';
 
@@ -541,8 +541,8 @@ export const SettingsPanel = ({
                                                     }`}
                                                 title={
                                                     (config.chatProvider === 'ollama' ? (models['ollama'] || []).length > 0 : !!config.apiKeys[config.chatProvider || 'gemini'])
-                                                        ? "Connection/Key Active"
-                                                        : "Configuration Pending"
+                                                        ? t('settings.orchestration.connection_active')
+                                                        : t('settings.orchestration.config_pending')
                                                 }
                                             >
                                                 <Icon name={config.chatProvider === 'ollama' ? 'network-wired' : 'key'} />
@@ -566,7 +566,7 @@ export const SettingsPanel = ({
 
                                     <div className="space-y-5">
                                         <div>
-                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block ml-1">Routing Provider</label>
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block ml-1">{t('settings.orchestration.provider')}</label>
                                             <div className="flex gap-2 premium-card !bg-black/20 p-1.5 rounded-2xl border border-white/5">
                                                 {(Object.keys(PROVIDERS) as Provider[]).map(pId => {
                                                     const isSelected = config.chatProvider === pId;
@@ -602,20 +602,13 @@ export const SettingsPanel = ({
                                         <div>
                                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block ml-1">{t('settings.orchestration.model')}</label>
                                             <div className="relative">
-                                                <select
+                                                <ModernSelect
                                                     value={config.chatModel}
-                                                    onChange={(e) => updateConfig('chatModel', e.target.value)}
+                                                    onChange={(val) => updateConfig('chatModel', val)}
+                                                    placeholder={t('settings.orchestration.select_model')}
+                                                    options={(models[config.chatProvider || 'groq'] || []).map(m => ({ value: m.id, label: m.name }))}
                                                     title={t('settings.orchestration.model')}
-                                                    className="w-full premium-input rounded-xl px-4 py-3.5 text-slate-200 text-xs font-medium focus:outline-none appearance-none shadow-inner"
-                                                >
-                                                    <option value="">{t('settings.orchestration.select_model')}</option>
-                                                    {(models[config.chatProvider || 'groq'] || []).map(m => (
-                                                        <option key={m.id} value={m.id}>{m.name}</option>
-                                                    ))}
-                                                </select>
-                                                <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                                                    <Icon name="chevron-down" />
-                                                </div>
+                                                />
                                             </div>
                                         </div>
                                     </div>
@@ -640,8 +633,8 @@ export const SettingsPanel = ({
                                                     }`}
                                                 title={
                                                     (config.agentProvider === 'ollama' ? (models['ollama'] || []).length > 0 : !!config.apiKeys[config.agentProvider || 'groq'])
-                                                        ? "Connection/Key Active"
-                                                        : "Configuration Pending"
+                                                        ? t('settings.orchestration.connection_active')
+                                                        : t('settings.orchestration.config_pending')
                                                 }
                                             >
                                                 <Icon name={config.agentProvider === 'ollama' ? 'network-wired' : 'key'} />
@@ -665,7 +658,7 @@ export const SettingsPanel = ({
 
                                     <div className="space-y-5">
                                         <div>
-                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block ml-1">Routing Provider</label>
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block ml-1">{t('settings.orchestration.provider')}</label>
                                             <div className="flex gap-2 premium-card !bg-black/20 p-1.5 rounded-2xl border border-white/5">
                                                 {(Object.keys(PROVIDERS) as Provider[]).map(pId => {
                                                     const isSelected = config.agentProvider === pId;
@@ -701,20 +694,13 @@ export const SettingsPanel = ({
                                         <div>
                                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block ml-1">{t('settings.orchestration.model')}</label>
                                             <div className="relative">
-                                                <select
+                                                <ModernSelect
                                                     value={config.agentModel}
-                                                    onChange={(e) => updateConfig('agentModel', e.target.value)}
+                                                    onChange={(val) => updateConfig('agentModel', val)}
+                                                    placeholder={t('settings.orchestration.select_model')}
+                                                    options={(models[config.agentProvider || 'groq'] || []).map(m => ({ value: m.id, label: m.name }))}
                                                     title={t('settings.orchestration.model')}
-                                                    className="w-full premium-input rounded-xl px-4 py-3.5 text-slate-200 text-xs font-medium focus:outline-none appearance-none shadow-inner"
-                                                >
-                                                    <option value="">{t('settings.orchestration.select_model')}</option>
-                                                    {(models[config.agentProvider || 'groq'] || []).map(m => (
-                                                        <option key={m.id} value={m.id}>{m.name}</option>
-                                                    ))}
-                                                </select>
-                                                <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                                                    <Icon name="chevron-down" />
-                                                </div>
+                                                />
                                             </div>
                                         </div>
                                     </div>
@@ -760,35 +746,25 @@ export const SettingsPanel = ({
                                             <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">{t('settings.security.fallback_title')}</h4>
                                             <div className="space-y-4">
                                                     <div className="relative">
-                                                        <select
+                                                        <ModernSelect
                                                             value={config.provider}
-                                                            onChange={(e) => updateConfig('provider', e.target.value as Provider)}
+                                                            onChange={(val) => updateConfig('provider', val as Provider)}
+                                                            placeholder={t('settings.security.provider_label')}
+                                                            options={(Object.keys(PROVIDERS) as Provider[]).map(pId => ({
+                                                                value: pId,
+                                                                label: `${PROVIDERS[pId].name} ${t('settings.security.provider_label')}`
+                                                            }))}
                                                             title={t('settings.security.provider_label')}
-                                                            className="w-full premium-input rounded-xl px-4 py-3 text-slate-300 text-xs font-medium focus:outline-none appearance-none"
-                                                        >
-                                                            {(Object.keys(PROVIDERS) as Provider[]).map(pId => (
-                                                                <option key={pId} value={pId}>{PROVIDERS[pId].name} {t('settings.security.provider_label')}</option>
-                                                            ))}
-                                                        </select>
-                                                        <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                                                            <Icon name="chevron-down" />
-                                                        </div>
+                                                        />
                                                     </div>
                                                 <div className="relative">
-                                                    <select
+                                                    <ModernSelect
                                                         value={config.model}
-                                                        onChange={(e) => updateConfig('model', e.target.value)}
+                                                        onChange={(val) => updateConfig('model', val)}
+                                                        placeholder={t('settings.security.model_label') + '...'}
+                                                        options={(models[config.provider] || []).map(m => ({ value: m.id, label: m.name }))}
                                                         title={t('settings.security.model_label')}
-                                                        className="w-full premium-input rounded-xl px-4 py-3 text-slate-300 text-xs font-medium focus:outline-none appearance-none"
-                                                    >
-                                                        <option value="">{t('settings.security.model_label')}...</option>
-                                                        {(models[config.provider] || []).map(m => (
-                                                            <option key={m.id} value={m.id}>{m.name}</option>
-                                                        ))}
-                                                    </select>
-                                                    <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                                                        <Icon name="chevron-down" />
-                                                    </div>
+                                                    />
                                                 </div>
                                             </div>
                                         </div>
@@ -975,20 +951,14 @@ export const SettingsPanel = ({
                                         <div className="space-y-4">
                                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block ml-1">{t('settings.vosk.active_model')}</label>
                                             <div className="relative">
-                                                <select
+                                                <ModernSelect
                                                     value={config.voskModelPath || ''}
-                                                    onChange={(e) => updateConfig('voskModelPath', e.target.value)}
-                                                    title="Seleccionar modelo de voz"
-                                                    className="w-full premium-input rounded-xl px-4 py-3.5 text-slate-200 text-xs font-medium focus:outline-none appearance-none shadow-inner"
-                                                >
-                                                    <option value="">{t('settings.vosk.none')}</option>
-                                                    {localModels.map(m => (
-                                                        <option key={m} value={m}>{m}</option>
-                                                    ))}
-                                                </select>
-                                                <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                                                    <Icon name="chevron-down" />
-                                                </div>
+                                                    onChange={(val) => updateConfig('voskModelPath', val)}
+                                                    placeholder={t('settings.vosk.none')}
+                                                    options={localModels.map(m => ({ value: m, label: m }))}
+                                                    title={t('settings.vosk.active_model')}
+                                                    dropDirection="down"
+                                                />
                                             </div>
                                         </div>
                                     </div>
@@ -1143,15 +1113,15 @@ export const SettingsPanel = ({
                                                     }`}
                                             >
                                                 <Icon name={startingSearxena ? "sync fa-spin" : (!searxenaStatus.envReady ? "magic" : "rocket")} className="text-base" />
-                                                                                    {startingSearxena ? (
-                                        searxenaStatus.envReady ? t('settings.searxena.btn_deploying') : t('settings.searxena.btn_starting')
-                                    ) : searxenaStatus.running ? (
-                                        t('settings.searxena.btn_active')
-                                    ) : !searxenaStatus.envReady ? (
-                                        t('settings.searxena.btn_install_start')
-                                    ) : (
-                                        t('settings.searxena.btn_start')
-                                    )}
+                                                {startingSearxena ? (
+                                                    searxenaStatus.envReady ? t('settings.searxena.btn_deploying') : t('settings.searxena.btn_starting')
+                                                ) : searxenaStatus.running ? (
+                                                    t('settings.searxena.btn_active')
+                                                ) : !searxenaStatus.envReady ? (
+                                                    t('settings.searxena.btn_install_start')
+                                                ) : (
+                                                    t('settings.searxena.btn_start')
+                                                )}
                                             </button>
                                             
                                             <div className="p-5 rounded-2xl bg-black/40 border border-white/5 space-y-4 backdrop-blur-sm">
@@ -1160,7 +1130,7 @@ export const SettingsPanel = ({
                                                         <div className={`w-2 h-2 rounded-full ${searxenaStatus.installed ? 'bg-[#818cf8] shadow-[0_0_8px_rgba(129,140,248,0.4)]' : 'bg-slate-700'}`} />
                                                         <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{t('settings.searxena.core_local')}</span>
                                                     </div>
-                                                    <span className="text-[9px] font-mono text-indigo-400/80 uppercase">{searxenaStatus.installed ? 'ONLINE' : 'MISSING'}</span>
+                                                    <span className="text-[9px] font-mono text-indigo-400/80 uppercase">{searxenaStatus.installed ? t('settings.searxena.status_online') : t('settings.searxena.status_offline')}</span>
                                                 </div>
 
                                                 <div className="flex items-center justify-between">
@@ -1168,7 +1138,7 @@ export const SettingsPanel = ({
                                                         <div className={`w-2 h-2 rounded-full ${searxenaStatus.envReady ? 'bg-[#c084fc] shadow-[0_0_8px_rgba(192,132,252,0.4)]' : 'bg-amber-500/40 shadow-[0_0_8px_rgba(245,158,11,0.2)]'}`} />
                                                         <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{t('settings.searxena.core_env')}</span>
                                                     </div>
-                                                    <span className="text-[9px] font-mono text-purple-400/80 uppercase">{searxenaStatus.envReady ? 'READY' : 'SETUP REQUIRED'}</span>
+                                                    <span className="text-[9px] font-mono text-purple-400/80 uppercase">{searxenaStatus.envReady ? t('settings.searxena.status_ready') : t('settings.searxena.status_setup_req')}</span>
                                                 </div>
                                                 
                                                 <div className="flex items-center justify-between">
@@ -1180,13 +1150,13 @@ export const SettingsPanel = ({
                                                         {searxenaStatus.running && (
                                                             <button 
                                                                 onClick={handleStopSearXena}
-                                                                title="Interrumpir Proceso"
+                                                                title={t('settings.searxena.btn_stop_title')}
                                                                 className="w-6 h-6 flex items-center justify-center rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-all border border-rose-500/20 active:scale-90"
                                                             >
                                                                 <Icon name="power-off" className="text-[9px]" />
                                                             </button>
                                                         )}
-                                                        <span className="text-[9px] font-mono text-pink-400/80 uppercase min-w-[50px] text-right">{searxenaStatus.running ? 'ACTIVE' : 'IDLE'}</span>
+                                                        <span className="text-[9px] font-mono text-pink-400/80 uppercase min-w-[50px] text-right">{searxenaStatus.running ? t('settings.searxena.status_active') : t('settings.searxena.status_idle')}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1206,7 +1176,7 @@ export const SettingsPanel = ({
                                                                 ? 'premium-indigo !bg-slate-800/50 text-slate-500 cursor-not-allowed opacity-50'
                                                                 : 'premium-indigo !bg-slate-800/20 text-slate-400'
                                                             }`}
-                                                        title={searxenaStatus.running ? "Detén el motor antes de actualizar" : "Sincronizar librerías de Python"}
+                                                        title={searxenaStatus.running ? t('settings.searxena.sync_warn_running') : t('settings.searxena.sync_btn_title')}
                                                     >
                                                         <Icon name={updatingSearxena ? "sync fa-spin" : "wrench"} />
                                                         {updatingSearxena ? t('settings.searxena.btn_syncing') : t('settings.searxena.btn_sync')}
@@ -1404,7 +1374,7 @@ export const SettingsPanel = ({
                                 <button
                                     onClick={onSaveGlobal}
                                     className={`pointer-events-auto h-12 bg-slate-900 hover:bg-slate-800 border border-transparent hover:border-blue-500/50 text-slate-400 hover:text-blue-200 rounded-full transition-all duration-700 ease-in-out flex items-center justify-center shadow-[0_10px_40px_rgba(0,0,0,0.4)] group relative overflow-hidden premium-button px-0 ${isAtBottom ? 'w-36 px-6' : 'w-12 group-hover:w-36 group-hover:px-6'}`}
-                                    title="Save All Global Settings"
+                                    title={t('settings.actions.save')}
                                 >
                                     {/* Liquid Shine Effect */}
                                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.03] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />

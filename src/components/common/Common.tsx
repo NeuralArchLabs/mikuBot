@@ -1,4 +1,5 @@
 import React, { useMemo, useEffect, useRef, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { toHtml } from '../../utils';
 import { formatFinalResponse } from '../../services/formatters';
 
@@ -248,3 +249,109 @@ const InteractiveMarkdownRendererBase = ({ content }: InteractiveMarkdownRendere
 };
 
 export const InteractiveMarkdownRenderer = React.memo(InteractiveMarkdownRendererBase);
+
+export interface SelectOption {
+    value: string;
+    label: string;
+}
+
+export const ModernSelect = ({ 
+    value, 
+    onChange, 
+    options, 
+    placeholder = "Select...", 
+    className = "",
+    title = "",
+    dropDirection = 'down',
+    iconVariant = 'chevron'
+}: { 
+    value: string; 
+    onChange: (val: string) => void; 
+    options: SelectOption[]; 
+    placeholder?: string;
+    className?: string;
+    title?: string;
+    dropDirection?: 'up' | 'down';
+    iconVariant?: 'chevron' | 'plus';
+}) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [coords, setCoords] = useState({ top: 0, left: 0, width: 0, bottom: 0 });
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    const activeOption = options.find(o => o.value === value);
+
+    const updateCoords = useCallback(() => {
+        if (containerRef.current) {
+            const rect = containerRef.current.getBoundingClientRect();
+            setCoords({
+                top: rect.top,
+                bottom: rect.bottom,
+                left: rect.left,
+                width: rect.width
+            });
+        }
+    }, []);
+
+    useEffect(() => {
+        if (isOpen) {
+            updateCoords();
+            window.addEventListener('scroll', updateCoords, true);
+            window.addEventListener('resize', updateCoords);
+        }
+        return () => {
+            window.removeEventListener('scroll', updateCoords, true);
+            window.removeEventListener('resize', updateCoords);
+        };
+    }, [isOpen, updateCoords]);
+
+    return (
+        <div ref={containerRef} className={`relative ${className}`} title={title}>
+            <button
+                type="button"
+                onClick={() => setIsOpen(!isOpen)}
+                className={`w-full bg-slate-950/70 border border-transparent hover:border-white/10 rounded-2xl px-8 py-4 text-xs text-white outline-none transition-all font-black flex items-center justify-between shadow-inner group`}
+            >
+                <span className="flex-grow text-center truncate px-2 group-hover:text-blue-400 transition-colors">{activeOption ? activeOption.label : placeholder}</span>
+                <Icon 
+                    name={isOpen ? 'times' : (iconVariant === 'plus' ? 'bars' : 'chevron-down')} 
+                    className={`text-slate-600 text-[10px] ml-2 transition-all ${isOpen ? 'duration-500 transform rotate-90 scale-125 text-blue-500 opacity-100' : 'duration-200 rotate-0 scale-100 opacity-60'}`} 
+                />
+            </button>
+            {isOpen && createPortal(
+                <>
+                    <div className="fixed inset-0 z-[9998]" onClick={() => setIsOpen(false)} />
+                    <div 
+                        style={{ 
+                            position: 'fixed',
+                            top: dropDirection === 'up' ? 'auto' : `${coords.bottom + 8}px`,
+                            bottom: dropDirection === 'up' ? `${window.innerHeight - coords.top + 8}px` : 'auto',
+                            left: `${coords.left}px`,
+                            width: `${coords.width}px`
+                        }}
+                        className={`bg-slate-900/98 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-xl shadow-black/80 z-[9999] py-2 overflow-hidden animate-premium`}
+                    >
+                        <div className="max-h-[220px] overflow-y-auto custom-scrollbar mr-2 ml-1 py-1">
+                            {options.length === 0 && (
+                                <div className="px-6 py-4 text-[10px] text-slate-500 font-bold text-center italic">{placeholder}</div>
+                            )}
+                            {options.map(opt => (
+                                <div
+                                    key={opt.value}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onChange(opt.value);
+                                        setIsOpen(false);
+                                    }}
+                                    className={`px-6 py-2.5 mx-1 rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer transition-all ${value === opt.value ? 'bg-blue-600/20 text-blue-400 shadow-lg' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+                                >
+                                    {opt.label}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </>,
+                document.body
+            )}
+        </div>
+    );
+};

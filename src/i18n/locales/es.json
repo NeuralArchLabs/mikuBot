@@ -194,7 +194,7 @@
             "select_model": "Modelo Neuronal",
             "typing_placeholder": "Nombre del modelo...",
             "common_models": "Modelos Detectados",
-            "routing_provider": "Proveedor de Ruta"
+            "routing_provider": "Proveedor en Ruta"
         },
         "errors": {
             "fatal": "Error grave en inicialización"
@@ -272,24 +272,24 @@
         },
         "orchestration": {
             "title": "Enrutamiento de Modelos",
-            "chat_runtime": "Chat Runtime",
-            "agent_runtime": "Agent Runtime",
-            "provider": "Proveedor de Ruta",
+            "chat_runtime": "Ejecución de Chat",
+            "agent_runtime": "Ejecución de Agente",
+            "provider": "Proveedor Activo",
             "model": "Modelo Activo",
             "sync": "Sincronizar Arquitecturas",
             "select_model": "Seleccionar Arquitectura...",
-            "routing_provider": "Proveedor de Ruta",
+            "routing_provider": "Proveedor en Ruta",
             "connection_active": "Conexión/Llave Activa",
             "config_pending": "Configuración Pendiente"
         },
         "security": {
             "title": "Seguridad Neural y Motor Principal",
-            "vault_title": "Bóveda de Credenciales Segura",
+            "vault_title": "Bóveda de Credenciales",
             "vault_desc": "Gestión de fallbacks y llaves cifradas",
-            "fallback_title": "Enrutamiento Maestro de Fallback",
+            "fallback_title": "Enrutamiento Maestro de Respaldo",
             "provider_label": "Proveedor Maestro",
             "model_label": "Modelo Maestro",
-            "ping": "Ping al Maestro",
+            "ping": "Ping Maestro",
             "key_mgmt": "Gestión de Llaves",
             "show_key": "Mostrar clave",
             "hide_key": "Ocultar clave",
@@ -318,6 +318,15 @@
             "status_missing": "Soberanía Desactivada",
             "status_running": "Servicio Activo (8000)",
             "status_stopped": "Servicio Detenido",
+            "status_online": "EN LÍNEA",
+            "status_offline": "FUERA DE LÍNEA",
+            "status_ready": "LISTO",
+            "status_setup_req": "REQUIERE AJUSTE",
+            "status_active": "ACTIVO",
+            "status_idle": "IDLE",
+            "btn_stop_title": "Interrumpir Proceso",
+            "sync_warn_running": "Detén el motor antes de actualizar",
+            "sync_btn_title": "Sincronizar librerías de Python",
             "btn_starting": "Configurando...",
             "btn_deploying": "Desplegando...",
             "btn_active": "Motor Activo",
@@ -359,7 +368,7 @@
         },
         "factory_reset": {
             "title": "Factory Reset",
-            "desc": "Reset configuration and re-run the setup wizard from scratch."
+            "desc": "Reinicia la aplicación y vuelve a ejecutar la configuración inicial desde cero."
         },
         "reset_btn": "Reiniciar Configuración",
         "save_btn": "Guardar",

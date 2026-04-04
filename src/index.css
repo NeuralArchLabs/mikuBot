@@ -2041,4 +2041,12 @@ select.premium-input option {
 .app-region-no-drag {
   -webkit-app-region: no-drag;
 }
-
+
+/* -- Premium Selection Animations ------------------- */
+@keyframes premiumIn {
+  from { opacity: 0; transform: scale(0.99) translateY(10px); filter: blur(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
+}
+.animate-premium {
+  animation: premiumIn 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

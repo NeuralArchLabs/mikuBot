@@ -93,6 +93,7 @@ export const App = () => {
     const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'connected' | 'error'>('idle');
     const [sessions, setSessions] = useState<SessionMetadata[]>([]);
     const [loadingSessions, setLoadingSessions] = useState(true);
+    const [loadingSettings, setLoadingSettings] = useState(true);
     const [lastNeuralTrigger, setLastNeuralTrigger] = useState<number>(0);
     const abortControllerRef = useRef<AbortController | null>(null);
     const lastUserTextRef = useRef<string>('');
@@ -135,6 +136,7 @@ export const App = () => {
     // ── Persistence Handlers ─────────────────────────────────────────────
 
     const loadGlobalSettings = useCallback(async () => {
+        setLoadingSettings(true);
         const saved = await persistence.loadSettings();
         if (saved) {
             setState(prev => ({
@@ -152,6 +154,7 @@ export const App = () => {
             }
             // Defaults are already in initial state
         }
+        setLoadingSettings(false);
     }, []);
 
     const onSaveGlobal = useCallback(async (silent: boolean = false, extraConfig?: Partial<AppConfig>) => {
@@ -183,7 +186,7 @@ export const App = () => {
             if (!silent) await askAlert(`💥 ${t('common.fatal_error')}: ${t('common.connection_lost')}`);
             return { ok: false, error: (e as any)?.message };
         }
-    }, [state.config, state.agentMode, state.safeMode, state.approvalMode, askAlert]);
+    }, [state.config, state.agentMode, state.safeMode, state.approvalMode, askAlert, t]);
 
     // ── Session Management ─────────────────────────────────────────────
 
@@ -234,7 +237,7 @@ export const App = () => {
         }));
 
         await persistence.saveSession(newSession);
-    }, []);
+    }, [t, clearMessages, setInputStore, resetAgentStatus, setPendingToolApprovalStore]);
 
     const onSelectSession = useCallback(async (id: string) => {
         // Prepare UI state regardless of if session is the same
@@ -297,7 +300,7 @@ export const App = () => {
                 timestamp: Date.now()
             });
         }
-    }, [state.sessionId, messages, sessions]);
+    }, [state.sessionId, messages, sessions, t]);
 
     const onImportSession = useCallback(async () => {
         const session = await persistence.importSessionFromFile();
@@ -326,7 +329,7 @@ export const App = () => {
             setInputStore(msg.text);
             resetAgentStatus();
         }
-    }, [messages, askConfirm]);
+    }, [messages, askConfirm, t]);
 
     // Auto-save current session and update title in sidebar
     useEffect(() => {
@@ -373,7 +376,7 @@ export const App = () => {
             }, 1000);
             return () => clearTimeout(timer);
         }
-    }, [messages, input, state.sessionId, state.agentMode, state.safeMode, state.approvalMode, state.debugMode, sessions]);
+    }, [messages, input, state.sessionId, state.agentMode, state.safeMode, state.approvalMode, state.debugMode, sessions, t]);
 
     useEffect(() => {
         loadGlobalSettings();
@@ -388,14 +391,14 @@ export const App = () => {
 
     // Ensure there is always an active session
     useEffect(() => {
-        if (!loadingSessions) {
+        if (!loadingSessions && !loadingSettings) {
             if (sessions.length === 0 && !state.sessionId) {
                 onNewSession();
             } else if (sessions.length > 0 && !state.sessionId) {
                 onSelectSession(sessions[0].id);
             }
         }
-    }, [loadingSessions, sessions, state.sessionId, onNewSession, onSelectSession]);
+    }, [loadingSessions, loadingSettings, sessions, state.sessionId, onNewSession, onSelectSession]);
 
     // ── Telegram Remote Listener ───────────────────────────────────────
     useEffect(() => {
@@ -569,7 +572,7 @@ export const App = () => {
 
             await askAlert(`✅ ${t('common.config_import_success')}`);
         }
-    }, [askAlert, restoreAndSync]);
+    }, [askAlert, restoreAndSync, t]);
 
     const onExportConfig = useCallback(() => {
         persistence.exportToFile(state.config, state.agentMode, state.safeMode, state.approvalMode);

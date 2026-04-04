@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppConfig, Provider, ModelInfo } from '../../types';
-import { Icon } from '../common/Common';
-import { DEFAULT_CONFIG } from '../../constants';
+import { Icon, ModernSelect } from '../common/Common';
+import { DEFAULT_CONFIG, PROVIDERS } from '../../constants';
 import { runHealthCheck, type HealthCheckResult } from '../../services/core/HealthCheck';
 import { hydrateAllTemplates, extractTemplatesFromFolderContent, type PromptVariables } from '../../services/core/BlueprintHydrator';
 
@@ -433,90 +433,42 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                             <div className="grid grid-cols-2 gap-6">
                                 <div className="space-y-4">
                                     <label className="text-[10px] font-black text-slate-500 uppercase block text-center tracking-[0.5em]">{t('onboarding.personality.verbosity')}</label>
-                                    {!VERBOSITY_KEYS.map(k => t(`onboarding.personality.${k}`)).includes(verbosity) && verbosity !== '' ? (
-                                        <div className="relative animate-premium">
-                                            <input title={t('onboarding.personality.verbosity')} placeholder={t('onboarding.personality.custom_placeholder')} value={verbosity} onChange={(e)=>setVerbosity(e.target.value)} autoFocus className="w-full bg-slate-950/70 border-2 border-transparent hover:border-blue-500/30 focus:border-blue-500/50 rounded-2xl px-8 py-5 text-xs text-white outline-none transition-all font-black text-center shadow-inner" />
-                                            <button onClick={()=>setVerbosity(t('onboarding.personality.verbosity_medium'))} className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center border border-white/10 transition-all">×</button>
-                                        </div>
-                                    ) : (
-                                        <div className="relative">
-                                            <button 
-                                                onClick={() => setActiveMenu(activeMenu === 'verb' ? null : 'verb')}
-                                                className="w-full bg-slate-950/70 border border-transparent hover:border-white/10 rounded-2xl px-8 py-4 text-xs text-white outline-none transition-all font-black flex items-center justify-between shadow-inner"
-                                            >
-                                                <span className="flex-grow text-center">{verbosity}</span>
-                                                <Icon name={activeMenu === 'verb' ? 'chevron-up' : 'chevron-down'} className="text-slate-600 text-[10px] ml-2" />
-                                            </button>
-                                            {activeMenu === 'verb' && (
-                                                <>
-                                                    <div className="fixed inset-0 z-10" onClick={() => setActiveMenu(null)} />
-                                                    <div className="absolute left-0 right-0 bottom-full mb-2 bg-slate-900/98 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-2xl z-20 py-2 overflow-hidden animate-premium">
-                                                        <div className="max-h-[160px] overflow-y-auto custom-scrollbar mr-2 ml-1 py-1">
-                                                            {[t('onboarding.personality.verbosity_concise'), t('onboarding.personality.verbosity_medium'), t('onboarding.personality.verbosity_detailed')].map(v => (
-                                                                <div 
-                                                                    key={v} 
-                                                                    onClick={() => { setVerbosity(v); setActiveMenu(null); }} 
-                                                                    className={`px-6 py-2.5 mx-1 rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer transition-all ${verbosity === v ? 'bg-blue-600/20 text-blue-400 shadow-lg' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
-                                                                >
-                                                                    {v}
-                                                                </div>
-                                                            ))}
-                                                            <div 
-                                                                onClick={() => {setVerbosity('custom'); setActiveMenu(null);}} 
-                                                                className="px-6 py-2.5 mx-1 rounded-xl text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:bg-indigo-500/10 cursor-pointer transition-all border-t border-white/5 mt-1 italic"
-                                                            >
-                                                                {t('common.custom')}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </>
-                                            )}
-                                        </div>
-                                    )}
+                                    <ModernSelect
+                                        value={verbosity}
+                                        onChange={(val) => {
+                                            if (val === 'CUSTOM') setVerbosity('custom');
+                                            else setVerbosity(val);
+                                        }}
+                                        placeholder={t('onboarding.personality.verbosity')}
+                                        iconVariant="plus"
+                                        dropDirection="up"
+                                        options={[
+                                            { value: t('onboarding.personality.verbosity_concise'), label: t('onboarding.personality.verbosity_concise') },
+                                            { value: t('onboarding.personality.verbosity_medium'), label: t('onboarding.personality.verbosity_medium') },
+                                            { value: t('onboarding.personality.verbosity_detailed'), label: t('onboarding.personality.verbosity_detailed') },
+                                            { value: 'CUSTOM', label: t('common.custom') }
+                                        ]}
+                                    />
                                     {verbosity === 'custom' && setVerbosity(t('onboarding.personality.verbosity_example'))}
                                 </div>
                                 <div className="space-y-4">
                                     <label className="text-[10px] font-black text-slate-500 uppercase block text-center tracking-[0.5em]">{t('onboarding.personality.humor')}</label>
-                                    {!HUMOR_KEYS.map(k => t(`onboarding.personality.${k}`)).includes(humorLevel) && humorLevel !== '' ? (
-                                        <div className="relative animate-premium">
-                                            <input title={t('onboarding.personality.humor')} placeholder={t('onboarding.personality.custom_placeholder')} value={humorLevel} onChange={(e)=>setHumorLevel(e.target.value)} autoFocus className="w-full bg-slate-950/70 border-2 border-transparent hover:border-teal-500/30 focus:border-teal-500/50 rounded-2xl px-8 py-5 text-xs text-white outline-none transition-all font-black text-center shadow-inner" />
-                                            <button onClick={()=>setHumorLevel(t('onboarding.personality.humor_low'))} className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center border border-white/10 transition-all">×</button>
-                                        </div>
-                                    ) : (
-                                        <div className="relative">
-                                            <button 
-                                                onClick={() => setActiveMenu(activeMenu === 'humor' ? null : 'humor')}
-                                                className="w-full bg-slate-950/70 border border-transparent hover:border-white/10 rounded-2xl px-8 py-4 text-xs text-white outline-none transition-all font-black flex items-center justify-between shadow-inner"
-                                            >
-                                                <span className="flex-grow text-center">{humorLevel}</span>
-                                                <Icon name={activeMenu === 'humor' ? 'chevron-up' : 'chevron-down'} className="text-slate-600 text-[10px] ml-2" />
-                                            </button>
-                                            {activeMenu === 'humor' && (
-                                                <>
-                                                    <div className="fixed inset-0 z-10" onClick={() => setActiveMenu(null)} />
-                                                    <div className="absolute left-0 right-0 bottom-full mb-2 bg-slate-900/98 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-2xl z-20 py-2 overflow-hidden animate-premium">
-                                                        <div className="max-h-[160px] overflow-y-auto custom-scrollbar mr-2 ml-1 py-1">
-                                                            {[t('onboarding.personality.humor_none'), t('onboarding.personality.humor_low'), t('onboarding.personality.humor_high')].map(v => (
-                                                                <div 
-                                                                    key={v} 
-                                                                    onClick={() => { setHumorLevel(v); setActiveMenu(null); }} 
-                                                                    className={`px-6 py-2.5 mx-1 rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer transition-all ${humorLevel === v ? 'bg-teal-600/20 text-teal-400 shadow-lg' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
-                                                                >
-                                                                    {v}
-                                                                </div>
-                                                            ))}
-                                                            <div 
-                                                                onClick={() => {setHumorLevel('custom'); setActiveMenu(null);}} 
-                                                                className="px-6 py-2.5 mx-1 rounded-xl text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:bg-indigo-500/10 cursor-pointer transition-all border-t border-white/5 mt-1 italic"
-                                                            >
-                                                                {t('common.custom')}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </>
-                                            )}
-                                        </div>
-                                    )}
+                                    <ModernSelect
+                                        value={humorLevel}
+                                        onChange={(val) => {
+                                            if (val === 'CUSTOM') setHumorLevel('custom');
+                                            else setHumorLevel(val);
+                                        }}
+                                        placeholder={t('onboarding.personality.humor')}
+                                        iconVariant="plus"
+                                        dropDirection="up"
+                                        options={[
+                                            { value: t('onboarding.personality.humor_none'), label: t('onboarding.personality.humor_none') },
+                                            { value: t('onboarding.personality.humor_low'), label: t('onboarding.personality.humor_low') },
+                                            { value: t('onboarding.personality.humor_high'), label: t('onboarding.personality.humor_high') },
+                                            { value: 'CUSTOM', label: t('common.custom') }
+                                        ]}
+                                    />
                                     {humorLevel === 'custom' && setHumorLevel(t('onboarding.personality.humor_example'))}
                                 </div>
                             </div>
@@ -577,39 +529,20 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                                         <button onClick={()=>setCurrentGoal(t('onboarding.status.goals.assistant'))} className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center border border-white/10 transition-all">×</button>
                                     </div>
                                 ) : (
-                                    <div className="relative group">
-                                        <button 
-                                            onClick={() => setIsGoalMenuOpen(!isGoalMenuOpen)}
-                                            className="w-full bg-slate-950/50 border border-white/5 hover:border-white/10 rounded-2xl px-8 py-5 text-sm text-white outline-none transition-all font-black flex items-center justify-between shadow-inner"
-                                        >
-                                            <span className="flex-grow text-center">{currentGoal}</span>
-                                            <Icon name={isGoalMenuOpen ? 'chevron-up' : 'chevron-down'} className="text-slate-500 text-xs ml-2" />
-                                        </button>
-                                        {isGoalMenuOpen && (
-                                            <>
-                                                <div className="fixed inset-0 z-10" onClick={() => setIsGoalMenuOpen(false)} />
-                                                <div className="absolute left-0 right-0 bottom-full mb-2 bg-slate-900/98 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-2xl z-20 py-2 overflow-hidden animate-premium">
-                                                    <div className="max-h-[160px] overflow-y-auto custom-scrollbar mr-2 ml-1 py-1">
-                                                        {Object.values(t('onboarding.status.goals', { returnObjects: true }) as any).map((g: any) => (
-                                                            <div 
-                                                                key={g} 
-                                                                onClick={() => { setCurrentGoal(g); setIsGoalMenuOpen(false); }}
-                                                                className={`px-6 py-2.5 mx-1 rounded-xl text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all ${currentGoal === g ? 'bg-blue-600/20 text-blue-400 shadow-lg' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
-                                                            >
-                                                                {g}
-                                                            </div>
-                                                        ))}
-                                                        <div 
-                                                            onClick={() => { setCurrentGoal('custom'); setIsGoalMenuOpen(false); }}
-                                                            className="px-6 py-2.5 mx-1 rounded-xl text-[11px] font-black uppercase tracking-wider text-indigo-400 hover:bg-indigo-500/10 cursor-pointer transition-all border-t border-white/5 mt-1 italic"
-                                                        >
-                                                            ─── {t('common.custom')} ───
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </>
-                                        )}
-                                    </div>
+                                    <ModernSelect
+                                        value={currentGoal}
+                                        onChange={(val) => {
+                                            if (val === 'CUSTOM') setCurrentGoal('custom');
+                                            else setCurrentGoal(val);
+                                        }}
+                                        placeholder={t('onboarding.status.goal_placeholder')}
+                                        iconVariant="plus"
+                                        dropDirection="up"
+                                        options={[
+                                            ...Object.values(t('onboarding.status.goals', { returnObjects: true }) as any).map((g: any) => ({ value: g, label: g })),
+                                            { value: 'CUSTOM', label: t('common.custom') }
+                                        ]}
+                                    />
                                 )}
                                 {currentGoal === 'custom' && setCurrentGoal(t('onboarding.status.goal_example'))}
                             </div>
@@ -760,37 +693,18 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                                                 </div>
                                                 {config.voskModelPath && healthStatus?.vosk.online && <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse shadow-[0_0_10px_rgba(59,130,246,0.8)]" />}
                                             </div>
-                                            <div className="relative">
-                                                <button 
-                                                    onClick={() => setActiveMenu(activeMenu === 'vosk' ? null : 'vosk')}
-                                                    className="w-full bg-black/40 border border-transparent hover:border-blue-500/30 rounded-xl px-3 py-2 text-[10px] text-white outline-none transition-all font-bold flex items-center justify-between shadow-inner"
-                                                >
-                                                    <span className="flex-grow text-center">{config.voskModelPath ? (config.voskModelPath.includes('es') ? t('onboarding.credentials.vosk_es') : t('onboarding.credentials.vosk_en')) : t('onboarding.credentials.vosk_off')}</span>
-                                                    <Icon name={activeMenu === 'vosk' ? 'chevron-up' : 'chevron-down'} className="text-slate-600 text-[8px] ml-1" />
-                                                </button>
-                                                {activeMenu === 'vosk' && (
-                                                    <>
-                                                        <div className="fixed inset-0 z-10" onClick={() => setActiveMenu(null)} />
-                                                        <div className="absolute left-0 right-0 bottom-full mb-1 bg-slate-900/98 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl z-20 py-1.5 overflow-hidden animate-premium">
-                                                            <div className="max-h-[160px] overflow-y-auto custom-scrollbar mr-2 ml-1 py-0.5">
-                                                                {[
-                                                                    { v: '', t: t('onboarding.credentials.vosk_off') },
-                                                                    { v: 'vosk-model-small-es-0.42', t: t('onboarding.credentials.vosk_es') },
-                                                                    { v: 'vosk-model-small-en-us-0.15', t: t('onboarding.credentials.vosk_en') }
-                                                                ].map(opt => (
-                                                                    <div 
-                                                                        key={opt.v} 
-                                                                        onClick={() => { setConfig({ ...config, voskModelPath: opt.v }); setActiveMenu(null); }} 
-                                                                        className={`px-4 py-2 mx-1 rounded-lg text-[9px] font-black uppercase tracking-widest cursor-pointer transition-all ${config.voskModelPath === opt.v ? 'bg-blue-600/20 text-blue-400 shadow-md' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
-                                                                    >
-                                                                        {opt.t}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                    </>
-                                                )}
-                                            </div>
+                                            <ModernSelect
+                                                value={config.voskModelPath || ''}
+                                                onChange={(val) => setConfig({ ...config, voskModelPath: val })}
+                                                placeholder={t('onboarding.credentials.vosk_off')}
+                                                iconVariant="plus"
+                                                dropDirection="up"
+                                                options={[
+                                                    { value: '', label: t('onboarding.credentials.vosk_off') },
+                                                    { value: 'vosk-model-small-es-0.42', label: t('onboarding.credentials.vosk_es') },
+                                                    { value: 'vosk-model-small-en-us-0.15', label: t('onboarding.credentials.vosk_en') }
+                                                ]}
+                                            />
                                         </div>
                                     </div>
                                 </div>
@@ -857,7 +771,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                                                                         <img src={p.i} alt="" className={`w-5 h-5 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.3)]' : 'brightness-0 invert opacity-40'}`} style={isSelected ? { filter: 'none' } : {}} />
                                                                     )}
                                                                     <span className={`text-[7px] font-black uppercase tracking-wider ${isSelected ? 'text-white' : 'text-slate-600'}`}>
-                                                                        {p.id === 'ollama' ? 'Ollama' : p.id === 'groq' ? 'Groq' : p.id === 'zai' ? 'Z.AI' : 'Google'}
+                                                                        {PROVIDERS[p.id as Provider]?.name.split(' ')[0] || p.id}
                                                                     </span>
                                                                 </button>
                                                             );
@@ -878,7 +792,10 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                                                             className={`absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-slate-600 hover:text-${engineProviderColor}-400 transition-colors p-1.5`}
                                                             onClick={() => setActiveMenu(activeMenu === engine.id ? null : engine.id)}
                                                         >
-                                                            <Icon name="chevron-down" className={`text-[10px] transition-transform duration-300 ${activeMenu === engine.id ? 'rotate-180' : ''}`} />
+                                                            <Icon 
+                                                                name={activeMenu === engine.id ? 'times' : 'bars'} 
+                                                                className={`text-[10px] transition-all ${activeMenu === engine.id ? 'duration-500 transform rotate-90 scale-125 text-blue-500 opacity-100' : 'duration-200 rotate-0 scale-100 opacity-60'}`} 
+                                                            />
                                                         </div>
                                                         {activeMenu === engine.id && (
                                                             <>
@@ -889,7 +806,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                                                                         {loadingModels[engine.p as Provider] ? (
                                                                             <div className="px-5 py-4 flex flex-col items-center justify-center gap-2">
                                                                                 <Icon name="spinner" className="animate-spin text-blue-500 text-lg" />
-                                                                                <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Sincronizando...</span>
+                                                                                <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{t('common.loading')}</span>
                                                                             </div>
                                                                         ) : (
                                                                             <>
