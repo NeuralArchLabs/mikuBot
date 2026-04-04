@@ -234,7 +234,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                 
                 {/* Header */}
                 <div className="h-14 md:h-16 shrink-0 border-b border-white/5 flex items-center px-8 bg-slate-950/25 gap-5 rounded-t-[2rem] md:rounded-t-[2.5rem]">
-                    <img src="./mikuBotICON.png" alt="Logo" className="w-6 h-6 object-contain opacity-90 drop-shadow-[0_0_10px_rgba(59,130,246,0.3)]" />
+                    <img src="./mikuBotICON.png" alt="Logo" className="w-6 h-6 object-contain opacity-90 drop-shadow-[0_0_10px_rgba(59,130,246,0.3)] rounded" />
                     <div className="flex items-center gap-3.5">
                         <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_15px_rgba(59,130,246,0.6)] shrink-0" />
                         <div className="flex flex-col items-start">
@@ -281,7 +281,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                                 <div className="relative group">
                                     <div className="absolute inset-0 bg-blue-500/15 blur-[120px] rounded-full scale-125" />
                                     <div className="w-32 h-32 md:w-52 md:h-52 rounded-[4.5rem] bg-gradient-to-br from-slate-800 to-slate-950 flex items-center justify-center shadow-2xl relative z-10 hover:scale-105 transition-transform duration-1000 overflow-hidden">
-                                        <img src="./mikuBotICON.png" alt="Miku" className="w-full h-full object-cover" />
+                                        <img src="./mikuBotICON.png" alt="Miku" className="w-full h-full object-cover rounded-[4rem]" />
                                     </div>
                                 </div>
                                 <div className="space-y-1">
