@@ -401,13 +401,17 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                             {!showManualTone ? (
                                 <div className="grid grid-cols-4 gap-4 animate-premium">
                                     {[
-                                        { v: t('onboarding.personality.formal'), t: t('onboarding.personality.formal'), i: 'briefcase', d: t('onboarding.personality.formal_desc'), c: 'purple' },
-                                        { v: t('onboarding.personality.casual'), t: t('onboarding.personality.casual'), i: 'coffee', d: t('onboarding.personality.casual_desc'), c: 'amber' },
-                                        { v: t('onboarding.personality.direct'), t: t('onboarding.personality.direct'), i: 'bolt', d: t('onboarding.personality.direct_desc'), c: 'sky' },
-                                        { v: t('onboarding.personality.teacher'), t: t('onboarding.personality.teacher'), i: 'book', d: t('onboarding.personality.teacher_desc'), c: 'rose' },
+                                        { v: t('onboarding.personality.formal'), t: t('onboarding.personality.formal'), i: 'briefcase', d: t('onboarding.personality.formal_desc'), bg: 'bg-purple-500/10', border: 'hover:border-purple-500/30', icon: 'bg-purple-600' },
+                                        { v: t('onboarding.personality.casual'), t: t('onboarding.personality.casual'), i: 'coffee', d: t('onboarding.personality.casual_desc'), bg: 'bg-amber-500/10', border: 'hover:border-amber-500/30', icon: 'bg-amber-600' },
+                                        { v: t('onboarding.personality.direct'), t: t('onboarding.personality.direct'), i: 'bolt', d: t('onboarding.personality.direct_desc'), bg: 'bg-sky-500/10', border: 'hover:border-sky-500/30', icon: 'bg-sky-600' },
+                                        { v: t('onboarding.personality.teacher'), t: t('onboarding.personality.teacher'), i: 'book', d: t('onboarding.personality.teacher_desc'), bg: 'bg-rose-500/10', border: 'hover:border-rose-500/30', icon: 'bg-rose-600' },
                                     ].map(o => (
-                                        <div key={o.v} onClick={() => setUserTone(o.v)} className={`p-4 rounded-2xl cursor-pointer text-center transition-all duration-500 border border-transparent ${userTone === o.v ? `bg-${o.c}-500/10 shadow-[0_0_20px_rgba(0,0,0,0.3)] scale-105` : `bg-slate-950/30 hover:border-${o.c}-500/30 hover:bg-slate-900/50 opacity-80 hover:opacity-100`}`}>
-                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2 transition-all ${userTone === o.v ? (o.c === 'purple' ? 'bg-purple-600' : o.c === 'amber' ? 'bg-amber-600' : o.c === 'sky' ? 'bg-sky-600' : 'bg-rose-600') + ' text-white shadow-xl' : 'bg-slate-800 text-slate-600'}`}>
+                                        <div 
+                                            key={o.v} 
+                                            onClick={() => setUserTone(o.v)} 
+                                            className={`p-4 rounded-2xl cursor-pointer text-center transition-all duration-500 border border-transparent ${userTone === o.v ? `${o.bg} shadow-[0_0_20px_rgba(0,0,0,0.3)] scale-105` : `bg-slate-950/30 ${o.border} hover:bg-slate-900/50 opacity-80 hover:opacity-100`}`}
+                                        >
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2 transition-all ${userTone === o.v ? `${o.icon} text-white shadow-xl` : 'bg-slate-800 text-slate-600'}`}>
                                                 <Icon name={o.i} className="text-xl" />
                                             </div>
                                             <div className="text-xs font-black text-white uppercase tracking-widest mb-1">{o.t}</div>
