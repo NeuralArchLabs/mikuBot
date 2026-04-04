@@ -325,74 +325,73 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                 {showBlueprints && (
                     <div className="fixed lg:absolute inset-0 z-[100] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 lg:p-12">
                         <div className="bg-slate-900 border border-slate-800 p-8 lg:p-10 rounded-3xl max-w-3xl w-full shadow-[0_0_100px_rgba(0,0,0,0.8)] animate-fade-scale overflow-y-auto max-h-[90vh]">
-                            <div className="flex items-center justify-between mb-8 lg:mb-10">
-                                <div>
-                                    <h3 className="text-xl lg:text-2xl font-bold text-white uppercase tracking-tight">Neural Blueprints</h3>
-                                    <p className="text-slate-500 text-xs font-medium uppercase tracking-widest mt-1">Select a foundation for deployment</p>
-                                </div>
-                                <button
-                                    onClick={() => setShowBlueprints(false)}
-                                    className="text-slate-500 hover:text-white p-3 hover:bg-white/5 rounded-full transition-all"
-                                    title="Close blueprints overlay"
-                                >
-                                    <Icon name="times" className="text-xl" />
-                                </button>
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                {blueprints.map(bp => (
-                                    <button
-                                        key={bp.id}
-                                        onClick={() => {
-                                            setNamingSkill(bp);
-                                            setNewSkillName(bp.manifest.name);
-                                        }}
-                                        className="p-6 lg:p-8 bg-slate-800/20 hover:bg-slate-800/40 border border-slate-700/30 hover:border-cyan-500/50 rounded-3xl text-left transition-all group relative overflow-hidden"
-                                    >
-                                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                                            <Icon name={bp.icon} className="text-6xl" />
+                            {!namingSkill ? (
+                                <>
+                                    <div className="flex items-center justify-between mb-8 lg:mb-10">
+                                        <div>
+                                            <h3 className="text-xl lg:text-2xl font-bold text-white uppercase tracking-tight">Neural Blueprints</h3>
+                                            <p className="text-slate-500 text-xs font-medium uppercase tracking-widest mt-1">Select a foundation for deployment</p>
                                         </div>
-                                        <div className="text-3xl lg:text-4xl text-cyan-400 mb-4 group-hover:scale-110 transition-transform">
-                                            <Icon name={bp.icon} />
-                                        </div>
-                                        <div className="font-semibold text-slate-100 text-base lg:text-lg uppercase tracking-tight">{getSkillName(bp)}</div>
-                                        <div className="text-[11px] lg:text-xs text-slate-500 mt-2 leading-relaxed font-medium">{getSkillDescription(bp)}</div>
-                                    </button>
-                                ))}
-                            </div>
-
-                            {/* Naming Overlay */}
-                            {namingSkill && (
-                                <div className="absolute inset-0 z-[110] bg-slate-950/80 backdrop-blur-xl flex items-center justify-center p-4">
-                                    <div className="bg-slate-900 border border-slate-700/50 p-8 rounded-3xl max-w-md w-full shadow-2xl animate-fade-scale text-center">
-                                        <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 flex items-center justify-center text-3xl text-cyan-400 mx-auto mb-6 shadow-glow-cyan border border-cyan-500/20">
-                                            <Icon name={namingSkill.icon} />
-                                        </div>
-                                        <h4 className="text-lg font-bold text-white uppercase tracking-tight mb-2">Configure Neural Skill</h4>
-                                        <p className="text-xs text-slate-500 uppercase tracking-widest mb-6">Assign a unique identifier for deployment</p>
-                                        
-                                        <input 
-                                            autoFocus
-                                            value={newSkillName}
-                                            onChange={(e) => setNewSkillName(e.target.value)}
-                                            onKeyDown={(e) => e.key === 'Enter' && handleCreateFromBlueprint()}
-                                            className="w-full premium-input rounded-xl px-4 py-4 text-sm text-white mb-6 text-center font-mono focus:ring-2 ring-cyan-500/30"
-                                            placeholder="Skill ID..."
-                                        />
-
-                                        <div className="flex gap-3">
-                                            <button 
-                                                onClick={() => setNamingSkill(null)}
-                                                className="flex-1 py-3 bg-slate-800 text-slate-400 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-slate-700 transition-all border border-slate-700/50"
+                                        <button
+                                            onClick={() => setShowBlueprints(false)}
+                                            className="text-slate-500 hover:text-white p-3 hover:bg-white/5 rounded-full transition-all"
+                                            title="Close blueprints overlay"
+                                        >
+                                            <Icon name="times" className="text-xl" />
+                                        </button>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pb-2">
+                                        {blueprints.map(bp => (
+                                            <button
+                                                key={bp.id}
+                                                onClick={() => {
+                                                    setNamingSkill(bp);
+                                                    setNewSkillName(bp.manifest.name);
+                                                }}
+                                                className="p-6 lg:p-8 bg-slate-800/20 hover:bg-slate-800/40 border border-slate-700/30 hover:border-cyan-500/50 rounded-3xl text-left transition-all group relative overflow-hidden"
                                             >
-                                                Back
+                                                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                                    <Icon name={bp.icon} className="text-6xl" />
+                                                </div>
+                                                <div className="text-3xl lg:text-4xl text-cyan-400 mb-4 group-hover:scale-110 transition-transform">
+                                                    <Icon name={bp.icon} />
+                                                </div>
+                                                <div className="font-semibold text-slate-100 text-base lg:text-lg uppercase tracking-tight">{getSkillName(bp)}</div>
+                                                <div className="text-[11px] lg:text-xs text-slate-500 mt-2 leading-relaxed font-medium">{getSkillDescription(bp)}</div>
                                             </button>
-                                            <button 
-                                                onClick={handleCreateFromBlueprint}
-                                                className="flex-1 py-3 bg-cyan-600 text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-cyan-500 transition-all shadow-glow-cyan"
-                                            >
-                                                Deploy
-                                            </button>
-                                        </div>
+                                        ))}
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="animate-in fade-in zoom-in-95 duration-500 flex flex-col items-center justify-center py-6 text-center">
+                                    <div className="w-20 h-20 rounded-3xl bg-cyan-500/10 flex items-center justify-center text-4xl text-cyan-400 mb-8 shadow-glow-cyan border border-cyan-500/20">
+                                        <Icon name={namingSkill.icon} />
+                                    </div>
+                                    <h4 className="text-xl lg:text-2xl font-bold text-white uppercase tracking-tight mb-2">Configure Neural Skill</h4>
+                                    <p className="text-xs text-slate-500 uppercase tracking-widest mb-10">Assign a unique identifier for deployment</p>
+
+                                    <input
+                                        autoFocus
+                                        value={newSkillName}
+                                        onChange={(e) => setNewSkillName(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleCreateFromBlueprint()}
+                                        className="w-full max-w-sm premium-input rounded-2xl px-6 py-5 text-sm lg:text-base text-white mb-10 text-center font-mono focus:ring-2 ring-cyan-500/30"
+                                        placeholder="Skill ID..."
+                                    />
+
+                                    <div className="flex gap-4 w-full max-w-sm">
+                                        <button
+                                            onClick={() => setNamingSkill(null)}
+                                            className="flex-1 py-4 bg-slate-800 text-slate-400 rounded-2xl text-[11px] font-bold uppercase tracking-widest hover:bg-slate-700 transition-all border border-slate-700/50"
+                                        >
+                                            Back
+                                        </button>
+                                        <button
+                                            onClick={handleCreateFromBlueprint}
+                                            className="flex-1 py-4 bg-cyan-600 text-white rounded-2xl text-[11px] font-bold uppercase tracking-widest hover:bg-cyan-500 transition-all shadow-glow-cyan shadow-[0_0_20px_-5px_rgba(6,182,212,0.5)]"
+                                        >
+                                            Deploy
+                                        </button>
                                     </div>
                                 </div>
                             )}
