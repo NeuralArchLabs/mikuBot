@@ -43,6 +43,8 @@
         "desktop_engine_not_detected": "未检测到桌面引擎：仅在将 MikuCentral 作为桌面应用程序运行时，才能将设置保存到 config.json。",
         "config_save_success": "配置已成功保存到 config.json",
         "config_reset_success": "配置重置成功。",
+        "clean_install": "全新安装",
+        "clean_install_desc": "删除在工作空间中发现的旧会话和数据。",
         "config_error": "配置错误",
         "fatal_error": "致命错误",
         "connection_lost": "与神经引擎的连接已断开。请检查终端了解详情。",

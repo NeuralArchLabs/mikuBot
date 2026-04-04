@@ -43,6 +43,8 @@
                    "desktop_engine_not_detected":  "Motor de Escritorio no detectado: La configuración solo se puede guardar en config.json cuando se ejecuta MikuCentral como una aplicación de escritorio.",
                    "config_save_success":  "Configuración guardada correctamente en config.json",
                    "config_reset_success":  "Configuración restablecida correctamente.",
+                   "clean_install": "Instalación Limpia",
+                   "clean_install_desc": "Eliminar sesiones y datos antiguos encontrados en el Workspace.",
                    "config_error":  "Error de Configuración",
                    "fatal_error":  "Error Fatal",
                    "connection_lost":  "Se perdió la conexión con el Motor Neuronal. Revisa la terminal para más detalles.",

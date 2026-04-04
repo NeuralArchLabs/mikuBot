@@ -284,11 +284,9 @@ export const ModernSelect = ({
         if (!isOpen) return;
         const handleScroll = (e: Event) => {
             const target = e.target as HTMLElement;
-            // Only close if the scroll comes from outside the portal structure 
-            // and NOT from the body/viewport-filling overlay itself.
-            if (containerRef.current && !containerRef.current.contains(target) && target !== document.body) {
-                // If the target contains our container, it's a parent scroll
-                if (target.contains(containerRef.current)) {
+            // Only close if scroll happens in a separate scrollable container
+            if (containerRef.current && !containerRef.current.contains(target) && target !== document.body && target !== document.documentElement) {
+                if (target.scrollHeight > target.clientHeight) {
                     setIsOpen(false);
                 }
             }

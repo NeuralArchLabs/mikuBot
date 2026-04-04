@@ -342,14 +342,32 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                                 ))}
                             </div>
                             {showingWarning && (
-                                <div className="bg-slate-950/60 p-5 rounded-[2rem] shadow-inner flex items-center justify-between gap-4 border border-transparent hover:border-orange-500/20 animate-premium transition-all">
-                                    <div className="flex items-center gap-3">
-                                        <Icon name="exclamation-triangle" className="text-orange-500 text-2xl" />
-                                        <div className="text-[9px] text-slate-300 font-black uppercase tracking-widest leading-tight">{t('onboarding.workspace.detection_warning')}<br/><span className="text-orange-400 opacity-80 text-[8px]">{t('onboarding.workspace.action_required')}</span></div>
+                                <div className="bg-amber-500/10 border border-amber-500/20 rounded-[2rem] p-6 md:p-8 flex flex-col md:flex-row items-center gap-6 md:gap-8 animate-premium">
+                                    <div className="w-16 h-16 md:w-20 md:h-20 bg-amber-500/20 rounded-full flex items-center justify-center text-amber-500 shrink-0">
+                                        <Icon name="exclamation-triangle" className="text-3xl md:text-4xl animate-pulse" />
                                     </div>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => {setCleanInstall(false); setShowingWarning(false);}} className={`px-4 py-2 rounded-xl text-[8.5px] font-black uppercase tracking-widest transition-all ${!cleanInstall ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>{t('onboarding.workspace.link')}</button>
-                                        <button onClick={() => {setCleanInstall(true); setShowingWarning(false);}} className={`px-4 py-2 rounded-xl text-[8.5px] font-black uppercase tracking-widest transition-all ${cleanInstall ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>{t('onboarding.workspace.clean')}</button>
+                                    <div className="flex-1 text-center md:text-left">
+                                        <h4 className="text-amber-200 text-[10px] md:text-xs font-black uppercase tracking-widest mb-1.5">{t('onboarding.workspace.detection_warning')}</h4>
+                                        <p className="text-amber-500/80 text-[8px] md:text-[9px] font-bold leading-relaxed uppercase tracking-[0.15em] mb-5">
+                                            {t('onboarding.workspace.selected')}: <span className="text-amber-200">{selectedPath}</span>
+                                            <br />
+                                            {t('onboarding.workspace.existing_data')}: {existingData.found.join(', ')}
+                                        </p>
+                                        
+                                        <div className="flex flex-col sm:flex-row items-center gap-3">
+                                            <button 
+                                                onClick={() => { setCleanInstall(false); setShowingWarning(false); }}
+                                                className={`w-full sm:w-auto px-8 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${!cleanInstall ? 'bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)]' : 'bg-slate-800 text-slate-400 hover:text-slate-200'}`}
+                                            >
+                                                {t('onboarding.workspace.link')}
+                                            </button>
+                                            <button 
+                                                onClick={() => { setCleanInstall(true); setShowingWarning(false); }}
+                                                className={`w-full sm:w-auto px-8 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${cleanInstall ? 'bg-red-600 text-white shadow-[0_0_20px_rgba(220,38,38,0.3)]' : 'bg-slate-800 text-slate-400 hover:text-slate-200'}`}
+                                            >
+                                                {t('onboarding.workspace.clean')}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             )}

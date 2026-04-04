@@ -43,6 +43,8 @@
         "desktop_engine_not_detected": "Desktop Engine Not Detected: Settings can only be saved to config.json when running MikuCentral as a desktop application.",
         "config_save_success": "Configuration saved to config.json",
         "config_reset_success": "Configuration reset successfully.",
+        "clean_install": "Clean Install",
+        "clean_install_desc": "Remove old sessions and data found in the Workspace.",
         "config_error": "Configuration Error",
         "fatal_error": "Fatal Error",
         "connection_lost": "The connection to the Neural Engine was lost. Check terminal for details.",
