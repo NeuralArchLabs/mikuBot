@@ -90,6 +90,16 @@ export const ToolApprovalPanel = React.memo(({
     const borderClass = isConsoleCommand ? 'border-red-500/50' : 'border-slate-700/30';
     const barClass = isConsoleCommand ? 'bg-red-500/70' : isNonWorkSpace ? 'bg-amber-500/50' : 'bg-amber-500/50';
 
+    const getSourceLabel = (src?: string) => {
+        if (!src) return t('settings.pathways.workspace');
+        const s = src.toLowerCase();
+        if (s === 'workspace') return t('settings.pathways.workspace');
+        if (s === 'core') return t('settings.pathways.core');
+        if (s === 'extra' || s === 'library') return t('settings.pathways.library');
+        if (s === 'tools' || s === 'commands') return t('settings.pathways.commands');
+        return src;
+    };
+
     return (
         <div className="approval-panel-glass font-mono relative overflow-hidden group">
             <div className={`absolute top-0 left-0 w-1 h-full ${barClass}`}></div>
@@ -109,7 +119,7 @@ export const ToolApprovalPanel = React.memo(({
                 <div className="px-5 py-2 bg-amber-900/20 border-b border-amber-500/20 flex items-center gap-2">
                     <Icon name="exclamation-circle" className="text-amber-400 text-sm" />
                     <span className="text-[10px] text-amber-300 font-bold uppercase tracking-widest">
-                        {t('chat.approval.modifying_core', { source: toolArgs.source?.toUpperCase() })}
+                        {t('chat.approval.modifying_core', { source: getSourceLabel(toolArgs.source).toUpperCase() })}
                     </span>
                 </div>
             )}

@@ -257,13 +257,13 @@
         },
         "pathways": {
             "title": "Neural System Pathways",
-            "workspace": "WorkSpace",
-            "workspace_desc": "DEFAULT DIRECTORY",
-            "core": "Core",
+            "workspace": "Neural WorkSpace",
+            "workspace_desc": "PRIMARY DIRECTORY",
+            "core": "Cortex Core",
             "core_desc": "SOUL, USER, CONTEXT",
-            "library": "Library",
+            "library": "Neural Library",
             "library_desc": "AUXILIARY CONTEXT",
-            "commands": "Commands",
+            "commands": "Command Engine",
             "commands_desc": "TOOLS & SKILLS",
             "select": "Select"
         },

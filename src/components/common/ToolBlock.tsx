@@ -40,6 +40,16 @@ export const ToolBlock: React.FC<ToolBlockProps> = ({ block, isOld }) => {
     const hasError = result?.error || (result?.data?.success === false && result?.data?.error);
     const isPending = !result;
 
+    const getSourceLabel = (src?: string) => {
+        if (!src) return t('settings.pathways.workspace');
+        const s = src.toLowerCase();
+        if (s === 'workspace') return t('settings.pathways.workspace');
+        if (s === 'core') return t('settings.pathways.core');
+        if (s === 'extra' || s === 'library') return t('settings.pathways.library');
+        if (s === 'tools' || s === 'commands') return t('settings.pathways.commands');
+        return src;
+    };
+
     const getFriendlySummary = () => {
         if (!result) return t('common.processing');
         const data = result.data || {};
@@ -56,7 +66,7 @@ export const ToolBlock: React.FC<ToolBlockProps> = ({ block, isOld }) => {
             case 'web_search':
                 return t('tools.web_search_summary', { query: args.query });
             case 'list_files':
-                return t('tools.list_files_summary', { source: args.source || 'workSpace', count: data.files?.length || 0 });
+                return t('tools.list_files_summary', { source: getSourceLabel(args.source), count: data.files?.length || 0 });
             case 'read_file':
                 return t('tools.read_file_summary', { filename: args.filename });
             case 'update_file':
@@ -76,7 +86,7 @@ export const ToolBlock: React.FC<ToolBlockProps> = ({ block, isOld }) => {
             case 'send_telegram_message':
                 return t('tools.telegram_summary');
             case 'batch_operation':
-                return t('tools.batch_summary', { operation: args.operation, source_path: args.source_path });
+                return t('tools.batch_summary', { operation: args.operation, source_path: getSourceLabel(args.source_path) });
             case 'get_file_outline':
                 return t('tools.outline_summary', { filename: args.filename });
             default:
