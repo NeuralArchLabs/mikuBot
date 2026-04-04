@@ -52,6 +52,7 @@ contextBridge.exposeInMainWorld('electron', {
     listSkills: (data) => ipcRenderer.invoke('list-skills', data),
     listBlueprints: (data) => ipcRenderer.invoke('list-blueprints', data),
     executeSkill: (data) => ipcRenderer.invoke('execute-skill', data),
+    deleteSkill: (data) => ipcRenderer.invoke('delete-skill', data),
 
     // Advanced Agent Tools
     agentReadFile: (data) => ipcRenderer.invoke('agent:read-file', data),

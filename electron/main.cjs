@@ -1742,6 +1742,29 @@ ipcMain.handle('list-skills', async (event, { toolsPath }) => {
     }
 });
 
+ipcMain.handle('delete-skill', async (event, { toolsPath, folderName }) => {
+    try {
+        if (!toolsPath || !folderName) return { ok: false, error: 'Tools path or folder name not provided' };
+        const skillsRoot = path.join(toolsPath, 'skills');
+        const targetPath = path.join(skillsRoot, folderName);
+
+        // Security check: ensure target is within skills directory
+        if (!targetPath.startsWith(skillsRoot)) {
+            return { ok: false, error: 'Invalid skill path' };
+        }
+
+        if (fs.existsSync(targetPath)) {
+            console.log(`[Main Process] Deleting skill: ${targetPath}`);
+            fs.rmSync(targetPath, { recursive: true, force: true });
+            return { ok: true };
+        }
+        return { ok: false, error: 'Skill not found' };
+    } catch (error) {
+        console.error('[Main Process] delete-skill error:', error);
+        return { ok: false, error: error.message };
+    }
+});
+
 ipcMain.handle('list-blueprints', async (event, { toolsPath, corePath, lang }) => {
     try {
         let blueprintsRoot = '';

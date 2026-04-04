@@ -45,7 +45,7 @@ interface SkillBlueprint {
 }
 
 export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, onSaveTools, updateConfig, onSaveGlobal, showBlueprints, setShowBlueprints }) => {
-    const { i18n } = useTranslation();
+    const { i18n, t } = useTranslation();
     const [skills, setSkills] = useState<Skill[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeSkill, setActiveSkill] = useState<string | null>(null);
@@ -114,13 +114,18 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                 const res = await (window as any).electron.listSkills({ toolsPath: config.folderPaths.tools });
                 if (res.ok && Array.isArray(res.skills)) {
                     setSkills(res.skills);
+                } else {
+                    console.warn("[Skills] No skills detected or error listing.");
+                    setSkills([]);
                 }
-            } catch (err) {
-                console.error("Failed to load skills:", err);
+            } catch (error) {
+                console.error("Error loading skills:", error);
+                alert(t('skills.error_loading'));
+            } finally {
+                setLoading(false);
             }
         }
-        setLoading(false);
-    }, [config.folderPaths?.tools]);
+    }, [config.folderPaths?.tools, t]);
 
     useEffect(() => {
         loadSkills();
@@ -129,7 +134,6 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
     const currentSkill = skills.find(s => s.name === activeSkill);
     const skillConfig = (config.skillsConfig || {})[activeSkill || ''] || {};
 
-    // Update editor content when active file or skill changes
     useEffect(() => {
         if (currentSkill && editMode === 'code') {
             const filePath = `skills/${currentSkill.__folderName}/${activeFile}`;
@@ -166,7 +170,6 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
             const folderName = newSkillName.trim().replace(/[^a-zA-Z0-9_-]/g, '_');
             const manifest = { ...namingSkill.manifest, name: folderName };
 
-            // Consistent with internal skills pathing
             const folderPath = `skills/${folderName}`;
             const okManifest = await onSaveTools(`${folderPath}/manifest.json`, JSON.stringify(manifest, null, 4));
             const okEntry = await onSaveTools(`${folderPath}/${manifest.entry}`, namingSkill.entryContent);
@@ -179,37 +182,64 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                 setEditMode('code');
             } else {
                 console.error("Failed to save skill files:", { okManifest, okEntry });
-                alert("Operation failed check directory permissions or logs.");
+                alert(t('skills.error_saving'));
             }
         } catch (error) {
             console.error("Error creating skill from blueprint:", error);
-            alert("Error in skill creation pipeline.");
+            alert(t('skills.error_creating'));
         }
     };
 
-    // Shared editor component to avoid repetition
+    const handleDeleteSkill = async (folderName: string) => {
+        const confirmMsg = t('skills.delete_confirm', { name: folderName });
+            
+        if (confirm(confirmMsg)) {
+            if ((window as any).electron?.deleteSkill && config.folderPaths?.tools) {
+                const res = await (window as any).electron.deleteSkill({ 
+                    toolsPath: config.folderPaths.tools, 
+                    folderName 
+                });
+                if (res.ok) {
+                    await loadSkills();
+                    if (activeSkill === folderName) setActiveSkill(null);
+                } else {
+                    alert(t('common.operation_failed') + ": " + res.error);
+                }
+            }
+        }
+    };
+
     const renderEditorContent = () => {
         if (!currentSkill) return null;
 
         return (
             <div className="h-full flex flex-col overflow-hidden animate-in fade-in duration-700">
-                {/* Tab Selector */}
-                <div className="flex border-b border-slate-800/50 bg-slate-950/20 px-2 lg:px-6 shrink-0 relative">
+                <div className="flex items-center justify-between border-b border-slate-800/50 bg-slate-950/20 px-2 lg:px-6 shrink-0 relative">
+                    <div className="flex">
+                        <button
+                            onClick={() => setEditMode('config')}
+                            className={`px-4 lg:px-6 py-4 text-[11px] lg:text-xs font-bold uppercase tracking-[0.15em] transition-all relative z-10 ${editMode === 'config' ? 'text-cyan-400' : 'text-slate-500 hover:text-slate-300'
+                                }`}
+                        >
+                            {t('skills.properties')}
+                            {editMode === 'config' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-500 shadow-[0_0_10px_#06b6d4] animate-in fade-in duration-500" />}
+                        </button>
+                        <button
+                            onClick={() => setEditMode('code')}
+                            className={`px-4 lg:px-6 py-4 text-[11px] lg:text-xs font-bold uppercase tracking-[0.15em] transition-all relative z-10 ${editMode === 'code' ? 'text-cyan-400' : 'text-slate-500 hover:text-slate-300'
+                                }`}
+                        >
+                            {t('skills.neural_logic')}
+                            {editMode === 'code' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-500 shadow-[0_0_10px_#06b6d4] animate-in fade-in duration-500" />}
+                        </button>
+                    </div>
+
                     <button
-                        onClick={() => setEditMode('config')}
-                        className={`px-4 lg:px-6 py-4 text-[11px] lg:text-xs font-bold uppercase tracking-[0.15em] transition-all relative z-10 ${editMode === 'config' ? 'text-cyan-400' : 'text-slate-500 hover:text-slate-300'
-                            }`}
+                        onClick={() => handleDeleteSkill(currentSkill.__folderName)}
+                        className="w-8 h-8 lg:w-9 lg:h-9 rounded-xl bg-transparent text-slate-500 hover:bg-rose-500/20 hover:text-rose-400 border border-transparent hover:border-rose-500/20 transition-all flex items-center justify-center group/del"
+                        title={t('skills.delete_btn')}
                     >
-                        Properties
-                        {editMode === 'config' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-500 shadow-[0_0_10px_#06b6d4] animate-in fade-in duration-500" />}
-                    </button>
-                    <button
-                        onClick={() => setEditMode('code')}
-                        className={`px-4 lg:px-6 py-4 text-[11px] lg:text-xs font-bold uppercase tracking-[0.15em] transition-all relative z-10 ${editMode === 'code' ? 'text-cyan-400' : 'text-slate-500 hover:text-slate-300'
-                            }`}
-                    >
-                        Neural Logic
-                        {editMode === 'code' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-500 shadow-[0_0_10px_#06b6d4] animate-in fade-in duration-500" />}
+                        <Icon name="trash-alt" className="text-xs lg:text-[13px] group-hover/del:scale-110 transition-transform" />
                     </button>
                 </div>
 
@@ -235,7 +265,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                         <div className="space-y-3">
                                             <label htmlFor="email-identity" className="text-xs lg:text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
                                                 <Icon name="at" className="text-cyan-500" />
-                                                Email Identity
+                                                {t('skills.email_identity')}
                                             </label>
                                                 <input
                                                     id="email-identity"
@@ -249,7 +279,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                         <div className="space-y-3">
                                             <label htmlFor="app-password" className="text-xs lg:text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
                                                 <Icon name="key" className="text-amber-500" />
-                                                App Password
+                                                {t('skills.app_password')}
                                             </label>
                                                 <input
                                                     id="app-password"
@@ -262,13 +292,12 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                         </div>
                                     </>
                                 ) : (
-                                    <div className="flex flex-col items-center justify-center py-10 lg:py-16 text-center">
-                                        <div className="relative mb-6">
-                                            <div className="absolute inset-0 bg-cyan-500/20 blur-2xl rounded-full" />
-                                            <Icon name="sliders-h" className="relative text-4xl lg:text-5xl text-slate-700" />
-                                        </div>
-                                        <p className="text-slate-400 font-semibold uppercase tracking-[0.15em] text-xs lg:text-xs">Automatic Execution System</p>
-                                        <p className="text-[10px] lg:text-xs text-slate-600 mt-3 max-w-[200px] leading-relaxed font-normal">Neural parameters are managed dynamically by the core engine.</p>
+                                    <div className="flex flex-col items-center justify-center py-10 opacity-60">
+                                        <Icon name="sliders-h" className="text-4xl text-slate-800 mb-4" />
+                                        <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">{t('skills.automatic_title')}</h5>
+                                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-700 max-w-[180px] text-center leading-relaxed">
+                                            {t('skills.automatic_desc')}
+                                        </p>
                                     </div>
                                 )}
                             </div>
@@ -323,14 +352,14 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
             <div className="flex-1 overflow-y-auto lg:overflow-hidden w-full lg:flex lg:flex-row p-3 lg:p-1.5 xl:p-8 gap-2 xl:gap-6 relative custom-scrollbar">
                 {/* Blueprints Overlay */}
                 {showBlueprints && (
-                    <div className="fixed lg:absolute inset-0 z-[100] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 lg:p-12">
+                    <div className="fixed inset-0 z-[1000] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
                         <div className="bg-slate-900 border border-slate-800 p-8 lg:p-10 rounded-3xl max-w-3xl w-full shadow-[0_0_100px_rgba(0,0,0,0.8)] animate-fade-scale overflow-y-auto max-h-[90vh]">
                             {!namingSkill ? (
                                 <>
                                     <div className="flex items-center justify-between mb-8 lg:mb-10">
                                         <div>
-                                            <h3 className="text-xl lg:text-2xl font-bold text-white uppercase tracking-tight">Neural Blueprints</h3>
-                                            <p className="text-slate-500 text-xs font-medium uppercase tracking-widest mt-1">Select a foundation for deployment</p>
+                                            <h3 className="text-xl lg:text-2xl font-bold text-white uppercase tracking-tight">{t('skills.blueprints_title')}</h3>
+                                            <p className="text-slate-500 text-xs font-medium uppercase tracking-widest mt-1">{t('skills.blueprints_desc')}</p>
                                         </div>
                                         <button
                                             onClick={() => setShowBlueprints(false)}
@@ -363,12 +392,12 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                     </div>
                                 </>
                             ) : (
-                                <div className="animate-in fade-in zoom-in-95 duration-500 flex flex-col items-center justify-center py-6 text-center">
+                                    <div className="animate-in fade-in zoom-in-95 duration-500 flex flex-col items-center justify-center py-6 text-center">
                                     <div className="w-20 h-20 rounded-3xl bg-cyan-500/10 flex items-center justify-center text-4xl text-cyan-400 mb-8 shadow-glow-cyan border border-cyan-500/20">
                                         <Icon name={namingSkill.icon} />
                                     </div>
-                                    <h4 className="text-xl lg:text-2xl font-bold text-white uppercase tracking-tight mb-2">Configure Neural Skill</h4>
-                                    <p className="text-xs text-slate-500 uppercase tracking-widest mb-10">Assign a unique identifier for deployment</p>
+                                    <h4 className="text-xl lg:text-2xl font-bold text-white uppercase tracking-tight mb-2">{t('skills.configure_title')}</h4>
+                                    <p className="text-xs text-slate-500 uppercase tracking-widest mb-10">{t('skills.configure_desc')}</p>
 
                                     <input
                                         autoFocus
@@ -376,7 +405,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                         onChange={(e) => setNewSkillName(e.target.value)}
                                         onKeyDown={(e) => e.key === 'Enter' && handleCreateFromBlueprint()}
                                         className="w-full max-w-sm premium-input rounded-2xl px-6 py-5 text-sm lg:text-base text-white mb-10 text-center font-mono focus:ring-2 ring-cyan-500/30"
-                                        placeholder="Skill ID..."
+                                        placeholder={t('skills.placeholder_id')}
                                     />
 
                                     <div className="flex gap-4 w-full max-w-sm">
@@ -384,13 +413,13 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                             onClick={() => setNamingSkill(null)}
                                             className="flex-1 py-4 bg-slate-800 text-slate-400 rounded-2xl text-[11px] font-bold uppercase tracking-widest hover:bg-slate-700 transition-all border border-slate-700/50"
                                         >
-                                            Back
+                                            {t('common.back')}
                                         </button>
                                         <button
                                             onClick={handleCreateFromBlueprint}
                                             className="flex-1 py-4 bg-cyan-600 text-white rounded-2xl text-[11px] font-bold uppercase tracking-widest hover:bg-cyan-500 transition-all shadow-glow-cyan shadow-[0_0_20px_-5px_rgba(6,182,212,0.5)]"
                                         >
-                                            Deploy
+                                            {t('skills.btn_deploy')}
                                         </button>
                                     </div>
                                 </div>
@@ -401,7 +430,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
 
                 {/* Vertical Skills List */}
                 <div className="w-full lg:w-52 xl:w-72 shrink-0 flex flex-col gap-3 lg:gap-2 xl:gap-4 lg:pr-2 xl:pr-4 lg:overflow-y-auto custom-scrollbar">
-                    <h3 className="text-[11px] font-semibold text-slate-600 uppercase tracking-[0.3em] px-4 mb-2">Synaptic Repository</h3>
+                    <h3 className="text-[11px] font-semibold text-slate-600 uppercase tracking-[0.3em] px-4 mb-2">{t('skills.repository')}</h3>
                     {loading ? (
                         <div className="space-y-4">
                             {[1, 2, 3].map(i => <div key={i} className="w-full h-20 bg-slate-900/50 animate-pulse rounded-2xl border border-slate-800/30" />)}
@@ -430,24 +459,26 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                             {activeSkill === skill.name && <div className="absolute inset-0 bg-cyan-400/5 animate-pulse" />}
                                         </button>
 
-                                        {/* Enable/Disable Toggle */}
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                const current = config.disabledSkills || [];
-                                                const updated = isDisabled
-                                                    ? current.filter(n => n !== skill.name)
-                                                    : [...current, skill.name];
-                                                updateConfig({ disabledSkills: updated });
-                                            }}
-                                            className="absolute top-1/2 -translate-y-1/2 right-3 z-20"
-                                            title={isDisabled ? `Enable ${skill.name}` : `Disable ${skill.name}`}
-                                        >
+                                        {/* Toggle Container */}
+                                        <div className="absolute top-1/2 -translate-y-1/2 right-3 z-20 flex items-center">
+                                            {/* Enable/Disable Toggle */}
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    const current = config.disabledSkills || [];
+                                                    const updated = isDisabled
+                                                        ? current.filter(n => n !== skill.name)
+                                                        : [...current, skill.name];
+                                                    updateConfig({ disabledSkills: updated });
+                                                }}
+                                                title={isDisabled ? `Enable ${skill.name}` : `Disable ${skill.name}`}
+                                            >
                                             <div className={`w-9 h-5 rounded-full transition-all duration-300 relative ${isDisabled ? 'bg-slate-700' : 'bg-cyan-500/60 shadow-[0_0_8px_rgba(6,182,212,0.3)]'}`}>
                                                 <div className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${isDisabled ? 'left-0.5 bg-slate-500' : 'left-[18px] bg-cyan-300 shadow-[0_0_6px_rgba(6,182,212,0.5)]'}`} />
                                             </div>
                                         </button>
                                     </div>
+                                </div>
 
                                     {/* Inline Editor with Premium Animation */}
                                     {activeSkill === skill.name && (
@@ -471,8 +502,8 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                 <div className="absolute inset-0 bg-cyan-500/10 blur-[80px] rounded-full animate-pulse" />
                                 <Icon name="puzzle-piece" className="relative text-5xl sm:text-7xl text-slate-700 animate-pulse" />
                             </div>
-                            <h3 className="text-sm sm:text-base font-black uppercase tracking-[0.3em] text-slate-400 mb-2">Neural Standby</h3>
-                            <p className="text-[10px] sm:text-xs max-w-[240px] sm:max-w-xs leading-relaxed font-bold uppercase tracking-widest">Awaiting selection to initialize neural Pathways</p>
+                            <h3 className="text-sm sm:text-base font-black uppercase tracking-[0.3em] text-slate-400 mb-2">{t('skills.standby_title')}</h3>
+                            <p className="text-[10px] sm:text-xs max-w-[240px] sm:max-w-xs leading-relaxed font-bold uppercase tracking-widest">{t('skills.standby_desc')}</p>
                         </div>
                     )}
                 </div>

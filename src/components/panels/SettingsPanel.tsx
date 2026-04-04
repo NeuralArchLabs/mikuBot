@@ -207,7 +207,7 @@ export const SettingsPanel = ({
                         {/* Core System Tab Title */}
                         <button
                             onClick={() => setSettingsTab('core')}
-                            className={`text-left transition-all duration-300 group ${settingsTab === 'core' ? '' : 'opacity-35 hover:opacity-60'}`}
+                            className={`text-left flex flex-col items-start transition-all duration-300 group ${settingsTab === 'core' ? '' : 'opacity-35 hover:opacity-60'}`}
                         >
                             <h2 className={`text-2xl md:text-3xl lg:text-xl xl:text-3xl font-black tracking-tighter select-none ${settingsTab === 'core' ? 'text-white text-shadow-premium animate-title-slide' : 'text-slate-400 group-hover:text-slate-200 transition-all duration-300'}`}>
                                 {t('settings.tabs.core')}
@@ -218,20 +218,26 @@ export const SettingsPanel = ({
                         </button>
 
                         {/* Separator */}
-                        <div className="hidden xl:block w-px h-8 flex-shrink-0 self-center rounded-full bg-gradient-to-b from-transparent via-cyan-400/30 to-transparent" />
+                        <div className={`hidden xl:block w-px h-8 flex-shrink-0 self-center rounded-full bg-gradient-to-b from-transparent transition-colors duration-500 ${settingsTab === 'skills' ? 'via-cyan-400/30' : 'via-slate-800/80'} to-transparent`} />
 
                         {/* Neural Skills Tab Title */}
                         <button
                             onClick={() => setSettingsTab('skills')}
-                            className={`text-left transition-all duration-300 group ${settingsTab === 'skills' ? '' : 'opacity-35 hover:opacity-60'}`}
+                            className={`text-left transition-all duration-300 group flex items-baseline gap-2 lg:gap-3 ${settingsTab === 'skills' ? '' : 'opacity-35 hover:opacity-60'}`}
                         >
-                            <h2 className={`text-2xl md:text-3xl lg:text-xl xl:text-3xl font-black tracking-tighter select-none flex items-center gap-2 ${settingsTab === 'skills' ? 'text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-teal-400 text-shadow-premium animate-title-slide' : 'text-slate-400 group-hover:text-slate-200 transition-all duration-300'}`}>
-                                <Icon name="puzzle-piece" className={`text-lg ${settingsTab === 'skills' ? 'text-cyan-400' : 'text-slate-500 group-hover:text-slate-300'}`} />
-                                {t('settings.tabs.skills')}
-                            </h2>
-                            {settingsTab === 'skills' && (
-                                <p className="text-cyan-500/60 text-[9px] md:text-xs font-bold tracking-widest uppercase select-none mt-0.5 animate-title-slide hidden sm:block">{t('settings.tabs.skills_desc')}</p>
-                            )}
+                            <div className="flex-shrink-0 self-baseline">
+                                <Icon name="puzzle-piece" className={`text-xl lg:text-lg xl:text-xl transform -translate-y-[3px] lg:-translate-y-[3.5px] ${settingsTab === 'skills' ? 'text-cyan-400' : 'text-slate-500 group-hover:text-slate-300'}`} />
+                            </div>
+                            <div className="flex flex-col">
+                                <h2 className={`text-2xl md:text-3xl lg:text-xl xl:text-3xl font-black tracking-tighter select-none ${settingsTab === 'skills' ? 'text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-teal-400 text-shadow-premium animate-title-slide' : 'text-slate-400 group-hover:text-slate-200 transition-all duration-300'}`}>
+                                    {t('settings.tabs.skills')}
+                                </h2>
+                                {settingsTab === 'skills' && (
+                                    <p className="text-cyan-500/60 text-[9px] md:text-xs font-bold tracking-widest uppercase select-none mt-0.5 animate-title-slide hidden sm:block leading-none">
+                                        {t('settings.tabs.skills_desc')}
+                                    </p>
+                                )}
+                            </div>
                         </button>
                     </div>
 

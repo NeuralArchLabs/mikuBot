@@ -678,5 +678,28 @@
         "audio_engine": "音频引擎",
         "vosk_url": "https://alphacephei.com/vosk/",
         "security_layer": "安全层"
+    },
+    "skills": {
+        "repository": "突触仓库",
+        "properties": "属性",
+        "neural_logic": "神经逻辑",
+        "blueprints_title": "神经蓝图",
+        "blueprints_desc": "选择部署基础",
+        "configure_title": "配置神经技能",
+        "configure_desc": "为部署分配唯一标识符",
+        "placeholder_id": "技能 ID...",
+        "btn_back": "返回",
+        "btn_deploy": "部署",
+        "standby_title": "神经待机",
+        "standby_desc": "等待选择以初始化神经通路",
+        "delete_confirm": "您确定要永久删除技能 \"{{name}}\" 吗？此操作不可撤销。",
+        "delete_btn": "删除技能",
+        "automatic_title": "自动执行系统",
+        "automatic_desc": "神经参数由核心引擎动态管理。",
+        "email_identity": "电子邮件身份",
+        "app_password": "应用密码",
+        "error_loading": "加载神经技能时出错。",
+        "error_creating": "技能创建管道出错。",
+        "error_saving": "保存技能文件失败，请检查权限。"
     }
 }

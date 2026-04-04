@@ -678,5 +678,28 @@
         "audio_engine": "Audio Engine",
         "vosk_url": "https://alphacephei.com/vosk/",
         "security_layer": "Security Layer"
+    },
+    "skills": {
+        "repository": "Synaptic Repository",
+        "properties": "Properties",
+        "neural_logic": "Neural Logic",
+        "blueprints_title": "Neural Blueprints",
+        "blueprints_desc": "Select a foundation for deployment",
+        "configure_title": "Configure Neural Skill",
+        "configure_desc": "Assign a unique identifier for deployment",
+        "placeholder_id": "Skill ID...",
+        "btn_back": "Back",
+        "btn_deploy": "Deploy",
+        "standby_title": "Neural Standby",
+        "standby_desc": "Awaiting selection to initialize neural Pathways",
+        "delete_confirm": "Are you sure you want to permanently delete the skill \"{{name}}\"? This action cannot be undone.",
+        "delete_btn": "Delete Skill",
+        "automatic_title": "AUTOMATIC EXECUTION SYSTEM",
+        "automatic_desc": "Neural parameters are managed dynamically by the core engine.",
+        "email_identity": "Email Identity",
+        "app_password": "App Password",
+        "error_loading": "Error loading neural skills.",
+        "error_creating": "Error in skill creation pipeline.",
+        "error_saving": "Failed to save skill files, check permissions."
     }
 }

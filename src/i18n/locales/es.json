@@ -693,5 +693,28 @@
         "audio_engine": "Motor de Audio",
         "vosk_url": "https://alphacephei.com/vosk/",
         "security_layer": "Capa de Seguridad"
+    },
+    "skills": {
+        "repository": "Repositorio Sináptico",
+        "properties": "Propiedades",
+        "neural_logic": "Lógica Neural",
+        "blueprints_title": "Blueprints Neurales",
+        "blueprints_desc": "Selecciona una base para el despliegue",
+        "configure_title": "Configurar Skill Neural",
+        "configure_desc": "Asigna un identificador único para el despliegue",
+        "placeholder_id": "ID de la Skill...",
+        "btn_back": "Atrás",
+        "btn_deploy": "Desplegar",
+        "standby_title": "Neural Standby",
+        "standby_desc": "Esperando selección para inicializar rutas neurales",
+        "delete_confirm": "¿Estás seguro de que deseas eliminar permanentemente la skill \"{{name}}\"? Esta acción no se puede deshacer.",
+        "delete_btn": "Eliminar Skill",
+        "automatic_title": "SISTEMA DE EJECUCIÓN AUTOMÁTICA",
+        "automatic_desc": "Los parámetros neurales se gestionan dinámicamente por el motor central.",
+        "email_identity": "Identidad de Email",
+        "app_password": "App Password (Contraseña de Aplicación)",
+        "error_loading": "Error al cargar habilidades neuronales.",
+        "error_creating": "Error en el pipeline de creación de habilidades.",
+        "error_saving": "Error al guardar archivos de habilidades, verifica permisos."
     }
 }
