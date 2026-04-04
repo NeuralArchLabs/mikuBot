@@ -1,4 +1,4 @@
-## [2.1.5.1] - 2026-04-04
+## [2.1.6] - 2026-04-04
 ### Fixed
 - **UTF-8 Encoding Restoration**: Successfully repaired corrupted accented characters (á, é, í, ó, ú, ñ) in `es.json` caused by previous tool interactions. All Spanish text now renders correctly with proper encoding.
 - **System Dialog Localization**: Fully migrated all hardcoded strings in backup, restore, factory reset, and voice download dialogs to the i18n layer. All alerts now respect the active system language.
@@ -87,8 +87,7 @@
 - **Atomic Persistence Reliability**: Refactored the file-saving bridge to use native file descriptors for guaranteed write completion.
 
 ### Changed
-- **Version Bump**: Global application  "version": "2.1.5.1",
- updated.
+- **Version Bump**: Global application "version": "2.1.6", updated.
 
 ## [1.9.7] - 2026-03-24
 ### Added
