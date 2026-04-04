@@ -716,7 +716,7 @@ export const ChatArea = ({
                     </div>
                 </div>
                 <div className="relative max-w-5xl mx-auto flex flex-col gap-2">
-                    <div className="flex items-center gap-2"> {/* Cambiado items-end por items-center para centrar botones */}
+                <div className="flex items-center"> {/* Removed gap-2 to handle spacing via mx-1 and fix phantom gaps from hidden elements */}
                         {/* Attachments Preview (Left) */}
                         {attachments.length > 0 && (
                             <div className="flex gap-2 pb-1">
@@ -741,7 +741,7 @@ export const ChatArea = ({
                         )}
 
                         {/* File Input (Hidden) & Trigger (Left of textarea) */}
-                        <div className={`mode-transition-wrap ${!isLoading ? 'visible-mode' : 'hidden-mode'}`}>
+                        <div className={`mode-transition-wrap mx-1 ${!isLoading ? 'visible-mode' : 'hidden-mode'}`}>
                             <input
                                 type="file"
                                 ref={fileInputRef}
@@ -760,7 +760,7 @@ export const ChatArea = ({
                             </button>
                         </div>
 
-                        <div className="relative flex-1 group/input flex items-center">
+                        <div className="relative flex-1 group/input flex items-center mx-1">
                             <textarea
                                 ref={inputRef}
                                 value={input}
@@ -794,7 +794,7 @@ export const ChatArea = ({
                         </div>
 
                         {/* Abort Group (Active when Loading) */}
-                        <div className={`mode-transition-wrap ${isLoading ? 'visible-mode action-enter' : 'hidden-mode action-exit'}`}>
+                        <div className={`mode-transition-wrap mx-1 ${isLoading ? 'visible-mode action-enter' : 'hidden-mode action-exit'}`}>
                             <button
                                 onClick={onAbort}
                                 className={`h-[50px] px-4 btn-abort-premium text-white rounded-xl flex items-center justify-center min-w-[50px] shadow-lg shadow-red-900/20 ${agentStatus.isInstructionMode ? 'btn-halo-abort' : ''}`}
@@ -807,7 +807,7 @@ export const ChatArea = ({
                         </div>
 
                         {/* Send/Instruction Group (Active when Idle) */}
-                        <div className={`flex items-center ${agentMode !== 'agent' ? 'gap-2' : ''} mode-transition-wrap ${!isLoading ? 'visible-mode action-enter' : 'hidden-mode action-exit'}`}>
+                        <div className={`flex items-center ${agentMode !== 'agent' ? 'gap-2' : ''} mode-transition-wrap mx-1 ${!isLoading ? 'visible-mode action-enter' : 'hidden-mode action-exit'}`}>
                             <button
                                 onClick={handleSend}
                                 disabled={!input.trim() && attachments.length === 0}
@@ -850,7 +850,7 @@ export const ChatArea = ({
                         {!isLoading && agentStatus.iteration > 0 && agentStatus.phase !== 'idle' && (
                             <button
                                 onClick={onReprompt}
-                                className="h-[50px] px-4 btn-continue-premium text-white rounded-xl flex items-center justify-center min-w-[50px] shadow-lg shadow-orange-900/20"
+                                className="h-[50px] px-4 btn-continue-premium text-white rounded-xl flex items-center justify-center min-w-[50px] shadow-lg shadow-orange-900/20 mx-1"
                                 title={t('chat.actions.resume_task')}
                             >
                                 <Icon name="redo" className="icon-spin-once text-lg" />

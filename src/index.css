@@ -801,7 +801,7 @@
 /* Layout Isolation */
 .miku-sidebar-isolate {
   contain: layout;
-  height: 100vh;
+  height: 100%;
 }
 
 .miku-app-isolate {
@@ -1343,10 +1343,11 @@
 .mode-transition-wrap.hidden-mode {
   max-width: 0;
   opacity: 0;
-  margin: 0;
-  padding: 0;
+  margin: 0 !important;
+  padding: 0 !important;
   transform: scale(0.8);
   pointer-events: none;
+  overflow: hidden;
 }
 
 .mode-transition-wrap.visible-mode {

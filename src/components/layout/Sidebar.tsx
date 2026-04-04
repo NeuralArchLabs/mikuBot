@@ -171,13 +171,13 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
 
     return (
         <>
-            <div className="bg-slate-900 flex flex-col h-full shadow-xl z-30 w-16 lg:w-68 flex-shrink-0 transition-all duration-300 relative overflow-hidden custom-scrollbar miku-sidebar-isolate">
+            <div className="bg-slate-900 flex flex-col h-full shadow-xl z-30 w-16 lg:w-68 flex-shrink-0 transition-all duration-300 relative overflow-y-auto custom-scrollbar miku-sidebar-isolate">
                 {/* Vertical Gradient Border (Fade in from top) */}
                 <div className="absolute right-0 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-slate-700/50 via-[8%] to-slate-700/50 pointer-events-none" />
                 
                 {/* Top Section: Logo & Main Nav */}
-                <div className="flex-none p-3 lg:p-6 pb-0 flex flex-col h-full lg:h-auto">
-                    <div className="flex items-center justify-center lg:justify-start gap-3 mb-8 group cursor-default h-10 overflow-visible w-full px-1 relative">
+                <div className={`flex-none p-3 lg:p-6 pb-0 flex flex-col ${isCompactMode ? 'min-h-0' : 'min-h-full lg:min-h-0'} lg:h-auto`}>
+                    <div className={`flex items-center justify-center lg:justify-start gap-3 ${isCompactMode ? 'mb-4' : 'mb-8'} group cursor-default h-10 overflow-visible w-full px-1 relative`}>
                         <div
                             className="w-10 h-10 rounded-xl bg-slate-800 flex flex-shrink-0 items-center justify-center shadow-md group-hover:scale-110 active:scale-95 transition-all duration-300 overflow-hidden border border-slate-700/50 cursor-pointer relative z-10 premium-button"
                             onClick={triggerEasterEgg}
@@ -213,8 +213,11 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                 <>
                                     {/* The sliding carriage that holds the dot */}
                                     <div 
-                                        className="hidden lg:block absolute right-0 left-0 w-full h-[53px] pointer-events-none z-30 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
-                                        style={{ transform: `translateY(${activeIndex * 57}px)` }}
+                                        className="hidden lg:block absolute right-0 left-0 w-full pointer-events-none z-30 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+                                        style={{ 
+                                            height: `${isCompactMode ? 44 : 53}px`,
+                                            transform: `translateY(${activeIndex * (isCompactMode ? 48 : 57)}px)` 
+                                        }}
                                     >
                                         <div 
                                             className="absolute right-4 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full shadow-glow transition-colors duration-500"
@@ -226,14 +229,15 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                         <button
                                             key={tab.id}
                                             onClick={() => setState(prev => ({ ...prev, activeTab: tab.id as any, selectedFile: '' }))}
-                                            className={`w-full h-[53px] flex items-center justify-center lg:justify-start gap-4 px-3 lg:px-4 rounded-xl transition-all duration-300 group premium-button border ${state.activeTab === tab.id
+                                            className={`w-full flex items-center justify-center lg:justify-start gap-4 px-3 lg:px-4 rounded-xl transition-all duration-300 group premium-button border ${state.activeTab === tab.id
                                                 ? 'bg-slate-800 text-white shadow-md border-slate-800 shadow-blue-500/5'
                                                 : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
                                                 } hover:border-slate-700/50`}
+                                            style={{ height: `${isCompactMode ? 44 : 53}px` }}
                                             title={tab.label}
                                         >
-                                            <Icon name={tab.icon} className={`text-2xl lg:text-lg flex-shrink-0 ${state.activeTab === tab.id ? tab.color : 'group-hover:text-slate-300'} transition-colors`} />
-                                            <span className="hidden lg:inline-block flex-1 text-left text-base font-bold tracking-tight truncate whitespace-nowrap">{tab.label}</span>
+                                            <Icon name={tab.icon} className={`${isCompactMode ? 'text-xl lg:text-base' : 'text-2xl lg:text-lg'} flex-shrink-0 ${state.activeTab === tab.id ? tab.color : 'group-hover:text-slate-300'} transition-colors`} />
+                                            <span className={`hidden lg:inline-block flex-1 text-left ${isCompactMode ? 'text-sm' : 'text-base'} font-bold tracking-tight truncate whitespace-nowrap`}>{tab.label}</span>
                                         </button>
                                     ))}
                                 </>
@@ -242,7 +246,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                     </nav>
 
                     {/* Mobile Contents Toggle (Bottom Fixed on Mobile) */}
-                    <div className="lg:hidden mt-auto pt-6 space-y-3 pb-8">
+                    <div className={`lg:hidden mt-auto ${isCompactMode ? 'pt-2 pb-4' : 'pt-6 pb-8'} space-y-3`}>
                          <div className="h-px bg-slate-800/50 mb-6" />
                          <button
                             onClick={() => setSessionModalOpen(true)}
@@ -265,8 +269,8 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                 <div className="flex-1 hidden lg:flex flex-col min-h-0 overflow-hidden">
                     
                     {/* Neural Sessions - Dynamic Growth or Compact Tab */}
-                    <div className={`${isCompactMode ? 'flex-none h-14' : 'flex-[1.2] min-h-[140px]'} flex flex-col overflow-hidden px-5 pt-0 transition-all duration-300`}>
-                        <div className={`${isCompactMode ? 'hover:bg-blue-500/5 rounded-xl transition-all cursor-pointer h-full' : 'flex-1 min-h-0'}`} onClick={isCompactMode ? () => setSessionModalOpen(true) : undefined}>
+                    <div className={`${isCompactMode ? 'flex-1' : 'flex-[1.2]'} flex flex-col overflow-hidden px-5 pt-0 transition-all duration-300 min-h-0`}>
+                        <div className={`${isCompactMode ? 'hover:bg-blue-500/5 rounded-xl transition-all h-full' : 'flex-1 min-h-0'}`}>
                             <SessionList
                                 sessions={sessions}
                                 loading={loadingSessions}
@@ -278,16 +282,15 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                 onImport={() => (state as any).onImportSession()}
                                 onExpand={() => setSessionModalOpen(true)}
                                 askConfirm={state.askConfirm}
-                                hideList={isCompactMode}
+                                hideList={false}
                             />
                         </div>
                     </div>
 
                     {/* Context Library - Balanced (flex-1) or Compact Tab */}
-                    <div className={`${isCompactMode ? 'flex-none h-14' : 'flex-1 min-h-0'} flex flex-col border-t border-slate-800/40 shadow-[0_-10px_15px_-5px_rgba(0,0,0,0.3)] transition-all duration-300`}>
+                    <div className="flex-1 flex flex-col border-t border-slate-800/40 shadow-[0_-10px_15px_-5px_rgba(0,0,0,0.3)] transition-all duration-300 min-h-0">
                         <div 
-                            className={`px-5 py-3 flex-1 flex flex-col min-h-0 ${isCompactMode ? 'hover:bg-slate-800/40 cursor-pointer rounded-xl mx-2 my-1' : ''}`}
-                            onClick={isCompactMode ? () => setState(p => ({ ...p, isLibraryExpanded: true })) : undefined}
+                            className={`px-5 py-3 flex-1 flex flex-col min-h-0 ${isCompactMode ? 'hover:bg-slate-800/40 rounded-xl mx-2 my-1' : ''}`}
                         >
                              <div className="flex items-center justify-between flex-none mb-2">
                                 <button
@@ -310,8 +313,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                              </div>
                             <div className="h-px bg-gradient-to-r from-transparent via-slate-700/50 via-[5%] to-transparent flex-none" />
  
-                            {!isCompactMode && (
-                                <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1 pt-3 pb-3 min-h-0">
+                            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1 pt-3 pb-3 min-h-0">
                                     {Object.keys(state.additionalFiles || {}).length === 0 ? (
                                         <div className="text-center py-6 px-2 border border-dashed border-slate-800/50 rounded-xl bg-slate-800/10">
                                             <p className="text-[9px] text-slate-600 italic">{t('sidebar.footer.no_cortex')}</p>
@@ -351,13 +353,13 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                                         <Icon name="times" className="text-[9px]" />
                                                     </button>
                                                 </div>
-                                            );
+                                            )
                                         })
                                     )}
+                                    <div className="h-4 w-full flex-shrink-0" />
                                 </div>
-                            )}
+                            </div>
                         </div>
-                    </div>
                 </div>
             </div>
 
