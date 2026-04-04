@@ -1,0 +1,7 @@
+{
+    "id": "budget",
+    "icon": "dollar-sign",
+    "category": "library",
+    "title": "Presupuesto Mensual",
+    "content": "# 💰 Presupuesto Mensual — [MES/AÑO]\n\n## Ingresos\n| Concepto | Monto |\n|----------|-------|\n| Salario principal | $0.00 |\n| Freelance / Extras | $0.00 |\n| **Total Ingresos** | **$0.00** |\n\n## Gastos Fijos\n| Concepto | Monto | Fecha Pago |\n|----------|-------|------------|\n| Renta / Hipoteca | $0.00 | — |\n| Servicios (Luz, Agua, Gas) | $0.00 | — |\n| Internet / Teléfono | $0.00 | — |\n| Seguros | $0.00 | — |\n| Transporte | $0.00 | — |\n| **Total Fijos** | **$0.00** | |\n\n## Gastos Variables\n| Concepto | Presupuesto | Real | Diferencia |\n|----------|-------------|------|------------|\n| Alimentación | $0.00 | $0.00 | — |\n| Entretenimiento | $0.00 | $0.00 | — |\n| Ropa / Personal | $0.00 | $0.00 | — |\n| **Total Variables** | **$0.00** | **$0.00** | |\n\n## Ahorro & Inversión\n| Destino | Meta | Depositado |\n|---------|------|------------|\n| Fondo de emergencia | $0.00 | $0.00 |\n| Inversiones | $0.00 | $0.00 |\n\n## Balance Final\n- **Ingresos**: $0.00\n- **Egresos**: $0.00\n- **Ahorro**: $0.00\n- **Balance**: $0.00\n"
+}

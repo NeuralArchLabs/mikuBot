@@ -1742,103 +1742,62 @@ ipcMain.handle('list-skills', async (event, { toolsPath }) => {
     }
 });
 
-ipcMain.handle('list-blueprints', async (event, { toolsPath, corePath, language = 'es' }) => {
+ipcMain.handle('list-blueprints', async (event, { toolsPath, corePath, lang }) => {
     try {
         let blueprintsRoot = '';
+        const targetLang = (lang || 'es').split('-')[0].toLowerCase(); // Use 'es' as default base
+        console.log(`[Main Process] list-blueprints for language: ${targetLang}`);
 
-        // 1. Check toolsPath (User-selected commands folder)
         if (toolsPath) {
             const testPath = path.join(toolsPath, 'blueprints');
             if (fs.existsSync(testPath)) blueprintsRoot = testPath;
         }
 
-        // 2. Check corePath (User-selected core folder)
         if (!blueprintsRoot && corePath) {
-            const testPath = path.join(corePath, 'blueprints');
+            const testPath = path.join(corePath, 'base', 'blueprints');
             if (fs.existsSync(testPath)) blueprintsRoot = testPath;
         }
 
-        // 3. Check App Resources (Packaged external folder)
+        // Fallbacks for dev/packaged environments
         if (!blueprintsRoot) {
             const externalPath = path.join(resourcesPath, 'core', 'base', 'blueprints');
             if (fs.existsSync(externalPath)) blueprintsRoot = externalPath;
         }
 
-        // 4. Check Internal App Data (Inside ASAR if files were included)
-        if (!blueprintsRoot) {
-            const internalPath = path.join(app.getAppPath(), 'core', 'base', 'blueprints');
-            if (fs.existsSync(internalPath)) blueprintsRoot = internalPath;
-        }
-
-        // 5. Check Root Path (Next to Exe)
-        if (!blueprintsRoot) {
-            const rootStatic = path.join(rootPath, 'core', 'base', 'blueprints');
-            if (fs.existsSync(rootStatic)) blueprintsRoot = rootStatic;
-        }
-
-        console.log(`[Main Process] Blueprint discovery root: ${blueprintsRoot || 'FAILED'}`);
-
-        if (!blueprintsRoot || !fs.existsSync(blueprintsRoot)) {
-            return { ok: true, blueprints: [] };
-        }
+        if (!blueprintsRoot || !fs.existsSync(blueprintsRoot)) return { ok: true, blueprints: [] };
 
         const blueprints = [];
         const categories = fs.readdirSync(blueprintsRoot);
 
-        // Map language codes to file suffixes
-        const langMap = {
-            'es': 'es',
-            'en': 'en',
-            'zh': 'zh'
-        };
-        
-        const langSuffix = langMap[language] || 'es'; // Default to Spanish
-
         for (const cat of categories) {
             const catDir = path.join(blueprintsRoot, cat);
             if (fs.statSync(catDir).isDirectory()) {
-                const files = fs.readdirSync(catDir);
+                // Filter files by language suffix: e.g. budget.en.json
+                // Fallback mechanism: If target language file doesn't exist, try English, then base .json
+                const allFiles = fs.readdirSync(catDir).filter(f => f.endsWith('.json'));
                 
-                // Track which base files we've already processed to avoid duplicates
-                const processedBases = new Set();
-                
-                for (const file of files) {
-                    if (!file.endsWith('.json')) continue;
-                    
-                    // Extract base filename (e.g., "project" from "project.en.json" or "project.json")
-                    // First try to remove locale suffix, then remove .json
-                    let baseName = file;
-                    if (/\.(es|en|zh)\.json$/.test(baseName)) {
-                        baseName = baseName.replace(/\.(es|en|zh)\.json$/, '');
-                    } else {
-                        baseName = baseName.replace(/\.json$/, '');
-                    }
-                    
-                    // Skip if we already processed this base with a locale-specific version
-                    if (processedBases.has(baseName)) continue;
-                    
-                    // Check if a locale-specific version exists
-                    const localeFile = `${baseName}.${langSuffix}.json`;
-                    const defaultFile = `${baseName}.json`;
-                    
-                    let fileToUse = null;
-                    
-                    // Priority: locale-specific > default (base)
-                    if (fs.existsSync(path.join(catDir, localeFile))) {
-                        fileToUse = localeFile;
-                    } else if (fs.existsSync(path.join(catDir, defaultFile))) {
-                        fileToUse = defaultFile;
-                    }
-                    
-                    if (fileToUse) {
+                // Group files by base name: income.en.json, income.es.json -> group "income"
+                const baseNames = Array.from(new Set(allFiles.map(f => f.split('.')[0])));
+
+                for (const base of baseNames) {
+                    let fileToLoad = '';
+                    const langFile = `${base}.${targetLang}.json`;
+                    const enFile = `${base}.en.json`;
+                    const esFile = `${base}.es.json`;
+                    const defaultFile = `${base}.json`;
+
+                    if (allFiles.includes(langFile)) fileToLoad = langFile;
+                    else if (allFiles.includes(enFile)) fileToLoad = enFile;
+                    else if (allFiles.includes(esFile)) fileToLoad = esFile;
+                    else if (allFiles.includes(defaultFile)) fileToLoad = defaultFile;
+
+                    if (fileToLoad) {
                         try {
-                            processedBases.add(baseName);
-                            const content = JSON.parse(fs.readFileSync(path.join(catDir, fileToUse), 'utf8'));
+                            const content = JSON.parse(fs.readFileSync(path.join(catDir, fileToLoad), 'utf8'));
+                            content.id = base;
                             if (!content.category) content.category = cat;
                             blueprints.push(content);
-                        } catch (e) {
-                            console.warn(`[Main Process] Failed to parse blueprint ${fileToUse}:`, e.message);
-                        }
+                        } catch (e) { }
                     }
                 }
             }
@@ -1846,7 +1805,6 @@ ipcMain.handle('list-blueprints', async (event, { toolsPath, corePath, language 
 
         return { ok: true, blueprints };
     } catch (error) {
-        console.error('[Main Process] list-blueprints error:', error);
         return { ok: false, error: error.message };
     }
 });

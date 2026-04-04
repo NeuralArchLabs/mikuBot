@@ -1,7 +1,7 @@
 {
     "id": "learning",
-    "title": "Learning Log",
     "icon": "graduation-cap",
     "category": "library",
-    "content": "# 📓 Learning Log — [Topic / Course]\n\n## Learning Goal\n> What do I want to master and by when?\n\n**Topic**: —\n**Current Level**: Beginner / Intermediate / Advanced\n**Target Level**: —\n**Target Date**: [MM/DD/YYYY]\n\n## Resources\n| Resource | Type | URL / Location | Completed |\n|----------|------|----------------|----------|\n| — | Book / Course / Video | — | ⬜ |\n| — | Documentation | — | ⬜ |\n| — | Hands-on Project | — | ⬜ |\n\n## Session Log\n### Session 1 — [Date]\n**Duration**: — min\n**Topic Covered**: —\n**Key Concepts Learned**:\n- —\n- —\n\n**Pending Questions**:\n- —\n\n**Next Steps**:\n- —\n\n## Milestones\n| Milestone | Description | Status | Date |\n|-----------|-------------|--------|------|\n| 1 | Fundamentals | ⬜ | — |\n| 2 | First Project | ⬜ | — |\n| 3 | Intermediate Project | ⬜ | — |\n| 4 | Mastery | ⬜ | — |\n\n## Reflections\n- [Date]: —\n"
+    "title": "Learning Journal",
+    "content": "# 📓 Learning Journal — [Topic / Course]\n\n## Learning Goal\n> What do I want to master and by when?\n\n**Topic**: —\n**Current Level**: Beginner / Intermediate / Advanced\n**Target Level**: —\n**Deadline**: [MM/DD/YYYY]\n\n## Resources\n| Resource | Type | URL / Location | Completed |\n|----------|------|-----------------|-----------|\n| — | Book / Course / Video | — | ⬜ |\n| — | Documentation | — | ⬜ |\n| — | Practical project | — | ⬜ |\n\n## Session Log\n### Session 1 — [Date]\n**Duration**: — min\n**Topic covered**: —\n**Key concepts learned**:\n- —\n- —\n\n**Pending questions**:\n- —\n\n**Next steps**:\n- —\n\n## Milestones\n| Milestone | Description | Status | Date |\n|-----------|-------------|--------|------|\n| 1 | Fundamentals | ⬜ | — |\n| 2 | First project | ⬜ | — |\n| 3 | Intermediate project | ⬜ | — |\n| 4 | Mastery | ⬜ | — |\n\n## Reflections\n- [Date]: —\n"
 }

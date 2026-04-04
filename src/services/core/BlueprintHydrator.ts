@@ -58,7 +58,7 @@ const DEFAULT_VARIABLES: Record<string, string> = {
     CUSTOM_RULES: 'No additional instructions.',
 };
 
-// ─── Template → Output mapping ───────────────────────────────────────
+// ─── Template → Output mapping ─────────────────────────────────────
 
 const TEMPLATE_BASES: { base: string; output: string; target: 'core' | 'tools' }[] = [
     { base: 'IDENTITY', output: 'IDENTITY.md', target: 'tools' },
@@ -136,7 +136,7 @@ export function extractTemplatesFromFolderContent(
     return templates;
 }
 
-// ─── Main Entry Point ───────────────────────────────────────────────
+// ─── Main Entry Point ─────────────────────────────────────────────
 
 /**
  * Hydrates all blueprint templates with the user's variables.
@@ -156,7 +156,7 @@ export function hydrateAllTemplates(
         // Try language specific template: base.template.en.md
         const langTemplate = `${base}.template.${language}.md`;
         const fallbackTemplate = `${base}.template.md`;
-        
+
         let raw = templateContent[langTemplate];
         if (!raw) {
             raw = templateContent[fallbackTemplate];

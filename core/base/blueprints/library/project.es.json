@@ -1,0 +1,7 @@
+{
+    "id": "project",
+    "icon": "project-diagram",
+    "category": "library",
+    "title": "Plan Rector de Proyecto",
+    "content": "# 🎯 Plan Rector — [Nombre del Proyecto]\n\n## Visión\n> Describe en 1-2 oraciones qué problema resuelve y para quién.\n\n## Objetivos SMART\n1. **Específico**: —\n2. **Medible**: —\n3. **Alcanzable**: —\n4. **Relevante**: —\n5. **Temporal**: Fecha límite: [DD/MM/AAAA]\n\n## Fases y Entregables\n| Fase | Descripción | Entregable | Fecha Límite | Estado |\n|------|-------------|------------|--------------|--------|\n| 1. Investigación | — | Documento de hallazgos | — | ⬜ |\n| 2. Diseño | — | Wireframes / Mockups | — | ⬜ |\n| 3. Desarrollo | — | MVP funcional | — | ⬜ |\n| 4. Testing | — | Reporte de QA | — | ⬜ |\n| 5. Lanzamiento | — | Versión 1.0 | — | ⬜ |\n\n## Stack Tecnológico\n- **Frontend**: —\n- **Backend**: —\n- **Base de Datos**: —\n- **Deployment**: —\n\n## Riesgos Identificados\n| Riesgo | Probabilidad | Impacto | Mitigación |\n|--------|-------------|---------|------------|\n| — | Baja/Media/Alta | — | — |\n\n## Notas y Decisiones\n- [Fecha]: —\n"
+}

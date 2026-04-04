@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppConfig } from '../../types';
 import { Icon } from '../common/Common';
@@ -23,12 +23,20 @@ interface Skill {
 
 interface SkillBlueprint {
     id: string;
-    name: string;
     icon: string;
     category: string;
+    name_es?: string;
+    name_en?: string;
+    name_zh?: string;
     manifest: {
         name: string;
+        name_es?: string;
+        name_en?: string;
+        name_zh?: string;
         description: string;
+        description_es?: string;
+        description_en?: string;
+        description_zh?: string;
         parameters: any;
         runtime: "python" | "node";
         entry: string;
@@ -45,6 +53,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
     const [activeFile, setActiveFile] = useState<string>('manifest.json');
     const [editorContent, setEditorContent] = useState<string>('');
     const [isSavingCode, setIsSavingCode] = useState(false);
+    const [rawBlueprints, setRawBlueprints] = useState<SkillBlueprint[]>([]);
     const [blueprints, setBlueprints] = useState<SkillBlueprint[]>([]);
 
     useEffect(() => {
@@ -53,16 +62,49 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
             if (isElectron && config.folderPaths?.tools) {
                 const response = await (window as any).electron.listBlueprints({
                     toolsPath: config.folderPaths.tools,
-                    corePath: config.folderPaths.core,
-                    language: i18n.language
+                    corePath: config.folderPaths.core
                 });
                 if (response.ok) {
-                    setBlueprints(response.blueprints.filter((b: any) => b.category === 'skills'));
+                    setRawBlueprints(response.blueprints.filter((b: any) => b.category === 'skills'));
                 }
             }
         };
         if (showBlueprints) loadBlueprints();
-    }, [showBlueprints, config.folderPaths?.tools, i18n.language]);
+    }, [showBlueprints, config.folderPaths?.tools]);
+
+    // Helper function to get localized name from skill blueprint
+    const getSkillName = useCallback((bp: SkillBlueprint): string => {
+        const lang = (i18n.language || 'en').split('-')[0];
+        // Use bracket notation for dynamic keys
+        const value = bp[`name_${lang}` as any] ||
+            bp.name_en ||
+            bp.name_es ||
+            '';
+        return String(value);
+    }, [i18n.language]);
+
+    // Helper function to get localized description from skill blueprint
+    const getSkillDescription = useCallback((bp: SkillBlueprint): string => {
+        const lang = (i18n.language || 'en').split('-')[0];
+        const manifest = bp.manifest || {} as any;
+        // Use bracket notation for dynamic keys
+        const value = manifest[`description_${lang}` as any] ||
+            manifest.description_en ||
+            manifest.description_es ||
+            manifest.description ||
+            '';
+        return String(value);
+    }, [i18n.language]);
+
+    // Normalize blueprints when language changes
+    useEffect(() => {
+        const normalized = rawBlueprints.map(bp => ({
+            ...bp,
+            name: getSkillName(bp),
+            description: getSkillDescription(bp)
+        }));
+        setBlueprints(normalized);
+    }, [rawBlueprints, i18n.language, getSkillName, getSkillDescription]);
 
     useEffect(() => {
         const loadSkills = async () => {
@@ -292,8 +334,8 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                         <div className="text-3xl lg:text-4xl text-cyan-400 mb-4 group-hover:scale-110 transition-transform">
                                             <Icon name={bp.icon} />
                                         </div>
-                                        <div className="font-semibold text-slate-100 text-base lg:text-lg uppercase tracking-tight">{bp.name}</div>
-                                        <div className="text-[11px] lg:text-xs text-slate-500 mt-2 leading-relaxed font-medium">{bp.manifest.description}</div>
+                                        <div className="font-semibold text-slate-100 text-base lg:text-lg uppercase tracking-tight">{getSkillName(bp)}</div>
+                                        <div className="text-[11px] lg:text-xs text-slate-500 mt-2 leading-relaxed font-medium">{getSkillDescription(bp)}</div>
                                     </button>
                                 ))}
                             </div>

@@ -1,11 +1,18 @@
 {
     "id": "python_basic",
-    "name": "Python Logic",
+    "name_es": "Lógica Python",
+    "name_en": "Python Logic",
+    "name_zh": "Python 逻辑",
     "icon": "python",
     "category": "skills",
     "manifest": {
         "name": "new_python_skill",
-        "description": "A logic skill using Python.",
+        "name_es": "nuevo_skill_python",
+        "name_en": "new_python_skill",
+        "name_zh": "新的python技能",
+        "description": "Una lógica skill usando Python.",
+        "description_en": "A logic skill using Python.",
+        "description_zh": "使用 Python 的逻辑技能。",
         "parameters": {
             "type": "object",
             "properties": {

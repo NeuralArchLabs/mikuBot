@@ -2,13 +2,14 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Icon, MarkdownRenderer } from '../common/Common';
 import { useTranslation } from 'react-i18next';
 import { AppConfig } from '../../types';
+import { hydrateTemplate, extractVariablesFromConfig } from '../../services/core/BlueprintHydrator';
 
 interface Blueprint {
     id: string;
     title: string;
+    content: string;
     icon: string;
     category: string;
-    content: string;
 }
 
 interface LibraryManagerProps {
@@ -52,6 +53,7 @@ export const LibraryManager = ({
     const [showBlueprints, setShowBlueprints] = useState(false);
     const [renamingFile, setRenamingFile] = useState<string | null>(null);
     const [renameInput, setRenameInput] = useState('');
+    const [rawBlueprints, setRawBlueprints] = useState<Blueprint[]>([]);
     const [blueprints, setBlueprints] = useState<Blueprint[]>([]);
 
     useEffect(() => {
@@ -61,7 +63,7 @@ export const LibraryManager = ({
                 const response = await (window as any).electron.listBlueprints({
                     toolsPath: config.folderPaths.tools,
                     corePath: config.folderPaths.core,
-                    language: i18n.language
+                    lang: i18n.language
                 });
                 if (response.ok) {
                     setBlueprints(response.blueprints.filter((b: any) => b.category === 'library'));
@@ -70,7 +72,8 @@ export const LibraryManager = ({
         };
         if (showBlueprints) loadBlueprints();
     }, [showBlueprints, config.folderPaths?.tools, i18n.language]);
- 
+
+
     useEffect(() => {
         if (isOpen && editFileRequested && files[editFileRequested]) {
             setViewFile(editFileRequested);
@@ -115,11 +118,29 @@ export const LibraryManager = ({
 
     const handleCreateBlueprint = useCallback(async (blueprint: Blueprint) => {
         const timestamp = new Date().toISOString().split('T')[0];
-        const filename = `${blueprint.title.replace(/\s+/g, '_')}_${timestamp}.md`;
+        
+        // Content is already localized by the IPC call
+        let content = blueprint.content;
+        const title = blueprint.title || blueprint.id;
 
+        if (!content) return;
+
+        // Simple Variable Injection (directly here for isolation)
+        try {
+            const vars = extractVariablesFromConfig(config);
+            const langName = i18n.language.startsWith('es') ? 'Español' : i18n.language.startsWith('zh') ? '中文' : 'English';
+            
+            content = content.replace(/\{\{(\w+)\}\}/g, (match, name) => {
+                if (name === 'LANGUAGE') return langName;
+                return (vars as any)[name] || match;
+            });
+        } catch (err) { }
+
+        const filename = `${title.replace(/[\s/\\:*?"<>|]+/g, '_')}_${timestamp}.md`;
+        
         setSaving(true);
         try {
-            const ok = await onSave(filename, blueprint.content);
+            const ok = await onSave(filename, content);
             if (ok) {
                 setShowBlueprints(false);
                 setViewFile(filename);
@@ -127,7 +148,7 @@ export const LibraryManager = ({
         } finally {
             setSaving(false);
         }
-    }, [onSave]);
+    }, [onSave, config, i18n.language]);
  
     const handleRename = useCallback(async (oldName: string) => {
         if (!renameInput.trim() || renameInput === oldName) {
