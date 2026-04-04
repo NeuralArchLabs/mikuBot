@@ -45,8 +45,6 @@ function init(config) {
     if (config['@TOOLS']) roots['@TOOLS'] = normalizeRoot(config['@TOOLS']);
     if (config['@WORKSPACE']) roots['@WORKSPACE'] = normalizeRoot(config['@WORKSPACE']);
     if (config['@ROOT']) roots['@ROOT'] = normalizeRoot(config['@ROOT']);
-    
-    console.log('[SafePathResolver] Initialized with roots:', roots);
 }
 
 function resolvePath(requestedPath) {

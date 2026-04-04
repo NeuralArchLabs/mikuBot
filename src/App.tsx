@@ -54,7 +54,7 @@ export const App = () => {
         safeMode: true,
         approvalMode: 'auto' as ApprovalMode,
         debugMode: false,
-        folderPermissions: { core: 'prompt', extra: 'prompt', workSpace: 'prompt', tools: 'prompt', root: 'prompt' }
+        folderPermissions: { core: 'granted', extra: 'granted', workSpace: 'granted', tools: 'granted', root: 'granted' }
     });
 
     // Zustand store - atomic state for high frequency (streaming)
@@ -176,6 +176,10 @@ export const App = () => {
                 if (extraConfig) {
                     setState(prev => ({ ...prev, config: { ...prev.config, ...extraConfig } }));
                 }
+                
+                // Refresh permissions and sync files with the new or existing configuration
+                await restoreAndSync(extraConfig ? { ...state.config, ...extraConfig } : state.config);
+
                 if (silent !== true) await askAlert(`✅ ${t('common.config_save_success')}`, "right");
             } else {
                 if (silent !== true) await askAlert(`❌ ${t('common.config_error')}: ${result.error || 'Unknown error occurred in main process.'}`);
@@ -507,7 +511,8 @@ export const App = () => {
             const isElectron = !!(window as any).electron;
             const configToUse = customConfig || state.config;
             const staticPaths = configToUse.folderPaths;
-            const results: Record<FileTarget, PermissionStatus> = { core: 'prompt', extra: 'prompt', workSpace: 'prompt', tools: 'prompt', root: 'prompt' };
+            // Initialize as 'granted'. Only those that fail or need explicit browser permission will change to 'prompt' or 'denied'.
+            const results: Record<FileTarget, PermissionStatus> = { core: 'granted', extra: 'granted', workSpace: 'granted', tools: 'granted', root: 'granted' };
 
             if (isElectron && staticPaths) {
                 console.log("[Restore] Electron Mode: syncing via static paths");
@@ -539,6 +544,9 @@ export const App = () => {
                             const isRecursive = t !== 'core';
                             await syncFiles(t, h, undefined, isRecursive);
                         }
+                    } else {
+                        // Unconfigured folder in browser mode is not a permission issue
+                        results[t] = 'granted';
                     }
                 }
             }
@@ -815,10 +823,18 @@ export const App = () => {
                 await syncFiles('tools', null, staticPaths.tools, false);
                 await syncFiles('workSpace', null, staticPaths.workSpace, true);
                 await syncFiles('extra', null, staticPaths.extra, true);
+                if (staticPaths.root) await syncFiles('root', null, staticPaths.root, true);
 
                 setState(prev => ({
                     ...prev,
-                    folderPermissions: { core: 'granted', extra: 'granted', workSpace: 'granted', tools: 'granted' }
+                    folderPermissions: { 
+                        ...prev.folderPermissions,
+                        core: 'granted', 
+                        extra: 'granted', 
+                        workSpace: 'granted', 
+                        tools: 'granted',
+                        root: 'granted'
+                    }
                 }));
                 await askAlert(`✅ ${t('common.subsystems_online')}`, "center");
                 return;
@@ -851,7 +867,14 @@ export const App = () => {
 
                 setState(prev => ({
                     ...prev,
-                    folderPermissions: { core: 'granted', extra: 'granted', workSpace: 'granted', tools: 'granted' }
+                    folderPermissions: { 
+                        ...prev.folderPermissions,
+                        core: 'granted', 
+                        extra: 'granted', 
+                        workSpace: 'granted', 
+                        tools: 'granted',
+                        root: 'granted'
+                    }
                 }));
 
                 await askAlert("✅ Neural Subsystems Online!\n\nYour environment is fully linked and ready to operate.", "center");
