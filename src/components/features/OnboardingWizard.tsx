@@ -232,17 +232,17 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
             `}</style>
             <div className={`bg-slate-900/60 backdrop-blur-3xl border-none shadow-[0_45px_120px_-25px_rgba(0,0,0,1)] w-full h-full md:w-[98vw] md:h-[95vh] max-w-6xl max-h-[610px] rounded-[2rem] md:rounded-[2.5rem] ${step === 9 ? 'overflow-visible' : 'overflow-hidden'} flex flex-col relative transition-all duration-700`}>
                 
-                {/* Header */}
-                <div className="h-14 md:h-16 shrink-0 border-b border-white/5 flex items-center px-8 bg-slate-950/25 gap-5 rounded-t-[2rem] md:rounded-t-[2.5rem]">
-                    <img src="./mikuBotICON.png" alt="Logo" className="w-6 h-6 object-contain opacity-90 drop-shadow-[0_0_10px_rgba(59,130,246,0.3)] rounded" />
-                    <div className="flex items-center gap-3.5">
+                {/* Header - Draggable app region */}
+                <div className="h-14 md:h-16 shrink-0 border-b border-white/5 flex items-center px-8 bg-slate-950/25 gap-5 rounded-t-[2rem] md:rounded-t-[2.5rem] [webkit-app-region:drag]">
+                    <img src="./mikuBotICON.png" alt="Logo" className="w-6 h-6 object-contain opacity-90 drop-shadow-[0_0_10px_rgba(59,130,246,0.3)] rounded [webkit-app-region:no-drag]" />
+                    <div className="flex items-center gap-3.5 [webkit-app-region:no-drag]">
                         <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_15px_rgba(59,130,246,0.6)] shrink-0" />
                         <div className="flex flex-col items-start">
                             <h2 className="text-sm md:text-base lg:text-lg font-black text-white tracking-tight leading-none mb-1">{t('onboarding.subtitle')}</h2>
                             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none">{t('onboarding.title')}</p>
                         </div>
                     </div>
-                    <div className="ml-auto flex items-center gap-4">
+                    <div className="ml-auto flex items-center gap-4 [webkit-app-region:no-drag]">
                         {/* Language Selector */}
                         <div className="flex gap-1.5 bg-slate-950/40 p-1.5 rounded-2xl border border-white/5 backdrop-blur-3xl shrink-0">
                             {[
