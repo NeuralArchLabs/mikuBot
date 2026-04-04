@@ -277,6 +277,7 @@ export const ModernSelect = ({
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
+    const portalRef = useRef<HTMLDivElement>(null);
 
     const activeOption = options.find(o => o.value === value);
 
@@ -284,15 +285,17 @@ export const ModernSelect = ({
         if (!isOpen) return;
         const handleScroll = (e: Event) => {
             const target = e.target as HTMLElement;
-            // Only close if scroll happens in a separate scrollable container
-            if (containerRef.current && !containerRef.current.contains(target) && target !== document.body && target !== document.documentElement) {
-                if (target.scrollHeight > target.clientHeight) {
-                    setIsOpen(false);
-                }
+            // Ignore scrolls from within the button container or the portal/dropdown itself
+            if (containerRef.current?.contains(target) || portalRef.current?.contains(target)) return;
+            
+            // Only close if the scroll happens in the body or a parent scrollable container
+            if (target === document.body || target === document.documentElement || (target.scrollHeight > target.clientHeight)) {
+                setIsOpen(false);
             }
         };
         const handleClickOutside = (e: MouseEvent) => {
-            if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+            if (containerRef.current && !containerRef.current.contains(e.target as Node) && 
+                portalRef.current && !portalRef.current.contains(e.target as Node)) {
                 setIsOpen(false);
             }
         };
@@ -323,6 +326,7 @@ export const ModernSelect = ({
                     onClick={() => setIsOpen(false)}
                 >
                     <div 
+                        ref={portalRef}
                         onClick={(e) => e.stopPropagation()}
                         style={{ 
                             position: 'fixed',
