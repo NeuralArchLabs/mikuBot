@@ -275,34 +275,30 @@ export const ModernSelect = ({
     iconVariant?: 'chevron' | 'plus';
 }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [coords, setCoords] = useState({ top: 0, left: 0, width: 0, bottom: 0 });
     const containerRef = useRef<HTMLDivElement>(null);
 
     const activeOption = options.find(o => o.value === value);
 
-    const updateCoords = useCallback(() => {
-        if (containerRef.current) {
-            const rect = containerRef.current.getBoundingClientRect();
-            setCoords({
-                top: rect.top,
-                bottom: rect.bottom,
-                left: rect.left,
-                width: rect.width
-            });
-        }
-    }, []);
-
     useEffect(() => {
-        if (isOpen) {
-            updateCoords();
-            window.addEventListener('scroll', updateCoords, true);
-            window.addEventListener('resize', updateCoords);
-        }
-        return () => {
-            window.removeEventListener('scroll', updateCoords, true);
-            window.removeEventListener('resize', updateCoords);
+        if (!isOpen) return;
+        const handleScroll = (e: Event) => {
+            // Close the menu if the user scrolls the parent container to avoid desync
+            if (e.target !== containerRef.current) {
+                setIsOpen(false);
+            }
         };
-    }, [isOpen, updateCoords]);
+        const handleClickOutside = (e: MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        window.addEventListener('scroll', handleScroll, true);
+        window.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            window.removeEventListener('scroll', handleScroll, true);
+            window.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isOpen]);
 
     return (
         <div ref={containerRef} className={`relative ${className}`} title={title}>
@@ -318,15 +314,19 @@ export const ModernSelect = ({
                 />
             </button>
             {isOpen && createPortal(
-                <>
-                    <div className="fixed inset-0 z-[9998]" onClick={() => setIsOpen(false)} />
+                <div 
+                    className="fixed inset-0 z-[9998] pointer-events-none"
+                    onClick={() => setIsOpen(false)}
+                >
                     <div 
+                        onClick={(e) => e.stopPropagation()}
                         style={{ 
                             position: 'fixed',
-                            top: dropDirection === 'up' ? 'auto' : `${coords.bottom + 8}px`,
-                            bottom: dropDirection === 'up' ? `${window.innerHeight - coords.top + 8}px` : 'auto',
-                            left: `${coords.left}px`,
-                            width: `${coords.width}px`
+                            top: dropDirection === 'up' ? 'auto' : `${containerRef.current?.getBoundingClientRect().bottom ? containerRef.current.getBoundingClientRect().bottom + 8 : 0}px`,
+                            bottom: dropDirection === 'up' ? `${window.innerHeight - (containerRef.current?.getBoundingClientRect().top || 0) + 8}px` : 'auto',
+                            left: `${containerRef.current?.getBoundingClientRect().left || 0}px`,
+                            width: `${containerRef.current?.getBoundingClientRect().width || 0}px`,
+                            pointerEvents: 'auto'
                         }}
                         className={`bg-slate-900/98 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-xl shadow-black/80 z-[9999] py-2 overflow-hidden animate-premium`}
                     >
@@ -349,7 +349,7 @@ export const ModernSelect = ({
                             ))}
                         </div>
                     </div>
-                </>,
+                </div>,
                 document.body
             )}
         </div>
