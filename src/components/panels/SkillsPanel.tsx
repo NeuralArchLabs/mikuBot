@@ -55,6 +55,8 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
     const [isSavingCode, setIsSavingCode] = useState(false);
     const [rawBlueprints, setRawBlueprints] = useState<SkillBlueprint[]>([]);
     const [blueprints, setBlueprints] = useState<SkillBlueprint[]>([]);
+    const [namingSkill, setNamingSkill] = useState<SkillBlueprint | null>(null);
+    const [newSkillName, setNewSkillName] = useState('');
 
     useEffect(() => {
         const loadBlueprints = async () => {
@@ -157,21 +159,20 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
         setIsSavingCode(false);
     };
 
-    const handleCreateFromBlueprint = async (blueprint: SkillBlueprint) => {
+    const handleCreateFromBlueprint = async () => {
+        if (!namingSkill || !newSkillName.trim()) return;
+        
         try {
-            const name = prompt("Skill folder name:", blueprint.manifest.name);
-            if (!name) return;
-
-            // Normalize name for folder use
-            const folderName = name.replace(/[^a-zA-Z0-9_-]/g, '_');
-            const manifest = { ...blueprint.manifest, name: folderName };
+            const folderName = newSkillName.trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+            const manifest = { ...namingSkill.manifest, name: folderName };
 
             // Consistent with internal skills pathing
             const folderPath = `skills/${folderName}`;
             const okManifest = await onSaveTools(`${folderPath}/manifest.json`, JSON.stringify(manifest, null, 4));
-            const okEntry = await onSaveTools(`${folderPath}/${manifest.entry}`, blueprint.entryContent);
+            const okEntry = await onSaveTools(`${folderPath}/${manifest.entry}`, namingSkill.entryContent);
 
             if (okManifest && okEntry) {
+                setNamingSkill(null);
                 setShowBlueprints(false);
                 await loadSkills();
                 setActiveSkill(folderName);
@@ -341,7 +342,10 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                 {blueprints.map(bp => (
                                     <button
                                         key={bp.id}
-                                        onClick={() => handleCreateFromBlueprint(bp)}
+                                        onClick={() => {
+                                            setNamingSkill(bp);
+                                            setNewSkillName(bp.manifest.name);
+                                        }}
                                         className="p-6 lg:p-8 bg-slate-800/20 hover:bg-slate-800/40 border border-slate-700/30 hover:border-cyan-500/50 rounded-3xl text-left transition-all group relative overflow-hidden"
                                     >
                                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -355,6 +359,43 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                     </button>
                                 ))}
                             </div>
+
+                            {/* Naming Overlay */}
+                            {namingSkill && (
+                                <div className="absolute inset-0 z-[110] bg-slate-950/80 backdrop-blur-xl flex items-center justify-center p-4">
+                                    <div className="bg-slate-900 border border-slate-700/50 p-8 rounded-3xl max-w-md w-full shadow-2xl animate-fade-scale text-center">
+                                        <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 flex items-center justify-center text-3xl text-cyan-400 mx-auto mb-6 shadow-glow-cyan border border-cyan-500/20">
+                                            <Icon name={namingSkill.icon} />
+                                        </div>
+                                        <h4 className="text-lg font-bold text-white uppercase tracking-tight mb-2">Configure Neural Skill</h4>
+                                        <p className="text-xs text-slate-500 uppercase tracking-widest mb-6">Assign a unique identifier for deployment</p>
+                                        
+                                        <input 
+                                            autoFocus
+                                            value={newSkillName}
+                                            onChange={(e) => setNewSkillName(e.target.value)}
+                                            onKeyDown={(e) => e.key === 'Enter' && handleCreateFromBlueprint()}
+                                            className="w-full premium-input rounded-xl px-4 py-4 text-sm text-white mb-6 text-center font-mono focus:ring-2 ring-cyan-500/30"
+                                            placeholder="Skill ID..."
+                                        />
+
+                                        <div className="flex gap-3">
+                                            <button 
+                                                onClick={() => setNamingSkill(null)}
+                                                className="flex-1 py-3 bg-slate-800 text-slate-400 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-slate-700 transition-all border border-slate-700/50"
+                                            >
+                                                Back
+                                            </button>
+                                            <button 
+                                                onClick={handleCreateFromBlueprint}
+                                                className="flex-1 py-3 bg-cyan-600 text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-cyan-500 transition-all shadow-glow-cyan"
+                                            >
+                                                Deploy
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
