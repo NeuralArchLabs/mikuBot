@@ -253,6 +253,7 @@ export const InteractiveMarkdownRenderer = React.memo(InteractiveMarkdownRendere
 export interface SelectOption {
     value: string;
     label: string;
+    isCustom?: boolean;
 }
 
 export const ModernSelect = ({ 
@@ -282,9 +283,14 @@ export const ModernSelect = ({
     useEffect(() => {
         if (!isOpen) return;
         const handleScroll = (e: Event) => {
-            // Close the menu if the user scrolls the parent container to avoid desync
-            if (e.target !== containerRef.current) {
-                setIsOpen(false);
+            const target = e.target as HTMLElement;
+            // Only close if the scroll comes from outside the portal structure 
+            // and NOT from the body/viewport-filling overlay itself.
+            if (containerRef.current && !containerRef.current.contains(target) && target !== document.body) {
+                // If the target contains our container, it's a parent scroll
+                if (target.contains(containerRef.current)) {
+                    setIsOpen(false);
+                }
             }
         };
         const handleClickOutside = (e: MouseEvent) => {
@@ -309,7 +315,7 @@ export const ModernSelect = ({
             >
                 <span className="flex-grow text-center truncate px-2 group-hover:text-blue-400 transition-colors">{activeOption ? activeOption.label : placeholder}</span>
                 <Icon 
-                    name={isOpen ? 'times' : (iconVariant === 'plus' ? 'bars' : 'chevron-down')} 
+                    name={isOpen ? 'times' : (iconVariant === 'plus' ? 'plus' : 'chevron-down')} 
                     className={`text-slate-600 text-[10px] ml-2 transition-all ${isOpen ? 'duration-500 transform rotate-90 scale-125 text-blue-500 opacity-100' : 'duration-200 rotate-0 scale-100 opacity-60'}`} 
                 />
             </button>
@@ -334,19 +340,30 @@ export const ModernSelect = ({
                             {options.length === 0 && (
                                 <div className="px-6 py-4 text-[10px] text-slate-500 font-bold text-center italic">{placeholder}</div>
                             )}
-                            {options.map(opt => (
-                                <div
-                                    key={opt.value}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onChange(opt.value);
-                                        setIsOpen(false);
-                                    }}
-                                    className={`px-6 py-2.5 mx-1 rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer transition-all ${value === opt.value ? 'bg-blue-600/20 text-blue-400 shadow-lg' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
-                                >
-                                    {opt.label}
-                                </div>
-                            ))}
+                            {options.map((opt, idx) => {
+                                const isCustom = opt.value === 'CUSTOM' || opt.isCustom;
+                                return (
+                                    <React.Fragment key={opt.value}>
+                                        {isCustom && idx > 0 && <div className="h-px bg-white/5 mx-6 my-2 mb-3" />}
+                                        <div
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onChange(opt.value);
+                                                setIsOpen(false);
+                                            }}
+                                            className={`px-6 py-2.5 mx-1 rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer transition-all ${
+                                                value === opt.value 
+                                                    ? 'bg-blue-600/20 text-blue-400 shadow-lg' 
+                                                    : isCustom 
+                                                        ? 'text-slate-600 hover:bg-white/5 hover:text-slate-300' 
+                                                        : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                                            } ${isCustom ? 'italic bg-white/5' : ''}`}
+                                        >
+                                            {isCustom && !opt.label.toLowerCase().includes('personal') ? `✨ ${opt.label}` : opt.label}
+                                        </div>
+                                    </React.Fragment>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>,
