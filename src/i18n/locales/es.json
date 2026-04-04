@@ -82,11 +82,13 @@
             "identity_desc": "Definición de tono, verbosidad y contexto.",
             "providers": "Proveedores de IA",
             "providers_desc": "Conexión con motores cognitivos.",
+            "models": "Motores de IA",
+            "models_desc": "Selección de modelos para chat y agentes.",
             "remote": "Control Remoto",
             "remote_desc": "Enlace bidireccional vía Telegram."
         },
         "workspace": {
-            "title": "WORKSPACE",
+            "title": "ESPACIO DE TRABAJO",
             "subtitle": "Almacenamiento del Sistema",
             "default": "Predeterminado",
             "default_desc": "Ruta nativa.",
@@ -94,12 +96,12 @@
             "custom_desc": "Ubicación específica.",
             "selected": "Seleccionado",
             "detection_warning": "Instalación detectada.",
-            "action_required": "Seleccione acción.",
+            "action_required": "Seleccione Acción.",
             "link": "Vincular",
             "clean": "Limpiar"
         },
         "identity": {
-            "title": "IDENTITY",
+            "title": "IDENTIDAD",
             "subtitle": "Nombres de Reconocimiento",
             "user_name": "Nombre del Usuario",
             "user_name_placeholder": "Ej: Tony Stark",
@@ -107,7 +109,7 @@
             "assistant_alias_placeholder": "Ej: Miku"
         },
         "personality": {
-            "title": "PERSONALITY",
+            "title": "PERSONALIDAD",
             "subtitle": "Comportamiento y Tono del Asistente",
             "predefined": "Predefinido",
             "manual": "Manual",
@@ -135,7 +137,7 @@
             "custom_placeholder": "Escribe el estilo..."
         },
         "status": {
-            "title": "OPERATIONAL STATUS",
+            "title": "ESTADO OPERATIVO",
             "subtitle": "Nivel del Usuario y Autonomía del Asistente",
             "technical_level": "Nivel Técnico (Usuario)",
             "technical_placeholder": "Define tu nivel técnico...",
@@ -168,8 +170,8 @@
             }
         },
         "protocol": {
-            "title": "PROTOCOL",
-            "subtitle": "Contexto del Usuario y Reglas del Asistente",
+            "title": "PROTOCOLO Y CONTEXTO",
+            "subtitle": "Definición de Reglas y Datos Biográficos",
             "bio_title": "Biografía (Usuario)",
             "bio_placeholder": "Agrega un dato y presiona Enter...",
             "bio_example": "Ejemplo: 'Soy desarrollador web', 'Me dedico a las ventas', etc.",
@@ -179,12 +181,27 @@
             "no_rules": "Sin reglas específicas.",
             "no_context": "Sin contexto."
         },
+        "engines": {
+            "title": "MOTORES NEURALES",
+            "subtitle": "Configuración de Modelos y Fallback",
+            "chat_title": "Interfaz de Chat",
+            "chat_desc": "Modelo principal para conversación rápida.",
+            "agent_title": "Agente Autónomo",
+            "agent_desc": "Modelo potente para ejecución de tareas.",
+            "fallback_title": "Master Fallback",
+            "fallback_desc": "Enrutamiento de emergencia si falla el principal.",
+            "select_provider": "Proveedor",
+            "select_model": "Modelo Neuronal",
+            "typing_placeholder": "Nombre del modelo...",
+            "common_models": "Modelos Detectados",
+            "routing_provider": "Proveedor de Ruta"
+        },
         "errors": {
             "fatal": "Error grave en inicialización"
         },
         "providers": {
-            "title": "AI PROVIDERS",
-            "subtitle": "Fase 1 de 2: Recolección de Claves",
+            "title": "PROVEEDORES AI",
+            "subtitle": "Fase 1 de 3: Recolección de Claves",
             "hint": "Recolecta solo las llaves que desees usar. Solo necesitas 1 método configurado (llave API o inferencia local) para operar tu Asistente.",
             "get_key": "Obtener Key",
             "download": "Descargar",
@@ -194,7 +211,7 @@
             "ollama_desc": "Inferencia Local. Modelos Cloud Gratis creando una Cuenta."
         },
         "credentials": {
-            "title": "CREDENTIALS",
+            "title": "CREDENCIALES",
             "subtitle": "Seguridad y Claves",
             "gemini_label": "Clave API de Gemini",
             "groq_label": "Clave API de Groq",
@@ -211,7 +228,7 @@
             "vosk_en": "Activado (EN)"
         },
         "telegram": {
-            "title": "TELEGRAM (Optional)",
+            "title": "TELEGRAM (OPCIONAL)",
             "subtitle": "Control remoto desde cualquier lugar.",
             "how_to": "¿Cómo conectarlo?",
             "step1": "Busca '@BotFather' en Telegram, envía /newbot y dale un nombre.",
@@ -259,8 +276,11 @@
             "agent_runtime": "Agent Runtime",
             "provider": "Proveedor de Ruta",
             "model": "Modelo Activo",
-            "sync": "Sincro",
-            "select_model": "Seleccionar Arquitectura..."
+            "sync": "Sincronizar Arquitecturas",
+            "select_model": "Seleccionar Arquitectura...",
+            "routing_provider": "Proveedor de Ruta",
+            "connection_active": "Conexión/Llave Activa",
+            "config_pending": "Configuración Pendiente"
         },
         "security": {
             "title": "Seguridad Neural y Motor Principal",
@@ -284,14 +304,14 @@
             "chat_id_placeholder": "Tu ID numérico de Chat"
         },
         "vosk": {
-            "title": "Vosk Recognition Engine",
+            "title": "Motor de Reconocimiento Vosk",
             "manage_title": "Gestión de Modelos Vocales",
             "manage_desc": "Descarga y selecciona modelos de reconocimiento de voz offline para procesar tus mensajes de voz.",
             "active_model": "Modelo Activo para el Usuario",
             "none": "Ninguno (Voz Desactivada)"
         },
         "searxena": {
-            "title": "Web Search Engine",
+            "title": "Motor de Búsqueda Web",
             "desc": "Búsquedas y extracciones ilimitadas con costo cero por API. Un proyecto oficial de NeuralArchLabs diseñado para agentes que requieren acceso soberano a la web sin cuotas ni rastreo.",
             "open": "Abrir Buscador",
             "status_detected": "Motor Detectado",
@@ -322,20 +342,20 @@
             "sync_error": "❌ Error al actualizar entorno: "
         },
         "integration": {
-            "title": "System Behavior & OS Integration",
+            "title": "Comportamiento del Sistema e Integración",
             "autostart": "Iniciar con Windows",
             "autostart_desc": "Arrancar Miku al iniciar el sistema",
             "mintotray": "Minimizar a la bandeja",
             "mintotray_desc": "Cerrar oculta la app en la bandeja"
         },
         "backup": {
-            "title": "Neural Maintenance & Backup",
-            "subtitle": "Neural Workspace Backup",
+            "title": "Mantenimiento Neural y Backup",
+            "subtitle": "Copia de Seguridad del Workspace",
             "desc": "Exporta una copia completa de tu entorno (configuraciones, sesiones, tareas programadas, comandos y habilidades) en un solo archivo comprimido. Ideal para migraciones o seguridad adicional.",
             "export_btn": "Exportar Backup",
             "restore_btn": "Restaurar Copia",
             "security_note": "Nota de Seguridad:",
-            "security_desc": "El archivo de respaldo contiene tus API Keys y sesiones privadas. No compartas los archivos .zip generados con personas en las que no confíes."
+            "security_desc": "El archivo comprimido resultante contendrá tus API Keys encriptadas, tu trabajo y sesiones privadas. No compartas el .zip con terceros."
         },
         "factory_reset": {
             "title": "Factory Reset",

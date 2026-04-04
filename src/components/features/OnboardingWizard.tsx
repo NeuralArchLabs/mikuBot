@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AppConfig } from '../../types';
+import { AppConfig, Provider, ModelInfo } from '../../types';
 import { Icon } from '../common/Common';
 import { DEFAULT_CONFIG } from '../../constants';
 import { runHealthCheck, type HealthCheckResult } from '../../services/core/HealthCheck';
@@ -8,9 +8,12 @@ import { hydrateAllTemplates, extractTemplatesFromFolderContent, type PromptVari
 
 interface OnboardingProps {
     onComplete: (config: AppConfig, handles: any) => Promise<void>;
+    models: Record<Provider, ModelInfo[]>;
+    loadingModels: Record<Provider, boolean>;
+    onTestConnection: (provider?: Provider) => void;
 }
 
-export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
+export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models, loadingModels, onTestConnection }) => {
     const { t, i18n } = useTranslation();
     const [step, setStep] = useState(1);
     const [pathMode, setPathMode] = useState<'default' | 'custom'>('default');
@@ -136,6 +139,15 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
         fetchDefault();
     }, []);
 
+    // Refresh models when entering Neural Engines configuration
+    useEffect(() => {
+        if (step === 9) {
+            ['gemini', 'groq', 'ollama', 'zai'].forEach(p => {
+                onTestConnection(p as Provider);
+            });
+        }
+    }, [step, onTestConnection]);
+
     const selectedPath = pathMode === 'default' ? defaultPath : customPath;
 
     useEffect(() => {
@@ -208,7 +220,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/98 backdrop-blur-3xl overflow-hidden p-2 md:p-4">
+        <div className={`fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/98 backdrop-blur-3xl ${step === 9 ? 'overflow-visible' : 'overflow-hidden'} p-2 md:p-4`}>
             <style>{`
                 @keyframes premiumIn {
                     from { opacity: 0; transform: scale(0.99) translateY(10px); filter: blur(8px); }
@@ -218,10 +230,10 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                     animation: premiumIn 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
                 }
             `}</style>
-            <div className="bg-slate-900/60 backdrop-blur-3xl border-none shadow-[0_45px_120px_-25px_rgba(0,0,0,1)] w-full h-full md:w-[98vw] md:h-[95vh] max-w-6xl max-h-[610px] rounded-[2rem] md:rounded-[2.5rem] overflow-hidden flex flex-col relative transition-all duration-700">
+            <div className={`bg-slate-900/60 backdrop-blur-3xl border-none shadow-[0_45px_120px_-25px_rgba(0,0,0,1)] w-full h-full md:w-[98vw] md:h-[95vh] max-w-6xl max-h-[610px] rounded-[2rem] md:rounded-[2.5rem] ${step === 9 ? 'overflow-visible' : 'overflow-hidden'} flex flex-col relative transition-all duration-700`}>
                 
                 {/* Header */}
-                <div className="h-14 md:h-16 shrink-0 border-b border-white/5 flex items-center px-8 bg-slate-950/25 gap-5">
+                <div className="h-14 md:h-16 shrink-0 border-b border-white/5 flex items-center px-8 bg-slate-950/25 gap-5 rounded-t-[2rem] md:rounded-t-[2.5rem]">
                     <img src="./mikuBotICON.png" alt="Logo" className="w-6 h-6 object-contain opacity-90 drop-shadow-[0_0_10px_rgba(59,130,246,0.3)]" />
                     <div className="flex items-center gap-3.5">
                         <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_15px_rgba(59,130,246,0.6)] shrink-0" />
@@ -260,7 +272,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                 </div>
 
                 {/* Content Body */}
-                <div className="flex-1 overflow-hidden px-8 py-2 md:px-14 flex flex-col items-center justify-start relative pt-4 md:pt-8">
+                <div className={`flex-1 ${step === 9 ? 'overflow-visible z-[1000]' : 'overflow-hidden z-10'} px-8 py-2 md:px-14 flex flex-col items-center justify-start relative pt-4 md:pt-8`}>
                     
                     {step === 1 && (
                         <div className="w-full max-w-5xl grid grid-cols-2 gap-8 lg:gap-16 items-center animate-premium py-6 relative">
@@ -369,7 +381,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                                 <h1 className="text-3xl font-black text-white uppercase tracking-widest">{t('onboarding.personality.title')}</h1>
                                 <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.5em] opacity-40 text-center">{t('onboarding.personality.subtitle')}</p>
                             </div>
-                            <div className="flex justify-center mb-0">
+                            <div className="flex justify-center mt-2 mb-10 animate-premium duration-1000">
                                 <div className="bg-slate-950/40 p-1.5 rounded-2xl border border-transparent hover:border-white/10 transition-all flex gap-1.5 shadow-inner">
                                     <button 
                                         onClick={() => { setShowManualTone(false); if(userTone === '' || ![t('onboarding.status.goals.assistant'), t('onboarding.status.goals.coding'), t('onboarding.status.goals.automation'), t('onboarding.status.goals.creative')].includes(userTone)) setUserTone(t('onboarding.personality.formal')); }} 
@@ -438,11 +450,24 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                                             {activeMenu === 'verb' && (
                                                 <>
                                                     <div className="fixed inset-0 z-10" onClick={() => setActiveMenu(null)} />
-                                                    <div className="absolute left-0 right-0 bottom-full mb-2 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-20 py-2 animate-premium">
-                                                        {[t('onboarding.personality.verbosity_concise'), t('onboarding.personality.verbosity_medium'), t('onboarding.personality.verbosity_detailed')].map(v => (
-                                                            <div key={v} onClick={() => { setVerbosity(v); setActiveMenu(null); }} className={`px-6 py-2.5 text-[10px] font-black uppercase tracking-widest cursor-pointer transition-all ${verbosity === v ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>{v}</div>
-                                                        ))}
-                                                        <div onClick={() => {setVerbosity('custom'); setActiveMenu(null);}} className="px-6 py-2.5 text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:bg-indigo-500/10 cursor-pointer transition-all border-t border-white/5 mt-1 italic">{t('common.custom')}</div>
+                                                    <div className="absolute left-0 right-0 bottom-full mb-2 bg-slate-900/98 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-2xl z-20 py-2 overflow-hidden animate-premium">
+                                                        <div className="max-h-[160px] overflow-y-auto custom-scrollbar mr-2 ml-1 py-1">
+                                                            {[t('onboarding.personality.verbosity_concise'), t('onboarding.personality.verbosity_medium'), t('onboarding.personality.verbosity_detailed')].map(v => (
+                                                                <div 
+                                                                    key={v} 
+                                                                    onClick={() => { setVerbosity(v); setActiveMenu(null); }} 
+                                                                    className={`px-6 py-2.5 mx-1 rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer transition-all ${verbosity === v ? 'bg-blue-600/20 text-blue-400 shadow-lg' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+                                                                >
+                                                                    {v}
+                                                                </div>
+                                                            ))}
+                                                            <div 
+                                                                onClick={() => {setVerbosity('custom'); setActiveMenu(null);}} 
+                                                                className="px-6 py-2.5 mx-1 rounded-xl text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:bg-indigo-500/10 cursor-pointer transition-all border-t border-white/5 mt-1 italic"
+                                                            >
+                                                                {t('common.custom')}
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </>
                                             )}
@@ -469,11 +494,24 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                                             {activeMenu === 'humor' && (
                                                 <>
                                                     <div className="fixed inset-0 z-10" onClick={() => setActiveMenu(null)} />
-                                                    <div className="absolute left-0 right-0 bottom-full mb-2 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-20 py-2 animate-premium">
-                                                        {[t('onboarding.personality.humor_none'), t('onboarding.personality.humor_low'), t('onboarding.personality.humor_high')].map(v => (
-                                                            <div key={v} onClick={() => { setHumorLevel(v); setActiveMenu(null); }} className={`px-6 py-2.5 text-[10px] font-black uppercase tracking-widest cursor-pointer transition-all ${humorLevel === v ? 'bg-teal-600 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>{v}</div>
-                                                        ))}
-                                                        <div onClick={() => {setHumorLevel('custom'); setActiveMenu(null);}} className="px-6 py-2.5 text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:bg-indigo-500/10 cursor-pointer transition-all border-t border-white/5 mt-1 italic">{t('common.custom')}</div>
+                                                    <div className="absolute left-0 right-0 bottom-full mb-2 bg-slate-900/98 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-2xl z-20 py-2 overflow-hidden animate-premium">
+                                                        <div className="max-h-[160px] overflow-y-auto custom-scrollbar mr-2 ml-1 py-1">
+                                                            {[t('onboarding.personality.humor_none'), t('onboarding.personality.humor_low'), t('onboarding.personality.humor_high')].map(v => (
+                                                                <div 
+                                                                    key={v} 
+                                                                    onClick={() => { setHumorLevel(v); setActiveMenu(null); }} 
+                                                                    className={`px-6 py-2.5 mx-1 rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer transition-all ${humorLevel === v ? 'bg-teal-600/20 text-teal-400 shadow-lg' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+                                                                >
+                                                                    {v}
+                                                                </div>
+                                                            ))}
+                                                            <div 
+                                                                onClick={() => {setHumorLevel('custom'); setActiveMenu(null);}} 
+                                                                className="px-6 py-2.5 mx-1 rounded-xl text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:bg-indigo-500/10 cursor-pointer transition-all border-t border-white/5 mt-1 italic"
+                                                            >
+                                                                {t('common.custom')}
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </>
                                             )}
@@ -496,7 +534,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                                     <label className="text-[10px] font-black text-slate-500 uppercase block text-center tracking-[0.5em]">{t('onboarding.status.technical_level')}</label>
                                     {!TECH_KEYS.map(k => t(`onboarding.status.${k}`)).includes(technicalLevel) && technicalLevel !== '' ? (
                                         <div className="relative animate-premium">
-                                            <input title="Nivel Técnico Personalizado" placeholder={t('onboarding.status.technical_placeholder')} value={technicalLevel} onChange={(e)=>setTechnicalLevel(e.target.value)} autoFocus className="w-full bg-slate-950/70 border-2 border-transparent hover:border-orange-500/30 focus:border-orange-500/50 rounded-2xl px-6 py-4 text-xs text-white outline-none transition-all font-black text-center shadow-inner" />
+                                            <input title={t('onboarding.status.custom_tech_title')} placeholder={t('onboarding.status.technical_placeholder')} value={technicalLevel} onChange={(e)=>setTechnicalLevel(e.target.value)} autoFocus className="w-full bg-slate-950/70 border-2 border-transparent hover:border-orange-500/30 focus:border-orange-500/50 rounded-2xl px-6 py-4 text-xs text-white outline-none transition-all font-black text-center shadow-inner" />
                                             <button onClick={()=>setTechnicalLevel(t('onboarding.status.intermediate'))} className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center border border-white/10 transition-all">×</button>
                                         </div>
                                     ) : (
@@ -512,7 +550,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                                     <label className="text-[10px] font-black text-slate-500 uppercase block text-center tracking-[0.5em]">{t('onboarding.status.autonomy_mode')}</label>
                                     {!AUTONOMY_KEYS.map(k => t(`onboarding.status.${k}`)).includes(autonomyMode) && autonomyMode !== '' ? (
                                         <div className="relative animate-premium">
-                                            <input title="Modo de Autonomía Personalizado" placeholder={t('onboarding.status.autonomy_placeholder')} value={autonomyMode} onChange={(e)=>setAutonomyMode(e.target.value)} autoFocus className="w-full bg-slate-950/70 border-2 border-transparent hover:border-indigo-500/30 focus:border-indigo-500/50 rounded-2xl px-6 py-4 text-xs text-white outline-none transition-all font-black text-center shadow-inner" />
+                                            <input title={t('onboarding.status.custom_autonomy_title')} placeholder={t('onboarding.status.autonomy_placeholder')} value={autonomyMode} onChange={(e)=>setAutonomyMode(e.target.value)} autoFocus className="w-full bg-slate-950/70 border-2 border-transparent hover:border-indigo-500/30 focus:border-indigo-500/50 rounded-2xl px-6 py-4 text-xs text-white outline-none transition-all font-black text-center shadow-inner" />
                                             <button onClick={()=>setAutonomyMode(t('onboarding.status.autonomy_assisted'))} className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center border border-white/10 transition-all">×</button>
                                         </div>
                                     ) : (
@@ -530,7 +568,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                                 {!Object.values(t('onboarding.status.goals', { returnObjects: true }) as any).includes(currentGoal) && currentGoal !== '' ? (
                                     <div className="relative animate-premium group">
                                         <input 
-                                            title="Objetivo Personalizado"
+                                            title={t('onboarding.status.custom_goal_title')}
                                             placeholder={t('onboarding.status.goal_placeholder')} 
                                             value={currentGoal} 
                                             onChange={(e) => setCurrentGoal(e.target.value)} 
@@ -550,21 +588,23 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                                         {isGoalMenuOpen && (
                                             <>
                                                 <div className="fixed inset-0 z-10" onClick={() => setIsGoalMenuOpen(false)} />
-                                                <div className="absolute left-0 right-0 bottom-full mb-2 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-20 py-2 max-h-[180px] overflow-y-auto animate-premium custom-scrollbar">
-                                                    {Object.values(t('onboarding.status.goals', { returnObjects: true }) as any).map((g: any) => (
+                                                <div className="absolute left-0 right-0 bottom-full mb-2 bg-slate-900/98 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-2xl z-20 py-2 overflow-hidden animate-premium">
+                                                    <div className="max-h-[160px] overflow-y-auto custom-scrollbar mr-2 ml-1 py-1">
+                                                        {Object.values(t('onboarding.status.goals', { returnObjects: true }) as any).map((g: any) => (
+                                                            <div 
+                                                                key={g} 
+                                                                onClick={() => { setCurrentGoal(g); setIsGoalMenuOpen(false); }}
+                                                                className={`px-6 py-2.5 mx-1 rounded-xl text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all ${currentGoal === g ? 'bg-blue-600/20 text-blue-400 shadow-lg' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+                                                            >
+                                                                {g}
+                                                            </div>
+                                                        ))}
                                                         <div 
-                                                            key={g} 
-                                                            onClick={() => { setCurrentGoal(g); setIsGoalMenuOpen(false); }}
-                                                            className={`px-6 py-2.5 text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all ${currentGoal === g ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+                                                            onClick={() => { setCurrentGoal('custom'); setIsGoalMenuOpen(false); }}
+                                                            className="px-6 py-2.5 mx-1 rounded-xl text-[11px] font-black uppercase tracking-wider text-indigo-400 hover:bg-indigo-500/10 cursor-pointer transition-all border-t border-white/5 mt-1 italic"
                                                         >
-                                                            {g}
+                                                            ─── {t('common.custom')} ───
                                                         </div>
-                                                    ))}
-                                                    <div 
-                                                        onClick={() => { setCurrentGoal('custom'); setIsGoalMenuOpen(false); }}
-                                                        className="px-6 py-2.5 text-[11px] font-black uppercase tracking-wider text-indigo-400 hover:bg-indigo-500/10 cursor-pointer transition-all border-t border-white/5 mt-1 italic"
-                                                    >
-                                                        ─── {t('common.custom')} ───
                                                     </div>
                                                 </div>
                                             </>
@@ -585,8 +625,8 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                             <div className="grid grid-cols-2 gap-8">
                                 <div className="space-y-4">
                                     <label className="text-[11px] font-black text-slate-500 uppercase ml-12 tracking-[0.5em]">{t('onboarding.protocol.bio_title')}</label>
-                                    <div className="bg-slate-950/40 border-2 border-transparent hover:border-blue-500/30 rounded-[4rem] px-6 py-6 shadow-inner flex flex-col h-[190px] lg:h-56 transition-all">
-                                        <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 mb-4 px-2">
+                                    <div className="bg-slate-950/40 border-2 border-transparent hover:border-blue-500/30 rounded-[3rem] px-5 py-6 shadow-inner flex flex-col h-[180px] lg:h-52 transition-all overflow-hidden">
+                                        <div className="flex-1 overflow-y-auto custom-scrollbar mr-2 ml-1 space-y-2 mb-4 px-2 py-1">
                                             {contextList.length === 0 && (
                                                 <p className="text-slate-600 font-bold text-xs mt-4 text-center">{t('onboarding.protocol.bio_example')}</p>
                                             )}
@@ -608,8 +648,8 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                                 </div>
                                 <div className="space-y-4">
                                     <label className="text-[11px] font-black text-slate-500 uppercase ml-12 tracking-[0.5em]">{t('onboarding.protocol.rules_title')}</label>
-                                    <div className="bg-slate-950/40 border-2 border-transparent hover:border-rose-500/30 rounded-[4rem] px-6 py-6 shadow-inner flex flex-col h-[190px] lg:h-56 transition-all">
-                                        <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 mb-4 px-2">
+                                    <div className="bg-slate-950/40 border-2 border-transparent hover:border-rose-500/30 rounded-[3rem] px-5 py-6 shadow-inner flex flex-col h-[180px] lg:h-52 transition-all overflow-hidden">
+                                        <div className="flex-1 overflow-y-auto custom-scrollbar mr-2 ml-1 space-y-2 mb-4 px-2 py-1">
                                             {rulesList.length === 0 && (
                                                 <p className="text-slate-600 font-bold text-xs mt-4 text-center">{t('onboarding.protocol.rules_example')}</p>
                                             )}
@@ -649,7 +689,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                                 ].map(p => (
                                     <div key={p.id} className={`p-6 rounded-[2rem] bg-slate-950/40 text-center flex flex-col items-center justify-between group transition-all duration-500 border border-transparent ${p.hc} min-h-[240px]`}>
                                         <div className={`w-14 h-14 shrink-0 rounded-2xl bg-slate-800/60 flex items-center justify-center p-3 mb-4 transition-all group-hover:scale-110 shadow-inner border border-transparent group-hover:border-${p.c}-500/20`}>
-                                            <img src={p.i} alt="" className={`w-full h-full object-contain ${p.inv ? 'brightness-0 invert opacity-60' : ''}`} />
+                                            <img src={p.i} alt="" className={`w-full h-full object-contain transition-all duration-500 ${p.inv ? 'brightness-0 invert opacity-40 group-hover:invert-0 group-hover:brightness-100 group-hover:opacity-100 group-hover:drop-shadow-[0_4px_12px_rgba(255,255,255,0.3)]' : 'opacity-40 grayscale group-hover:grayscale-0 group-hover:opacity-100 group-hover:drop-shadow-[0_0_15px_rgba(59,130,246,0.4)]'}`} />
                                         </div>
                                         <div className="mb-4 space-y-1 flex-grow flex flex-col justify-center">
                                             <div className="text-[11px] font-black uppercase tracking-widest leading-none text-white/90">{p.t}</div>
@@ -731,20 +771,22 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                                                 {activeMenu === 'vosk' && (
                                                     <>
                                                         <div className="fixed inset-0 z-10" onClick={() => setActiveMenu(null)} />
-                                                        <div className="absolute left-0 right-0 bottom-full mb-1 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl z-20 py-1 animate-premium">
-                                                            {[
-                                                                { v: '', t: t('onboarding.credentials.vosk_off') },
-                                                                { v: 'vosk-model-small-es-0.42', t: t('onboarding.credentials.vosk_es') },
-                                                                { v: 'vosk-model-small-en-us-0.15', t: t('onboarding.credentials.vosk_en') }
-                                                            ].map(opt => (
-                                                                <div 
-                                                                    key={opt.v} 
-                                                                    onClick={() => { setConfig({ ...config, voskModelPath: opt.v }); setActiveMenu(null); }} 
-                                                                    className={`px-4 py-1.5 text-[9px] font-black uppercase tracking-widest cursor-pointer transition-all ${config.voskModelPath === opt.v ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
-                                                                >
-                                                                    {opt.t}
-                                                                </div>
-                                                            ))}
+                                                        <div className="absolute left-0 right-0 bottom-full mb-1 bg-slate-900/98 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl z-20 py-1.5 overflow-hidden animate-premium">
+                                                            <div className="max-h-[160px] overflow-y-auto custom-scrollbar mr-2 ml-1 py-0.5">
+                                                                {[
+                                                                    { v: '', t: t('onboarding.credentials.vosk_off') },
+                                                                    { v: 'vosk-model-small-es-0.42', t: t('onboarding.credentials.vosk_es') },
+                                                                    { v: 'vosk-model-small-en-us-0.15', t: t('onboarding.credentials.vosk_en') }
+                                                                ].map(opt => (
+                                                                    <div 
+                                                                        key={opt.v} 
+                                                                        onClick={() => { setConfig({ ...config, voskModelPath: opt.v }); setActiveMenu(null); }} 
+                                                                        className={`px-4 py-2 mx-1 rounded-lg text-[9px] font-black uppercase tracking-widest cursor-pointer transition-all ${config.voskModelPath === opt.v ? 'bg-blue-600/20 text-blue-400 shadow-md' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+                                                                    >
+                                                                        {opt.t}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
                                                         </div>
                                                     </>
                                                 )}
@@ -755,8 +797,135 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                             </div>
                         </div>
                     )}
-
                     {step === 9 && (
+                        <div className="w-full max-w-5xl space-y-6 animate-premium h-full flex flex-col justify-center py-4">
+                            <div className="text-center">
+                                <h1 className="text-2xl font-black text-white uppercase tracking-widest leading-none">{t('onboarding.engines.title')}</h1>
+                                <p className="text-slate-500 text-[9px] font-black uppercase tracking-[0.4em] opacity-60 text-center">{t('onboarding.engines.subtitle')}</p>
+                            </div>
+                            <div className="grid grid-cols-3 gap-6 overflow-visible">
+                                {[
+                                    { id: 'chat', t: t('onboarding.engines.chat_title'), d: t('onboarding.engines.chat_desc'), c: 'cyan', p: config.chatProvider || 'gemini', m: config.chatModel || '', pf: 'chatProvider', mf: 'chatModel' },
+                                    { id: 'agent', t: t('onboarding.engines.agent_title'), d: t('onboarding.engines.agent_desc'), c: 'indigo', p: config.agentProvider || 'groq', m: config.agentModel || '', pf: 'agentProvider', mf: 'agentModel' },
+                                    { id: 'fallback', t: t('onboarding.engines.fallback_title'), d: t('onboarding.engines.fallback_desc'), c: 'rose', p: config.provider || 'gemini', m: config.model || '', pf: 'provider', mf: 'model' },
+                                ].map(engine => {
+                                    const PROVIDER_LIST = [
+                                        { id: 'gemini', i: './geminiICON.png', c: 'blue' },
+                                        { id: 'groq', i: './groqICON.png', c: 'orange' },
+                                        { id: 'zai', i: './zai.png', c: 'violet' },
+                                        { id: 'ollama', i: './ollamaICON.webp', c: 'emerald' }
+                                    ];
+                                    const engineProviderColor = PROVIDER_LIST.find(p => p.id === engine.p)?.c || 'blue';
+                                    
+                                    return (
+                                        <div key={engine.id} className={`premium-card p-5 rounded-[2rem] bg-slate-950/40 border-white/5 border transition-all duration-700 relative flex flex-col gap-5 group hover:-translate-y-1 ${activeMenu === engine.id ? 'z-[500]' : 'z-0'}`}>
+                                            <div className="shrink-0 relative z-10 px-1">
+                                                <h3 className={`text-[10px] font-black uppercase tracking-[0.3em] text-${engineProviderColor}-400 mb-1`}>{engine.t}</h3>
+                                                <p className="text-[9px] text-slate-500 font-bold leading-tight opacity-60 uppercase">{engine.d}</p>
+                                            </div>
+                                            
+                                            <div className="space-y-5 relative z-10">
+                                                <div>
+                                                    <label className="text-[9px] font-black text-slate-500 uppercase ml-1 tracking-[0.2em] mb-2 block opacity-40">{t('onboarding.engines.routing_provider')}</label>
+                                                    <div className="grid grid-cols-4 gap-2 !bg-black/20 p-1.5 rounded-2xl border border-white/5 overflow-visible relative z-10">
+                                                        {PROVIDER_LIST.map(p => {
+                                                            const isSelected = engine.p === p.id;
+                                                            const HEX_COLORS: Record<string, string> = {
+                                                                blue: '#2563eb',
+                                                                orange: '#ea580c',
+                                                                violet: '#7c3aed',
+                                                                emerald: '#10b981'
+                                                            };
+                                                            const activeColor = HEX_COLORS[p.c] || '#2563eb';
+                                                            
+                                                            return (
+                                                                <button 
+                                                                    key={p.id} 
+                                                                    title={p.id}
+                                                                    onClick={() => setConfig({ ...config, [engine.pf]: p.id as any })}
+                                                                    className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all ${isSelected 
+                                                                        ? `text-white shadow-lg ring-1 ring-white/20 scale-105` 
+                                                                        : 'hover:bg-white/5 text-slate-400 opacity-60'}`}
+                                                                    style={isSelected ? { 
+                                                                        backgroundColor: `${activeColor}ee`,
+                                                                        boxShadow: `0 10px 15px -3px ${activeColor}66`
+                                                                    } : {}}
+                                                                >
+                                                                    {p.id === 'gemini' ? (
+                                                                        <img src={p.i} alt="" className={`w-5 h-5 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]' : 'opacity-40 grayscale'}`} style={isSelected ? { filter: 'none' } : {}} />
+                                                                    ) : (
+                                                                        <img src={p.i} alt="" className={`w-5 h-5 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.3)]' : 'brightness-0 invert opacity-40'}`} style={isSelected ? { filter: 'none' } : {}} />
+                                                                    )}
+                                                                    <span className={`text-[7px] font-black uppercase tracking-wider ${isSelected ? 'text-white' : 'text-slate-600'}`}>
+                                                                        {p.id === 'ollama' ? 'Ollama' : p.id === 'groq' ? 'Groq' : p.id === 'zai' ? 'Z.AI' : 'Google'}
+                                                                    </span>
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-2 relative">
+                                                    <label className="text-[9px] font-black text-slate-500 uppercase ml-1 tracking-[0.2em] mb-2 block opacity-40">{t('onboarding.engines.select_model')}</label>
+                                                    <div className="relative group/sel">
+                                                        <input 
+                                                            value={engine.m} 
+                                                            onChange={(e) => setConfig({ ...config, [engine.mf]: e.target.value })}
+                                                            placeholder={t('onboarding.engines.typing_placeholder')}
+                                                            className={`w-full bg-black/30 border-2 border-transparent hover:border-${engineProviderColor}-500/20 rounded-xl px-4 pr-10 py-3.5 text-xs text-white font-mono outline-none shadow-inner transition-all focus:border-${engineProviderColor}-500/40 focus:bg-black/50`} 
+                                                        />
+                                                        <div 
+                                                            className={`absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-slate-600 hover:text-${engineProviderColor}-400 transition-colors p-1.5`}
+                                                            onClick={() => setActiveMenu(activeMenu === engine.id ? null : engine.id)}
+                                                        >
+                                                            <Icon name="chevron-down" className={`text-[10px] transition-transform duration-300 ${activeMenu === engine.id ? 'rotate-180' : ''}`} />
+                                                        </div>
+                                                        {activeMenu === engine.id && (
+                                                            <>
+                                                                <div className="fixed inset-0 z-[1900]" onClick={() => setActiveMenu(null)} />
+                                                                <div className="absolute left-0 right-0 bottom-full mb-2 bg-slate-900/98 backdrop-blur-3xl border border-white/10 rounded-[1.5rem] shadow-2xl z-[2000] py-2 overflow-hidden animate-premium">
+                                                                    <div className="max-h-[150px] overflow-y-auto custom-scrollbar mr-2.5 ml-1 py-1">
+                                                                        <div className="px-5 py-1 text-[8px] font-black text-slate-500 uppercase border-b border-white/5 mb-2 tracking-widest">{t('onboarding.engines.common_models')}</div>
+                                                                        {loadingModels[engine.p as Provider] ? (
+                                                                            <div className="px-5 py-4 flex flex-col items-center justify-center gap-2">
+                                                                                <Icon name="spinner" className="animate-spin text-blue-500 text-lg" />
+                                                                                <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Sincronizando...</span>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <>
+                                                                                {(models[engine.p as Provider] || []).map(m => (
+                                                                                    <div 
+                                                                                        key={m.id} 
+                                                                                        onClick={() => { setConfig({ ...config, [engine.mf]: m.id }); setActiveMenu(null); }} 
+                                                                                        className={`px-5 py-2.5 text-xs font-black text-slate-400 hover:bg-${engineProviderColor}-500/10 hover:text-${engineProviderColor}-400 cursor-pointer transition-all truncate flex items-center gap-3 border-l-2 border-transparent hover:border-${engineProviderColor}-500`}
+                                                                                    >
+                                                                                        <div className={`w-1.5 h-1.5 rounded-full bg-${engineProviderColor}-500 shadow-[0_0_5px_rgba(0,0,0,0.5)]`} />
+                                                                                        {m.id}
+                                                                                    </div>
+                                                                                ))}
+                                                                                {(models[engine.p as Provider] || []).length === 0 && (
+                                                                                    <div className="px-5 py-3 text-[8px] italic text-red-500/60 font-black uppercase text-center">{t('onboarding.engines.no_models_found')}</div>
+                                                                                )}
+                                                                            </>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Accent Background Glow */}
+                                            <div className={`absolute -right-20 -bottom-20 w-48 h-48 bg-${engineProviderColor}-500/5 blur-[100px] rounded-full group-hover:bg-${engineProviderColor}-500/15 transition-all duration-1000 pointer-events-none`} />
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {step === 10 && (
                         <div className="w-full max-w-6xl space-y-6 animate-premium h-full flex flex-col justify-center py-4">
                             <div className="text-center">
                                 <h1 className="text-2xl font-black text-white uppercase tracking-widest mb-0.5">{t('onboarding.telegram.title')}</h1>
@@ -800,9 +969,9 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                 </div>
 
                 {/* Footer */}
-                <div className="h-16 md:h-20 shrink-0 border-t border-white/5 bg-slate-950/40 backdrop-blur-3xl flex justify-between items-center px-6 md:px-10 relative z-20">
+                <div className="h-16 md:h-20 shrink-0 border-t border-white/5 bg-slate-950/40 backdrop-blur-3xl flex justify-between items-center px-6 md:px-10 relative z-10 rounded-b-[2rem] md:rounded-b-[2.5rem]">
                     <div className="flex gap-1.5 md:gap-2.5 items-center">
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => (
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => (
                             <div 
                                 key={i} 
                                 className={`rounded-full transition-all duration-1000 ${
@@ -821,14 +990,14 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete }) => {
                             </button>
                         )}
                         <button
-                            onClick={step < 9 ? () => setStep(step + 1) : finish}
+                            onClick={step < 10 ? () => setStep(step + 1) : finish}
                             disabled={loading || (step === 3 && !userName)}
                             className="bg-blue-600 hover:bg-blue-500 text-white px-6 md:px-10 py-2 md:py-2.5 rounded-xl md:rounded-2xl font-black text-[9px] md:text-[11px] uppercase tracking-[0.2em] md:tracking-[0.3em] shadow-2xl active:scale-95 transition-all disabled:opacity-20 flex items-center gap-2 md:gap-3 group/btn whitespace-nowrap shrink-0"
                         >
                             {loading ? <Icon name="spinner" className="animate-spin text-xs" /> : (
                                 <>
-                                    {step < 9 ? t('common.continue') : t('common.finish')}
-                                    <Icon name={step < 9 ? 'chevron-right' : 'check'} className="text-[10px] md:text-[11px] group-hover/btn:translate-x-1.5 transition-transform" />
+                                    {step < 10 ? t('common.continue') : t('common.finish')}
+                                    <Icon name={step < 10 ? 'chevron-right' : 'check'} className="text-[10px] md:text-[11px] group-hover/btn:translate-x-1.5 transition-transform" />
                                 </>
                             )}
                         </button>

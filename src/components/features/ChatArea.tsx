@@ -640,15 +640,20 @@ export const ChatArea = ({
                         <Icon name="sliders-h" />
                         {t('chat.labels.mode')}
                     </button>
-                    <select
-                        value={agentMode}
-                        onChange={(e) => onAgentModeChange(e.target.value as AgentMode)}
-                        className="bg-slate-800 border border-transparent hover:border-slate-700 rounded px-2 py-1 text-xs text-slate-300 font-mono focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
-                        title={t('chat.actions.mode_selector')}
-                    >
-                        <option value="chat">💬 {t('chat.modes.chat')}</option>
-                        <option value="agent">🤖 {t('chat.modes.agent')}</option>
-                    </select>
+                    <div className="relative">
+                        <select
+                            value={agentMode}
+                            onChange={(e) => onAgentModeChange(e.target.value as AgentMode)}
+                            className="bg-slate-800 border border-transparent hover:border-slate-700 rounded px-2 pr-10 py-1 text-xs text-slate-300 font-mono focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 appearance-none"
+                            title={t('chat.actions.mode_selector')}
+                        >
+                            <option value="chat">💬 {t('chat.modes.chat')}</option>
+                            <option value="agent">🤖 {t('chat.modes.agent')}</option>
+                        </select>
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 scale-75">
+                            <Icon name="chevron-down" />
+                        </div>
+                    </div>
 
                     {/* Agent-only toggles: Approval Mode + Safe Mode */}
                     <div className={`mode-transition-wrap ${agentMode === 'agent' ? 'visible-mode agent-options-enter' : 'hidden-mode agent-options-exit'}`}>

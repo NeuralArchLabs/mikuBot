@@ -1903,22 +1903,11 @@ ipcMain.handle('execute-skill', async (event, { toolsPath, skillName, args }) =>
     }
 });
 
-ipcMain.handle('fs-read-folder', async (event, folderPathOrObj) => {
-    let folderPath = '';
-    let recursive = true;
-
-    if (typeof folderPathOrObj === 'object' && folderPathOrObj !== null) {
-        folderPath = folderPathOrObj.folderPath;
-        recursive = folderPathOrObj.recursive !== false;
-    } else {
-        folderPath = folderPathOrObj;
-    }
-
-    if (!folderPath || typeof folderPath !== 'string') {
-        return { ok: false, error: 'Invalid folder path' };
-    }
-
+ipcMain.handle('fs-read-folder', async (event, data) => {
     try {
+        const { folderPath, recursive = true } = typeof data === 'object' ? data : { folderPath: data };
+        if (!folderPath) throw new Error('Folder path is required');
+
         const resolvedPath = SafePathResolver.resolvePath(folderPath);
         if (!fs.existsSync(resolvedPath)) return { ok: false, error: 'Folder not found' };
 
@@ -1933,9 +1922,7 @@ ipcMain.handle('fs-read-folder', async (event, folderPathOrObj) => {
             let list;
             try {
                 list = fs.readdirSync(dir);
-            } catch (e) {
-                return;
-            }
+            } catch (e) { return; }
 
             for (const item of list) {
                 if (fileCount >= MAX_FILES) break;
@@ -1952,7 +1939,7 @@ ipcMain.handle('fs-read-folder', async (event, folderPathOrObj) => {
                             const relPath = path.relative(rootDir, fullPath).replace(/\\/g, '/');
                             try {
                                 const content = fs.readFileSync(fullPath, 'utf8');
-                                if (content.length < 1000000) {
+                                if (content.length < 2000000) { // Increased to 2MB for large documents
                                     files[relPath] = content;
                                     fileCount++;
                                 }
@@ -1974,32 +1961,22 @@ ipcMain.handle('fs-write-file', async (event, { folderPath, filename, content })
     try {
         if (!folderPath || !filename) throw new Error('Path and filename are required');
         
-        // Security: Ensure path is within sandbox
-        const resolvedDir = SafePathResolver.resolvePath(folderPath);
-        const fullPath = path.join(resolvedDir, filename);
-        
-        // Secondary Leak Check: path.join could still bypass if filename is "../foo"
-        const normalizedRoot = path.normalize(resolvedDir);
-        if (!fullPath.toLowerCase().startsWith(normalizedRoot.toLowerCase())) {
-            throw new Error(`SecurityError: Access denied. Filename attempt to escape root.`);
-        }
+        // Security: Unified resolution ensures path is WITHIN authorized roots
+        const fullPath = SafePathResolver.resolvePath(path.join(folderPath, filename));
 
         const dir = path.dirname(fullPath);
         if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir, { recursive: true });
         }
         
-        // Use atomic write from our helper
-        const result = safeWriteJSON(fullPath, content); 
-        // Wait, safeWriteJSON expects an object. For raw content, we'll use fs.writeFileSync
-        // but with a temp file for safety.
-        
+        // Atomic write via temp file for reliability
         const tempPath = `${fullPath}.tmp`;
         fs.writeFileSync(tempPath, content, 'utf8');
         fs.renameSync(tempPath, fullPath);
         
         return { ok: true };
     } catch (error) {
+        console.error('[Main Process] fs-write-file error:', error.message);
         return { ok: false, error: error.message };
     }
 });
@@ -2008,20 +1985,15 @@ ipcMain.handle('fs-delete-file', async (event, { folderPath, filename }) => {
     try {
         if (!folderPath || !filename) throw new Error('Path and filename are required');
         
-        const resolvedDir = SafePathResolver.resolvePath(folderPath);
-        const fullPath = path.join(resolvedDir, filename);
-        
-        // Leak check
-        const normalizedRoot = path.normalize(resolvedDir);
-        if (!fullPath.toLowerCase().startsWith(normalizedRoot.toLowerCase())) {
-            throw new Error(`SecurityError: Access denied. Filename attempt to escape root.`);
-        }
+        // Security: Unified resolution
+        const fullPath = SafePathResolver.resolvePath(path.join(folderPath, filename));
 
         if (fs.existsSync(fullPath)) {
             fs.unlinkSync(fullPath);
         }
         return { ok: true };
     } catch (error) {
+        console.error('[Main Process] fs-delete-file error:', error.message);
         return { ok: false, error: error.message };
     }
 });

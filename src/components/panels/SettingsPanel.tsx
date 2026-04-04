@@ -613,7 +613,7 @@ export const SettingsPanel = ({
                                                         <option key={m.id} value={m.id}>{m.name}</option>
                                                     ))}
                                                 </select>
-                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                                                <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
                                                     <Icon name="chevron-down" />
                                                 </div>
                                             </div>
@@ -712,7 +712,7 @@ export const SettingsPanel = ({
                                                         <option key={m.id} value={m.id}>{m.name}</option>
                                                     ))}
                                                 </select>
-                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                                                <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
                                                     <Icon name="chevron-down" />
                                                 </div>
                                             </div>
@@ -759,18 +759,21 @@ export const SettingsPanel = ({
                                         <div>
                                             <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">{t('settings.security.fallback_title')}</h4>
                                             <div className="space-y-4">
-                                                <div>
-                                                    <select
-                                                        value={config.provider}
-                                                        onChange={(e) => updateConfig('provider', e.target.value as Provider)}
-                                                        title={t('settings.security.provider_label')}
-                                                        className="w-full premium-input rounded-xl px-4 py-3 text-slate-300 text-xs font-medium focus:outline-none"
-                                                    >
-                                                        {(Object.keys(PROVIDERS) as Provider[]).map(pId => (
-                                                            <option key={pId} value={pId}>{PROVIDERS[pId].name} {t('settings.security.provider_label')}</option>
-                                                        ))}
-                                                    </select>
-                                                </div>
+                                                    <div className="relative">
+                                                        <select
+                                                            value={config.provider}
+                                                            onChange={(e) => updateConfig('provider', e.target.value as Provider)}
+                                                            title={t('settings.security.provider_label')}
+                                                            className="w-full premium-input rounded-xl px-4 py-3 text-slate-300 text-xs font-medium focus:outline-none appearance-none"
+                                                        >
+                                                            {(Object.keys(PROVIDERS) as Provider[]).map(pId => (
+                                                                <option key={pId} value={pId}>{PROVIDERS[pId].name} {t('settings.security.provider_label')}</option>
+                                                            ))}
+                                                        </select>
+                                                        <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                                                            <Icon name="chevron-down" />
+                                                        </div>
+                                                    </div>
                                                 <div className="relative">
                                                     <select
                                                         value={config.model}
@@ -783,6 +786,9 @@ export const SettingsPanel = ({
                                                             <option key={m.id} value={m.id}>{m.name}</option>
                                                         ))}
                                                     </select>
+                                                    <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                                                        <Icon name="chevron-down" />
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -980,7 +986,7 @@ export const SettingsPanel = ({
                                                         <option key={m} value={m}>{m}</option>
                                                     ))}
                                                 </select>
-                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                                                <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
                                                     <Icon name="chevron-down" />
                                                 </div>
                                             </div>
@@ -1323,8 +1329,8 @@ export const SettingsPanel = ({
                                         </div>
                                     </div>
 
-                                    <div className="mt-4 p-4 bg-blue-950/20 border border-blue-500/20 rounded-2xl flex items-start gap-4">
-                                        <Icon name="info-circle" className="text-blue-400 mt-1" />
+                                    <div className="mt-4 p-4 bg-blue-950/20 border border-blue-500/20 rounded-2xl flex items-center gap-4">
+                                        <Icon name="info-circle" className="text-blue-400" />
                                         <div className="text-[10px] text-blue-200/60 leading-normal">
                                             <b className="text-blue-300">{t('settings.backup.security_note')}</b> {t('settings.backup.security_desc')}
                                         </div>

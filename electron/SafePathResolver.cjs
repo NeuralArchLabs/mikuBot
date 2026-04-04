@@ -13,12 +13,38 @@ let roots = {
     '@ROOT': ''
 };
 
+/**
+ * Normalizes a path and ensures it doesn't have a trailing separator 
+ * UNLESS it's a drive root (e.g., C:\).
+ */
+function normalizeRoot(p) {
+    if (!p) return '';
+    let normalized = path.normalize(p);
+    // If it's not a drive root (like D:\) and ends with a separator, remove it
+    if (normalized.length > 3 && normalized.endsWith(path.sep)) {
+        normalized = normalized.slice(0, -1);
+    }
+    return normalized;
+}
+
+/**
+ * Checks if 'child' is the same as or inside 'parent'
+ */
+function isWithin(parent, child) {
+    if (!parent) return false;
+    const p = parent.toLowerCase();
+    const c = child.toLowerCase();
+    if (p === c) return true;
+    const pWithSep = p.endsWith(path.sep) ? p : p + path.sep;
+    return c.startsWith(pWithSep);
+}
+
 function init(config) {
-    if (config['@CORE']) roots['@CORE'] = path.normalize(config['@CORE']);
-    if (config['@LIBRARY']) roots['@LIBRARY'] = path.normalize(config['@LIBRARY']);
-    if (config['@TOOLS']) roots['@TOOLS'] = path.normalize(config['@TOOLS']);
-    if (config['@WORKSPACE']) roots['@WORKSPACE'] = path.normalize(config['@WORKSPACE']);
-    if (config['@ROOT']) roots['@ROOT'] = path.normalize(config['@ROOT']);
+    if (config['@CORE']) roots['@CORE'] = normalizeRoot(config['@CORE']);
+    if (config['@LIBRARY']) roots['@LIBRARY'] = normalizeRoot(config['@LIBRARY']);
+    if (config['@TOOLS']) roots['@TOOLS'] = normalizeRoot(config['@TOOLS']);
+    if (config['@WORKSPACE']) roots['@WORKSPACE'] = normalizeRoot(config['@WORKSPACE']);
+    if (config['@ROOT']) roots['@ROOT'] = normalizeRoot(config['@ROOT']);
     
     console.log('[SafePathResolver] Initialized with roots:', roots);
 }
@@ -41,13 +67,11 @@ function resolvePath(requestedPath) {
         cleanPath = parts.slice(1).join('/');
     } else if (path.isAbsolute(requestedPath)) {
         // For absolute paths: determine which root they belong to.
-        const normRequested = path.normalize(requestedPath).toLowerCase();
+        const normRequested = path.normalize(requestedPath);
         let foundPrefix = null;
         for (const [pref, root] of Object.entries(roots)) {
             if (!root) continue;
-            const normRoot = path.normalize(root).toLowerCase();
-            // Prefix check should be strict: root path or subpath
-            if (normRequested === normRoot || normRequested.startsWith(normRoot + path.sep)) {
+            if (isWithin(root, normRequested)) {
                 foundPrefix = pref;
                 break;
             }
@@ -56,7 +80,7 @@ function resolvePath(requestedPath) {
             throw new Error(`SecurityError: Access denied. Absolute path "${requestedPath}" is outside all authorized roots.`);
         }
         // If found, treat it as validated since it belongs to a root
-        return path.normalize(requestedPath);
+        return normRequested;
     }
 
     const mappedRoot = roots[prefix];
@@ -69,16 +93,10 @@ function resolvePath(requestedPath) {
     
     // Resolve and Normalize
     const resolvedPath = path.resolve(mappedRoot, finalCleanPath);
-    const normalizedRoot = path.normalize(mappedRoot);
 
     // Final "Zero Leak" Check: Every single path MUST start with its prefix root
-    const lowerResolved = resolvedPath.toLowerCase();
-    const lowerRoot = normalizedRoot.toLowerCase();
-    
-    const isIllegal = lowerResolved !== lowerRoot && !lowerResolved.startsWith(lowerRoot + path.sep);
-
-    if (isIllegal) {
-        throw new Error(`SecurityError: Access denied. Path "${resolvedPath}" is outside its authorized root "${normalizedRoot}".`);
+    if (!isWithin(mappedRoot, resolvedPath)) {
+        throw new Error(`SecurityError: Access denied. Path "${resolvedPath}" is outside its authorized root "${mappedRoot}".`);
     }
 
     return resolvedPath;

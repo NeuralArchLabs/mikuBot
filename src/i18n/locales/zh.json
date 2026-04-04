@@ -76,7 +76,7 @@
             "title": "欢迎",
             "subtitle": "创建并个性化您的新助手",
             "phases": "配置阶段",
-            "workspace": "Workspace",
+            "workspace": "存储工作区",
             "workspace_desc": "系统目录配置。",
             "identity": "身份与个性",
             "identity_desc": "语气、冗余度和背景定义。",
@@ -86,7 +86,7 @@
             "remote_desc": "通过 Telegram 进行双向连接。"
         },
         "workspace": {
-            "title": "WORKSPACE",
+            "title": "工作区配置",
             "subtitle": "系统存储",
             "default": "默认",
             "default_desc": "原生路径。",
@@ -99,7 +99,7 @@
             "clean": "清理"
         },
         "identity": {
-            "title": "IDENTITY",
+            "title": "身份定义",
             "subtitle": "识别名称",
             "user_name": "用户名",
             "user_name_placeholder": "例如：托尼·斯塔克",
@@ -107,7 +107,7 @@
             "assistant_alias_placeholder": "例如：Miku"
         },
         "personality": {
-            "title": "PERSONALITY",
+            "title": "性格设定",
             "subtitle": "助手的行为和语气",
             "predefined": "预设",
             "manual": "手动",
@@ -135,7 +135,7 @@
             "custom_placeholder": "输入风格..."
         },
         "status": {
-            "title": "OPERATIONAL STATUS",
+            "title": "运行状态",
             "subtitle": "用户级别和助手自主权",
             "technical_level": "技术水平 (用户)",
             "technical_placeholder": "定义您的技术水平...",
@@ -168,7 +168,7 @@
             }
         },
         "protocol": {
-            "title": "PROTOCOL",
+            "title": "指令协议",
             "subtitle": "用户背景和助手规则",
             "bio_title": "个人简介 (用户)",
             "bio_placeholder": "添加信息并按回车...",
@@ -179,11 +179,26 @@
             "no_rules": "无特定规则。",
             "no_context": "无上下文。"
         },
+        "engines": {
+            "title": "神经引擎",
+            "subtitle": "配置模型和后备路由",
+            "chat_title": "聊天界面",
+            "chat_desc": "用于快速对话的主模型。",
+            "agent_title": "自主智能体",
+            "agent_desc": "用于执行任务的强大模型。",
+            "fallback_title": "Master Fallback",
+            "fallback_desc": "如果主路由失败，则进行紧急路由。",
+            "select_provider": "提供商",
+            "select_model": "神经模型",
+            "typing_placeholder": "模型名称...",
+            "common_models": "检测到的模型",
+            "routing_provider": "路由提供商"
+        },
         "errors": {
             "fatal": "初始化期间发生严重错误"
         },
         "providers": {
-            "title": "AI PROVIDERS",
+            "title": "AI 提供商",
             "subtitle": "第 1 阶段（共 2 阶段）：获取密钥",
             "hint": "只收集您想使用的密钥。您只需要配置一种方法（API 密钥或本地推理）即可运行助手。",
             "get_key": "获取密钥",
@@ -194,7 +209,7 @@
             "ollama_desc": "本地推理。通过创建账户获取免费云端模型。"
         },
         "credentials": {
-            "title": "CREDENTIALS",
+            "title": "凭据管理",
             "subtitle": "安全和密钥",
             "gemini_label": "Gemini API 密钥",
             "groq_label": "Groq API 密钥",
@@ -211,7 +226,7 @@
             "vosk_en": "已启用 (EN)"
         },
         "telegram": {
-            "title": "TELEGRAM (Optional)",
+            "title": "Telegram 远程控制 (可选)",
             "subtitle": "随时随地进行远程控制。",
             "how_to": "如何连接？",
             "step1": "在 Telegram 中搜索 '@BotFather'，发送 /newbot 并起个名字。",
@@ -334,7 +349,7 @@
             "export_btn": "导出备份",
             "restore_btn": "恢复备份",
             "security_note": "安全说明：",
-            "security_desc": "备份文件包含您的 API 密钥和私密会话。请勿与不受信任的各方共享生成的 .zip 文件。"
+            "security_desc": "备份文件包含您加密的 API 密钥和私密会话。请勿与不受信任的人共享生成的 .zip 文件。"
         },
         "factory_reset": {
             "title": "恢复出厂设置",

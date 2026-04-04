@@ -1736,7 +1736,12 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
             {state.config.isConfigured && <TitleBar />}
             <div className="flex flex-1 overflow-hidden relative">
             {!state.config.isConfigured && (
-                <OnboardingWizard onComplete={handleOnboardingComplete} />
+                <OnboardingWizard 
+                    onComplete={handleOnboardingComplete} 
+                    models={models}
+                    loadingModels={loadingModels}
+                    onTestConnection={handleTestConnection}
+                />
             )}
             <SystemDialog config={dialogConfig} />
             <AboutDialog isOpen={!!state.isAboutOpen} onClose={() => setState(p => ({ ...p, isAboutOpen: false }))} />

@@ -2,9 +2,11 @@ import React, { useMemo, useEffect, useRef, useState, useCallback } from 'react'
 import { toHtml } from '../../utils';
 import { formatFinalResponse } from '../../services/formatters';
 
-export const Icon = ({ name, className = "" }: { name: string; className?: string }) => (
-    <i className={`fas fa-${name} ${className}`} aria-hidden="true" />
-);
+export const Icon = ({ name, className = "" }: { name: string; className?: string }) => {
+    const isBrand = ['python', 'node-js', 'github', 'google', 'facebook', 'twitter', 'discord', 'telegram', 'npm', 'js'].includes(name.toLowerCase());
+    const family = isBrand ? 'fab' : 'fas';
+    return <i className={`${family} fa-${name} ${className}`} aria-hidden="true" />;
+};
 
 // ⚡ ABSOLUTE PROTECTION: CORE MARKDOWN RENDERER ENGINE
 // This component manages the final sanitization and HTML injection.

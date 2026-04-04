@@ -106,22 +106,23 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
         setBlueprints(normalized);
     }, [rawBlueprints, i18n.language, getSkillName, getSkillDescription]);
 
-    useEffect(() => {
-        const loadSkills = async () => {
-            if ((window as any).electron?.listSkills && config.folderPaths?.tools) {
-                try {
-                    const res = await (window as any).electron.listSkills({ toolsPath: config.folderPaths.tools });
-                    if (res.ok && Array.isArray(res.skills)) {
-                        setSkills(res.skills);
-                    }
-                } catch (err) {
-                    console.error("Failed to load skills:", err);
+    const loadSkills = useCallback(async () => {
+        if ((window as any).electron?.listSkills && config.folderPaths?.tools) {
+            try {
+                const res = await (window as any).electron.listSkills({ toolsPath: config.folderPaths.tools });
+                if (res.ok && Array.isArray(res.skills)) {
+                    setSkills(res.skills);
                 }
+            } catch (err) {
+                console.error("Failed to load skills:", err);
             }
-            setLoading(false);
-        };
+        }
+        setLoading(false);
+    }, [config.folderPaths?.tools]);
+
+    useEffect(() => {
         loadSkills();
-    }, [config.folderPaths?.tools, toolsFiles]);
+    }, [loadSkills, toolsFiles]);
 
     const currentSkill = skills.find(s => s.name === activeSkill);
     const skillConfig = (config.skillsConfig || {})[activeSkill || ''] || {};
@@ -157,18 +158,32 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
     };
 
     const handleCreateFromBlueprint = async (blueprint: SkillBlueprint) => {
-        const name = prompt("Skill folder name:", blueprint.manifest.name);
-        if (!name) return;
+        try {
+            const name = prompt("Skill folder name:", blueprint.manifest.name);
+            if (!name) return;
 
-        const folderPath = `skills/${name}`;
-        const manifest = { ...blueprint.manifest, name: name };
+            // Normalize name for folder use
+            const folderName = name.replace(/[^a-zA-Z0-9_-]/g, '_');
+            const manifest = { ...blueprint.manifest, name: folderName };
 
-        await onSaveTools(`${folderPath}/manifest.json`, JSON.stringify(manifest, null, 4));
-        await onSaveTools(`${folderPath}/${manifest.entry}`, blueprint.entryContent);
+            // Consistent with internal skills pathing
+            const folderPath = `skills/${folderName}`;
+            const okManifest = await onSaveTools(`${folderPath}/manifest.json`, JSON.stringify(manifest, null, 4));
+            const okEntry = await onSaveTools(`${folderPath}/${manifest.entry}`, blueprint.entryContent);
 
-        setShowBlueprints(false);
-        setActiveSkill(name);
-        setEditMode('code');
+            if (okManifest && okEntry) {
+                setShowBlueprints(false);
+                await loadSkills();
+                setActiveSkill(folderName);
+                setEditMode('code');
+            } else {
+                console.error("Failed to save skill files:", { okManifest, okEntry });
+                alert("Operation failed check directory permissions or logs.");
+            }
+        } catch (error) {
+            console.error("Error creating skill from blueprint:", error);
+            alert("Error in skill creation pipeline.");
+        }
     };
 
     // Shared editor component to avoid repetition
@@ -204,10 +219,11 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center text-3xl text-cyan-400 border border-slate-700/50 shadow-2xl shrink-0">
                                     <Icon name={currentSkill.name.includes('gmail') ? 'envelope' : 'puzzle-piece'} />
                                 </div>
-                                <div className="min-w-0">
-                                    <h3 className="text-lg font-semibold text-white uppercase tracking-wide truncate leading-none">{currentSkill.name}</h3>
+                                    <div className="flex items-center gap-2">
+                                        <Icon name="robot" className="text-cyan-400/80 mr-1" />
+                                        <h3 className="text-lg font-semibold text-white uppercase tracking-wide truncate leading-none">{currentSkill.name}</h3>
+                                    </div>
                                     <p className="text-slate-500 text-xs mt-2 line-clamp-2 font-normal">{currentSkill.description}</p>
-                                </div>
                             </div>
 
                             <div className="hidden lg:block h-px bg-gradient-to-r from-slate-800/50 via-slate-700 to-slate-800/50 mb-8" />

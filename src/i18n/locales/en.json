@@ -179,6 +179,20 @@
             "no_rules": "No specific rules.",
             "no_context": "No context."
         },
+        "engines": {
+            "title": "NEURAL ENGINES",
+            "subtitle": "Model and Fallback Configuration",
+            "chat_title": "Chat Interface",
+            "chat_desc": "Main model for rapid conversation.",
+            "agent_title": "Autonomous Agent",
+            "agent_desc": "Powerful model for task execution.",
+            "fallback_title": "Master Fallback",
+            "fallback_desc": "Emergency routing if primary fails.",
+            "select_provider": "Provider",
+            "select_model": "Neural Model",
+            "typing_placeholder": "Model name...",
+            "common_models": "Detected Models"
+        },
         "errors": {
             "fatal": "Fatal error during initialization"
         },
@@ -335,7 +349,7 @@
             "export_btn": "Export Backup",
             "restore_btn": "Restore Backup",
             "security_note": "Security Note:",
-            "security_desc": "The backup file contains your API Keys and private sessions. Do not share the generated .zip files with untrusted parties."
+            "security_desc": "The backup file contains your encrypted API Keys and private sessions. Do not share the generated .zip files with untrusted parties."
         },
         "factory_reset": {
             "title": "Factory Reset",
