@@ -39,7 +39,7 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({ isOpen, onClose }) => 
             <div className={`relative w-full max-w-md bg-[#1e293b] border border-slate-700/60 shadow-[0_0_50px_-12px_rgba(34,211,238,0.15)] rounded-2xl overflow-hidden flex flex-col ${isClosing ? 'animate-macos-shrink-bottom' : 'animate-macos-expand-bottom'}`}>
                 {/* Header pattern & Logo */}
                 <div className="relative h-28 bg-[#0f172a] overflow-hidden flex items-center justify-center border-b border-cyan-900/30">
-                    <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at center, #22d3ee 1px, transparent 1px)', backgroundSize: '16px 16px' }} />
+                    <div className="absolute inset-0 opacity-20 about-pattern" />
                     <img src="./mikuBotICON.png" alt="Miku Logo" className="w-16 h-16 object-contain relative z-10 drop-shadow-[0_0_15px_rgba(34,211,238,0.8)] filter brightness-110" />
                 </div>
 
@@ -52,7 +52,7 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({ isOpen, onClose }) => 
                         v2.1.4
                     </div>
                     
-                    <p className="text-sm text-slate-300 leading-relaxed mb-6 font-medium">
+                    <p className="text-sm text-slate-300 leading-relaxed mb-6 font-medium text-justify">
                         {t('about.description')}
                     </p>
 
@@ -68,8 +68,24 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({ isOpen, onClose }) => 
                             </a>
                         </div>
                         <div className="flex justify-between">
-                            <span>{t('about.engine')}:</span>
-                            <span className="text-emerald-400">searXena</span>
+                            <span>{t('about.audio_engine')}:</span>
+                            <a href={t('about.vosk_url')} target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:text-purple-300 hover:underline">
+                                Vosk
+                            </a>
+                        </div>
+                        <div className="flex justify-between">
+                            <span>{t('about.search_engine')}:</span>
+                            <a href={t('about.searxena_url')} target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:text-emerald-300 hover:underline">
+                                searXena
+                            </a>
+                        </div>
+                        <div className="flex justify-between">
+                            <span>{t('about.security_layer')}:</span>
+                            <span className="text-rose-400">Neural Sandbox</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span>{t('about.python_runtime')}:</span>
+                            <span className="text-blue-400">Python 3.11 (Internal)</span>
                         </div>
                     </div>
                 </div>

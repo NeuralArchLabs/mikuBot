@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+.text-justify {
+  text-align: justify;
+}
+
+.about-pattern {
+  background-image: radial-gradient(circle at center, #22d3ee 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
 @font-face {
   font-family: 'Outfit';
   src: url('/fonts/Outfit-Regular.ttf') format('truetype');

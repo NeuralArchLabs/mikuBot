@@ -683,9 +683,15 @@
         }
     },
     "about": {
-        "description": "Asistente de IA personal para Windows diseñado para gestionar archivos, realizar búsquedas web locales y automatizar tareas mediante agentes. Permite usar modelos locales (Ollama) o en la nube (Gemini, Groq), integrando herramientas del sistema y una base de conocimientos personalizada para ofrecer asistencia específica y privada.",
+        "description": "Asistente de IA personal para Windows diseñado para gestionar archivos, realizar búsquedas web y automatizar tareas mediante agentes. Ofrece una hiper-personalización adaptativa y soberanía técnica para cada usuario, integrando herramientas del sistema para una asistencia privada y de alto rendimiento. Si te interesa ser sponsor de mikuBot o NeuralArchLabs, o compartirnos tu experiencia de uso, contacta por nuestros canales oficiales.",
         "author": "Autor",
         "repository": "Repositorio",
-        "engine": "Motor"
+        "engine": "Motor",
+        "search_engine": "Motor de Búsqueda",
+        "searxena_url": "https://github.com/NeuralArchLabs/searXena/blob/main/README.md",
+        "python_runtime": "Motor de Ejecución",
+        "audio_engine": "Motor de Audio",
+        "vosk_url": "https://alphacephei.com/vosk/",
+        "security_layer": "Capa de Seguridad"
     }
 }

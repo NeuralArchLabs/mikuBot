@@ -668,9 +668,15 @@
         }
     },
     "about": {
-        "description": "专为 Windows 设计的个人 AI 助手，可用于文件管理、本地网页搜索以及通过智能体实现任务自动化。它支持本地（Ollama）和云端（Gemini、Groq）模型，并集成了系统工具和自定义知识库，以提供专业且私密的协助。",
+        "description": "专为 Windows 设计的 personal AI 助手，可用于文件管理、网页搜索以及通过智能体实现任务自动化。它为每位用户提供极致的自适应个性化定制和技术主权，并集成系统工具以提供私密且高性能的协助。如果您有兴趣赞助 mikuBot 或 NeuralArchLabs，或与我们分享您的使用体验，请通过我们的官方渠道联系我们。",
         "author": "作者",
         "repository": "仓库",
-        "engine": "引擎"
+        "engine": "引擎",
+        "search_engine": "搜索引擎",
+        "searxena_url": "https://github.com/NeuralArchLabs/searXena/blob/main/README.zh.md",
+        "python_runtime": "运行引擎",
+        "audio_engine": "音频引擎",
+        "vosk_url": "https://alphacephei.com/vosk/",
+        "security_layer": "安全层"
     }
 }

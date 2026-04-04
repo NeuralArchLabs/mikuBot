@@ -668,9 +668,15 @@
         }
     },
     "about": {
-        "description": "Personal AI assistant for Windows designed to manage files, perform local web searches, and automate tasks using agents. It supports both local (Ollama) and cloud-based (Gemini, Groq) models, integrating system tools and a custom knowledge base to provide specific, private assistance.",
+        "description": "Personal AI assistant for Windows designed to manage files, perform web searches, and automate tasks using agents. It delivers adaptive hyper-customization and technical sovereignty tailored for every user, integrating system tools for private, high-performance assistance. If you are interested in sponsoring mikuBot or NeuralArchLabs, or sharing your user experience, please contact us through our official channels.",
         "author": "Author",
         "repository": "Repository",
-        "engine": "Engine"
+        "engine": "Engine",
+        "search_engine": "Search Engine",
+        "searxena_url": "https://github.com/NeuralArchLabs/searXena/blob/main/README.en.md",
+        "python_runtime": "Execution Engine",
+        "audio_engine": "Audio Engine",
+        "vosk_url": "https://alphacephei.com/vosk/",
+        "security_layer": "Security Layer"
     }
 }
