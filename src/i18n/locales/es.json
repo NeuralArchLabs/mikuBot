@@ -683,7 +683,7 @@
         }
     },
     "about": {
-        "description": "Ecosistema de orquestación cognitiva avanzada diseñado para la automatización inteligente y la gestión soberana de flujos de trabajo autónomos. Impulsado por una arquitectura híbrida de procesamiento local (Ollama/searXena), Neural Skills integradas y modelos de lenguaje de última generación.",
+        "description": "Asistente de IA personal para Windows diseñado para gestionar archivos, realizar búsquedas web locales y automatizar tareas mediante agentes. Permite usar modelos locales (Ollama) o en la nube (Gemini, Groq), integrando herramientas del sistema y una base de conocimientos personalizada para ofrecer asistencia específica y privada.",
         "author": "Autor",
         "repository": "Repositorio",
         "engine": "Motor"

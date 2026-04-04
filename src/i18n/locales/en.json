@@ -668,7 +668,7 @@
         }
     },
     "about": {
-        "description": "Advanced cognitive orchestration ecosystem designed for intelligent automation and sovereign management of autonomous workflows. Powered by a hybrid architecture of local processing (Ollama/searXena), integrated Neural Toolkits, and state-of-the-art language models.",
+        "description": "Personal AI assistant for Windows designed to manage files, perform local web searches, and automate tasks using agents. It supports both local (Ollama) and cloud-based (Gemini, Groq) models, integrating system tools and a custom knowledge base to provide specific, private assistance.",
         "author": "Author",
         "repository": "Repository",
         "engine": "Engine"
