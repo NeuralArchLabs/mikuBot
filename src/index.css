@@ -83,32 +83,47 @@
 .markdown-body ul,
 .markdown-body ol {
   margin-bottom: 0.5em;
-  margin-left: 1.5em;
-  padding-left: 0.5em;
-}
-
-.markdown-body ul {
-  list-style-type: disc;
+  margin-left: 1.25em;
+  padding-left: 0.25em;
   list-style-position: outside;
 }
 
-.markdown-body ol {
-  list-style-type: decimal;
-  list-style-position: outside;
-}
+/* Unordered List Hierarchy */
+.markdown-body ul { list-style-type: disc; }
+.markdown-body ul ul { list-style-type: circle; }
+.markdown-body ul ul ul { list-style-type: square; }
+
+/* Ordered List Hierarchy */
+.markdown-body ol { list-style-type: decimal; }
+.markdown-body ol ol { list-style-type: upper-alpha; }
+.markdown-body ol ol ol { list-style-type: upper-roman; }
 
 .markdown-body li {
   margin-bottom: 0.25em;
   line-height: 1.5;
   display: list-item;
-  list-style-position: outside;
   padding-left: 0.5rem;
 }
 
-/* Ensure list markers are visible */
+/* Ensure list markers are visible and colored by level */
 .markdown-body li::marker {
   color: rgba(96, 165, 250, 0.7);
   font-size: 0.9em;
+}
+
+.markdown-body ul li::marker, 
+.markdown-body ol li::marker {
+  color: rgba(34, 211, 238, 0.6);
+}
+
+.markdown-body ul ul li::marker, 
+.markdown-body ol ol li::marker {
+  color: rgba(34, 211, 238, 0.4);
+}
+
+.markdown-body ul ul ul li::marker, 
+.markdown-body ol ol ol li::marker {
+  color: rgba(34, 211, 238, 0.25);
 }
 
 /* Fix for list items with custom marker classes */
@@ -153,10 +168,9 @@
 
 .markdown-body pre {
   background: rgba(0, 0, 0, 0.3);
-  padding: 0.75em;
-  border-radius: 8px;
+  /* Padding and Radius are now handled by Tailwind classes in the engine */
   overflow-x: auto;
-  margin-bottom: 0.75em;
+  margin-bottom: 1.5rem;
   max-width: 100%;
 }
 

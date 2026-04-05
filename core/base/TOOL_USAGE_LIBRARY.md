@@ -164,17 +164,6 @@ This file contains valid JSON code snippets for each tool. The system extracts t
 }
 ```
 
-## [final_answer]
-```json
-{
-  "name": "final_answer",
-  "arguments": {
-    "text": "Synthesized final answer...",
-    "reasoning": "Brief explanation of the steps followed.",
-    "sources": ["file1.md", "https://url-used.com"]
-  }
-}
-```
 
 ## [get_crypto_price]
 ```json

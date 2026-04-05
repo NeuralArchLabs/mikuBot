@@ -303,22 +303,6 @@ export const AGENT_TOOLS: ToolDefinition[] = [
     {
         type: 'function',
         function: {
-            name: 'final_answer',
-            description: 'Synthesize all gathered data into a final response. Cite sources. Use this ONLY to conclude the task.',
-            parameters: {
-                type: 'object',
-                properties: {
-                    text: { type: 'string', description: 'The final synthesized result.' },
-                    reasoning: { type: 'string', description: 'Brief internal logic.' },
-                    sources: { type: 'array', items: { type: 'string', description: 'Source reference' }, description: 'List of URLs or files used.' }
-                },
-                required: ['text']
-            }
-        }
-    },
-    {
-        type: 'function',
-        function: {
             name: 'add_scheduled_task',
             description: 'Programar una nueva tarea autónoma para que Miku la ejecute proactivamente en el futuro.',
             parameters: {

@@ -29,7 +29,7 @@ export function cleanTechnicalNoise(text: string, signatureRegex?: RegExp): stri
         /^(?:Thinking Process|Neural Flow|Neural Core|Proceso de Razonamiento|Active Reasoning|Razonamiento Activo|Flujo Neural|Core de Miku|Razonamiento)[\s\S]*?(?={|\[|{{)/i,
         /^\s*(?:Active Reasoning|Razonamiento Activo|Razonamiento|Neural Core|Miku Core|READY|SUCCESS|ERROR|FAILURE|WEB_SEARCH|SEARCHING|ANALYZING|DONE|COMPLETED)\s*$/gim,
         /\[[x\s]\]\s*@?(?:CORE|EXTRA|WORKSPACE|TOOLS|LIBRARY)\/[^\s]*/gi,
-        /^(?:tool_call|web_search|read_file|update_file|patch_file|delete_file|run_console|add_scheduled_task|final_answer|list_files|search_files|read_url)[:\s]*/gim,
+        /^(?:tool_call|web_search|read_file|update_file|patch_file|delete_file|run_console|add_scheduled_task|list_files|search_files|read_url)[:\s]*/gim,
         /Tool Calls:\s*\[[\s\S]*?\]/gi, 
         /(?:^|\n)Tool Calls[:\s]*/gi,
         /\[\s*\{\s*"id":[\s\S]*?\}\s*\]/gi,
@@ -126,7 +126,7 @@ export function autoExtractSources(actions: string[], history: any[], tools: any
                 const canonical = (TOOL_NAME_ALIASES as any)[toolName.toLowerCase()] || toolName;
                 if (['web_search', 'read_url'].includes(canonical)) {
                     found.add("Investigación Web");
-                } else if (canonical !== 'final_answer' && !['read_file', 'update_file', 'patch_file', 'delete_file', 'list_files', 'search_files'].includes(canonical)) {
+                } else if (!['read_file', 'update_file', 'patch_file', 'delete_file', 'list_files', 'search_files'].includes(canonical)) {
                     // Use the first part of the description as the source name
                     const desc = t.function.description.split('.')[0].split('|')[0].trim();
                     found.add(`Neural Skill: ${desc || toolName}`);
@@ -191,7 +191,6 @@ export async function applyBatchTaskTicking(
         'miku_clock': ['hora', 'reloj', 'tiempo', 'quién eres', 'time', 'clock', 'greet', '时间', '小时', '问候', '打招呼'],
         'get_crypto_price': ['bitcoin', 'crypto', 'precio', 'cripto', 'cotización', 'moneda', 'price', 'coin', 'market', '比特币', '加密货币', '价格', '行情', '汇率'],
         'delete_file': ['borrar', 'eliminar', 'quitar', 'limpiar', 'suprimir', 'delete', 'remove', 'rm', 'clear', 'erase', '删除', '移除', '清理', '清除'],
-        'final_answer': ['finalizar', 'terminar', 'concluir', 'respuesta', 'completar', 'reportar', 'informar', 'conclusión', 'finish', 'complete', 'conclude', 'answer', 'report', 'done', '完成', '结束', '回答', '报告', '结论', '结论性报告']
     };
 
     const normalizeForMatch = (s: string) => {

@@ -301,7 +301,7 @@ export async function sendAgentMessage(
 
                 // DETECT TRUNCATION (Loop Protection & Continuity)
                 if (res.finishReason === 'length' || res.finishReason === 'MAX_TOKENS') {
-                    lastExecutionFeedback = "⚠️ LÍMITE DE SALIDA: Has alcanzado el número máximo de tokens por respuesta. No has podido terminar de emitir tu mensaje. Por favor, continúa desde donde te quedaste, simplifica si es necesario y cierra con final_answer cuando tu misión esté completa.";
+                    lastExecutionFeedback = "⚠️ LÍMITE DE SALIDA: Has alcanzado el número máximo de tokens por respuesta. No has podido terminar de emitir tu mensaje. Por favor, continúa desde donde te quedaste y simplifica si es necesario.";
                 }
             } catch (err) {
                 if (err instanceof DOMException && err.name === 'AbortError') return;
@@ -335,12 +335,7 @@ export async function sendAgentMessage(
 
             const uniqueToolCalls: ToolCall[] = [];
             const seenFpSet = new Set<string>();
-            let bestFinalAnswer: ToolCall | null = null;
             for (const tc of [...finalToolCalls].reverse()) {
-                if (tc.function.name === 'final_answer') {
-                    if (!bestFinalAnswer) bestFinalAnswer = tc;
-                    continue;
-                }
                 const fp = getActionFingerprint(tc.function.name, tc.function.arguments);
                 if (!seenFpSet.has(fp)) {
                     seenFpSet.add(fp);
@@ -348,7 +343,6 @@ export async function sendAgentMessage(
                 }
             }
             uniqueToolCalls.reverse(); // Maintain original model execution order (Top-to-Bottom)
-            if (bestFinalAnswer) uniqueToolCalls.push(bestFinalAnswer);
             positionalCalls = positionalCalls.filter(pc => uniqueToolCalls.some(utc => utc.id === pc.toolCall.id));
 
             const iterationBlocks: MessageBlock[] = [];
@@ -365,7 +359,7 @@ export async function sendAgentMessage(
                         iterationBlocks.push({ type: 'thought', content: args[thoughtKey].trim() });
                     }
                     const fp = getActionFingerprint(rc.toolCall.function.name, rc.toolCall.function.arguments);
-                    if (!seenFpForInterleaving.has(fp) && rc.toolCall.function.name !== 'final_answer') {
+                    if (!seenFpForInterleaving.has(fp)) {
                         seenFpForInterleaving.add(fp);
                         iterationBlocks.push({ type: 'tool_call', content: `Modo: ${rc.toolCall.function.name}`, toolCall: rc.toolCall });
                     }
@@ -375,7 +369,6 @@ export async function sendAgentMessage(
             const finalBlocks = segmentThoughtsAndNarrative((content || '').substring(curIdx), signatureRegex);
             iterationBlocks.push(...finalBlocks);
 
-            const turnHasFinal = uniqueToolCalls.some(tc => tc.function.name === 'final_answer');
             const mergedBlocks: MessageBlock[] = [];
             iterationBlocks.forEach(block => {
                 const last = mergedBlocks[mergedBlocks.length - 1];
@@ -394,7 +387,7 @@ export async function sendAgentMessage(
 
             agentMessages.push({
                 role: 'assistant',
-                content: turnHasFinal ? ' ' : (cleanTurnNarrative || ' '),
+                content: cleanTurnNarrative || ' ',
                 reasoning: nativeReasoning || undefined,
                 tool_calls: uniqueToolCalls.length > 0 ? JSON.parse(JSON.stringify(uniqueToolCalls)) : undefined,
             });
@@ -402,53 +395,36 @@ export async function sendAgentMessage(
             // Update UI with FULL cumulative narrative
             onChunk(allNarrative || ' ', true, [...allBlocks, ...mergedBlocks]);
 
-            const finalAnswerCall = uniqueToolCalls.find(tc => tc.function.name === 'final_answer');
-            if (finalAnswerCall && isAgentMode) {
-                // Protocol check MUST be strict: @CORE/tasks.md
-                const taskMatch = getSystemTasks();
-                const pending = (taskMatch?.content || '').split('\n').filter(l => l.trim().startsWith('- [ ]')).length;
-
-                
-                // Deadlock protection: If there's a delete_file for tasks.md in this TURN, allow final_answer
-                const willDeleteTasks = uniqueToolCalls.some(tc => 
-                    tc.function.name === 'delete_file' && 
-                    (tc.function.arguments.filename || '').toLowerCase().includes('tasks.md')
-                );
-
-                if (taskMatch && !willDeleteTasks) {
-                    const nudge = pending > 0 
-                        ? `⚠️ BLOQUEO DE PROTOCOLO: Aún tienes ${pending} tareas pendientes en TASKS.md. Debes tachar todas las tareas con [x] antes de finalizar o borrar el archivo (@CORE/tasks.md) si has terminado.`
-                        : `⚠️ BLOQUEO DE PROTOCOLO: El archivo @CORE/tasks.md aún existe. El protocolo exige que elimines el archivo de plan de trabajo (delete_file) antes de emitir tu respuesta final para mantener el entorno limpio.`;
-                    
-                    agentMessages.push({ role: 'tool', tool_name: 'final_answer', content: nudge, tool_call_id: finalAnswerCall.id, tool_args: finalAnswerCall.function.arguments });
-                    uniqueToolCalls.length = 0;
-                    lastExecutionFeedback = nudge;
-                    continue;
-                }
-            }
-
-
             allBlocks = [...allBlocks, ...mergedBlocks];
             if (uniqueToolCalls.length === 0) {
                 if (retries < MAX_RETRIES && (!content || content.trim() === '')) {
                     retries++;
                     const nudge = (turnHasFailure || lastExecutionFeedback.includes('⚠️')) 
-                        ? "⚠️ TURN GENERATED NO ACTIONS: Blockers or errors detected. Do not stop, try a different approach or use final_answer if you cannot proceed."
+                        ? "⚠️ TURN GENERATED NO ACTIONS: Blockers or errors detected. Do not stop, try a different approach."
                         : (isAgentMode || isInstructionMode) 
-                            ? "⚠️ INCOMPLETE AGENT PROTOCOL: You must use final_answer to conclude your official mission."
+                            ? "⚠️ INCOMPLETE AGENT PROTOCOL: You must provide a response or execute tools to proceed."
                             : "⚠️ EMPTY RESPONSE: Please provide a response to continue the conversation.";
                     agentMessages.push({ role: 'user', content: nudge });
                     continue;
                 }
                 if (isAgentMode || isInstructionMode) {
-                    if (retries < MAX_RETRIES) {
+                    if (retries < MAX_RETRIES && !allNarrative.trim()) {
                         retries++;
-                        agentMessages.push({ role: 'user', content: "⚠️ PROTOCOLO DE AGENTE INCOMPLETO: Debes usar final_answer para concluir tu misión oficial." });
+                        agentMessages.push({ role: 'user', content: "⚠️ PROTOCOLO DE AGENTE INCOMPLETO: Debes proporcionar una respuesta para concluir tu misión." });
                         continue;
                     }
                 }
-                // Refresh blocks without appending more text
-                onChunk('', false, allBlocks);
+
+                // === SOURCE ATTRIBUTION (replaces old final_answer sources logic) ===
+                if ((isAgentMode || isInstructionMode) && allNarrative.trim()) {
+                    const sources = autoExtractSources(actionHistory, agentMessages, tools);
+                    if (sources.length > 0) {
+                        allNarrative += '\n\n---DIVIDER---\n\n**🔍 Bibliografía:**\n' + sources.slice(0, 10).map((s: string) => `• ${s}`).join('\n');
+                    }
+                }
+
+                // Refresh UI with final narrative (including sources)
+                onChunk(allNarrative || '', true, allBlocks);
                 break;
             }
 
@@ -467,7 +443,7 @@ export async function sendAgentMessage(
                 return false;
             };
 
-            for (const tc of uniqueToolCalls.filter(x => x.function.name !== 'final_answer')) {
+            for (const tc of uniqueToolCalls) {
                 const approval = approvalMode === 'manual' || !isAuto(tc);
                 if (approval && !await onToolApproval(tc)) {
                     agentMessages.push({ 
@@ -525,28 +501,8 @@ export async function sendAgentMessage(
                 lastExecutionFeedback = `[Turn ${iterations}] Executed: ${actionDesc} -> ${turnHasFailure ? 'Errors occurred' : 'Success'}`;
             }
 
-            const { turnAutoTasks: autoT } = await applyBatchTaskTicking([...successfulCalls, ...(finalAnswerCall ? [finalAnswerCall] : [])], currentFiles, currentWorkSpace, saveFileFn, (m) => log('info', m));
+            const { turnAutoTasks: autoT } = await applyBatchTaskTicking([...successfulCalls], currentFiles, currentWorkSpace, saveFileFn, (m) => log('info', m));
             turnAutoTasks = autoT;
-
-
-
-            if (finalAnswerCall && !turnHasFailure) {
-                const args = finalAnswerCall.function.arguments;
-                // Use dynamic formatter based on model type
-                const formatter = createFormatter({ modelName: config.model });
-                const text = formatter.format(args.text || args.respuesta || args.answer || 'Completado');
-                let sources = args.sources || autoExtractSources(actionHistory, agentMessages, tools);
-                let finalContent = text;
-                if (sources.length > 0) finalContent += '\n\n---DIVIDER---\n\n**🔍 Bibliografía:**\n' + sources.slice(0, 10).map((s: string) => `• ${s}`).join('\n');
-                
-                allBlocks.push({ type: 'answer', content: finalContent });
-                agentMessages.push({ role: 'tool', tool_name: 'final_answer', content: JSON.stringify({ success: true }), tool_call_id: finalAnswerCall.id, tool_args: args });
-                
-                const lastA = [...agentMessages].reverse().find(m => m.role === 'assistant');
-                if (lastA) lastA.content = finalContent;
-                onChunk(finalContent, true, allBlocks.filter(b => b.content.trim() !== ''));
-                break;
-            }
         }
     } catch (err) {
         hasFatalError = true;

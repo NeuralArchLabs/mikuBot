@@ -122,8 +122,14 @@ export function stripConversationalWrapper(text: string): string {
     // 1. Strip think blocks (including possible markdown/backtick wrappers)
     s = s.replace(/`*<think>[\s\S]*?<\/think>`*/gi, '');
 
-    // 2. Strip Markdown code fences (```json ... ```)
-    s = s.replace(/```[a-z]*\n?([\s\S]*?)\n?```/gi, '$1');
+    // 2. Strip JSON/Script/Action Markdown code fences ONLY if they look like tool calls
+    // We avoid stripping generic code like python, js, or text to prevent intercepting markdown content.
+    s = s.replace(/```(?:json|action|tool|rpc)\n?([\s\S]*?)\n?```/gi, '$1');
+    
+    // Fallback for generic fences with curly braces (likely JSON tool calls)
+    if (s.startsWith('```') && s.includes('{') && s.includes('}')) {
+        s = s.replace(/```[a-z]*\n?([\s\S]*?)\n?```/gi, '$1');
+    }
 
     // 3. Strip common conversational preambles (English & Spanish)
     const preambles = [
@@ -214,8 +220,7 @@ function normalizeJsonKeys(obj: any, validToolNames: string[] = []): { name: str
 
                 if (typeof val === 'string') {
                     // Map value to the primary field of that tool
-                    if (aliasedTool === 'final_answer') args = { text: val };
-                    else if (aliasedTool === 'update_file') args = { content: val };
+                    if (aliasedTool === 'update_file') args = { content: val };
                     else if (aliasedTool === 'read_file') args = { filename: val };
                     else if (aliasedTool === 'web_search') args = { query: val };
                     else args = { [key]: val }; // Fallback
@@ -248,13 +253,6 @@ function normalizeJsonKeys(obj: any, validToolNames: string[] = []): { name: str
         } else if (objKeys.includes('coin_id')) {
             name = 'get_crypto_price';
             args = obj;
-        } else if ((objKeys.includes('text') || objKeys.includes('mensaje') || objKeys.includes('content')) && (objKeys.length <= 3)) {
-            // High probability it's a final_answer if it only has text/reasoning/sources
-            const finalKeys = ['text', 'mensaje', 'message', 'content', 'reasoning', 'razonamiento', 'sources', 'fuentes'];
-            if (objKeys.every(k => finalKeys.includes(k))) {
-                name = 'final_answer';
-                args = obj;
-            }
         }
     }
 
@@ -510,13 +508,21 @@ export function recoverToolCallsFromText(
         workingText = prefix + middle + suffix;
     };
 
-    // Pre-Masking: Always mask <think> blocks for heuristics (B, C, D) 
-    // to avoid executing thought-process examples or monologues.
+    // Pre-Masking Phase 1: Mask <think> blocks to avoid executing thought-process examples.
     const thinkRegex = /<think>([\s\S]*?)<\/think>/gi;
     let thinkMatch;
     while ((thinkMatch = thinkRegex.exec(rawText)) !== null) {
-        // We mask it in workingText but indices remain synced with rawText
         maskRange(thinkMatch.index, thinkMatch.index + thinkMatch[0].length);
+    }
+
+    // Pre-Masking Phase 2: Mask Markdown code fences to prevent standard code
+    // (JavaScript, Python, etc.) from being intercepted as tool calls.
+    // CRITICAL: Only mask non-JSON/non-tool fences. Tool-specific fences (```json, ```tool)
+    // are handled by stripConversationalWrapper and should remain visible.
+    const codeFenceRegex = /```(?!json|action|tool|rpc)(\w*)\n([\s\S]*?)```/gi;
+    let fenceMatch;
+    while ((fenceMatch = codeFenceRegex.exec(rawText)) !== null) {
+        maskRange(fenceMatch.index, fenceMatch.index + fenceMatch[0].length);
     }
 
     // Attempt A: JSON objects with balanced braces
@@ -571,10 +577,7 @@ export function recoverToolCallsFromText(
                 const noise = m[1].trim();
                 let args: Record<string, any> = {};
                 
-                if (nameResult.canonical === 'final_answer') {
-                    const stringMatch = noise.match(/"([^"]+)"|'([^']+)'/);
-                    args.text = stringMatch ? (stringMatch[1] || stringMatch[2]) : noise;
-                } else if (noise) {
+                if (noise) {
                     // Try to parse KV pairs: key: value or key="value"
                     const kvPattern = /([a-z0-9_]+)\s*[:=]\s*(?:(["'])([\s\S]*?)\2|([\s\S]*?)(?=\s*[a-z0-9_]+\s*[:=]|$))/gi;
                     let kvMatch;
@@ -648,8 +651,7 @@ export function recoverToolCallsFromText(
 
             if (!foundSubKeys) {
                 // If no sub-keys, map the whole value to the primary field
-                if (canonical === 'final_answer') args.text = rawValue;
-                else if (canonical === 'read_file') args.filename = rawValue;
+                if (canonical === 'read_file') args.filename = rawValue;
                 else if (canonical === 'update_file') args.content = rawValue;
                 else args.text = rawValue; // fallback
             }
@@ -669,32 +671,6 @@ export function recoverToolCallsFromText(
         }
     }
 
-    // Attempt E: Conclusion Heuristic (¡ÉXITO!, Conclusion:, etc.)
-    // If we have NO calls at all and the model seems to be finishing
-    if (foundCalls.length === 0) {
-        const conclusionMarkers = [
-            /¡ÉXITO!/i, /✅ ¡ÉXITO!/i, /Conclusión:/i, 
-            /Finalizado con éxito/i, /Tarea completada/i,
-            /---[\s\S]*?✅/i
-        ];
-        for (const marker of conclusionMarkers) {
-            const m = marker.exec(workingText);
-            if (m) {
-                const start = m.index;
-                const end = m.index + m[0].length;
-                const text = workingText.substring(start).trim();
-                foundCalls.push({
-                    toolCall: {
-                        id: `heur-${Math.random().toString(36).slice(2, 11)}`,
-                        function: { name: 'final_answer', arguments: { text } }
-                    },
-                    start,
-                    end
-                });
-                break; 
-            }
-        }
-    }
 
     // Sort by start position for easier chronological processing
     foundCalls.sort((a, b) => a.start - b.start);
@@ -799,14 +775,7 @@ function reconstructFromNarrative(text: string, tools: ToolDefinition[]): { call
             // Normalize EVERYTHING before pushing (Crucial for aliases like '.' -> 'sandbox')
             const normalizedArgs = normalizeArgKeys(canonical, args);
 
-            // Special Case: If final_answer has no text but there's "noise" in the window, use that noise.
-            if (canonical === 'final_answer' && !normalizedArgs.text && textToScan.trim()) {
-                const line = textToScan.trim().split(/\n/)[0].replace(/^[:=\s]+/, '');
-                normalizedArgs.text = line;
-                maxArgEnd = Math.max(maxArgEnd, textToScan.indexOf(line) + line.length);
-            }
-
-            if (Object.keys(normalizedArgs).length > 0 || canonical === 'final_answer') {
+            if (Object.keys(normalizedArgs).length > 0) {
                 calls.push({
                     toolCall: {
                         id: `narr-${Math.random().toString(36).slice(2, 11)}`,
@@ -900,9 +869,16 @@ export function extractAllBalancedObjects(text: string): { content: string; star
         if (text[i] === '{') {
             const obj = extractBalancedObjectFrom(text, i);
             if (obj) {
-                results.push({ content: obj, start: i, end: i + obj.length });
-                i += obj.length;
-                continue;
+                // VALIDATOR: Only accept objects that structurally look like tool calls.
+                // We check for keys that are EXCLUSIVELY used in agentic tool calls,
+                // NOT generic programming terms like 'result', 'error', 'data'.
+                const looksLikeTool = /"(name|function|arguments|args|tool_use|tool_call|action)"\s*:/i.test(obj);
+                
+                if (looksLikeTool) {
+                    results.push({ content: obj, start: i, end: i + obj.length });
+                    i += obj.length;
+                    continue;
+                }
             } else {
                 // UNBALANCED: We found a '{' but it doesn't close correctly.
                 // We only treat it as a fragment for repair if we are very close to the end of the text.

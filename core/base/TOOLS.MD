@@ -153,14 +153,6 @@ Modular skills installed in `@TOOLS/skills/`:
 - **`gmail_imap`**: Basic email reading and management via IMAP.
 - **`miku_clock`**: Time management and personalized greetings.
 
-## 🏁 Conclusion (`final_answer`)
-
-### `final_answer`
-Conclude the task with a synthesis.
-- **Param:** `text` (The answer)
-- **Param:** `reasoning` (Brief explanation of reasoning)
-- **Param:** `sources` (Array of files or URLs actually used)
-- **Rule:** Do NOT hallucinate sources. Only cite what you actually touched.
 
 ---
 *Note: This file serves as a spatial and technical reference. The system will automatically inject these rules if failures are detected.*

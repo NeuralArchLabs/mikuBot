@@ -570,17 +570,6 @@ export async function executeToolCall(
                 }
             }
 
-            case 'final_answer': {
-                return {
-                    success: true,
-                    data: {
-                        text: args.text,
-                        sources: args.sources || [],
-                        status: 'completed'
-                    }
-                };
-            }
-
             default: {
                 // Dynamic Skills Integration
                 const isElectron = typeof window !== 'undefined' && (window as any).electron?.listSkills;

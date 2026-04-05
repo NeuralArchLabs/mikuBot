@@ -53,7 +53,11 @@ const MarkdownRendererBase = ({ content }: { content: string }) => {
                                     if (fullHtml[cursor] === '>') inTag = false;
                                     cursor++;
                                     if (!inTag) {
-                                        el.innerHTML = currentHtml + '<span class="inline-block w-[4px] h-[13px] ml-0.5 bg-cyan-400/80 animate-pulse rounded-sm shadow-[0_0_8px_rgba(34,211,238,0.6)] translate-y-[1px]"></span>';
+                                        if (cursor < fullHtml.length) {
+                                            el.innerHTML = currentHtml + '<span class="inline-block w-[4px] h-[13px] ml-0.5 bg-cyan-400/80 animate-pulse rounded-sm shadow-[0_0_8px_rgba(34,211,238,0.6)] translate-y-[1px]"></span>';
+                                        } else {
+                                            el.innerHTML = currentHtml;
+                                        }
                                     }
                                 }, 8);
                             }
@@ -181,52 +185,9 @@ const InteractiveMarkdownRendererBase = ({ content }: InteractiveMarkdownRendere
         setCheckboxes(prev => ({ ...prev, [id]: checked }));
     }, []);
 
-    // Add copy buttons to code blocks after rendering (post-processing)
-    useEffect(() => {
-        if (!containerRef.current) return;
+    // Copy buttons and syntax highlighting are now handled globally by the toHtml engine in formatting.ts
+    // to ensure a consistent, premium aesthetic across all renderers.
 
-        const container = containerRef.current;
-        const codeBlocks = container.querySelectorAll('pre');
-
-        codeBlocks.forEach((pre) => {
-            // Skip if copy button already exists
-            if (pre.querySelector('.copy-button')) return;
-
-            // Get code content
-            const codeElement = pre.querySelector('code');
-            if (!codeElement) return;
-
-            const codeText = codeElement.textContent || '';
-
-            // Create copy button
-            const copyButton = document.createElement('button');
-            copyButton.className = 'copy-button absolute top-2 right-2 px-2 py-1 text-xs bg-black/50 hover:bg-cyan-500/30 border border-cyan-400/30 rounded text-cyan-300 transition-all duration-200 flex items-center gap-1';
-            copyButton.innerHTML = '<i class="fas fa-copy text-xs"></i> Copiar';
-
-            // Add click handler
-            copyButton.addEventListener('click', async () => {
-                try {
-                    await navigator.clipboard.writeText(codeText);
-                    copyButton.innerHTML = '<i class="fas fa-check text-xs"></i> Copiado!';
-                    setTimeout(() => {
-                        copyButton.innerHTML = '<i class="fas fa-copy text-xs"></i> Copiar';
-                    }, 2000);
-                } catch (err) {
-                    console.error('Failed to copy:', err);
-                }
-            });
-
-            // Make pre relative for absolute positioning
-            pre.style.position = 'relative';
-            pre.appendChild(copyButton);
-        });
-
-        return () => {
-            // Cleanup copy buttons when unmounting
-            const buttons = container.querySelectorAll('.copy-button');
-            buttons.forEach(btn => btn.remove());
-        };
-    }, [plainMarkdown]);
 
     return (
         <div ref={containerRef} className="markdown-body font-mono px-1">
