@@ -26,6 +26,10 @@
 
 Un agente y asistente de IA dirigido al público general. Diseñado como una alternativa amigable, de fácil instalación y uso frente a herramientas más complejas como OpenClaw, ideal para usuarios que no tienen un alto conocimiento técnico.
 
+<br/>
+
+<img src="./public/preview.gif" width="100%" style="border-radius: 12px; border: 1px solid #30363d" alt="MikuBot Preview" />
+
 </div>
 
 ---

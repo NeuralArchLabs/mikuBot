@@ -24,7 +24,11 @@
 
 <br/>
 
-面向普通大众的 AI 代理和助手。设计为 OpenClaw 等更复杂工具的友好替代方案，易于安装和使用，非常适合没有高级技术知识的用户。
+面向普通大众的 AI 代理和助手。设计为 OpenClaw 等更复杂工具的友好替代方案，易于安装 and 使用，非常适合没有高级技术知识的用户。
+
+<br/>
+
+<img src="./public/preview.gif" width="100%" style="border-radius: 12px; border: 1px solid #30363d" alt="MikuBot Preview" />
 
 </div>
 
