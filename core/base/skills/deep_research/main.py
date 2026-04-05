@@ -2,7 +2,7 @@ import sys
 import json
 import io
 import re
-import httpx
+import requests
 from concurrent.futures import ThreadPoolExecutor
 
 # Force UTF-8 encoding
@@ -20,11 +20,11 @@ def calculate_relevance(query, text):
     if len(text) > 1000 and score / len(text) > 0.05: score *= 0.5 
     return score
 
-def extract_and_audit(client, url, query, snippet=""):
+def extract_and_audit(url, query, snippet=""):
     """Extrae contenido usando SearXena extract API y realiza una auditoría interna de calidad."""
     audit_notes = []
     try:
-        response = client.post(f"{SEARXENA_BASE}/extract", json={"url": url}, timeout=15.0)
+        response = requests.post(f"{SEARXENA_BASE}/extract", json={"url": url}, timeout=15.0)
         content = None
         if response.status_code == 200:
             data = response.json()
@@ -52,7 +52,7 @@ def extract_and_audit(client, url, query, snippet=""):
     except Exception as e:
         return {"url": url, "status": "ERROR", "audit_trail": [str(e)], "content": snippet, "relevance": 0, "justification": "Fallo crítico en extracción"}
 
-def perform_heavy_artillery(client, query, lang="es", limit=8, categories=None):
+def perform_heavy_artillery(query, lang="es", limit=8, categories=None):
     """Ejecuta una búsqueda de alto nivel con SearXena en múltiples categorías."""
     if not categories: categories = ["general"]
     
@@ -62,7 +62,7 @@ def perform_heavy_artillery(client, query, lang="es", limit=8, categories=None):
     for cat in categories:
         try:
             payload = {"query": query, "limit": limit, "language": lang, "category": cat}
-            response = client.post(f"{SEARXENA_BASE}/search", json=payload)
+            response = requests.post(f"{SEARXENA_BASE}/search", json=payload, timeout=20.0)
             if response.status_code == 200:
                 results = response.json().get("results", [])
                 for r in results:
@@ -78,7 +78,7 @@ def perform_heavy_artillery(client, query, lang="es", limit=8, categories=None):
     # Usamos ThreadPool para paralelizar extracciones (mismo host, SearXena lo maneja)
     with ThreadPoolExecutor(max_workers=min(len(total_results), 5)) as executor:
         audited_results = list(executor.map(
-            lambda x: {**extract_and_audit(httpx.Client(timeout=15.0), x["url"], query, x["snippet"]), "category": x["category"]},
+            lambda x: {**extract_and_audit(x["url"], query, x["snippet"]), "category": x["category"]},
             total_results
         ))
     
@@ -95,18 +95,17 @@ def deep_research_artillery(topic, lang="both", categories=None):
     combined_data = []
 
     try:
-        with httpx.Client(timeout=60.0) as client:
-            # Búsqueda en Español
-            if lang in ["es", "both"]:
-                es_results = perform_heavy_artillery(client, topic, lang="es", limit=5, categories=categories)
-                combined_data.extend(es_results)
-            
-            # Búsqueda en Inglés (Ampliación de contexto técnico)
-            if lang in ["en", "both"]:
-                en_queries = [topic, f"{topic} technical documentation"]
-                for q in en_queries:
-                    en_results = perform_heavy_artillery(client, q, lang="en", limit=4, categories=categories)
-                    combined_data.extend(en_results)
+        # Búsqueda en Español
+        if lang in ["es", "both"]:
+            es_results = perform_heavy_artillery(topic, lang="es", limit=5, categories=categories)
+            combined_data.extend(es_results)
+        
+        # Búsqueda en Inglés (Ampliación de contexto técnico)
+        if lang in ["en", "both"]:
+            en_queries = [topic, f"{topic} technical documentation"]
+            for q in en_queries:
+                en_results = perform_heavy_artillery(q, lang="en", limit=4, categories=categories)
+                combined_data.extend(en_results)
 
         # Procesar Auditoría y Construcción
         # Usamos un set para evitar URLs duplicadas entre búsquedas/categorías

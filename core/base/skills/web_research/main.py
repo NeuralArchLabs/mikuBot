@@ -2,7 +2,7 @@ import sys
 import json
 import io
 import re
-import httpx
+import requests
 from concurrent.futures import ThreadPoolExecutor
 
 # Force UTF-8 encoding
@@ -21,10 +21,10 @@ def calculate_relevance(query, text):
             score += text_low.count(term)
     return score
 
-def extract_one(client, url, query, snippet=""):
+def extract_one(url, query, snippet=""):
     """Extract full content from a URL using SearXena's /api/v1/extract endpoint."""
     try:
-        response = client.post(f"{SEARXENA_BASE}/extract", json={"url": url}, timeout=15.0)
+        response = requests.post(f"{SEARXENA_BASE}/extract", json={"url": url}, timeout=15.0)
         content = None
         if response.status_code == 200:
             data = response.json()
@@ -55,20 +55,19 @@ def web_research(query, max_sites=3, categories=None):
     total_results = []
     
     try:
-        with httpx.Client(timeout=20.0) as client:
-            # Step 1: Multi-Category Search
-            for cat in categories:
-                payload = {"query": query, "limit": max_sites + 2, "category": cat}
-                try:
-                    response = client.post(f"{SEARXENA_BASE}/search", json=payload)
-                    if response.status_code == 200:
-                        results = response.json().get("results", [])
-                        for r in results:
-                            url = r.get("url")
-                            if url and url not in seen_urls:
-                                seen_urls.add(url)
-                                total_results.append({"url": url, "snippet": r.get("content", ""), "category": cat})
-                except: continue
+        # Step 1: Multi-Category Search
+        for cat in categories:
+            payload = {"query": query, "limit": max_sites + 2, "category": cat}
+            try:
+                response = requests.post(f"{SEARXENA_BASE}/search", json=payload, timeout=20.0)
+                if response.status_code == 200:
+                    results = response.json().get("results", [])
+                    for r in results:
+                        url = r.get("url")
+                        if url and url not in seen_urls:
+                            seen_urls.add(url)
+                            total_results.append({"url": url, "snippet": r.get("content", ""), "category": cat})
+            except: continue
 
             if not total_results:
                 return {"success": False, "error": f"No se encontraron resultados para: {query}"}
@@ -79,7 +78,7 @@ def web_research(query, max_sites=3, categories=None):
             
             extracted_data = []
             for item in items_to_process:
-                res = extract_one(client, item["url"], query, item["snippet"])
+                res = extract_one(item["url"], query, item["snippet"])
                 if res:
                     res["category"] = item["category"]
                     extracted_data.append(res)

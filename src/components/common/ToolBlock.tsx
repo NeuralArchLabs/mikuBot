@@ -20,10 +20,6 @@ export const ToolBlock: React.FC<ToolBlockProps> = ({ block, isOld }) => {
         }
     }, [isOld]);
 
-    // Typing state
-    const [displayText, setDisplayText] = useState('');
-    const [isTyping, setIsTyping] = useState(false);
-    
     // Captured timestamps for the 'Execution Log'
     const [startTime] = useState(() => new Date().toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
     const [endTime, setEndTime] = useState<string | null>(null);
@@ -116,34 +112,11 @@ export const ToolBlock: React.FC<ToolBlockProps> = ({ block, isOld }) => {
         ? friendlySummary.substring(0, 80) + '...'
         : friendlySummary;
 
-    const startTyping = () => {
-        setIsTyping(true);
-        let currentPos = 0;
-        const textToType = fullResultText;
-        const speed = Math.max(5, 50 - (textToType.length / 20)); // Accelerate for long texts
-
-        const timer = setInterval(() => {
-            currentPos += Math.ceil(textToType.length / 50); // Jump multiple chars for "accelerated" feel
-            if (currentPos >= textToType.length) {
-                setDisplayText(textToType);
-                setIsTyping(false);
-                clearInterval(timer);
-            } else {
-                setDisplayText(textToType.substring(0, currentPos));
-            }
-        }, speed);
-
-        return () => clearInterval(timer);
-    };
-
     useEffect(() => {
-        if (isExpanded && result && !isTyping && displayText === '') {
-            return startTyping();
-        } else if (!isExpanded) {
-            setDisplayText('');
-            setIsTyping(false);
+        if (!isExpanded) {
+            // No action needed on collapse for now, but keeping the hook structure
         }
-    }, [isExpanded, result]);
+    }, [isExpanded]);
 
     return (
         <div className={`relative mb-3 pl-6 transition-all duration-300 ${isExpanded ? 'w-full' : 'w-full max-w-3xl'}`}>
@@ -221,8 +194,8 @@ export const ToolBlock: React.FC<ToolBlockProps> = ({ block, isOld }) => {
                                     )}
                                 </div>
                                 <pre className={`custom-scrollbar overflow-y-auto max-h-60 p-3 bg-black/40 rounded-lg text-[10px] whitespace-pre-wrap break-all border transition-colors duration-500 ${isSuccess ? 'text-emerald-400/70 border-emerald-500/10' : 'text-rose-400/70 border-rose-500/10'}`}>
-                                    {isTyping ? displayText : JSON.stringify(result.data || result.error, null, 2)}
-                                    {!isTyping && !isSuccess && hasError && <span className="block mt-2 text-rose-500/50 italic font-sans">{t('common.system_exception')}</span>}
+                                    {JSON.stringify(result.data || result.error, null, 2)}
+                                    {!isSuccess && hasError && <span className="block mt-2 text-rose-500/50 italic font-sans">{t('common.system_exception')}</span>}
                                 </pre>
                             </div>
                         )}
