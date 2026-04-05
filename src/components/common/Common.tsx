@@ -12,7 +12,7 @@ export const Icon = ({ name, className = "" }: { name: string; className?: strin
 // ⚡ ABSOLUTE PROTECTION: CORE MARKDOWN RENDERER ENGINE
 // This component manages the final sanitization and HTML injection.
 // DO NOT ALTER recursion logic or sanitizer settings.
-const MarkdownRendererBase = ({ content }: { content: string }) => {
+const MarkdownRendererBase = ({ content, isStreaming }: { content: string, isStreaming?: boolean }) => {
     const containerRef = useRef<HTMLDivElement>(null);
 
     const html = useMemo(() => {
@@ -20,9 +20,10 @@ const MarkdownRendererBase = ({ content }: { content: string }) => {
         return toHtml(normalized);
     }, [content]);
 
-    // DO NOT MODIFY: Auto-healing logic for IntersectionObserver typewriter animation
+    // ⚡ DEFER ANIMATIONS: Prevent intersection observer initialization during streaming
+    // to avoid typewriter effects restarting on every incremental chunk.
     useEffect(() => {
-        if (!containerRef.current) return;
+        if (!containerRef.current || isStreaming) return;
 
         const containerNode = containerRef.current;
         const observer = new IntersectionObserver(
@@ -31,32 +32,50 @@ const MarkdownRendererBase = ({ content }: { content: string }) => {
                     const el = entry.target as HTMLElement;
                     if (entry.isIntersecting) {
                         if (el.tagName === 'BLOCKQUOTE') {
-                            if (!el.classList.contains('is-visible')) {
-                                el.classList.add('is-visible');
+                            if (!el.classList.contains('is-typing')) {
+                                el.classList.add('is-typing', 'is-visible');
                                 const fullHtml = el.getAttribute('data-original-html') || '';
-                                el.innerHTML = '';
                                 
+                                // HYBRID LOGIC: Preserve dimensions using a hidden placeholder
+                                // This ensures the bubble size is PRE-CALCULATED and doesn't jump.
+                                el.innerHTML = `<div class="blockquote-anim-container relative">`
+                                    + `<div class="blockquote-placeholder invisible select-none pointer-events-none">${fullHtml}</div>`
+                                    + `<div class="blockquote-typing absolute inset-0"></div>`
+                                    + `</div>`;
+                                
+                                const typingEl = el.querySelector('.blockquote-typing') as HTMLElement;
                                 let cursor = 0;
                                 let currentHtml = '';
                                 let inTag = false;
                                 
-                                if ((el as any)._typeInterval) clearInterval((el as any)._typeInterval);
-                                
                                 (el as any)._typeInterval = setInterval(() => {
                                     if (cursor >= fullHtml.length) {
-                                        el.innerHTML = fullHtml;
+                                        el.innerHTML = fullHtml; // Restore original clean HTML at the end
+                                        el.classList.remove('is-typing');
                                         clearInterval((el as any)._typeInterval);
                                         return;
                                     }
-                                    currentHtml += fullHtml[cursor];
-                                    if (fullHtml[cursor] === '<') inTag = true;
-                                    if (fullHtml[cursor] === '>') inTag = false;
-                                    cursor++;
-                                    if (!inTag) {
+
+                                    // Special handling for pre-rendered headers in admonitions
+                                    // If we detect a non-typing tag, we skip it or render it instantly
+                                    const nextSegment = fullHtml.substring(cursor);
+                                    const nonTypingMatch = nextSegment.match(/^<div class="[^"]*non-typing[^"]*">.*?<\/div>/);
+                                    
+                                    if (nonTypingMatch) {
+                                        currentHtml += nonTypingMatch[0];
+                                        cursor += nonTypingMatch[0].length;
+                                    } else {
+                                        currentHtml += fullHtml[cursor];
+                                        if (fullHtml[cursor] === '<') inTag = true;
+                                        if (fullHtml[cursor] === '>') inTag = false;
+                                        cursor++;
+                                    }
+
+                                    if (!inTag && typingEl) {
                                         if (cursor < fullHtml.length) {
-                                            el.innerHTML = currentHtml + '<span class="inline-block w-[4px] h-[13px] ml-0.5 bg-cyan-400/80 animate-pulse rounded-sm shadow-[0_0_8px_rgba(34,211,238,0.6)] translate-y-[1px]"></span>';
+                                            typingEl.innerHTML = currentHtml + '<span class="inline-block w-[4px] h-[13px] ml-0.5 bg-cyan-400/80 animate-pulse rounded-sm shadow-[0_0_8px_rgba(34,211,238,0.6)] translate-y-[1px]"></span>';
                                         } else {
-                                            el.innerHTML = currentHtml;
+                                            typingEl.innerHTML = currentHtml;
                                         }
                                     }
                                 }, 8);
@@ -68,7 +87,9 @@ const MarkdownRendererBase = ({ content }: { content: string }) => {
                         el.classList.remove('is-visible');
                         if (el.tagName === 'BLOCKQUOTE') {
                             if ((el as any)._typeInterval) clearInterval((el as any)._typeInterval);
-                            el.innerHTML = ''; 
+                            // We don't clear innerHTML here anymore to keep the layout stable if it's already rendered
+                            // but we do reset the typing class if we want it to re-run
+                            el.classList.remove('is-typing');
                         }
                     }
                 });
@@ -81,15 +102,18 @@ const MarkdownRendererBase = ({ content }: { content: string }) => {
             if (el.tagName === 'BLOCKQUOTE' && !el.hasAttribute('data-original-html')) {
                 const htmlEl = el as HTMLElement;
                 htmlEl.setAttribute('data-original-html', htmlEl.innerHTML);
-                htmlEl.innerHTML = ''; 
+                // We keep original content here to ensure a "pre-render" phase calculates the height correctly
             }
             observer.observe(el);
         });
 
         return () => {
             observer.disconnect();
+            animatedElements.forEach(el => {
+                if ((el as any)._typeInterval) clearInterval((el as any)._typeInterval);
+            });
         };
-    }, [html]);
+    }, [html, isStreaming]);
 
     return (
         <div
@@ -99,6 +123,8 @@ const MarkdownRendererBase = ({ content }: { content: string }) => {
         />
     );
 };
+
+
 
 export const MarkdownRenderer = React.memo(MarkdownRendererBase);
 
@@ -140,11 +166,12 @@ const CheckboxItem = ({ id, checked, onChange, children }: CheckboxItemProps) =>
 // Interactive Markdown renderer with checkboxes and copy functionality
 interface InteractiveMarkdownRendererProps {
     content: string;
+    isStreaming?: boolean;
 }
 
 // ⚡ ABSOLUTE PROTECTION: INTERACTIVE ENGINE & UI HOOKS
 // Manages the mutation of DOM elements for copy-buttons and checkboxes.
-const InteractiveMarkdownRendererBase = ({ content }: InteractiveMarkdownRendererProps) => {
+const InteractiveMarkdownRendererBase = ({ content, isStreaming }: InteractiveMarkdownRendererProps) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [checkboxes, setCheckboxes] = useState<Record<string, boolean>>({});
 
@@ -204,7 +231,7 @@ const InteractiveMarkdownRendererBase = ({ content }: InteractiveMarkdownRendere
             ))}
 
             {/* Render plain markdown with original renderer (includes typewriter, tables, etc.) */}
-            {plainMarkdown.trim() && <MarkdownRendererBase content={plainMarkdown} />}
+            {plainMarkdown.trim() && <MarkdownRendererBase content={plainMarkdown} isStreaming={isStreaming} />}
         </div>
     );
 };

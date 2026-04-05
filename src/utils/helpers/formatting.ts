@@ -59,17 +59,18 @@ export const toHtml = (md: string): string => {
 
     // 1. Protect HTML tags that should render as actual elements
     // Complex Block Protection (Details)
-    html = html.replace(/<details[^>]*>([\s\S]*?)<\/details>/gi, (match) => {
+    // Complex Block Protection (Details)
+    html = html.replace(/<details([^>]*)>([\s\S]*?)<\/details>/gi, (match, attrs, content) => {
         const id = `__BLOCK_${pieces.length}__`;
-        let sMatch = match.match(/<summary>([\s\S]*?)<\/summary>/i);
+        let sMatch = content.match(/<summary>([\s\S]*?)<\/summary>/i);
         let summaryText = sMatch ? sMatch[1].replace(/^[▶►▸▼] ?/g, '').trim() : 'Details';
-        let bodyRaw = sMatch ? match.replace(sMatch[0], '') : match;
-        let bodyContent = bodyRaw.replace(/^<details[^>]*>/i, '').replace(/<\/details>$/i, '').trim();
+        let bodyRaw = sMatch ? content.replace(sMatch[0], '') : content;
+        const isOpen = attrs.toLowerCase().includes('open');
 
-        pieces.push(`<details class="bg-black/10 border border-white/5 rounded-xl my-6 overflow-hidden group/details shadow-2xl transition-all cursor-pointer">` +
+        pieces.push(`<details ${isOpen ? 'open' : ''} class="bg-black/10 border border-white/5 rounded-xl my-6 overflow-hidden group/details shadow-2xl transition-all cursor-pointer">` +
             `<summary class="px-8 py-5 font-black text-cyan-400/90 uppercase tracking-widest text-[11px] hover:bg-white/5 transition-all outline-none list-none select-none flex items-center gap-3">` +
             `<span class="group-open/details:rotate-90 transition-transform">▶</span>${summaryText}</summary>` +
-            `<div class="details-content-body px-12 py-8 text-slate-300 leading-loose bg-black/10 select-text border-t border-white/5">${toHtml(bodyContent)}</div></details>`);
+            `<div class="details-content-body px-12 py-8 text-slate-300 leading-loose bg-black/10 select-text border-t border-white/5">${toHtml(bodyRaw.trim())}</div></details>`);
         return `\n${id}\n`;
     });
 
@@ -78,6 +79,116 @@ export const toHtml = (md: string): string => {
         const id = `__BLOCK_${pieces.length}__`;
         pieces.push(`<div ${attrs}>${toHtml(content)}</div>`);
         return `\n${id}\n`;
+    });
+
+    // 1c. Universal Admonition Parser — Phase 1
+    // Matches: > [!IMAGE] Title \n > Body (now supports [!TYPE]- for collapsed, [!TYPE]+ for expanded)
+    html = html.replace(/^(?:>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|DANGER|INFO|SUCCESS|FAILURE|BUG|EXAMPLE|QUOTE|QUESTION|FAQ)\]([\-\+])?(?:\s+(.*))?\s*?\n?)((?:(?!(?:>\s*\[!)).*\n?)*)/gim, (match, type, collapseSign, title, body) => {
+        const id = `__BLOCK_${pieces.length}__`;
+        const typeUp = type.toUpperCase();
+        
+        let bodyLines = body.split('\n');
+        let actualBody = [];
+        for (let line of bodyLines) {
+            if (line.trim().startsWith('>') || (line.trim() === '' && actualBody.length > 0)) {
+                actualBody.push(line.replace(/^\s*>\s?/, ''));
+            } else {
+                break;
+            }
+        }
+        
+        const content = actualBody.join('\n').trim();
+        const styles: Record<string, { icon: string, color: string, border: string, bg: string, glow?: string }> = {
+            'NOTE':      { icon: 'ℹ️', color: 'text-blue-400',    border: 'border-blue-500/40',    bg: 'bg-blue-500/5' },
+            'TIP':       { icon: '💡', color: 'text-emerald-400', border: 'border-emerald-500/40', bg: 'bg-emerald-500/5' },
+            'IMPORTANT': { icon: '❗', color: 'text-amber-400',   border: 'border-amber-500/40',   bg: 'bg-amber-500/5' },
+            'WARNING':   { icon: '⚠️', color: 'text-orange-400',  border: 'border-orange-500/40',  bg: 'bg-orange-500/5' },
+            'CAUTION':   { icon: '🔴', color: 'text-rose-400',    border: 'border-rose-500/40',    bg: 'bg-rose-500/5' },
+            'DANGER':    { icon: '☠️', color: 'text-red-400',      border: 'border-red-500/50',      bg: 'bg-red-500/8',      glow: 'shadow-[inset_0_0_20px_rgba(239,68,68,0.05)]' },
+            'INFO':      { icon: '📋', color: 'text-sky-400',      border: 'border-sky-500/40',      bg: 'bg-sky-500/5',      glow: 'shadow-[inset_0_0_20px_rgba(14,165,233,0.04)]' },
+            'SUCCESS':   { icon: '✅', color: 'text-green-400',    border: 'border-green-500/45',    bg: 'bg-green-500/7',    glow: 'shadow-[inset_0_0_20px_rgba(34,197,94,0.05)]' },
+            'FAILURE':   { icon: '💥', color: 'text-rose-400',     border: 'border-rose-500/50',     bg: 'bg-rose-500/7',     glow: 'shadow-[inset_0_0_20px_rgba(244,63,94,0.05)]' },
+            'BUG':       { icon: '🐛', color: 'text-fuchsia-400',  border: 'border-fuchsia-500/45',  bg: 'bg-fuchsia-500/6',  glow: 'shadow-[inset_0_0_20px_rgba(217,70,239,0.04)]' },
+            'EXAMPLE':   { icon: '📎', color: 'text-violet-400',   border: 'border-violet-500/40',   bg: 'bg-violet-500/5',   glow: 'shadow-[inset_0_0_20px_rgba(139,92,246,0.04)]' },
+            'QUOTE':     { icon: '💬', color: 'text-slate-400',    border: 'border-slate-500/40',    bg: 'bg-slate-800/40',   glow: 'shadow-[inset_0_0_20px_rgba(148,163,184,0.04)]' },
+            'QUESTION':  { icon: '❓', color: 'text-cyan-400',     border: 'border-cyan-500/40',     bg: 'bg-cyan-500/5',     glow: 'shadow-[inset_0_0_20px_rgba(34,211,238,0.04)]' },
+            'FAQ':       { icon: '❔', color: 'text-purple-400',   border: 'border-purple-500/40',   bg: 'bg-purple-500/5',   glow: 'shadow-[inset_0_0_20px_rgba(168,85,247,0.04)]' },
+        };
+
+        const s = styles[typeUp] || styles['INFO'];
+        const displayTitle = title ? title.replace(/^[>\s]+/, '').trim() : typeUp;
+        const isCollapsible = !!collapseSign;
+        const isOpen = collapseSign === '+';
+
+        const bodyHtml = content ? `<div class="text-sm text-slate-300 ${isCollapsible ? 'mt-3 pt-3 border-t border-white/5' : 'leading-relaxed'} child-content typing-content">${toHtml(content)}</div>` : '';
+        
+        if (isCollapsible) {
+            pieces.push(`<details class="group/callout border-l-4 ${s.border} ${s.bg} ${s.glow || ''} pl-4 pr-3 py-3 my-4 rounded-none overflow-hidden transition-all duration-300 select-none cursor-pointer" ${isOpen ? 'open' : ''}>`
+                + `<summary class="flex items-center gap-2 font-bold text-xs uppercase tracking-wider ${s.color} non-typing outline-none list-none text-left">`
+                + `<span class="group-open/callout:rotate-90 transition-transform duration-200">▶</span> ${s.icon} ${displayTitle}</summary>${bodyHtml}</details>`);
+        } else {
+            pieces.push(`<blockquote class="border-l-4 ${s.border} ${s.bg} ${s.glow || ''} pl-4 pr-3 py-3 my-4 rounded-none overflow-hidden" data-type="admonition">`
+                + `<div class="flex items-center gap-2 mb-1.5 font-bold text-xs uppercase tracking-wider ${s.color} non-typing">${s.icon} ${displayTitle}</div>${bodyHtml}</blockquote>`);
+        }
+        
+        const remainder = bodyLines.slice(actualBody.length).join('\n');
+        return `\n${id}\n${remainder}`;
+    });
+
+    // 1d. Standard Blockquote Parser (Phase 1)
+    html = html.replace(/^((?:>.*\n?)+)/gm, (match) => {
+        if (match.includes('__BLOCK_')) return match;
+        const id = `__BLOCK_${pieces.length}__`;
+        const content = match.replace(/^>\s?/gm, '').trim();
+        pieces.push(`<blockquote class="border-l-4 border-cyan-500/20 pl-4 pr-3 py-3 my-4 bg-white/5 rounded-r-lg italic text-slate-300 leading-relaxed child-content typing-content">${toHtml(content)}</blockquote>`);
+        return `\n${id}\n`;
+    });
+
+    // 1e. Image & Asset Protection (Phase 2)
+    // Supports: ![alt](url), ![alt|width](url), ![alt|widthxheight](url)
+    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, altText, urlRaw) => {
+        const id = `__BLOCK_${pieces.length}__`;
+        let width = '';
+        let height = '';
+        let cleanAlt = altText;
+
+        // Restore URL characters if they were escaped by a previous pass (though images should be early)
+        const url = urlRaw
+            .replace(/‹/g, '<').replace(/›/g, '>')
+            .replace(/&amp;/g, '&');
+
+        if (altText.includes('|')) {
+            const parts = altText.split('|');
+            cleanAlt = parts[0];
+            const size = parts[1];
+            if (size.includes('x')) {
+                const sizes = size.split('x');
+                width = `width="${sizes[0]}"`;
+                height = `height="${sizes[1]}"`;
+            } else {
+                width = `width="${size}"`;
+            }
+        }
+
+        pieces.push(`<div class="image-container flex flex-col items-center justify-center my-6 group/img">` +
+            `<img src="${url}" alt="${cleanAlt}" ${width} ${height} class="max-w-full h-auto rounded-2xl border border-white/10 shadow-2xl transition-all group-hover/img:scale-[1.01] hover:shadow-cyan-500/10" />` +
+            (cleanAlt ? `<span class="mt-2 text-[10px] text-slate-500 font-mono tracking-tight opacity-0 group-hover/img:opacity-100 transition-opacity italic">${cleanAlt}</span>` : '') +
+            `</div>`);
+        return `\n${id}\n`;
+    });
+
+    // 1f. Link Protection (Phase 2)
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, urlRaw) => {
+        const id = `__BLOCK_${pieces.length}__`;
+        // Restore URL characters
+        const url = urlRaw
+            .replace(/‹/g, '<').replace(/›/g, '>')
+            .replace(/&amp;/g, '&');
+            
+        const isExternal = url.startsWith('http');
+        const icon = isExternal ? '<i class="fas fa-external-link-alt text-[10px] ml-1 opacity-50 group-hover:opacity-100"></i>' : '';
+        pieces.push(`<a href="${url}" target="_blank" rel="noopener noreferrer" class="group inline-flex items-baseline text-cyan-400 hover:text-cyan-300 font-bold underline underline-offset-4 decoration-cyan-500/30 hover:decoration-cyan-400/60 transition-all mx-0.5">${text}${icon}</a>`);
+        return id;
     });
 
     html = html
@@ -148,50 +259,8 @@ export const toHtml = (md: string): string => {
         pieces.push(`<div class="my-4 p-4 bg-black/20 border border-white/5 rounded-lg text-center font-serif text-lg italic text-slate-200 overflow-x-auto">${formula.trim()}</div>`);
         return `\n${id}\n`;
     });
-
-    // 4b-ext. Raw HTML blocks (<div>, <span>, etc. multi-line)
-    // We capture balanced-ish opening/closing tags for common block elements
-    html = html.replace(/&lt;(div|span|section|article|aside|header|footer|nav)(?:\s+[^&gt;]*)?&gt;([\s\S]*?)&lt;\/\1&gt;/gi, (match, tag, content) => {
-        const id = `__BLOCK_${pieces.length}__`;
-        const restored = match.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
-        pieces.push(`<div class="raw-html-container my-4">${restored}</div>`);
-        return `\n${id}\n`;
-    });
-
-    // 4c-ext. Universal Admonition Parser — Isolated and protected
-    // Matches: > [!TYPE] Title \n > Body (continuously)
-    html = html.replace(/^&gt;\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|DANGER|INFO|SUCCESS|FAILURE|BUG|EXAMPLE|QUOTE|QUESTION)\](?:\s+(.*))?\s*\n((?:&gt;.*\n?)*)/gim, (match, type, title, body) => {
-        const id = `__BLOCK_${pieces.length}__`;
-        const content = body.replace(/^&gt;\s?/gm, '').trim();
-        const typeUp = type.toUpperCase();
-        
-        const styles: Record<string, { icon: string, color: string, border: string, bg: string, glow?: string }> = {
-            'NOTE':      { icon: 'ℹ️', color: 'text-blue-400',    border: 'border-blue-500/40',    bg: 'bg-blue-500/5' },
-            'TIP':       { icon: '💡', color: 'text-emerald-400', border: 'border-emerald-500/40', bg: 'bg-emerald-500/5' },
-            'IMPORTANT': { icon: '❗', color: 'text-amber-400',   border: 'border-amber-500/40',   bg: 'bg-amber-500/5' },
-            'WARNING':   { icon: '⚠️', color: 'text-orange-400',  border: 'border-orange-500/40',  bg: 'bg-orange-500/5' },
-            'CAUTION':   { icon: '🔴', color: 'text-rose-400',    border: 'border-rose-500/40',    bg: 'bg-rose-500/5' },
-            'DANGER':    { icon: '☠️', color: 'text-red-400',      border: 'border-red-500/50',      bg: 'bg-red-500/8',      glow: 'shadow-[inset_0_0_20px_rgba(239,68,68,0.05)]' },
-            'INFO':      { icon: '📋', color: 'text-sky-400',      border: 'border-sky-500/40',      bg: 'bg-sky-500/5',      glow: 'shadow-[inset_0_0_20px_rgba(14,165,233,0.04)]' },
-            'SUCCESS':   { icon: '✅', color: 'text-green-400',    border: 'border-green-500/45',    bg: 'bg-green-500/7',    glow: 'shadow-[inset_0_0_20px_rgba(34,197,94,0.05)]' },
-            'FAILURE':   { icon: '💥', color: 'text-rose-400',     border: 'border-rose-500/50',     bg: 'bg-rose-500/7',     glow: 'shadow-[inset_0_0_20px_rgba(244,63,94,0.05)]' },
-            'BUG':       { icon: '🐛', color: 'text-fuchsia-400',  border: 'border-fuchsia-500/45',  bg: 'bg-fuchsia-500/6',  glow: 'shadow-[inset_0_0_20px_rgba(217,70,239,0.04)]' },
-            'EXAMPLE':   { icon: '📎', color: 'text-violet-400',   border: 'border-violet-500/40',   bg: 'bg-violet-500/5',   glow: 'shadow-[inset_0_0_20px_rgba(139,92,246,0.04)]' },
-            'QUOTE':     { icon: '💬', color: 'text-slate-400',    border: 'border-slate-500/40',    bg: 'bg-slate-800/40',   glow: 'shadow-[inset_0_0_20px_rgba(148,163,184,0.04)]' },
-            'QUESTION':  { icon: '❓', color: 'text-cyan-400',     border: 'border-cyan-500/40',     bg: 'bg-cyan-500/5',     glow: 'shadow-[inset_0_0_20px_rgba(34,211,238,0.04)]' },
-        };
-
-        const s = styles[typeUp];
-        const displayTitle = title ? title.trim() : typeUp;
-        // Process the inner content immediately to handle tables/code inside
-        const processedContent = toHtml(content);
-        
-        pieces.push(`<blockquote class="border-l-4 ${s.border} ${s.bg} ${s.glow || ''} pl-4 pr-3 py-3 my-4 rounded-none overflow-hidden" data-type="admonition">`
-            + `<div class="flex items-center gap-2 mb-2 font-bold text-xs uppercase tracking-wider ${s.color} non-typing">${s.icon} ${displayTitle}</div>`
-            + `<div class="text-sm text-slate-300 leading-relaxed child-content">${processedContent}</div>`
-            + `</blockquote>`);
-        return `\n${id}\n`;
-    });
+    // 4. PRE-EXTRACTION: Protect high-priority blocks from being broken by line parsers
+    // (Consolidated array at top of function)
 
     // 4d. Inline code (must be after code blocks)
     html = html.replace(/\\`/g, '‹esc-backtick›');
@@ -239,13 +308,7 @@ export const toHtml = (md: string): string => {
     // 9. Inline math ($ ... $) — single-line only
     html = html.replace(/\$([^$\n]+)\$/g, '<span class="font-serif italic text-amber-200 bg-white/5 px-1.5 py-0.5 rounded-md mx-0.5 shadow-sm border-b border-white/10">$1</span>');
 
-    // 10. Images  ![alt](url) - Updated to support linked images without extra divs
-    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="inline-block max-w-full h-auto rounded-lg border border-white/10 my-2" onerror="this.style.display=\'none\'" />');
-
-    // 11. Links (must be after images to catch badges properly)
-    html = convertLinksToHtml(html);
-
-    // 13a. Footnote definitions [^1]: (Process first to avoid collision)
+    // 10. Footnote definitions [^1]: 
     html = html.replace(/^\[\^([^\]]+)\]:\s+(.*)$/gm, (match, label, content) => {
         return `<div class="text-[11px] text-slate-400/80 mt-1.5 flex gap-2 items-baseline leading-relaxed italic group/fn">`
              + `<span class="bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 font-mono px-1 rounded-sm text-[9px] min-w-[20px] text-center shadow-sm h-fit">#${label}</span>`

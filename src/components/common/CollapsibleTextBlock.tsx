@@ -6,18 +6,20 @@ interface CollapsibleTextBlockProps {
     content: string;
     forceCollapse?: boolean;
     isThought?: boolean;
+    isStreaming?: boolean;
 }
 
 // ── Content Renderers (Polymorphic Logic) ──────────────────────────
 
 interface ContentRendererProps {
     content: string;
+    isStreaming?: boolean;
     onHeightChange?: (height: number) => void;
 }
 /**
  * Standard content display without animations.
  */
-const StaticRenderer: React.FC<ContentRendererProps> = ({ content, onHeightChange }) => {
+const StaticRenderer: React.FC<ContentRendererProps> = ({ content, isStreaming, onHeightChange }) => {
     const ref = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -32,7 +34,7 @@ const StaticRenderer: React.FC<ContentRendererProps> = ({ content, onHeightChang
 
     return (
         <div ref={ref} className="animate-in fade-in duration-500">
-            <MarkdownRenderer content={content} />
+            <MarkdownRenderer content={content} isStreaming={isStreaming} />
         </div>
     );
 };
@@ -41,7 +43,7 @@ const StaticRenderer: React.FC<ContentRendererProps> = ({ content, onHeightChang
  * Streaming content display that reveals text over time.
  * Optimized to NOT reset animation when content appends (streaming).
  */
-const StreamingRenderer: React.FC<ContentRendererProps> = ({ content, onHeightChange }) => {
+const StreamingRenderer: React.FC<ContentRendererProps> = ({ content, isStreaming, onHeightChange }) => {
     const [visibleContent, setVisibleContent] = useState('');
     const [isFinished, setIsFinished] = useState(false);
     const cursorChar = '\u00A0\u258c';
@@ -76,14 +78,14 @@ const StreamingRenderer: React.FC<ContentRendererProps> = ({ content, onHeightCh
 
     return (
         <div ref={ref} className="relative animate-in fade-in duration-300">
-            <MarkdownRenderer content={visibleContent + (!isFinished ? cursorChar : '')} />
+            <MarkdownRenderer content={visibleContent + (!isFinished ? cursorChar : '')} isStreaming={isStreaming} />
         </div>
     );
 };
 
 // ── Main Component ──────────────────────────────────────────────────
 
-export const CollapsibleTextBlock: React.FC<CollapsibleTextBlockProps> = ({ content, forceCollapse, isThought }) => {
+export const CollapsibleTextBlock: React.FC<CollapsibleTextBlockProps> = ({ content, forceCollapse, isThought, isStreaming }) => {
     const { t } = useTranslation();
     const [isCollapsed, setIsCollapsed] = useState(forceCollapse !== undefined ? forceCollapse : (isThought || false));
     const hasInteractedRef = React.useRef(false);
@@ -172,9 +174,9 @@ export const CollapsibleTextBlock: React.FC<CollapsibleTextBlockProps> = ({ cont
                     </div>
                     <div className={`text-[13px] sm:text-[14px] leading-relaxed text-slate-300 rounded-2xl p-4 overflow-hidden transition-[background-color,transform] duration-500 ${isThought ? 'bg-blue-500/[0.03] border border-blue-500/10 shadow-[inner_0_0_20px_rgba(59,130,246,0.01)]' : 'bg-white/[0.01] border border-white/5'}`}>
                         {isThought ? (
-                            <StreamingRenderer content={cleanContent} onHeightChange={handleHeightUpdate} />
+                            <StreamingRenderer content={cleanContent} isStreaming={isStreaming} onHeightChange={handleHeightUpdate} />
                         ) : (
-                            <StaticRenderer content={cleanContent} onHeightChange={handleHeightUpdate} />
+                            <StaticRenderer content={cleanContent} isStreaming={isStreaming} onHeightChange={handleHeightUpdate} />
                         )}
                     </div>
                 </div>
