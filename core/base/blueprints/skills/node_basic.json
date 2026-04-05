@@ -1,0 +1,28 @@
+{
+    "id": "node_basic",
+    "name_es": "Lógica Node.js",
+    "name_en": "Node.js Logic",
+    "name_zh": "Node.js 逻辑",
+    "icon": "node-js",
+    "category": "skills",
+    "manifest": {
+        "name": "new_node_skill",
+        "name_es": "nuevo_skill_node",
+        "name_en": "new_node_skill",
+        "name_zh": "新的node技能",
+        "description": "Una lógica skill usando Node.js.",
+        "description_en": "A logic skill using Node.js.",
+        "description_zh": "使用 Node.js 的逻辑技能。",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string"
+                }
+            }
+        },
+        "runtime": "node",
+        "entry": "index.js"
+    },
+    "entryContent": "const args = JSON.parse(process.argv[2] || '{}');\nconsole.log(JSON.stringify({ success: true, message: 'Node.js skill executed!', echo: args }));"
+}

@@ -1,0 +1,19 @@
+{
+    "name": "miku_clock",
+    "description": "Gets the current system time with a personalized Miku-style message.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "format": {
+                "type": "string",
+                "enum": [
+                    "12h",
+                    "24h"
+                ],
+                "description": "Time format (12h or 24h)"
+            }
+        }
+    },
+    "runtime": "python",
+    "entry": "main.py"
+}

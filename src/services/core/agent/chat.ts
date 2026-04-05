@@ -1,0 +1,269 @@
+/**
+ * Agent Chat & Conversation Utilities
+ * Path: src/services/core/agent/chat.ts
+ * REWIRED: Literal copy from original agent.ts
+ */
+import { MessageBlock, ToolCall, FileTarget } from '../../../types';
+import { TOOL_NAME_ALIASES } from '../../formatters/normalization/dictionaries';
+
+/**
+ * Cleans technical noise, protocol echoes, and JSON fragments from segments.
+ */
+export function cleanTechnicalNoise(text: string, signatureRegex?: RegExp): string {
+    let s = (text || '').trim();
+    if (!s) return '';
+
+    // 2. ELIMINAR ECOS DE PROTOCOLO (Solo si no están en bloques de código)
+    // No eliminamos bloques ```json ya que pueden ser parte de la respuesta útil para el usuario.
+    
+    // Objetos JSON técnicos específicos del protocolo (no el código del usuario)
+    s = s.replace(/\{"(?:name|action|function|tool_call|arguments|args)"\s*:.*$/gim, '');
+    s = s.replace(/^\s*[\}\],]+\s*$/gm, '');
+
+    // 3. PRESERVAR FIRMA Y CÓDIGO (Ya no eliminamos sigPattern automáticamente aquí)
+    // El usuario desea que la firma NO se pierda.
+
+    // 4. ELIMINAR ECOS DEL PROTOCOLO Y LOGS TÉCNICOS RESIDUOS
+    const noisePatterns = [
+        /^(?:I apologize|My apologies|You are right|You are correct)[\s\S]*?(?={|\[|{{)/i,
+        /^(?:Thinking Process|Neural Flow|Neural Core|Proceso de Razonamiento|Active Reasoning|Razonamiento Activo|Flujo Neural|Core de Miku|Razonamiento)[\s\S]*?(?={|\[|{{)/i,
+        /^\s*(?:Active Reasoning|Razonamiento Activo|Razonamiento|Neural Core|Miku Core|READY|SUCCESS|ERROR|FAILURE|WEB_SEARCH|SEARCHING|ANALYZING|DONE|COMPLETED)\s*$/gim,
+        /\[[x\s]\]\s*@?(?:CORE|EXTRA|WORKSPACE|TOOLS|LIBRARY)\/[^\s]*/gi,
+        /^(?:tool_call|web_search|read_file|update_file|patch_file|delete_file|run_console|add_scheduled_task|final_answer|list_files|search_files|read_url)[:\s]*/gim,
+        /Tool Calls:\s*\[[\s\S]*?\]/gi, 
+        /(?:^|\n)Tool Calls[:\s]*/gi,
+        /\[\s*\{\s*"id":[\s\S]*?\}\s*\]/gi,
+        /^(?:\[assistant\]|\[tool\]|\[user\]|\[system\])[:\s]*/gim,
+        // Limpiar corchetes/llaves únicos que suelen quedar huérfanos tras la segmentación
+        /^\s*[\[\{\}\]]\s*$/gm,
+        // Solo eliminamos llaves si están solas (no dobles) usando un patrón más compatible
+        /^[\[\{\}\]]\s/gm,
+        /\s[\[\{\}\]]$/gm
+    ];
+    noisePatterns.forEach(p => s = s.replace(p, ''));
+
+    return s.trim();
+}
+
+/**
+ * Segments a text into thought and narrative blocks, preserving <think> content.
+ */
+export function segmentThoughtsAndNarrative(text: string, signatureRegex: RegExp, skipCleaning: boolean = false): MessageBlock[] {
+    if (!text) return [];
+    
+    // Check for <think> tags
+    const thinkRegex = /<think>([\s\S]*?)(?:<\/think>|$)/gi;
+    const blocks: MessageBlock[] = [];
+    let lastIdx = 0;
+    let match;
+
+    while ((match = thinkRegex.exec(text)) !== null) {
+        // Text before the <think> tag
+        const preamble = text.substring(lastIdx, match.index);
+        if (preamble.trim()) {
+            const cleaned = skipCleaning ? preamble.trim() : cleanTechnicalNoise(preamble, signatureRegex);
+            if (cleaned) blocks.push({ type: 'answer', content: cleaned, isFromNarrative: true });
+        }
+        
+        // The thought content itself
+        if (match[1].trim()) {
+            blocks.push({ type: 'thought', content: match[1].trim() });
+        }
+        lastIdx = thinkRegex.lastIndex;
+    }
+
+    // Remaining text after last <think> tag
+    const remaining = text.substring(lastIdx);
+    if (remaining.trim()) {
+        const cleaned = skipCleaning ? remaining.trim() : cleanTechnicalNoise(remaining, signatureRegex);
+        if (cleaned) blocks.push({ type: 'answer', content: cleaned, isFromNarrative: true });
+    }
+
+    return blocks;
+}
+
+export function extractToolSnippet(toolName: string, currentFiles: any, currentTools: any): string {
+    // 1. Try to find in CORE Library
+    const libraryFile = Object.keys(currentFiles).find(k => k.toLowerCase().endsWith('tool_usage_library.md'));
+    const libraryContent = libraryFile ? currentFiles[libraryFile] : '';
+
+    if (libraryContent) {
+        const escapedName = toolName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`## \\[${escapedName}\\]\\s*\\r?\\n([\\s\\S]*?)(?=\\n##|$)`, 'i');
+        const match = libraryContent.match(regex);
+        if (match) return match[1].trim();
+    }
+
+    // 2. Try to find in Skill Folder (usage.md)
+    const skillUsageFile = Object.keys(currentTools).find(k =>
+        k.toLowerCase().includes(toolName.toLowerCase()) && k.toLowerCase().endsWith('usage.md')
+    );
+    if (skillUsageFile) return currentTools[skillUsageFile];
+
+    return "";
+}
+
+export function autoExtractSources(actions: string[], history: any[], tools: any[]): string[] {
+    const found: Set<string> = new Set();
+
+    // 1. Scan for filenames (exclude internal protocol files)
+    actions.forEach(a => {
+        const fileMatch = a.match(/"filename"\s*:\s*"(.*?)"/i);
+        if (fileMatch) {
+            const fn = fileMatch[1];
+            const isInternal = fn.startsWith('@CORE/') || fn.toLowerCase() === 'tasks.md' || fn.toLowerCase() === 'active_context.md';
+            if (!isInternal) found.add(fn);
+        }
+    });
+
+    // 2. Cross-reference actions with dynamic tool metadata
+    actions.forEach(a => {
+        tools.forEach(t => {
+            const toolName = t.function.name;
+            // Check if toolName is present in the action string (e.g. "tool_name(...)")
+            const nameRegex = new RegExp(`(^|[^a-zA-Z0-9_])${toolName}([^a-zA-Z0-9_]|$)`, 'i');
+            if (nameRegex.test(a)) {
+                const canonical = (TOOL_NAME_ALIASES as any)[toolName.toLowerCase()] || toolName;
+                if (['web_search', 'read_url'].includes(canonical)) {
+                    found.add("Investigación Web");
+                } else if (canonical !== 'final_answer' && !['read_file', 'update_file', 'patch_file', 'delete_file', 'list_files', 'search_files'].includes(canonical)) {
+                    // Use the first part of the description as the source name
+                    const desc = t.function.description.split('.')[0].split('|')[0].trim();
+                    found.add(`Neural Skill: ${desc || toolName}`);
+                }
+            }
+        });
+    });
+
+    // 3. Scan for URLs in tool responses
+    history.forEach(m => {
+        if (m.role === 'tool' && typeof m.content === 'string' && m.content.length < 5000) {
+            const urls = m.content.match(/https?:\/\/[a-z0-9.-]+\.[a-z]{2,}/gi);
+            if (urls) urls.slice(0, 2).forEach(u => found.add(u));
+        }
+    });
+    return Array.from(found);
+}
+
+export async function applyBatchTaskTicking(
+    toolCalls: ToolCall[], 
+    currentFiles: any, 
+    currentWorkSpace: any, 
+    saveFileFn: any,
+    onLog: (msg: string) => void
+): Promise<{ modified: boolean, turnAutoTasks: string[] }> {
+    const turnAutoTasks: string[] = [];
+    if (toolCalls.length === 0) return { modified: false, turnAutoTasks };
+    
+    const findTaskStore = () => {
+        // Enforce STRICT predefined route: @CORE/tasks.md
+        const keys = Object.keys(currentFiles);
+        const taskKey = keys.find(k => k.toLowerCase() === 'tasks.md');
+        if (taskKey) return { store: currentFiles, target: 'core' as FileTarget, key: taskKey };
+        return null;
+    };
+
+
+
+    const taskInfo = findTaskStore();
+    if (!taskInfo) return { modified: false, turnAutoTasks };
+
+    const { store, target, key } = taskInfo;
+    const content = store[key];
+    if (!content || !content.trim()) return { modified: false, turnAutoTasks };
+
+    let lines = content.split('\n');
+    let modified = false;
+
+    // Mapping tool names to natural language synonyms for better detection
+    const toolSynonyms: Record<string, string[]> = {
+        'read_file': ['leer', 'consultar', 'revisar', 'analizar', 'ver', 'read', 'check', 'inspect', 'view', '读取', '阅读', '查看', '浏览'],
+        'update_file': ['escribir', 'crear', 'guardar', 'modificar', 'actualizar', 'generar', 'write', 'create', 'save', 'update', 'generate', 'make', '写', '写入', '编写', '创建', '保存', '更新'],
+        'patch_file': ['parchear', 'aplicar', 'arreglar', 'corregir', 'editar', 'patch', 'apply', 'fix', 'correct', 'edit', 'refactor', '修补', '应用', '修复', '编辑'],
+        'list_files': ['listar', 'explorar', 'ver archivos', 'inspeccionar', 'list', 'explore', 'ls', 'dir', 'browse', '列出', '表', '浏览', '目录'],
+        'search_files': ['buscar', 'encontrar', 'localizar', 'search', 'find', 'locate', 'grep', '搜索', '查找', '搜寻'],
+        'web_search': ['investigar', 'noticias', 'google', 'buscar en internet', 'web_research', 'deep_research', 'research', 'search web', 'look up', '搜网', '网络搜索', '搜索网页'],
+        'web_research': ['investigar', 'noticias', 'google', 'buscar en internet', 'web_search', 'deep_research', 'research', 'search web', 'look up', '搜网', '网络搜索', '搜索网页'],
+        'deep_research': ['investigar', 'noticias', 'google', 'buscar en internet', 'web_search', 'web_research', 'research', 'deep research', '深度搜索', '深入搜索', '深入探查'],
+        'run_console': ['ejecutar', 'comando', 'terminal', 'consola', 'git', 'run', 'execute', 'command', 'terminal', 'console', 'npm', 'node', 'python', '运行', '执行', '命令'],
+        'get_system_metrics': ['métricas', 'cpu', 'ram', 'estado del sistema', 'salud', 'metrics', 'status', 'health', 'system info', '系统指标', '状态', '健康度'],
+        'list_available_skills': ['habilidades', 'skills', 'capacidades', 'funciones extra', 'list skills', 'show abilities', '列表技能', '展示能力', '技能列表'],
+        'miku_clock': ['hora', 'reloj', 'tiempo', 'quién eres', 'time', 'clock', 'greet', '时间', '小时', '问候', '打招呼'],
+        'get_crypto_price': ['bitcoin', 'crypto', 'precio', 'cripto', 'cotización', 'moneda', 'price', 'coin', 'market', '比特币', '加密货币', '价格', '行情', '汇率'],
+        'delete_file': ['borrar', 'eliminar', 'quitar', 'limpiar', 'suprimir', 'delete', 'remove', 'rm', 'clear', 'erase', '删除', '移除', '清理', '清除'],
+        'final_answer': ['finalizar', 'terminar', 'concluir', 'respuesta', 'completar', 'reportar', 'informar', 'conclusión', 'finish', 'complete', 'conclude', 'answer', 'report', 'done', '完成', '结束', '回答', '报告', '结论', '结论性报告']
+    };
+
+    const normalizeForMatch = (s: string) => {
+        return s.toLowerCase()
+            .replace(/@(?:CORE|WORKSPACE|TOOLS|LIBRARY|EXTRA|ROOT)\//gi, '') // Strip common prefixes
+            .replace(/\.[a-z0-9]+$/i, '') // Strip extensions for fuzzy matching
+            .trim();
+    };
+
+    for (const toolCall of toolCalls) {
+        const toolName = toolCall.function.name;
+        const args = toolCall.function.arguments || {};
+        // Expanded mainArg detection to include text (for final_answer) and item/query variations
+        const mainRaw = (args.filename || args.query || args.topic || args.url || args.command || args.path || args.text || args.item || '').toString();
+        const mainArgClean = normalizeForMatch(mainRaw);
+        
+        let markedInThisPass = false;
+        lines = lines.map(line => {
+            // Skip already checked lines or headers
+            if (markedInThisPass || !line.trim().startsWith('- [ ]')) return line;
+
+            const lowerLine = line.toLowerCase();
+            const lowerTool = toolName.toLowerCase();
+            const cleanLine = normalizeForMatch(line.replace('- [ ]', ''));
+            
+            // Rule 1: Direct name match (e.g., "- [ ] @web_search")
+            const directMatch = lowerLine.includes(lowerTool) || lowerLine.includes(`@${lowerTool}`);
+            
+            // Rule 2: Synonym match
+            const hasSynonym = (toolSynonyms[lowerTool] || []).some(s => lowerLine.includes(s.toLowerCase()));
+            const toolMatch = directMatch || hasSynonym;
+            
+            // Rule 3: Argument match (Improved: removed length > 2 restriction, added normalization)
+            // If mainArgClean is empty, we only care about toolMatch
+            const argMatch = mainArgClean.length > 0 && (cleanLine.includes(mainArgClean) || mainArgClean.includes(cleanLine));
+            
+            // Exclude meta-updates to tasks.md itself
+            if (lowerTool === 'update_file' || lowerTool === 'patch_file') {
+                if (mainArgClean.includes('tasks')) return line;
+            }
+
+            // COHERENCE POLICY: Match if tool concept matches target concept
+            if (toolMatch && (argMatch || mainArgClean === "")) {
+                modified = true;
+                markedInThisPass = true;
+                const taskName = line.replace('- [ ]', '').trim();
+                if (!turnAutoTasks.includes(taskName)) turnAutoTasks.push(taskName);
+                return line.replace('- [ ]', '- [x]');
+            }
+            return line;
+        });
+    }
+
+    if (modified) {
+        const newContent = lines.join('\n').trim();
+        await saveFileFn(key, newContent, target);
+        store[key] = newContent;
+    }
+    
+    return { modified, turnAutoTasks };
+}
+
+export function getActionFingerprint(toolName: string, args: Record<string, any>): string {
+    if (!toolName) return 'unknown_action';
+    try {
+        const safeArgs = args || {};
+        const sortedArgs = Object.keys(safeArgs).sort().reduce((acc, key) => {
+            acc[key] = safeArgs[key];
+            return acc;
+        }, {} as Record<string, any>);
+        return `${toolName}|${JSON.stringify(sortedArgs)}`;
+    } catch (err) {
+        return `${toolName}|error_fingerprint`;
+    }
+}

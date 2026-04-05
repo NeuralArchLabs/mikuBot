@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ query }} - searXena</title>
+    
+    <link rel="stylesheet" href="/static/style.css?v=3.6">
+    <link rel="icon" type="image/jpeg" href="/static/favIcon.jpg">
+    <meta name="referrer" content="no-referrer">
+</head>
+
+<body>
+    <div class="header">
+        <div class="header-inner">
+            <h2 onclick="location.href='/'" class="brand-clickable">searXena</h2>
+            <div class="search-box-header">
+                <form action="/search" method="get" id="search-form">
+                    <input type="text" name="q" class="search-input" id="search-input" value="{{ query }}"
+                        autocomplete="off"
+                        placeholder="{{ {'en': 'Search the web...', 'zh': '在网络上搜索...'}.get(lang, 'Busca en la web...') }}"
+                        title="{{ {'en': 'Search query', 'zh': '搜索查询'}.get(lang, 'Query de búsqueda') }}">
+                    <input type="hidden" name="category" id="cat-input" value="{{ category or 'general' }}">
+                    <input type="hidden" name="pageno" id="page-input" value="{{ pageno or 1 }}">
+                    <div id="suggestions-box"></div>
+                </form>
+            </div>
+            <div class="header-actions">
+                <!-- Botón de preferencias integrado en el header (Results Page) -->
+                <a href="/settings" class="settings-btn-inline"
+                    title="{{ {'en': 'Configure engines and privacy', 'zh': '配置引擎和隐私'}.get(lang, 'Configurar motores y privacidad') }}">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3" />
+                        <path
+                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                    <span>{{ {'en': 'Preferences', 'zh': '偏好设置'}.get(lang, 'Preferencias') }}</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="results-page-layout">
+        <!-- Columna Principal -->
+        <div class="main-results">
+            <div class="tabs-container">
+                <a class="tab {% if not category or category == 'general' %}active{% endif %}"
+                    onclick="changeCat('general')">{{ {'en': 'General', 'zh': '综合'}.get(lang, 'General') }}</a>
+                <a class="tab {% if category == 'images' %}active{% endif %}" onclick="changeCat('images')">{{ {'en':
+                    'Images', 'zh': '图片'}.get(lang, 'Imágenes') }}</a>
+                <a class="tab {% if category == 'videos' %}active{% endif %}" onclick="changeCat('videos')">Videos</a>
+                <a class="tab {% if category == 'news' %}active{% endif %}" onclick="changeCat('news')">{{ {'en':
+                    'News', 'zh': '新闻'}.get(lang, 'Noticias') }}</a>
+                <a class="tab {% if category == 'maps' %}active{% endif %}" onclick="changeCat('maps')">{{ {'en':
+                    'Maps', 'zh': '地图'}.get(lang, 'Mapas') }}</a>
+                <a class="tab {% if category == 'shopping' %}active{% endif %}"
+                    onclick="changeCat('shopping')">Shopping</a>
+                <a class="tab {% if category == 'it' %}active{% endif %}" onclick="changeCat('it')">{{
+                    {'en': 'IT/Science', 'zh': 'IT/科学'}.get(lang, 'TI/Ciencia') }}</a>
+                <a class="tab {% if category == 'social' %}active{% endif %}" onclick="changeCat('social')">Social</a>
+            </div>
+
+            {% if not results %}
+            <div class="no-results">
+                <div class="no-results-icon">🔍</div>
+                <h3>{{ {'en': 'No results found', 'zh': '未找到结果'}.get(lang, 'No se encontraron resultados') }}</h3>
+                <p class="text-muted">{{ {'en': 'Try a broader search or check your connection.', 'zh':
+                    '尝试更宽泛的搜索或检查您的连接。'}.get(lang, 'Intenta buscar algo más general o verifica tu conexión.') }}</p>
+            </div>
+            {% endif %}
+
+            <!-- Resultado Destacado Principal (Featured Answer) -->
+            {% if category in ('general', 'it') or not category %}
+            {% set featured = results | selectattr('template', 'equalto', 'infobox.html') | first %}
+            {% if featured %}
+            <div class="infobox-container featured-answer">
+                <div class="featured-badge">{{ {'en': 'Featured Answer', 'zh': '精选回答'}.get(lang, 'Respuesta Destacada')
+                    }}</div>
+                <div class="infobox-header-main">
+                    {% if featured.img_src %}
+                    {% if featured.source == 'wikipedia' or 'wikimedia' in featured.img_src %}
+                    <img src="{{ featured.img_src if featured.img_src.startswith('http') else 'https:' ~ featured.img_src }}"
+                        alt="Info Image" class="featured-image"
+                        onerror="this.onerror=null; this.src='/static/placeholder.png'; this.style.opacity='0';">
+                    {% else %}
+                    <img src="/proxify?url={{ featured.img_src | urlencode }}" alt="Info Image" class="featured-image"
+                        onerror="this.onerror=null; this.src='/static/placeholder.png'; this.style.opacity='0';">
+                    {% endif %}
+                    {% endif %}
+                    <div class="infobox-body-main">
+                        <div class="infobox-title">{{ featured.title }}</div>
+                        <input type="checkbox" id="read-more-toggle" class="read-more-checkbox">
+                        <p class="infobox-content">{{ featured.content }}</p>
+                        <label for="read-more-toggle" class="read-more-label">{{ {'en': 'Read More', 'zh':
+                            '继续阅读'}.get(lang, 'Continuar Leyendo') }}</label>
+                        {% if featured.url %}<a href="{{ featured.url }}" target="_blank" class="infobox-link"
+                            rel="noopener noreferrer nofollow">{{ {'en': 'Read more on', 'zh': '阅读更多来自'}.get(lang, 'Leer
+                            más en') }} {{
+                            featured.source or 'la fuente' }} →</a>{% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% endif %}
+
+            <!-- Otros Infoboxes Móvil (Omitir el ya destacado) -->
+            {% for result in results if result.template == 'infobox.html' and result != featured %}
+            <div class="infobox-container mobile-only">
+                <div class="infobox-title">{{ result.title }}</div>
+                <p class="infobox-content">{{ result.content }}</p>
+                {% if result.url %}<a href="{{ result.url }}" target="_blank" class="infobox-link"
+                    rel="noopener noreferrer nofollow">{{ {'en': 'Read more on', 'zh': '阅读更多来自'}.get(lang, 'Leer más
+                    en') }} {{
+                    result.source or ({'en': 'the source', 'zh': '来源'}.get(lang, 'la fuente')) }}</a>{% endif %}
+            </div>
+            {% endfor %}
+
+            {% if category == 'images' %}
+            <!-- Vista de Imágenes -->
+            <div class="images-grid">
+                {% for result in results if result.template == 'images.html' or result.img_src %}
+                <div class="image-card" onclick="setPreview(this)" 
+                    data-title="{{ result.title|e }}" 
+                    data-content="{{ result.source|default('') }}" 
+                    data-url="{{ result.url|e }}"
+                    data-full-img="/proxify?url={{ (result.img_src or result.thumbnail_src) | urlencode }}"
+                    data-icon="https://www.google.com/s2/favicons?sz=64&domain={{ result.url|urlencode }}">
+                    <img src="/proxify?url={{ (result.thumbnail_src or result.img_src) | urlencode }}"
+                        alt="{{ result.title }}" loading="lazy" onerror="this.src='/static/placeholder.png';">
+                    <div class="image-info">
+                        <div class="image-source">{{ result.sources|join(', ') }}</div>
+                        <div class="image-title-text">{{ result.title }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {% elif category == 'videos' %}
+            <!-- Vista de Videos -->
+            <div class="videos-list">
+                {% for result in results if result.template == 'videos.html' or (result.url and ('youtube' in result.url
+                or 'vimeo' in result.url)) %}
+                <div class="video-card" onclick="setPreview(this)" 
+                    data-title="{{ result.title|striptags|e }}" 
+                    data-content="{{ result.content|striptags|e }}" 
+                    data-url="{{ result.url|e }}"
+                    data-icon="https://www.google.com/s2/favicons?sz=64&domain={{ result.url|urlencode }}">
+                    {% if result.img_src or result.thumbnail_src %}
+                    <a href="{{ result.url }}" target="_blank" rel="noopener noreferrer nofollow">
+                        <img src="/proxify?url={{ (result.img_src or result.thumbnail_src) | urlencode }}"
+                            class="video-thumb" alt="{{ result.title }}" onerror="this.src='/static/placeholder.png';">
+                    </a>
+                    {% endif %}
+                    <div class="video-details">
+                        <div class="source-tags">
+                            {% for source in result.sources %}<span class="source-tag {{ source }}">{{ source
+                                }}</span>{% endfor %}
+                        </div>
+                        <a href="{{ result.url }}" class="video-title" target="_blank"
+                            rel="noopener noreferrer nofollow">{{ result.title|safe }}</a>
+                        <p class="result-content">{{ result.content|safe }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {% elif category == 'shopping' %}
+            <!-- Vista de Shopping -->
+            <div class="shopping-grid">
+                {% for result in results if result.template == 'shopping.html' or category == 'shopping' %}
+                <div class="shopping-card" onclick="setPreview(this)"
+                    data-title="{{ result.title|striptags|e }}" 
+                    data-content="{{ result.content|striptags|e }}" 
+                    data-url="{{ result.url|e }}"
+                    data-icon="https://www.google.com/s2/favicons?sz=64&domain={{ result.url|urlencode }}">
+                    {% if result.img_src or result.thumbnail_src %}
+                    <div class="shopping-image-container">
+                        <img src="/proxify?url={{ (result.img_src or result.thumbnail_src) | urlencode }}"
+                            class="shopping-thumb" alt="{{ result.title }}"
+                            onerror="this.parentElement.style.display='none';">
+                    </div>
+                    {% else %}
+                    <div class="shopping-image-container no-image">
+                        <img src="/proxify?url={{ ('https://www.google.com/s2/favicons?sz=128&domain=' ~ result.url) | urlencode }}"
+                            class="shopping-store-icon" alt="Favicon" onerror="this.style.display='none';">
+                    </div>
+                    {% endif %}
+                    <div class="shopping-body">
+                        <div class="shopping-title">{{ result.title|safe }}</div>
+                        {% if result.price %}
+                        <div class="shopping-price">{{ result.price }}</div>
+                        {% endif %}
+                        <p class="shopping-content">{{ (result.content|striptags|truncate(80)) if result.content else
+                            "{{ {'en': 'Product available.', 'zh': '产品可用。'}.get(lang, 'Producto disponible.') }}" }}</p>
+                        <div class="shopping-meta">
+                            <span class="source-tag {{ result.shopping_store or result.source }}">{{
+                                (result.shopping_store or result.source)|capitalize }}</span>
+                            <a href="{{ result.url }}" target="_blank" class="shopping-link"
+                                rel="noopener noreferrer nofollow">{{ {'en': 'View product', 'zh': '查看产品'}.get(lang,
+                                'Ver producto') }} →</a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {% elif category == 'maps' %}
+            <!-- Vista de Mapas -->
+            <div class="maps-list">
+                {% for result in results if result.source == 'osm' or 'map' in result.title|lower %}
+                <div class="infobox-container featured-answer maps-item">
+                    <div class="infobox-title">{{ result.title }}</div>
+                    <p class="infobox-content">{{ result.content }}</p>
+                    {% if result.is_map %}
+                    <div class="map-container">
+                        <iframe width="100%" height="300" frameborder="0" scrolling="no" marginheight="0"
+                            marginwidth="0" src="{{ result.map_embed_url }}"
+                            title="Mapa interactivo de {{ result.source|capitalize }}">
+                        </iframe>
+                    </div>
+                    {% endif %}
+                    <a href="{{ result.url }}" target="_blank" class="infobox-link"
+                        rel="noopener noreferrer nofollow">{{ {'en': 'View on', 'zh': '在...查看'}.get(lang, 'Ver en') }}
+                        {{ result.source|capitalize if result.source else
+                        ({'en': 'Source', 'zh': '来源'}.get(lang, 'Fuente')) }} →</a>
+                </div>
+                {% endfor %}
+            </div>
+
+            {% else %}
+            <!-- Vista General / Listado -->
+            {% for result in results if result.template != 'infobox.html' and result.template != 'images.html' and
+            result.template != 'videos.html' %}
+            <div class="result-card" 
+                onclick="setPreview(this)" 
+                data-title="{{ result.title|striptags|e }}" 
+                data-content="{{ result.content|striptags|e }}" 
+                data-url="{{ result.url|e }}"
+                data-source="{{ result.sources|join(', ')|e }}"
+                data-icon="https://www.google.com/s2/favicons?sz=64&domain={{ result.url|urlencode }}">
+                <div class="result-card-inner">
+                    <div class="result-body">
+                        <div class="result-header">
+                            <div class="title-container">
+                                <img src="/proxify?url={{ ('https://www.google.com/s2/favicons?sz=32&domain=' ~ result.url) | urlencode }}"
+                                    alt="Favicon" class="result-favicon" onerror="this.style.opacity='0';">
+                                <a href="{{ result.url }}" class="result-title" target="_blank"
+                                    rel="noopener noreferrer nofollow">{{ result.title|safe }}</a>
+                            </div>
+                        </div>
+                        <div class="result-url-line">
+                            <span class="result-url-text" title="{{ result.url }}">{{ result.url }}</span>
+                            <a href="/extract?url={{ result.url | urlencode }}" class="reader-link-badge" title="{{ {'en': 'Reader Mode', 'zh': '阅读模式'}.get(lang, 'Modo Lectura') }}">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                                <span>{{ {'en': 'Read', 'zh': '阅读'}.get(lang, 'Leer') }}</span>
+                            </a>
+                        </div>
+
+                        {% if result.price %}
+                        <div class="general-price-tag">
+                            {{ result.price }}
+                        </div>
+                        {% endif %}
+
+                        <p class="result-content">{{ result.content|safe }}</p>
+                        <div class="source-tags">
+                            {% for source in result.sources %}<span class="source-tag {{ source }}">{{ source
+                                }}</span>{% endfor %}
+                        </div>
+                    </div>
+                    {% if result.img_src or result.thumbnail_src %}
+                    <div class="result-thumbnail-container">
+                        <img src="/proxify?url={{ (result.thumbnail_src or result.img_src) | urlencode }}"
+                            alt="{{ result.title }}" class="result-thumbnail"
+                            onerror="this.parentElement.style.display='none';">
+                    </div>
+                    {% endif %}
+                </div>
+                <span class="result-count">{{ result.sources|length }} {{ {'en': 'sources', 'zh': '个来源'}.get(lang,
+                    'fuentes') }}</span>
+            </div>
+            {% endfor %}
+            {% endif %}
+
+            <!-- Paginación -->
+            {% if results %}
+            <div class="pagination">
+                {% if pageno > 1 %}
+                <button class="page-btn" onclick="goPage('{{ pageno - 1 }}')">← {{ {'en': 'Previous', 'zh':
+                    '上一页'}.get(lang, 'Anterior') }}</button>
+                {% endif %}
+                <span class="page-indicator">{{ {'en': 'Page', 'zh': '第'}.get(lang, 'Página') }} {{ pageno }}{{ ' 页' if
+                    lang == 'zh' else '' }}</span>
+                <button class="page-btn" onclick="goPage('{{ pageno + 1 }}')">{{ {'en': 'Next', 'zh': '下一页'}.get(lang,
+                    'Siguiente') }} →</button>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <!-- Pre-existing Infoboxes (Non-sticky, top) -->
+            {% if category in ('general', 'it') or not category %}
+            {% set infoboxes = results | selectattr('template', 'equalto', 'infobox.html') | list %}
+            {% if infoboxes %}
+            {% for info in infoboxes if info != featured %}
+            <div class="infobox-container sidebar-box">
+                <div class="infobox-title-sidebar">{{ info.title|e }}</div>
+                {% if info.img_src %}
+                {% if info.source == 'wikipedia' or 'wikimedia' in info.img_src %}
+                <img src="{{ info.img_src if info.img_src.startswith('http') else 'https:' ~ info.img_src }}" alt=""
+                    class="infobox-image" onerror="this.style.display='none';">
+                {% else %}
+                <img src="/proxify?url={{ info.img_src | urlencode }}" alt="" class="infobox-image"
+                    onerror="this.style.display='none';">
+                {% endif %}
+                {% endif %}
+                <p class="infobox-content-sidebar">{{ info.content|striptags }}</p>
+                {% if info.url %}
+                <a href="{{ info.url }}" target="_blank" class="infobox-link-sidebar">{{ info.source|capitalize }} →</a>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% endif %}
+            {% endif %}
+
+            <div class="infobox-container sidebar-tips">
+                <h3 class="sidebar-tips-title">{{ {'en': 'Pro Tips', 'zh': '专业提示'}.get(lang, 'Sugerencias Pro') }}</h3>
+                <p class="sidebar-tips-text">{{ pro_tip|safe }}</p>
+            </div>
+
+            <!-- Sticky Block (Preview + Suggestions) -->
+            <div class="sticky-sidebar-block">
+                <!-- Preview Pane (Penúltimo) -->
+                <div id="preview-pane" class="preview-container sidebar-box">
+                    <div class="preview-close-btn" onclick="closePreview()">×</div>
+                    <div class="preview-header">
+                        <img id="preview-icon" src="" alt="" class="preview-favicon">
+                        <h3 id="preview-title" class="preview-title"></h3>
+                    </div>
+                    <div id="preview-url" class="preview-url"></div>
+                    
+                    <!-- Area para preview de imagen grande -->
+                    <div id="preview-image-container" class="preview-image-container" onclick="openLightbox()">
+                        <img id="preview-image-main" src="" alt="Full Preview" class="preview-image-main">
+                    </div>
+
+                    <p id="preview-content" class="preview-content-text"></p>
+                    <div class="preview-actions">
+                        <a id="preview-link" href="#" target="_blank" class="preview-btn-main">{{ {'en': 'Visit Website', 'zh': '访问网站'}.get(lang, 'Visitar Sitio Web') }}</a>
+                        <a id="preview-reader-link" href="#" class="preview-btn-reader">{{ {'en': 'Reader Mode', 'zh': 'Modo Lectura'}.get(lang, 'Modo Lectura') }}</a>
+                    </div>
+                </div>
+
+                <!-- Suggestions / Related Searches (Último) -->
+                {% if related_searches %}
+                <div class="infobox-container sidebar-box suggestions-box">
+                    <h3 class="sidebar-tips-title">{{ {'en': 'Related Searches', 'zh': '相关搜索'}.get(lang, 'Búsquedas Relacionadas') }}</h3>
+                    <div class="related-list">
+                        {% for s in related_searches %}
+                        <a href="/search?q={{ s|urlencode }}" class="related-item">{{ s }}</a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p style="margin-bottom: 5px; opacity: 0.6; font-size: 0.75rem;">
+            {{ {'en': 'searXena provides a neutral search experience. If you require the personalization and conveniences based on tracking algorithms, we recommend using commercial search platforms directly.', 
+                'zh': 'searXena 提供中立的搜索体验。如果您需要基于跟踪算法的个性化和便捷功能，我们建议您直接使用商业搜索平台。'}.get(lang, 'searXena ofrece una experiencia de búsqueda neutral. Si requiere de la personalización y comodidades basadas en algoritmos de seguimiento, le recomendamos el uso directo de plataformas comerciales de búsqueda.') }}
+        </p>
+        <p>searXena 2026 — AGPLv3 Open Source — Built by <a href="https://github.com/NeuralArchLabs" class="credit-link"
+                target="_blank" rel="noopener noreferrer">Neural Arch Labs</a></p>
+    </footer>
+
+    <!-- Botón Volver Arriba -->
+    <button id="back-to-top" class="back-to-top" title="Volver arriba">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="18 15 12 9 6 15"></polyline>
+        </svg>
+    </button>
+
+    <!-- Lightbox para imágenes a pantalla completa -->
+    <div id="lightbox" class="lightbox" onclick="closeLightbox()">
+        <span class="lightbox-close">&times;</span>
+        <img id="lightbox-img" class="lightbox-content" src="" alt="Full size preview">
+    </div>
+
+    <script src="/static/main.js?v=3.6"></script>
+</body>
+
+</html>

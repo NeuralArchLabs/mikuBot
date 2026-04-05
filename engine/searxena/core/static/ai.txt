@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /api/v1/search
+Allow: /api/v1/tools_schema
+
+# searXena AI Integration
+# This project provides structured JSON endpoints for AI agents.
+# Use /api/v1/tools_schema to get the function calling definition.

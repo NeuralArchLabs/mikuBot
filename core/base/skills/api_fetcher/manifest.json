@@ -1,0 +1,36 @@
+{
+    "name": "api_fetcher",
+    "description": "Universal tool for making HTTP requests (GET, POST, PUT, DELETE) to any REST API or endpoint. Use it when you need to interact with external services via JSON.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "url": { "type": "string", "description": "Full endpoint URL (e.g., https://api.example.com/v1/data)" },
+            "method": { 
+                "type": "string", 
+                "enum": ["GET", "POST", "PUT", "DELETE"], 
+                "default": "GET",
+                "description": "The HTTP method to use." 
+            },
+            "headers": { 
+                "type": "object", 
+                "description": "Optional headers (e.g., {'Authorization': 'Bearer ...', 'Content-Type': 'application/json'})" 
+            },
+            "params": {
+                "type": "object",
+                "description": "Query parameters for the URL (e.g., ?id=123)"
+            },
+            "body": { 
+                "type": "object", 
+                "description": "Request body for POST/PUT methods (sent as JSON)." 
+            },
+            "timeout": {
+                "type": "number",
+                "default": 15,
+                "description": "Maximum wait time (timeout) in seconds."
+            }
+        },
+        "required": ["url"]
+    },
+    "runtime": "python",
+    "entry": "main.py"
+}

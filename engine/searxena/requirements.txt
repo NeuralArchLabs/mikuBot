@@ -1,0 +1,22 @@
+# Backend core
+fastapi
+uvicorn[standard]
+jinja2
+python-multipart
+httpx[http2]
+pydantic
+pydantic-settings
+
+# Search & Extraction Engine
+selectolax
+lxml
+lxml_html_clean
+courlan
+htmldate
+urllib3
+certifi
+charset-normalizer
+py3langid
+brotli
+zstandard
+justext

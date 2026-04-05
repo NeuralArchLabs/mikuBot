@@ -1,0 +1,24 @@
+.sx-bg-radial {
+    background: var(--sx-bg-radial);
+}
+
+.xena-paw-01 { animation-delay: 0.1s !important; }
+.xena-paw-02 { animation-delay: 0.9s !important; }
+.xena-paw-03 { animation-delay: 0.4s !important; }
+.xena-paw-04 { animation-delay: 1.2s !important; }
+.xena-paw-05 { animation-delay: 1.5s !important; }
+
+.searxena-title {
+    font-family: 'Outfit', sans-serif;
+    letter-spacing: -0.05em;
+}
+
+.paw-path-01 { animation-delay: 0s !important; }
+.paw-path-02 { animation-delay: 0.4s !important; }
+.paw-path-03 { animation-delay: 0.8s !important; }
+.paw-path-04 { animation-delay: 1.2s !important; }
+.paw-path-05 { animation-delay: 1.6s !important; }
+
+.xena-text-base {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+}

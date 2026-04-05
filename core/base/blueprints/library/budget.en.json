@@ -1,0 +1,7 @@
+{
+    "id": "budget",
+    "icon": "dollar-sign",
+    "category": "library",
+    "title": "Monthly Budget",
+    "content": "# 💰 Monthly Budget — [MONTH/YEAR]\n\n## Income\n| Item | Amount |\n|------|--------|\n| Primary salary | $0.00 |\n| Freelance / Extra | $0.00 |\n| **Total Income** | **$0.00** |\n\n## Fixed Expenses\n| Item | Amount | Due Date |\n|------|--------|----------|\n| Rent / Mortgage | $0.00 | — |\n| Utilities (Light, Water, Gas) | $0.00 | — |\n| Internet / Phone | $0.00 | — |\n| Insurance | $0.00 | — |\n| Transportation | $0.00 | — |\n| **Total Fixed** | **$0.00** | |\n\n## Variable Expenses\n| Item | Budget | Actual | Difference |\n|------|--------|--------|-----------|\n| Groceries | $0.00 | $0.00 | — |\n| Entertainment | $0.00 | $0.00 | — |\n| Clothing / Personal | $0.00 | $0.00 | — |\n| **Total Variable** | **$0.00** | **$0.00** | |\n\n## Savings & Investment\n| Destination | Goal | Deposited |\n|-------------|------|-----------|\n| Emergency fund | $0.00 | $0.00 |\n| Investments | $0.00 | $0.00 |\n\n## Final Balance\n- **Income**: $0.00\n- **Expenses**: $0.00\n- **Savings**: $0.00\n- **Balance**: $0.00\n"
+}

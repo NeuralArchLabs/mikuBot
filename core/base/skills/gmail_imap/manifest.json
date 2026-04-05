@@ -1,0 +1,41 @@
+{
+    "name": "gmail_imap",
+    "description": "Neural access to emails via IMAP. Allows listing, reading, and searching messages in Gmail and other compatible providers.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "email": {
+                "type": "string",
+                "description": "Your full email address."
+            },
+            "app_password": {
+                "type": "string",
+                "description": "16-character App Password (generated in your Google account security settings)."
+            },
+            "action": {
+                "type": "string",
+                "enum": [
+                    "list",
+                    "search"
+                ],
+                "default": "list",
+                "description": "Action to perform: 'list' for the most recent emails or 'search' to find by sender or subject."
+            },
+            "query": {
+                "type": "string",
+                "description": "Search term (e.g., 'FROM google' or 'SUBJECT report'). Optional for 'list'."
+            },
+            "limit": {
+                "type": "integer",
+                "default": 5,
+                "description": "Number of emails to retrieve."
+            }
+        },
+        "required": [
+            "email",
+            "app_password"
+        ]
+    },
+    "runtime": "python",
+    "entry": "main.py"
+}

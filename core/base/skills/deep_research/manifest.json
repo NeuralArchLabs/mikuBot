@@ -1,0 +1,30 @@
+{
+    "name": "deep_research",
+    "description": "Exhaustive multi-language research tool. Performs cross-searches (Spanish and English), filters irrelevant information, and extracts core technical content from multiple sources to report precise and updated data.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "topic": {
+                "type": "string",
+                "description": "Technical/complex topic."
+            },
+            "categories": {
+                "type": "array",
+                "items": { "type": "string", "enum": ["general", "images", "videos", "news", "maps", "shopping", "it", "social"] },
+                "description": "SearXena categories. Default: ['general']. Combinations like ['it', 'general'] are recommended.",
+                "default": ["general"]
+            },
+            "target_language": {
+                "type": "string",
+                "enum": ["es", "en", "both"],
+                "description": "Language strategy.",
+                "default": "both"
+            }
+        },
+        "required": [
+            "topic"
+        ]
+    },
+    "runtime": "python",
+    "entry": "main.py"
+}

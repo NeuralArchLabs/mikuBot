@@ -1,0 +1,11 @@
+{
+    "name": "list_available_skills",
+    "description": "Lists all installed and enabled Neural Skills (dynamic tools) in the system. Use it to discover your additional capabilities.",
+    "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+    },
+    "runtime": "python",
+    "entry": "main.py"
+}
