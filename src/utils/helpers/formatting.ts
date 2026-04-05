@@ -3,6 +3,23 @@
  * Data formatting and HTML conversion utilities
  */
 
+/** Emoji shortcode map */
+const EMOJI_MAP: Record<string, string> = {
+    smile: '😊', grin: '😁', joy: '😂', heart: '❤️', fire: '🔥',
+    rocket: '🚀', thumbsup: '👍', thumbsdown: '👎', star: '⭐', eyes: '👀',
+    warning: '⚠️', check: '✅', cross: '❌', tada: '🎉', clap: '👏',
+    bulb: '💡', gear: '⚙️', bug: '🐛', zap: '⚡', lock: '🔒',
+    unlock: '🔓', key: '🔑', globe: '🌍', wave: '👋', muscle: '💪',
+    brain: '🧠', robot: '🤖', sparkles: '✨', rainbow: '🌈', moon: '🌙',
+    sun: '☀️', snowflake: '❄️', crown: '👑', diamond: '💎', sword: '⚔️',
+    shield: '🛡️', target: '🎯', chart: '📊', code: '💻', book: '📚',
+    pencil: '✏️', bell: '🔔', mail: '📧', phone: '📱', camera: '📷',
+    clock: '🕐', calendar: '📅', pin: '📌', link: '🔗', search: '🔍',
+    arrow_right: '→', arrow_left: '←', arrow_up: '↑', arrow_down: '↓',
+    info: 'ℹ️', question: '❓', exclamation: '❗', red_circle: '🔴',
+    yellow_circle: '🟡', green_circle: '🟢', blue_circle: '🔵',
+};
+
 /**
  * Converts normalized Markdown to HTML with custom styling.
  *
@@ -13,101 +30,173 @@ export const toHtml = (md: string): string => {
     if (!md) return '';
 
     let html = md;
-
-    // 1. Protect HTML tags that should render as actual elements
-    html = html
-        .replace(/<details/g, '‹details')
-        .replace(/<\/details>/g, '‹/details›')
-        .replace(/<summary>/g, '‹summary›')
-        .replace(/<\/summary>/g, '‹/summary›')
-        .replace(/<sub>/g, '‹sub›')
-        .replace(/<\/sub>/g, '‹/sub›')
-        .replace(/<sup>/g, '‹sup›')
-        .replace(/<\/sup>/g, '‹/sup›')
-        .replace(/<kbd>/g, '‹kbd›')
-        .replace(/<\/kbd>/g, '‹/kbd›')
-        .replace(/<mark>/g, '‹mark›')
-        .replace(/<\/mark>/g, '‹/mark›')
-        .replace(/<u>/g, '‹u›')
-        .replace(/<\/u>/g, '‹/u›')
-        .replace(/<div\s+align="center">/gi, '‹div-center›')
-        .replace(/<\/div>/g, '‹/div›');
-
-    // 2. HTML escape (after protecting inline tags)
-    html = html
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-
-    // 3. Restore protected HTML tags with styles
-    html = html
-        .replace(/‹details/g, '<details class="bg-slate-900/40 border border-white/5 rounded-xl my-4 py-1"')
-        .replace(/‹\/details›/g, '</details>')
-        .replace(/‹summary›/g, '<summary class="px-4 py-2 cursor-pointer font-bold text-cyan-400">')
-        .replace(/‹\/summary›/g, '</summary>')
-        .replace(/‹sub›/g, '<sub>')
-        .replace(/‹\/sub›/g, '</sub>')
-        .replace(/‹sup›/g, '<sup>')
-        .replace(/‹\/sup›/g, '</sup>')
-        .replace(/‹kbd›/g, '<kbd class="bg-black/40 border border-white/15 rounded px-1.5 py-0.5 text-xs font-mono text-slate-200 shadow-sm mx-0.5">')
-        .replace(/‹\/kbd›/g, '</kbd>')
-        .replace(/‹mark›/g, '<mark class="bg-amber-400/20 text-amber-200 px-0.5 rounded">')
-        .replace(/‹\/mark›/g, '</mark>')
-        .replace(/‹u›/g, '<u class="underline underline-offset-2 decoration-cyan-500/40">')
-        .replace(/‹\/u›/g, '</u>')
-        .replace(/‹div-center›/g, '<div style="text-align:center">')
-        .replace(/‹\/div›/g, '</div>');
-
-    // 4. PRE-EXTRACTION: Protect high-priority blocks from being broken by line parsers
     const pieces: string[] = [];
 
-    // 4a. Code blocks (fenced)
+    // 0. PRE-EXTRACTION: Protect inline and fenced code blocks first
+    // This prevents tags inside code blocks from being treated as real HTML
     html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (match, lang, code) => {
         const id = `__BLOCK_${pieces.length}__`;
         const langClean = lang.toLowerCase();
         const codeTrimmed = code.trim();
         const highlighted = highlightCode(codeTrimmed, langClean);
         const encodedCode = encodeURIComponent(codeTrimmed);
-        
         const isDiagram = ['mermaid', 'tree', 'flowchart', 'graph', 'statediagram', 'pie', 'gitgraph', 'erdiagram', 'mindmap', 'statediagram-v2'].includes(langClean);
         const containerClass = isDiagram 
             ? 'relative group bg-black/40 px-12 py-10 rounded-3xl my-8 border border-transparent hover:border-cyan-500/25 shadow-2xl transition-all max-w-fit mx-auto min-w-[55%]' 
             : 'relative group bg-black/30 px-6 py-5 rounded-2xl my-6 overflow-x-auto border border-transparent hover:border-cyan-500/20 transition-all';
-            
-        // Minimalist premium copy button
-        const copyButton = `<button class="absolute top-5 right-5 text-slate-500/60 hover:text-cyan-400/90 p-1 opacity-0 group-hover:opacity-100 transition-all hover:scale-110 active:scale-90 cursor-pointer z-10" title="Copy code" onclick="const btn=this; const icon=btn.querySelector('i'); const code=decodeURIComponent('${encodedCode}'); navigator.clipboard.writeText(code).then(() => { icon.className='fas fa-check text-emerald-400'; setTimeout(() => icon.className='fas fa-copy', 2000); })"><i class="fas fa-copy text-sm"></i></button>`;
-
+        const copyButton = `<button class="absolute top-5 right-5 text-slate-500/60 hover:text-cyan-400/90 p-1 opacity-0 group-hover:opacity-100 transition-all hover:scale-110 active:scale-90 cursor-pointer z-10" onclick="const btn=this; const icon=btn.querySelector('i'); const code=decodeURIComponent('${encodedCode}'); navigator.clipboard.writeText(code).then(() => { icon.className='fas fa-check text-emerald-400'; setTimeout(() => icon.className='fas fa-copy', 2000); })"><i class="fas fa-copy text-sm"></i></button>`;
         pieces.push(`<pre class="${containerClass}">${copyButton}<code class="text-sm shadow-none font-mono leading-relaxed">${highlighted}</code></pre>`);
         return `\n${id}\n`;
     });
 
-    // 4b. Math block formulas ($$ ... $$)
+    html = html.replace(/`([^`]+)`/g, (match, code) => {
+        const id = `__BLOCK_${pieces.length}__`;
+        // Escape < and > to prevent them from becoming pieces later
+        const escapedCode = code.replace(/</g, '‹').replace(/>/g, '›');
+        pieces.push(`<code class="bg-black/40 px-1.5 py-0.5 rounded text-amber-300 font-mono text-[0.9em] border border-white/10 mx-1">${escapedCode}</code>`);
+        return id;
+    });
+
+    // 1. Protect HTML tags that should render as actual elements
+    // Complex Block Protection (Details)
+    html = html.replace(/<details[^>]*>([\s\S]*?)<\/details>/gi, (match) => {
+        const id = `__BLOCK_${pieces.length}__`;
+        let sMatch = match.match(/<summary>([\s\S]*?)<\/summary>/i);
+        let summaryText = sMatch ? sMatch[1].replace(/^[▶►▸▼] ?/g, '').trim() : 'Details';
+        let bodyRaw = sMatch ? match.replace(sMatch[0], '') : match;
+        let bodyContent = bodyRaw.replace(/^<details[^>]*>/i, '').replace(/<\/details>$/i, '').trim();
+
+        pieces.push(`<details class="bg-black/10 border border-white/5 rounded-xl my-6 overflow-hidden group/details shadow-2xl transition-all cursor-pointer">` +
+            `<summary class="px-8 py-5 font-black text-cyan-400/90 uppercase tracking-widest text-[11px] hover:bg-white/5 transition-all outline-none list-none select-none flex items-center gap-3">` +
+            `<span class="group-open/details:rotate-90 transition-transform">▶</span>${summaryText}</summary>` +
+            `<div class="details-content-body px-12 py-8 text-slate-300 leading-loose bg-black/10 select-text border-t border-white/5">${toHtml(bodyContent)}</div></details>`);
+        return `\n${id}\n`;
+    });
+
+    // Protect <div> with full content
+    html = html.replace(/<div\s+([^>]*?)>([\s\S]*?)<\/div>/gi, (match, attrs, content) => {
+        const id = `__BLOCK_${pieces.length}__`;
+        pieces.push(`<div ${attrs}>${toHtml(content)}</div>`);
+        return `\n${id}\n`;
+    });
+
+    html = html
+        .replace(/<span\s*([^>]*?)>/gi, '‹span $1›')
+        .replace(/<\/span>/g, '‹/span›')
+        .replace(/<p\s*([^>]*?)>/gi, '‹p $1›')
+        .replace(/<\/p>/g, '‹/p›')
+        .replace(/<br\s*\/?>/gi, '‹br›')
+        .replace(/<h([1-6])\s*([^>]*?)>/gi, '‹h$1 $2›')
+        .replace(/<\/h([1-6])>/gi, '‹/h$1›')
+        .replace(/<strong>/g, '‹strong›')
+        .replace(/<\/strong>/g, '‹/strong›')
+        .replace(/<em>/g, '‹em›')
+        .replace(/<\/em>/g, '‹/em›')
+        .replace(/<small\s*([^>]*?)>/gi, '‹small $1›')
+        .replace(/<\/small>/g, '‹/small›')
+        .replace(/<code\s*([^>]*?)>/gi, '‹code $1›')
+        .replace(/<\/code>/g, '‹/code›')
+        .replace(/<kbd\s*([^>]*?)>/gi, '‹kbd $1›')
+        .replace(/<\/kbd>/g, '‹/kbd›')
+        .replace(/<mark\s*([^>]*?)>/gi, '‹mark $1›')
+        .replace(/<\/mark>/g, '‹/mark›')
+        .replace(/<abbr\s+([^>]+)>/gi, '‹abbr $1›')
+        .replace(/<\/abbr>/g, '‹/abbr›')
+        .replace(/<u>/g, '‹u›')
+        .replace(/<\/u>/g, '‹/u›')
+        .replace(/<center\s*([^>]*?)>/gi, '‹center $1›')
+        .replace(/<\/center>/gi, '‹/center›');
+
+    // 3. Restore protected HTML tags with styles
+    html = html
+        .replace(/‹span\s*([^›]*?)›/gi, '<span $1>')
+        .replace(/‹\/span›/g, '</span>')
+        .replace(/‹p\s*([^›]*?)›/gi, '<p $1>')
+        .replace(/‹\/p›/g, '</p>')
+        .replace(/‹br›/g, '<br/>')
+        .replace(/‹h([1-6])\s*([^›]*?)›/gi, '<h$1 class="text-inherit font-black my-2" $2>')
+        .replace(/‹\/h([1-6])›/g, '</h$1>')
+        .replace(/‹strong›/g, '<strong class="text-amber-400 mx-0.5">')
+        .replace(/‹\/strong›/g, '</strong>')
+        .replace(/‹em›/g, '<em class="text-slate-300 mx-0.5">')
+        .replace(/‹\/em›/g, '</em>')
+        .replace(/‹small\s*([^›]*?)›/gi, '<small class="text-[0.85em] opacity-80 mx-1" $1>')
+        .replace(/‹\/small›/g, '</small>')
+        .replace(/‹code\s*([^›]*?)›/gi, '<code class="bg-black/40 px-1.5 py-0.5 rounded text-amber-300 font-mono text-[0.9em] border border-white/10 mx-1" $1>')
+        .replace(/‹\/code›/g, '</code>')
+        .replace(/‹kbd\s*([^›]*?)›/gi, '<kbd class="bg-black/50 border border-white/20 rounded px-1.5 py-0.5 text-xs font-mono text-slate-200 shadow-sm mx-1" $1>')
+        .replace(/‹\/kbd›/g, '</kbd>')
+        .replace(/‹mark\s*([^›]*?)›/gi, '<mark class="bg-amber-400/25 text-amber-200 px-1 py-0.5 rounded-sm border-b border-amber-400/30 mx-1" $1>')
+        .replace(/‹\/mark›/g, '</mark>')
+        .replace(/‹abbr\s+([^›]+)›/g, '<abbr $1 class="cursor-help border-b border-dotted border-cyan-400/50 decoration-cyan-400/30 text-cyan-200/90 font-bold mx-1">')
+        .replace(/‹\/abbr›/g, '</abbr>')
+        .replace(/‹u›/g, '<u class="underline underline-offset-2 decoration-cyan-500/40">')
+        .replace(/‹\/u›/g, '</u>')
+        .replace(/‹center\s*([^›]*?)›/gi, '<div class="text-center w-full" $1>')
+        .replace(/‹\/center›/g, '</div>')
+        .replace(/‹div-center›/g, '<div style="text-align:center">')
+        .replace(/‹img\s+([^›]+)›/g, '<img $1 class="max-w-full h-auto rounded-xl border border-white/10 my-4" />');
+
+    // 3b. High level extraction (Process non-rendered definitions early)
+    html = convertAbbreviationsToHtml(html);
+    html = convertDefinitionListsToHtml(html);
+
+    // 4. PRE-EXTRACTION: Protect high-priority blocks from being broken by line parsers
+    // 4a. Math block formulas ($$ ... $$)
     html = html.replace(/\$\$([\s\S]*?)\$\$/g, (match, formula) => {
         const id = `__BLOCK_${pieces.length}__`;
         pieces.push(`<div class="my-4 p-4 bg-black/20 border border-white/5 rounded-lg text-center font-serif text-lg italic text-slate-200 overflow-x-auto">${formula.trim()}</div>`);
         return `\n${id}\n`;
     });
 
-    // 4c. Admonitions / GFM Callouts (&gt; [!TYPE])
-    html = html.replace(/^&gt;\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*\n?((?:&gt;.*\n?)*)/gim, (match, type, body) => {
+    // 4b-ext. Raw HTML blocks (<div>, <span>, etc. multi-line)
+    // We capture balanced-ish opening/closing tags for common block elements
+    html = html.replace(/&lt;(div|span|section|article|aside|header|footer|nav)(?:\s+[^&gt;]*)?&gt;([\s\S]*?)&lt;\/\1&gt;/gi, (match, tag, content) => {
+        const id = `__BLOCK_${pieces.length}__`;
+        const restored = match.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+        pieces.push(`<div class="raw-html-container my-4">${restored}</div>`);
+        return `\n${id}\n`;
+    });
+
+    // 4c-ext. Universal Admonition Parser — Isolated and protected
+    // Matches: > [!TYPE] Title \n > Body (continuously)
+    html = html.replace(/^&gt;\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|DANGER|INFO|SUCCESS|FAILURE|BUG|EXAMPLE|QUOTE|QUESTION)\](?:\s+(.*))?\s*\n((?:&gt;.*\n?)*)/gim, (match, type, title, body) => {
         const id = `__BLOCK_${pieces.length}__`;
         const content = body.replace(/^&gt;\s?/gm, '').trim();
-        const styles: Record<string, { icon: string, color: string, border: string, bg: string }> = {
-            'NOTE':      { icon: 'ℹ️', color: 'text-blue-400',    border: 'border-blue-500/30',    bg: 'bg-blue-500/5' },
-            'TIP':       { icon: '💡', color: 'text-emerald-400', border: 'border-emerald-500/30', bg: 'bg-emerald-500/5' },
-            'IMPORTANT': { icon: '❗', color: 'text-amber-400',   border: 'border-amber-500/30',   bg: 'bg-amber-500/5' },
-            'WARNING':   { icon: '⚠️', color: 'text-orange-400',  border: 'border-orange-500/30',  bg: 'bg-orange-500/5' },
-            'CAUTION':   { icon: '🔴', color: 'text-rose-400',    border: 'border-rose-500/30',    bg: 'bg-rose-500/5' }
+        const typeUp = type.toUpperCase();
+        
+        const styles: Record<string, { icon: string, color: string, border: string, bg: string, glow?: string }> = {
+            'NOTE':      { icon: 'ℹ️', color: 'text-blue-400',    border: 'border-blue-500/40',    bg: 'bg-blue-500/5' },
+            'TIP':       { icon: '💡', color: 'text-emerald-400', border: 'border-emerald-500/40', bg: 'bg-emerald-500/5' },
+            'IMPORTANT': { icon: '❗', color: 'text-amber-400',   border: 'border-amber-500/40',   bg: 'bg-amber-500/5' },
+            'WARNING':   { icon: '⚠️', color: 'text-orange-400',  border: 'border-orange-500/40',  bg: 'bg-orange-500/5' },
+            'CAUTION':   { icon: '🔴', color: 'text-rose-400',    border: 'border-rose-500/40',    bg: 'bg-rose-500/5' },
+            'DANGER':    { icon: '☠️', color: 'text-red-400',      border: 'border-red-500/50',      bg: 'bg-red-500/8',      glow: 'shadow-[inset_0_0_20px_rgba(239,68,68,0.05)]' },
+            'INFO':      { icon: '📋', color: 'text-sky-400',      border: 'border-sky-500/40',      bg: 'bg-sky-500/5',      glow: 'shadow-[inset_0_0_20px_rgba(14,165,233,0.04)]' },
+            'SUCCESS':   { icon: '✅', color: 'text-green-400',    border: 'border-green-500/45',    bg: 'bg-green-500/7',    glow: 'shadow-[inset_0_0_20px_rgba(34,197,94,0.05)]' },
+            'FAILURE':   { icon: '💥', color: 'text-rose-400',     border: 'border-rose-500/50',     bg: 'bg-rose-500/7',     glow: 'shadow-[inset_0_0_20px_rgba(244,63,94,0.05)]' },
+            'BUG':       { icon: '🐛', color: 'text-fuchsia-400',  border: 'border-fuchsia-500/45',  bg: 'bg-fuchsia-500/6',  glow: 'shadow-[inset_0_0_20px_rgba(217,70,239,0.04)]' },
+            'EXAMPLE':   { icon: '📎', color: 'text-violet-400',   border: 'border-violet-500/40',   bg: 'bg-violet-500/5',   glow: 'shadow-[inset_0_0_20px_rgba(139,92,246,0.04)]' },
+            'QUOTE':     { icon: '💬', color: 'text-slate-400',    border: 'border-slate-500/40',    bg: 'bg-slate-800/40',   glow: 'shadow-[inset_0_0_20px_rgba(148,163,184,0.04)]' },
+            'QUESTION':  { icon: '❓', color: 'text-cyan-400',     border: 'border-cyan-500/40',     bg: 'bg-cyan-500/5',     glow: 'shadow-[inset_0_0_20px_rgba(34,211,238,0.04)]' },
         };
-        const s = styles[type.toUpperCase()];
-        pieces.push(`<div class="my-3 p-3 ${s.bg} border-l-3 ${s.border} rounded-r">`
-            + `<div class="flex items-center gap-2 mb-1 font-bold text-xs uppercase tracking-wider ${s.color}">${s.icon} ${type}</div>`
-            + `<div class="text-sm text-slate-300 leading-relaxed">${content}</div></div>`);
+
+        const s = styles[typeUp];
+        const displayTitle = title ? title.trim() : typeUp;
+        // Process the inner content immediately to handle tables/code inside
+        const processedContent = toHtml(content);
+        
+        pieces.push(`<blockquote class="border-l-4 ${s.border} ${s.bg} ${s.glow || ''} pl-4 pr-3 py-3 my-4 rounded-none overflow-hidden" data-type="admonition">`
+            + `<div class="flex items-center gap-2 mb-2 font-bold text-xs uppercase tracking-wider ${s.color} non-typing">${s.icon} ${displayTitle}</div>`
+            + `<div class="text-sm text-slate-300 leading-relaxed child-content">${processedContent}</div>`
+            + `</blockquote>`);
         return `\n${id}\n`;
     });
 
     // 4d. Inline code (must be after code blocks)
+    html = html.replace(/\\`/g, '‹esc-backtick›');
     html = html.replace(/`([^`\n]+)`/g, '<code class="bg-black/30 px-1.5 py-0.5 rounded text-amber-300 font-mono text-xs border border-white/10">$1</code>');
+    html = html.replace(/‹esc-backtick›/g, '`');
 
     // 5. Tables
     html = convertTablesToHtml(html);
@@ -120,22 +209,40 @@ export const toHtml = (md: string): string => {
     html = html.replace(/^## (.+)$/gm, '<h2 class="text-md font-bold text-cyan-400 mt-5 mb-1">$1</h2><div class="h-px w-full" style="background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.15) 2%, rgba(255,255,255,0.15) 98%, transparent 100%); margin-bottom: 1rem;"></div>');
     html = html.replace(/^# (.+)$/gm, '<h1 class="text-lg font-extrabold text-white mt-6 mb-1">$1</h1><div class="h-px w-full" style="background: linear-gradient(to right, transparent 0%, rgba(34,211,238,0.3) 2%, rgba(34,211,238,0.3) 98%, transparent 100%); margin-bottom: 1.5rem;"></div>');
 
-    // 7. Horizontal rules (--- / *** / ___ standalone)
-    html = html.replace(/^(\*{3,}|-{3,}|_{3,})$/gm, '<div class="divider-container"><div class="divider-line bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent h-px my-8"></div></div>');
+    // 7. Horizontal rules (--- / *** / ___ / - - - standalone)
+    html = html.replace(/^(?:\s*[\*\-_]){3,}\s*$/gm, '<div class="divider-container"><div class="divider-line bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent h-px my-8"></div></div>');
 
-    // 8. Bold, italic, strikethrough
+    // 8. Bold, italic, strikethrough (with escaping)
+    html = html.replace(/\\\*/g, '‹esc-asterisk›');
+    html = html.replace(/\\#/g, '‹esc-hash›');
+    html = html.replace(/\\-/g, '‹esc-dash›');
+
     html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong class="text-amber-300"><em>$1</em></strong>');
     html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="text-amber-400">$1</strong>');
     html = html.replace(/\*(.+?)\*/g, '<em class="text-slate-300">$1</em>');
     html = html.replace(/~~(.+?)~~/g, '<del class="text-slate-500 line-through">$1</del>');
 
+    // Restore escaped
+    html = html.replace(/‹esc-asterisk›/g, '*');
+    html = html.replace(/‹esc-hash›/g, '#');
+    html = html.replace(/‹esc-dash›/g, '-');
+
+    // 8b. Highlight ==text==
+    html = html.replace(/==([^=\n]+)==/g, '<mark class="bg-amber-400/25 text-amber-200 px-1 py-0.5 rounded-sm border-b border-amber-400/30 mx-0.5">$1</mark>');
+
+    // 8c. Subscript ~text~ (single tilde, not double)
+    html = html.replace(/~([^~\n]+)~/g, '<sub class="text-slate-400 text-[0.7em] leading-none">$1</sub>');
+
+    // 8d. Superscript ^text^ (caret, not HTML)
+    html = html.replace(/\^([^\^\n]+)\^/g, '<sup class="text-slate-400 text-[0.7em] leading-none">$1</sup>');
+
     // 9. Inline math ($ ... $) — single-line only
     html = html.replace(/\$([^$\n]+)\$/g, '<span class="font-serif italic text-amber-200 bg-white/5 px-1.5 py-0.5 rounded-md mx-0.5 shadow-sm border-b border-white/10">$1</span>');
 
-    // 10. Images  ![alt](url)
-    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<div class="my-4"><img src="$2" alt="$1" class="max-w-full h-auto rounded-lg border border-white/10" onerror="this.style.display=\'none\'" /></div>');
+    // 10. Images  ![alt](url) - Updated to support linked images without extra divs
+    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="inline-block max-w-full h-auto rounded-lg border border-white/10 my-2" onerror="this.style.display=\'none\'" />');
 
-    // 11. Links
+    // 11. Links (must be after images to catch badges properly)
     html = convertLinksToHtml(html);
 
     // 13a. Footnote definitions [^1]: (Process first to avoid collision)
@@ -148,16 +255,54 @@ export const toHtml = (md: string): string => {
     // 13b. Footnote references [^1]
     html = html.replace(/\[\^([^\]]+)\](?!=:)/g, '<sup class="text-cyan-400/90 font-black ml-0.5 text-[9px] tracking-tight hover:text-cyan-300 transition-colors cursor-help" style="vertical-align: super;">$1</sup>');
 
-    // 12. Blockquotes (supports nesting: &gt;&gt; ... &gt;&gt;&gt; ...)
+    // 12. Blockquotes (must be AFTER admonitions to avoid stealing lines)
+    // Supports nesting: &gt;&gt; ... &gt;&gt;&gt; ...
     html = convertBlockquotesToHtml(html);
 
     // 13. Structural normalization (Lists with task support, Dividers)
     html = convertListsToHtml(html);
 
-    // 14. Restoration: inject protected blocks back
-    pieces.forEach((content, i) => {
-        html = html.replace(`__BLOCK_${i}__`, content);
+    // 13d. Hide HTML comments <!-- ... -->
+    html = html.replace(/&lt;!--[\s\S]*?--&gt;/g, '');
+
+    // 13e. <p align="center|right|left"> or <center> tags
+    html = html.replace(/&lt;p\s+align="(center|right|left)"&gt;(.*?)&lt;\/p&gt;/gi, (_, align, content) =>
+        `<div class="text-slate-200" style="text-align:${align}">${content}</div>`
+    );
+    html = html.replace(/&lt;center&gt;(.*?)&lt;\/center&gt;/gi, '<div class="text-center text-slate-200">$1</div>');
+
+    // 13f. Visual progress bars — Support for [====], [████], [▓▓▓▓]
+    html = html.replace(/^([\w\s]+):\s*([\[\(])([=#\*\u2588\u2593\u2592\u2591\s]{3,})([\]\)])\s*(\d+%)\s*$/gm, (_, label, open, bar, close, pct) => {
+        const percent = parseFloat(pct);
+        const color = percent >= 80 ? 'bg-cyan-500' : percent >= 50 ? 'bg-blue-500' : percent >= 25 ? 'bg-amber-500' : 'bg-red-500';
+        return `<div class="flex items-center gap-3 my-4 shadow-sm select-none">`
+            + `<span class="text-slate-400 text-xs font-mono min-w-[90px]">${label.trim()}:</span>`
+            + `<div class="flex-1 max-w-[200px] h-2.5 bg-black/40 rounded-full overflow-hidden border border-white/10 ring-1 ring-white/5">`
+            + `<div class="h-full ${color} rounded-full transition-all duration-1000 shadow-[0_0_10px_currentColor]/40" style="width:${percent}%"></div>`
+            + `</div>`
+            + `<span class="text-xs font-mono font-black text-slate-300 w-[45px] text-right">${pct}</span>`
+            + `</div>`;
     });
+
+    // 13g. Emoji shortcodes :smile:
+    html = html.replace(/:([a-z_]+):/g, (match, code) => {
+        return EMOJI_MAP[code] || match;
+    });
+
+    // 14. Restoration: inject protected blocks back
+    // Use multi-pass for nested blocks (e.g., inline code inside details)
+    let iterations = 0;
+    while (html.includes('__BLOCK_') && iterations < 5) {
+        html = html.replace(/__BLOCK_(\d+)__/g, (match, indexStr) => {
+            const index = parseInt(indexStr);
+            return pieces[index] !== undefined ? pieces[index] : match;
+        });
+        iterations++;
+    }
+
+    // 14b. Final Abbreviation pass: Apply to the fully assembled text
+    // (excluding text inside HTML tags to avoid breaking attributes/classes)
+    html = applyAbbreviationsToHtml(html);
 
     // 15. Final DIVIDER marker replacement
     html = html.replace(/---DIVIDER---/g, '<div class="divider-container"><div class="divider-line bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent h-px my-8"></div></div>');
@@ -284,7 +429,7 @@ function convertBlockquotesToHtml(html: string): string {
             // Open any new levels
             while (openLevels < level) {
                 const opacity = Math.max(10, 50 - (openLevels * 15));
-                output.push(`<blockquote class="border-l-3 border-cyan-500/${opacity} pl-3 italic text-slate-300 my-2 bg-cyan-500/5 py-1.5 pr-2 rounded-r">`);
+                output.push(`<blockquote class="border-l-4 border-cyan-500/${opacity} pl-3 italic text-slate-300 my-4 bg-cyan-500/5 py-3 pr-2 rounded-none">`);
                 openLevels++;
             }
             // Close excess levels
@@ -292,7 +437,8 @@ function convertBlockquotesToHtml(html: string): string {
                 output.push('</blockquote>');
                 openLevels--;
             }
-            output.push(content ? `<div>${content}</div>` : '');
+            // Add content directly to the current blockquote level
+            output.push(content);
         } else {
             // Close all open blockquotes
             while (openLevels > 0) {
@@ -366,14 +512,11 @@ function convertListsToHtml(html: string): string {
                 const top = listStack[listStack.length - 1];
 
                 if (indent > top.indent) {
-                    // Deeper nesting — open a child list inside the current <li>
                     processed.push(`<${type} class="space-y-1 mt-0.5 ml-5 cursor-default">`);
                     listStack.push({ type, indent });
                 } else if (indent < top.indent) {
-                    // Going back up — close nested lists until we match
                     closeListsToLevel(indent);
 
-                    // If we still have a list open and it matches, close the previous <li>
                     if (listStack.length > 0) {
                         processed.push('</li>');
                     } else {
@@ -410,10 +553,14 @@ function convertListsToHtml(html: string): string {
             if (isDivider) {
                 processed.push('\n---DIVIDER---\n');
             } else if (trimmed) {
-                const blockTags = ['<h1', '<h2', '<h3', '<h4', '<h5', '<h6', '<pre', '<table', '<blockquote', '<div', '<details', '</h', '</pre', '</table', '</blockquote', '</div', '</details'];
+                const blockTags = ['<h1', '<h2', '<h3', '<h4', '<h5', '<h6', '<pre', '<table', '<blockquote', '<div', '<details', '<summary', '<section', '<p', '<br', '</h', '</pre', '</table', '</blockquote', '</div', '</details', '</summary', '</section', '</p'];
                 const startsWithBlock = blockTags.some(tag => trimmed.toLowerCase().startsWith(tag));
+                
+                // Formatting tags should remain inline and NOT trigger a div wrapper if they are on a line alone
+                const inlineTags = ['<strong', '<em', '<small', '<code', '<kbd', '<mark', '<abbr', '<sup', '<sub', '<link'];
+                const startsWithInline = inlineTags.some(tag => trimmed.toLowerCase().startsWith(tag));
 
-                if (!startsWithBlock) {
+                if (!startsWithBlock && !startsWithInline) {
                     processed.push(`<div class="mb-3 leading-loose">${trimmed}</div>`);
                 } else {
                     processed.push(line);
@@ -428,6 +575,93 @@ function convertListsToHtml(html: string): string {
     }
 
     return processed.join('');
+}
+
+/**
+ * Converts markdown definition lists to HTML.
+ * Format: Term line followed by ": Definition" line(s)
+ */
+function convertDefinitionListsToHtml(html: string): string {
+    const lines = html.split('\n');
+    const output: string[] = [];
+    let inDl = false;
+    let pendingTerm: string | null = null;
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const trimmed = line.trim();
+        const defMatch = trimmed.match(/^:\s+(.+)$/);
+
+        if (defMatch) {
+            if (!inDl) {
+                // Start dl — flush the pending term first
+                output.push('<dl class="my-3 space-y-1.5">');
+                inDl = true;
+                if (pendingTerm !== null) {
+                    output.push(`<dt class="text-slate-200 font-bold text-sm mt-2">${pendingTerm}</dt>`);
+                    pendingTerm = null;
+                }
+            } else if (pendingTerm !== null) {
+                output.push(`<dt class="text-slate-200 font-bold text-sm mt-2">${pendingTerm}</dt>`);
+                pendingTerm = null;
+            }
+            output.push(`<dd class="text-slate-400 text-sm ml-4 pl-3 border-l-2 border-white/10 leading-relaxed">${defMatch[1]}</dd>`);
+        } else {
+            if (inDl) {
+                output.push('</dl>');
+                inDl = false;
+            }
+            // Check if next line is a definition (making this line a term)
+            const nextLine = lines[i + 1]?.trim() || '';
+            if (nextLine.match(/^:\s+/) && trimmed && !trimmed.startsWith('<')) {
+                pendingTerm = trimmed;
+            } else {
+                if (pendingTerm !== null) {
+                    // Orphan term (no definition followed), just output as plain text
+                    output.push(pendingTerm);
+                    pendingTerm = null;
+                }
+                output.push(line);
+            }
+        }
+    }
+
+    if (inDl) output.push('</dl>');
+    if (pendingTerm !== null) output.push(pendingTerm);
+
+    return output.join('\n');
+}
+
+let cachedAbbrMap: Record<string, string> = {};
+
+/**
+ * Extracts abbreviation definitions from text.
+ */
+function convertAbbreviationsToHtml(html: string): string {
+    cachedAbbrMap = {};
+    return html.replace(/^\*\[([^\]]+)\]:\s+(.*)$/gm, (match, abbr, desc) => {
+        cachedAbbrMap[abbr] = desc;
+        return '';
+    });
+}
+
+/**
+ * Applies cached abbreviations to the fully rendered HTML.
+ * Uses a text-node-only replacement strategy via regex lookahead.
+ */
+function applyAbbreviationsToHtml(html: string): string {
+    if (Object.keys(cachedAbbrMap).length === 0) return html;
+    
+    let result = html;
+    Object.keys(cachedAbbrMap).forEach(abbr => {
+        const desc = cachedAbbrMap[abbr];
+        // Only replace abbreviations that are NOT inside HTML tags (e.g. within <...>)
+        // This is a simplified regex-based approach for the node-less environment
+        const regex = new RegExp(`\\b${abbr}\\b(?![^<]*>)`, 'g');
+        result = result.replace(regex, `<abbr title="${desc}" class="cursor-help border-b border-dotted border-cyan-400/50 decoration-cyan-400/30">${abbr}</abbr>`);
+    });
+
+    return result;
 }
 
 
