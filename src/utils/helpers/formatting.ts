@@ -78,8 +78,8 @@ export const toHtml = (md: string): string => {
         const displayLang = langClean || 'code';
 
         const containerClass = isDiagram 
-            ? 'relative group bg-black/45 pt-12 pb-10 px-8 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_20px_50px_rgba(0,0,0,0.3)] transition-all max-w-full selection:bg-cyan-500/30' 
-            : 'relative group bg-black/40 pt-12 pb-6 px-6 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-md transition-all md:mx-2';
+            ? 'relative group bg-black/55 pt-12 pb-12 px-8 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_15px_45px_rgba(0,0,0,0.65)] transition-all max-w-full selection:bg-cyan-500/30' 
+            : 'relative group bg-black/55 pt-12 pb-12 px-6 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_15px_45px_rgba(0,0,0,0.65)] backdrop-blur-md transition-all md:mx-2';
         
         // Studio Elite Header: Minimal Floating Language Badge
         const studioHeader = `
@@ -92,9 +92,9 @@ export const toHtml = (md: string): string => {
         const copyButton = `<button class="absolute top-3 right-5 text-slate-500/50 hover:text-cyan-400 p-1 opacity-0 group-hover:opacity-100 transition-all hover:scale-110 active:scale-90 cursor-pointer z-20" title="Copiar Código" onclick="const btn=this; const icon=btn.querySelector(\'i\'); const code=decodeURIComponent(\'${encodedCode.replace(/'/g, "\\'")}\'); navigator.clipboard.writeText(code).then(() => { icon.className=\'fas fa-check text-emerald-400\'; setTimeout(() => { icon.className=\'fas fa-clone\'; }, 2000); })"><i class="fas fa-clone text-[13px]"></i></button>`;
         
         if (isDiagram) {
-            pieces.push(`<div class="${containerClass} isolate overflow-visible">${studioHeader}${copyButton}<div class="overflow-x-auto w-full"><div class="mermaid opacity-0 transition-opacity duration-1000 min-h-[100px] flex items-center justify-center p-2" data-mermaid-src="${encodedCode}"><code class="text-sm shadow-none font-mono leading-relaxed">${highlighted}</code></div></div></div>`);
+            pieces.push(`<div class="${containerClass} isolate overflow-visible">${studioHeader}${copyButton}<div class="overflow-x-auto w-full px-2 pb-6"><div class="mermaid opacity-0 transition-opacity duration-1000 min-h-[100px] flex items-center justify-center" data-mermaid-src="${encodedCode}"><code class="text-sm shadow-none font-mono leading-relaxed">${highlighted}</code></div></div></div>`);
         } else {
-            pieces.push(`<div class="${containerClass} isolate overflow-visible">${studioHeader}${copyButton}<div class="overflow-x-auto w-full"><pre class="bg-transparent border-none p-0 m-0"><code class="text-sm shadow-none font-mono leading-relaxed block p-1">${highlighted}</code></pre></div></div>`);
+            pieces.push(`<div class="${containerClass} isolate overflow-visible">${studioHeader}${copyButton}<div class="overflow-x-auto w-full bg-black/90 rounded-xl p-5 pb-10 border border-transparent"><pre class="bg-transparent border-none p-0 m-0"><code class="text-sm shadow-none font-mono leading-relaxed block">${highlighted}</code></pre></div></div>`);
         }
         return `\n${id}\n`;
     });
@@ -165,20 +165,20 @@ export const toHtml = (md: string): string => {
         
         const content = actualBody.join('\n').trim();
         const styles: Record<string, { icon: string, color: string, border: string, bg: string, glow?: string }> = {
-            'NOTE':      { icon: 'ℹ️', color: 'text-blue-400',    border: 'border-blue-500/40',    bg: 'bg-blue-500/5' },
-            'TIP':       { icon: '💡', color: 'text-emerald-400', border: 'border-emerald-500/40', bg: 'bg-emerald-500/5' },
-            'IMPORTANT': { icon: '❗', color: 'text-amber-400',   border: 'border-amber-500/40',   bg: 'bg-amber-500/5' },
-            'WARNING':   { icon: '⚠️', color: 'text-orange-400',  border: 'border-orange-500/40',  bg: 'bg-orange-500/5' },
-            'CAUTION':   { icon: '🔴', color: 'text-rose-400',    border: 'border-rose-500/40',    bg: 'bg-rose-500/5' },
-            'DANGER':    { icon: '☠️', color: 'text-red-400',      border: 'border-red-500/50',      bg: 'bg-red-500/8',      glow: 'shadow-[inset_0_0_20px_rgba(239,68,68,0.05)]' },
-            'INFO':      { icon: '📋', color: 'text-sky-400',      border: 'border-sky-500/40',      bg: 'bg-sky-500/5',      glow: 'shadow-[inset_0_0_20px_rgba(14,165,233,0.04)]' },
-            'SUCCESS':   { icon: '✅', color: 'text-green-400',    border: 'border-green-500/45',    bg: 'bg-green-500/7',    glow: 'shadow-[inset_0_0_20px_rgba(34,197,94,0.05)]' },
-            'FAILURE':   { icon: '💥', color: 'text-rose-400',     border: 'border-rose-500/50',     bg: 'bg-rose-500/7',     glow: 'shadow-[inset_0_0_20px_rgba(244,63,94,0.05)]' },
-            'BUG':       { icon: '🐛', color: 'text-fuchsia-400',  border: 'border-fuchsia-500/45',  bg: 'bg-fuchsia-500/6',  glow: 'shadow-[inset_0_0_20px_rgba(217,70,239,0.04)]' },
-            'EXAMPLE':   { icon: '📎', color: 'text-violet-400',   border: 'border-violet-500/40',   bg: 'bg-violet-500/5',   glow: 'shadow-[inset_0_0_20px_rgba(139,92,246,0.04)]' },
-            'QUOTE':     { icon: '💬', color: 'text-slate-400',    border: 'border-slate-500/40',    bg: 'bg-slate-800/40',   glow: 'shadow-[inset_0_0_20px_rgba(148,163,184,0.04)]' },
-            'QUESTION':  { icon: '❓', color: 'text-cyan-400',     border: 'border-cyan-500/40',     bg: 'bg-cyan-500/5',     glow: 'shadow-[inset_0_0_20px_rgba(34,211,238,0.04)]' },
-            'FAQ':       { icon: '❔', color: 'text-purple-400',   border: 'border-purple-500/40',   bg: 'bg-purple-500/5',   glow: 'shadow-[inset_0_0_20px_rgba(168,85,247,0.04)]' },
+            'NOTE':      { icon: '<i class="fas fa-info-circle"></i>',      color: 'text-blue-400',    border: 'border-blue-500/40',    bg: 'bg-blue-500/10' },
+            'TIP':       { icon: '<i class="fas fa-lightbulb"></i>',        color: 'text-emerald-400', border: 'border-emerald-500/40', bg: 'bg-emerald-500/10' },
+            'IMPORTANT': { icon: '<i class="fas fa-exclamation-circle"></i>', color: 'text-amber-400',   border: 'border-amber-500/40',   bg: 'bg-amber-500/10' },
+            'WARNING':   { icon: '<i class="fas fa-exclamation-triangle"></i>', color: 'text-orange-400',  border: 'border-orange-500/40',  bg: 'bg-orange-500/10' },
+            'CAUTION':   { icon: '<i class="fas fa-hand-paper"></i>',       color: 'text-rose-400',    border: 'border-rose-500/40',    bg: 'bg-rose-500/10' },
+            'DANGER':    { icon: '<i class="fas fa-skull-crossbones"></i>', color: 'text-red-400',      border: 'border-red-500/50',      bg: 'bg-red-500/15',      glow: 'shadow-[inset_0_0_20px_rgba(239,68,68,0.05)]' },
+            'INFO':      { icon: '<i class="fas fa-info"></i>',             color: 'text-sky-400',      border: 'border-sky-500/40',      bg: 'bg-sky-500/10',      glow: 'shadow-[inset_0_0_20px_rgba(14,165,233,0.04)]' },
+            'SUCCESS':   { icon: '<i class="fas fa-check-circle"></i>',     color: 'text-green-400',    border: 'border-green-500/45',    bg: 'bg-green-500/15',    glow: 'shadow-[inset_0_0_20px_rgba(34,197,94,0.05)]' },
+            'FAILURE':   { icon: '<i class="fas fa-times-circle"></i>',     color: 'text-rose-400',     border: 'border-rose-500/50',     bg: 'bg-rose-500/15',     glow: 'shadow-[inset_0_0_20px_rgba(244,63,94,0.05)]' },
+            'BUG':       { icon: '<i class="fas fa-bug"></i>',              color: 'text-fuchsia-400',  border: 'border-fuchsia-500/45',  bg: 'bg-fuchsia-500/12',  glow: 'shadow-[inset_0_0_20px_rgba(217,70,239,0.04)]' },
+            'EXAMPLE':   { icon: '<i class="fas fa-vial"></i>',             color: 'text-violet-400',   border: 'border-violet-500/40',   bg: 'bg-violet-500/10',   glow: 'shadow-[inset_0_0_20px_rgba(139,92,246,0.04)]' },
+            'QUOTE':     { icon: '<i class="fas fa-quote-left"></i>',       color: 'text-slate-400',    border: 'border-slate-500/40',    bg: 'bg-slate-800/60',   glow: 'shadow-[inset_0_0_20px_rgba(148,163,184,0.04)]' },
+            'QUESTION':  { icon: '<i class="fas fa-question-circle"></i>',  color: 'text-cyan-400',     border: 'border-cyan-500/40',     bg: 'bg-cyan-500/10',     glow: 'shadow-[inset_0_0_20px_rgba(34,211,238,0.04)]' },
+            'FAQ':       { icon: '<i class="fas fa-comments"></i>',         color: 'text-purple-400',   border: 'border-purple-500/40',   bg: 'bg-purple-500/10',   glow: 'shadow-[inset_0_0_20px_rgba(168,85,247,0.04)]' },
         };
 
         const s = styles[typeUp] || styles['INFO'];
@@ -186,15 +186,15 @@ export const toHtml = (md: string): string => {
         const isCollapsible = !!collapseSign;
         const isOpen = collapseSign === '+';
 
-        const bodyHtml = content ? `<div class="text-sm text-slate-300 ${isCollapsible ? 'mt-3 pt-3 border-t border-white/5' : 'leading-relaxed'} child-content typing-content">${toHtml(content)}</div>` : '';
+        const bodyHtml = content ? `<div class="text-md font-medium text-slate-300 ${isCollapsible ? 'mt-3 pt-3 border-t border-white/5' : 'leading-relaxed'} child-content typing-content">${toHtml(content)}</div>` : '';
         
         if (isCollapsible) {
-            pieces.push(`<details class="group/callout border-l-4 ${s.border} ${s.bg} ${s.glow || ''} pl-4 pr-3 py-3 my-4 rounded-none overflow-hidden transition-all duration-300 select-none cursor-pointer" ${isOpen ? 'open' : ''}>`
-                + `<summary class="flex items-center gap-2 font-bold text-xs uppercase tracking-wider ${s.color} non-typing outline-none list-none text-left">`
-                + `<span class="group-open/callout:rotate-90 transition-transform duration-200">▶</span> ${s.icon} ${displayTitle}</summary>${bodyHtml}</details>`);
+            pieces.push(`<details class="group/callout border-l-4 ${s.border} bg-black/40 backdrop-blur-md ${s.glow || ''} shadow-xl pl-6 pr-4 py-3.5 my-5 rounded-r-xl overflow-hidden transition-all duration-300 select-none cursor-pointer border border-transparent hover:border-white/10" ${isOpen ? 'open' : ''}>`
+                + `<summary class="flex items-center gap-3 font-black text-[13px] uppercase tracking-[0.2em] ${s.color} non-typing outline-none list-none text-left">`
+                + `<span class="group-open/callout:rotate-90 transition-transform duration-300">▶</span> <span class="text-lg">${s.icon}</span> ${displayTitle}</summary>${bodyHtml}</details>`);
         } else {
-            pieces.push(`<blockquote class="border-l-4 ${s.border} ${s.bg} ${s.glow || ''} pl-4 pr-3 py-3 my-4 rounded-none overflow-hidden" data-type="admonition">`
-                + `<div class="flex items-center gap-2 mb-1.5 font-bold text-xs uppercase tracking-wider ${s.color} non-typing">${s.icon} ${displayTitle}</div>${bodyHtml}</blockquote>`);
+            pieces.push(`<blockquote class="border-l-4 ${s.border} bg-black/40 backdrop-blur-md ${s.glow || ''} shadow-xl pl-6 pr-4 py-3.5 my-5 rounded-r-xl overflow-hidden border border-transparent" data-type="admonition">`
+                + `<div class="flex items-center gap-3 mb-3 font-black text-[13px] uppercase tracking-[0.2em] ${s.color} non-typing"><span class="text-lg">${s.icon}</span> ${displayTitle}</div>${bodyHtml}</blockquote>`);
         }
         
         const remainder = bodyLines.slice(actualBody.length).join('\n');
@@ -206,7 +206,7 @@ export const toHtml = (md: string): string => {
         if (match.includes('__BLOCK_')) return match;
         const id = `__BLOCK_${pieces.length}__`;
         const content = match.replace(/^>\s?/gm, '').trim();
-        pieces.push(`<blockquote class="border-l-4 border-cyan-500/20 pl-4 pr-3 py-3 my-4 bg-white/5 rounded-r-lg italic text-slate-300 leading-relaxed child-content typing-content">${toHtml(content)}</blockquote>`);
+        pieces.push(`<blockquote class="border-l-4 border-cyan-500/30 pl-6 pr-4 py-3 my-4 bg-black/40 backdrop-blur-md rounded-r-xl italic text-slate-300 leading-snug child-content shadow-xl border border-transparent hover:border-white/5 transition-all text-md font-medium">${toHtml(content)}</blockquote>`);
         return `\n${id}\n`;
     });
 
@@ -477,33 +477,60 @@ function convertTablesToHtml(html: string): string {
 function renderTable(rows: string[][]): string {
     if (rows.length === 0) return '';
     
-    // Auto-heal column count: find the maximum width used in either header or data rows
+    // Auto-heal column count
     let maxCols = 0;
     rows.forEach(r => { if (r.length > maxCols) maxCols = r.length; });
 
-    let html = '<div class="overflow-x-auto my-4"><table class="min-w-full divide-y divide-white/10 border border-white/10 rounded-lg overflow-hidden">';
-    
-    // Auto-Grid Header
-    html += '<thead class="bg-white/5"><tr>';
     const headerRow = rows[0];
+    const bodyRows = rows.slice(1);
+
+    // STUDIO ELITE HIGH-DENSITY REDESIGN WITH ZEBRA STRIPING
+    let html = '<div class="table-container my-12 group/table">';
+    
+    // THE SHELL: Glassmorphism + Pure Shadow (No Borders)
+    html += '<div class="relative overflow-hidden rounded-2xl bg-black/45 backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.4)] transition-all duration-500">';
+    
+    // Ambient Shimmer
+    html += '<div class="absolute inset-0 bg-gradient-to-br from-white/[0.03] to-transparent pointer-events-none z-20"></div>';
+
+    // Internal wrapper
+    html += '<div class="overflow-x-auto relative z-10"><table class="min-w-full border-collapse m-0 p-0" style="margin: 0 !important; border: none;">';
+    
+    // 1. HEADER: Dominant & Clean
+    html += '<thead class="bg-white/[0.05] relative z-20"><tr>';
     for (let i = 0; i < maxCols; i++) {
         const cellText = headerRow[i] || '&nbsp;';
-        html += `<th class="px-4 py-2 text-left text-xs font-bold text-slate-300 uppercase tracking-wider">${cellText}</th>`;
+        // Header bottom divider (Full-width fading line)
+        html += `<th class="px-10 py-6 text-left text-[14.5px] font-black text-white uppercase tracking-[0.2em] whitespace-nowrap relative">`
+             + `<span class="relative z-10">${cellText}</span>`
+             + `<div class="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>`
+             + `</th>`;
     }
-    html += '</tr></thead><tbody class="divide-y divide-white/5">';
+    html += '</tr></thead>';
 
-    // Auto-Grid Body
-    for (let r = 1; r < rows.length; r++) {
-        html += '<tr class="hover:bg-white/5 transition-colors">';
-        const row = rows[r];
+    // 2. BODY: Zero-waste rows with integrated fading dividers and zebra striping
+    html += '<tbody class="relative z-10">';
+    for (let r = 0; r < bodyRows.length; r++) {
+        const row = bodyRows[r];
+        const isLastRow = r === bodyRows.length - 1;
+        // Zebra striping logic: subtle alternate background for even rows
+        const zebraClass = r % 2 === 1 ? 'bg-white/[0.015]' : '';
+        html += `<tr class="${zebraClass} hover:bg-white/[0.035] transition-all duration-300 group/row relative">`;
         for (let c = 0; c < maxCols; c++) {
             const cellText = row[c] || '&nbsp;';
-            html += `<td class="px-4 py-2 text-sm text-slate-300 border-x border-white/5">${cellText}</td>`;
+            const isFirstCol = c === 0;
+            const textClass = isFirstCol ? 'text-slate-100 font-bold' : 'text-slate-400 font-normal';
+            
+            html += `<td class="px-10 py-5 text-[14px] ${textClass} group-hover/row:text-white transition-colors antialiased relative">`
+                 + `<span class="relative z-10">${cellText}</span>`
+                 // Fading Divider integrated AT THE CELL LEVEL but spanning the whole row proportionally
+                 + (!isLastRow ? `<div class="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r ${c===0 ? 'from-transparent' : (c===maxCols-1 ? '' : 'via-white/[0.05]')} ${c===maxCols-1 ? 'to-transparent via-white/[0.05]' : ''} pointer-events-none"></div>` : '')
+                 + `</td>`;
         }
         html += '</tr>';
     }
+    html += '</tbody></table></div></div></div>';
 
-    html += '</tbody></table></div>';
     return html;
 }
 
@@ -688,7 +715,12 @@ function convertListsToHtml(html: string): string {
                 if (!startsWithBlock && !startsWithInline) {
                     processed.push(`<div class="mb-3 leading-loose">${trimmed}</div>`);
                 } else {
-                    processed.push(line);
+                    // Check if the block is a table or blockquote and ensure it's not wrapped with extra bottom space
+                    if (trimmed.toLowerCase().startsWith('<div class="overflow-hidden') || trimmed.toLowerCase().startsWith('<blockquote')) {
+                        processed.push(trimmed);
+                    } else {
+                        processed.push(line);
+                    }
                 }
             }
         }
