@@ -484,11 +484,11 @@ function renderTable(rows: string[][]): string {
     const headerRow = rows[0];
     const bodyRows = rows.slice(1);
 
-    // STUDIO ELITE HIGH-DENSITY REDESIGN WITH ZEBRA STRIPING
-    let html = '<div class="table-container my-12 group/table">';
+    // HIGH-DENSITY PROFESSIONAL STUDIO ELITE DESIGN
+    let html = '<div class="table-container my-10 group/table">';
     
     // THE SHELL: Glassmorphism + Pure Shadow (No Borders)
-    html += '<div class="relative overflow-hidden rounded-2xl bg-black/45 backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.4)] transition-all duration-500">';
+    html += '<div class="relative overflow-hidden rounded-xl bg-black/45 backdrop-blur-3xl shadow-[0_15px_40px_rgba(0,0,0,0.4)] transition-all duration-500">';
     
     // Ambient Shimmer
     html += '<div class="absolute inset-0 bg-gradient-to-br from-white/[0.03] to-transparent pointer-events-none z-20"></div>';
@@ -496,34 +496,38 @@ function renderTable(rows: string[][]): string {
     // Internal wrapper
     html += '<div class="overflow-x-auto relative z-10"><table class="min-w-full border-collapse m-0 p-0" style="margin: 0 !important; border: none;">';
     
-    // 1. HEADER: Dominant & Clean
+    // 1. HEADER: Elite Tech Typography - ULTRA-COMPACT
     html += '<thead class="bg-white/[0.05] relative z-20"><tr>';
     for (let i = 0; i < maxCols; i++) {
         const cellText = headerRow[i] || '&nbsp;';
-        // Header bottom divider (Full-width fading line)
-        html += `<th class="px-10 py-6 text-left text-[14.5px] font-black text-white uppercase tracking-[0.2em] whitespace-nowrap relative">`
+        const isLastHeader = i === maxCols - 1;
+        // Vertical divider for header
+        const borderX = !isLastHeader ? 'border-r border-white/[0.06]' : '';
+        html += `<th class="px-4.5 py-2.5 text-left text-[12px] font-black text-white uppercase tracking-[0.15em] whitespace-nowrap relative ${borderX}">`
              + `<span class="relative z-10">${cellText}</span>`
              + `<div class="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>`
              + `</th>`;
     }
     html += '</tr></thead>';
 
-    // 2. BODY: Zero-waste rows with integrated fading dividers and zebra striping
+    // 2. BODY: Extreme-density rows with vertical dividers and zebra striping
     html += '<tbody class="relative z-10">';
     for (let r = 0; r < bodyRows.length; r++) {
         const row = bodyRows[r];
         const isLastRow = r === bodyRows.length - 1;
-        // Zebra striping logic: subtle alternate background for even rows
         const zebraClass = r % 2 === 1 ? 'bg-white/[0.015]' : '';
-        html += `<tr class="${zebraClass} hover:bg-white/[0.035] transition-all duration-300 group/row relative">`;
+        html += `<tr class="${zebraClass} hover:bg-white/[0.025] transition-all duration-300 group/row relative">`;
         for (let c = 0; c < maxCols; c++) {
             const cellText = row[c] || '&nbsp;';
             const isFirstCol = c === 0;
+            const isLastCol = c === maxCols - 1;
             const textClass = isFirstCol ? 'text-slate-100 font-bold' : 'text-slate-400 font-normal';
             
-            html += `<td class="px-10 py-5 text-[14px] ${textClass} group-hover/row:text-white transition-colors antialiased relative">`
+            // Sub-pixel vertical dividers for body
+            const borderX = !isLastCol ? 'border-r border-white/[0.04]' : '';
+            
+            html += `<td class="px-4.5 py-2 text-[13px] ${textClass} ${borderX} group-hover/row:text-white transition-colors antialiased relative">`
                  + `<span class="relative z-10">${cellText}</span>`
-                 // Fading Divider integrated AT THE CELL LEVEL but spanning the whole row proportionally
                  + (!isLastRow ? `<div class="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r ${c===0 ? 'from-transparent' : (c===maxCols-1 ? '' : 'via-white/[0.05]')} ${c===maxCols-1 ? 'to-transparent via-white/[0.05]' : ''} pointer-events-none"></div>` : '')
                  + `</td>`;
         }
