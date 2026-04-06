@@ -32,8 +32,25 @@ export const toHtml = (md: string): string => {
     let html = md;
     const pieces: string[] = [];
 
-    // 0. PRE-EXTRACTION: Protect inline and fenced code blocks first
-    // This prevents tags inside code blocks from being treated as real HTML
+    // 0. PRE-EXTRACTION: Protect math and code blocks first
+    
+    // 1a. Math block formulas ($$ ... $$) - Process FIRST to protect backslashes
+    html = html.replace(/\$\$([\s\S]*?)\$\$/gs, (match, formula) => {
+        const id = `__BLOCK_${pieces.length}__`;
+        const renderedMath = convertMathToHtml(formula.trim());
+        pieces.push(`<div class="my-6 p-6 bg-black/20 border border-white/5 rounded-xl text-center font-serif text-lg italic text-slate-100 overflow-x-auto shadow-inner math-container">${renderedMath}</div>`);
+        return `\n${id}\n`;
+    });
+
+    // 1b. Inline math ($ ... $) - Multi-line support
+    html = html.replace(/\$([\s\S]+?)\$/gs, (match, formula) => {
+        const id = `__BLOCK_${pieces.length}__`;
+        // Use inline-flex and padding to prevent fraction clipping
+        pieces.push(`<span class="font-serif italic text-amber-200 bg-white/5 px-1.5 py-1 rounded-md mx-0.5 shadow-sm border-b border-white/10 math-inline inline-flex items-center align-middle flex-wrap">${convertMathToHtml(formula.trim())}</span>`);
+        return id;
+    });
+
+    // 0. PRE-EXTRACTION: Protect inline and fenced code blocks
     html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (match, lang, code) => {
         const id = `__BLOCK_${pieces.length}__`;
         const langClean = lang.toLowerCase();
@@ -58,8 +75,6 @@ export const toHtml = (md: string): string => {
     });
 
     // 1. Protect HTML tags that should render as actual elements
-    // Complex Block Protection (Details)
-    // Complex Block Protection (Details)
     html = html.replace(/<details([^>]*)>([\s\S]*?)<\/details>/gi, (match, attrs, content) => {
         const id = `__BLOCK_${pieces.length}__`;
         let sMatch = content.match(/<summary>([\s\S]*?)<\/summary>/i);
@@ -82,7 +97,6 @@ export const toHtml = (md: string): string => {
     });
 
     // 1c. Universal Admonition Parser — Phase 1
-    // Matches: > [!IMAGE] Title \n > Body (now supports [!TYPE]- for collapsed, [!TYPE]+ for expanded)
     html = html.replace(/^(?:>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|DANGER|INFO|SUCCESS|FAILURE|BUG|EXAMPLE|QUOTE|QUESTION|FAQ)\]([\-\+])?(?:\s+(.*))?\s*?\n?)((?:(?!(?:>\s*\[!)).*\n?)*)/gim, (match, type, collapseSign, title, body) => {
         const id = `__BLOCK_${pieces.length}__`;
         const typeUp = type.toUpperCase();
@@ -145,14 +159,12 @@ export const toHtml = (md: string): string => {
     });
 
     // 1e. Image & Asset Protection (Phase 2)
-    // Supports: ![alt](url), ![alt|width](url), ![alt|widthxheight](url)
     html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, altText, urlRaw) => {
         const id = `__BLOCK_${pieces.length}__`;
         let width = '';
         let height = '';
         let cleanAlt = altText;
 
-        // Restore URL characters if they were escaped by a previous pass (though images should be early)
         const url = urlRaw
             .replace(/‹/g, '<').replace(/›/g, '>')
             .replace(/&amp;/g, '&');
@@ -180,7 +192,6 @@ export const toHtml = (md: string): string => {
     // 1f. Link Protection (Phase 2)
     html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, urlRaw) => {
         const id = `__BLOCK_${pieces.length}__`;
-        // Restore URL characters
         const url = urlRaw
             .replace(/‹/g, '<').replace(/›/g, '>')
             .replace(/&amp;/g, '&');
@@ -248,29 +259,15 @@ export const toHtml = (md: string): string => {
         .replace(/‹div-center›/g, '<div style="text-align:center">')
         .replace(/‹img\s+([^›]+)›/g, '<img $1 class="max-w-full h-auto rounded-xl border border-white/10 my-4" />');
 
-    // 3b. High level extraction (Process non-rendered definitions early)
     html = convertAbbreviationsToHtml(html);
     html = convertDefinitionListsToHtml(html);
 
-    // 4. PRE-EXTRACTION: Protect high-priority blocks from being broken by line parsers
-    // 4a. Math block formulas ($$ ... $$)
-    html = html.replace(/\$\$([\s\S]*?)\$\$/g, (match, formula) => {
-        const id = `__BLOCK_${pieces.length}__`;
-        pieces.push(`<div class="my-4 p-4 bg-black/20 border border-white/5 rounded-lg text-center font-serif text-lg italic text-slate-200 overflow-x-auto">${formula.trim()}</div>`);
-        return `\n${id}\n`;
-    });
-    // 4. PRE-EXTRACTION: Protect high-priority blocks from being broken by line parsers
-    // (Consolidated array at top of function)
-
-    // 4d. Inline code (must be after code blocks)
     html = html.replace(/\\`/g, '‹esc-backtick›');
     html = html.replace(/`([^`\n]+)`/g, '<code class="bg-black/30 px-1.5 py-0.5 rounded text-amber-300 font-mono text-xs border border-white/10">$1</code>');
     html = html.replace(/‹esc-backtick›/g, '`');
 
-    // 5. Tables
     html = convertTablesToHtml(html);
 
-    // 6. Headings H1-H6 (process H6 first to avoid partial matches)
     html = html.replace(/^###### (.+)$/gm, '<h6 class="text-xs font-bold text-slate-500 mt-3 mb-1">$1</h6>');
     html = html.replace(/^##### (.+)$/gm, '<h5 class="text-xs font-bold text-slate-400 mt-3 mb-1">$1</h5>');
     html = html.replace(/^#### (.+)$/gm, '<h4 class="text-sm font-bold text-slate-200 mt-4 mb-2">$1</h4>');
@@ -278,10 +275,8 @@ export const toHtml = (md: string): string => {
     html = html.replace(/^## (.+)$/gm, '<h2 class="text-md font-bold text-cyan-400 mt-5 mb-1">$1</h2><div class="h-px w-full" style="background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.15) 2%, rgba(255,255,255,0.15) 98%, transparent 100%); margin-bottom: 1rem;"></div>');
     html = html.replace(/^# (.+)$/gm, '<h1 class="text-lg font-extrabold text-white mt-6 mb-1">$1</h1><div class="h-px w-full" style="background: linear-gradient(to right, transparent 0%, rgba(34,211,238,0.3) 2%, rgba(34,211,238,0.3) 98%, transparent 100%); margin-bottom: 1.5rem;"></div>');
 
-    // 7. Horizontal rules (--- / *** / ___ / - - - standalone)
     html = html.replace(/^(?:\s*[\*\-_]){3,}\s*$/gm, '<div class="divider-container"><div class="divider-line bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent h-px my-8"></div></div>');
 
-    // 8. Bold, italic, strikethrough (with escaping)
     html = html.replace(/\\\*/g, '‹esc-asterisk›');
     html = html.replace(/\\#/g, '‹esc-hash›');
     html = html.replace(/\\-/g, '‹esc-dash›');
@@ -291,22 +286,19 @@ export const toHtml = (md: string): string => {
     html = html.replace(/\*(.+?)\*/g, '<em class="text-slate-300">$1</em>');
     html = html.replace(/~~(.+?)~~/g, '<del class="text-slate-500 line-through">$1</del>');
 
-    // Restore escaped
     html = html.replace(/‹esc-asterisk›/g, '*');
     html = html.replace(/‹esc-hash›/g, '#');
     html = html.replace(/‹esc-dash›/g, '-');
 
-    // 8b. Highlight ==text==
     html = html.replace(/==([^=\n]+)==/g, '<mark class="bg-amber-400/25 text-amber-200 px-1 py-0.5 rounded-sm border-b border-amber-400/30 mx-0.5">$1</mark>');
 
-    // 8c. Subscript ~text~ (single tilde, not double)
     html = html.replace(/~([^~\n]+)~/g, '<sub class="text-slate-400 text-[0.7em] leading-none">$1</sub>');
 
-    // 8d. Superscript ^text^ (caret, not HTML)
     html = html.replace(/\^([^\^\n]+)\^/g, '<sup class="text-slate-400 text-[0.7em] leading-none">$1</sup>');
 
-    // 9. Inline math ($ ... $) — single-line only
-    html = html.replace(/\$([^$\n]+)\$/g, '<span class="font-serif italic text-amber-200 bg-white/5 px-1.5 py-0.5 rounded-md mx-0.5 shadow-sm border-b border-white/10">$1</span>');
+    html = html.replace(/\$([^$\n]+)\$/g, (match, formula) => {
+        return `<span class="font-serif italic text-amber-200 bg-white/5 px-1.5 py-0.5 rounded-md mx-0.5 shadow-sm border-b border-white/10 math-inline">${convertMathToHtml(formula)}</span>`;
+    });
 
     // 10. Footnote definitions [^1]: 
     html = html.replace(/^\[\^([^\]]+)\]:\s+(.*)$/gm, (match, label, content) => {
@@ -842,4 +834,110 @@ function highlightCode(code: string, lang: string): string {
     });
 
     return highlighted;
+}
+/**
+ * Converts basic LaTeX-like math syntax to styled HTML/Unicode.
+ * Handles: Fractions, Greek letters, Operators, Matrices, and Brackets.
+ */
+function convertMathToHtml(math: string): string {
+    let html = math;
+
+    // 1. Basic cleaning and escaping
+    html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    // 2. Matrices: \begin{pmatrix} a & b \\ c & d \end{pmatrix}
+    const matrixRegex = /\\begin\{(p|b|v|V|B)matrix\}([\s\S]*?)\\end\{\1matrix\}/g;
+    html = html.replace(matrixRegex, (match, type, content) => {
+        const rows = content.trim().split(/\\\\/);
+        const bracketType: Record<string, [string, string]> = {
+            'p': ['(', ')'], 'b': ['[', ']'], 'v': ['|', '|'], 'V': ['‖', '‖'], 'B': ['{', '}']
+        };
+        const [open, close] = bracketType[type] || ['(', ')'];
+        
+        let matrixHtml = `<span class="inline-flex items-center mx-1"><span class="text-2xl font-light scale-y-[1.5] mr-1">${open}</span>`;
+        matrixHtml += `<span class="grid gap-x-3 gap-y-1 text-center" style="grid-template-columns: repeat(${rows[0].split(/[&]/).length}, auto)">`;
+        
+        rows.forEach(row => {
+            const cells = row.split(/[&]/);
+            cells.forEach(cell => {
+                matrixHtml += `<span class="px-1">${convertMathToHtml(cell.trim())}</span>`;
+            });
+        });
+        
+        matrixHtml += `</span><span class="text-2xl font-light scale-y-[1.5] ml-1">${close}</span></span>`;
+        return matrixHtml;
+    });
+
+    // 3. Fractions: \frac{num}{den}
+    html = html.replace(/\\frac\{((?:[^{}]|\{[^{}]*\})*)\}\{((?:[^{}]|\{[^{}]*\})*)\}/g, (match, num, den) => {
+        return `<span class="inline-flex flex-col items-center align-middle mx-1"><span class="border-b border-white/30 px-1 leading-tight">${convertMathToHtml(num)}</span><span class="leading-tight px-1">${convertMathToHtml(den)}</span></span>`;
+    });
+
+    // 3b. Binomial coefficients: \binom{n}{k}
+    html = html.replace(/\\binom\{((?:[^{}]|\{[^{}]*\})*)\}\{((?:[^{}]|\{[^{}]*\})*)\}/g, (match, n, k) => {
+        return `<span class="inline-flex items-center mx-1"><span class="text-2xl font-light scale-y-[1.2] mr-0.5">(</span>`
+             + `<span class="inline-flex flex-col items-center align-middle"><span class="leading-tight">${convertMathToHtml(n)}</span><span class="leading-tight">${convertMathToHtml(k)}</span></span>`
+             + `<span class="text-2xl font-light scale-y-[1.2] ml-0.5">)</span></span>`;
+    });
+
+    // 3c. Cases: \begin{cases} ... \end{cases}
+    html = html.replace(/\\begin\{cases\}([\s\S]*?)\\end\{cases\}/g, (match, content) => {
+        const rows = content.trim().split(/\\\\/);
+        let casesHtml = `<span class="inline-flex items-center mx-1"><span class="text-4xl font-extralight scale-y-[2.2] scale-x-[0.8] mr-2 text-cyan-400/40">{</span>`;
+        casesHtml += `<span class="flex flex-col text-left text-sm gap-1">`;
+        rows.forEach(row => {
+            const parts = row.split(/&/);
+            casesHtml += `<span class="flex gap-4"><span>${convertMathToHtml(parts[0].trim())}</span>${parts[1] ? `<span class="opacity-60">${convertMathToHtml(parts[1].trim())}</span>` : ''}</span>`;
+        });
+        casesHtml += `</span></span>`;
+        return casesHtml;
+    });
+
+    // 4. Common Operators & Large Symbols
+    const ops: Record<string, string> = {
+        '\\int': '∫', '\\sum': 'Σ', '\\lim': 'lim', '\\prod': 'Π', '\\sqrt': '√', '\\partial': '∂', '\\nabla': '∇',
+        '\\infty': '∞', '\\approx': '≈', '\\neq': '≠', '\\leq': '≤', '\\geq': '≥', '\\pm': '±', '\\mp': '∓',
+        '\\propto': '∝', '\\sim': '∼', '\\equiv': '≡', '\\hbar': 'ℏ', '\\varepsilon_0': 'ε₀', '\\varepsilon': 'ε', 
+        '\\mathbf': '', '\\cdot': '·', '\\times': '×', '\\div': '÷',
+        '\\exists': '∃', '\\forall': '∀', '\\in': '∈', '\\notin': '∉', '\\subset': '⊂', '\\supset': '⊃', 
+        '\\cup': '∪', '\\cap': '∩', '\\setminus': '∖', '\\emptyset': '∅', '\\oint': '∮',
+        '\\rightarrow': '→', '\\leftarrow': '←', '\\leftrightarrow': '↔', '\\Rightarrow': '⇒', '\\Leftarrow': '⇐', '\\Leftrightarrow': '⇔',
+        '\\cdots': '⋯', '\\vdots': '⋮', '\\ddots': '⋱', '\\quad': '&nbsp;&nbsp;&nbsp;&nbsp;'
+    };
+    Object.entries(ops).forEach(([latex, uni]) => {
+        const escaped = latex.replace(/\\/g, '\\\\');
+        html = html.replace(new RegExp(escaped, 'g'), uni);
+    });
+
+    // 5. Greek Letters
+    const greek: Record<string, string> = {
+        '\\alpha': 'α', '\\beta': 'β', '\\gamma': 'γ', '\\delta': 'δ', '\\epsilon': 'ε', '\\zeta': 'ζ', '\\eta': 'η', 
+        '\\theta': 'θ', '\\iota': 'ι', '\\kappa': 'κ', '\\lambda': 'λ', '\\mu': 'μ', '\\nu': 'ν', '\\xi': 'ξ', 
+        '\\pi': 'π', '\\rho': 'ρ', '\\sigma': 'σ', '\\tau': 'τ', '\\upsilon': 'υ', '\\phi': 'φ', '\\chi': 'χ', 
+        '\\psi': 'ψ', '\\omega': 'ω',
+        '\\Alpha': 'Α', '\\Beta': 'Β', '\\Gamma': 'Γ', '\\Delta': 'Δ', '\\Theta': 'Θ', '\\Lambda': 'Λ', 
+        '\\Pi': 'Π', '\\Sigma': 'Σ', '\\Phi': 'Φ', '\\Psi': 'Ψ', '\\Omega': 'Ω'
+    };
+    Object.entries(greek).forEach(([latex, uni]) => {
+        const escaped = latex.replace(/\\/g, '\\\\');
+        html = html.replace(new RegExp(escaped, 'g'), uni);
+    });
+
+    // 6. Subscripts and superscripts (Handle correctly to NOT break commands)
+    // We use a negative lookahead to ensure we don't match the start of a LaTeX command e.g. \sum_{i=1}
+    html = html.replace(/_\{((?:[^{}]|\{[^{}]*\})*)\}/g, '<sub class="text-[0.75em] leading-none">$1</sub>');
+    html = html.replace(/\^\{((?:[^{}]|\{[^{}]*\})*)\}/g, '<sup class="text-[0.75em] leading-none">$1</sup>');
+    
+    // Single-char scripts (must not be at start of command)
+    html = html.replace(/([^\\])_([a-zA-Z0-9])/g, '$1<sub class="text-[0.75em] leading-none">$2</sub>');
+    html = html.replace(/([^\\])\^([a-zA-Z0-9])/g, '$1<sup class="text-[0.75em] leading-none">$2</sup>');
+
+    // 7. Styling cleanups
+    html = html.replace(/\\sin/g, 'sin').replace(/\\cos/g, 'cos').replace(/\\tan/g, 'tan').replace(/\\log/g, 'log').replace(/\\ln/g, 'ln');
+    html = html.replace(/\\hat\{([^}]*)\}/g, '<span class="inline-flex flex-col items-center"><span>^</span><span class="mt-[-1em]">$1</span></span>');
+    html = html.replace(/\\vec\{([^}]*)\}/g, '<span class="inline-flex flex-col items-center"><span>→</span><span class="mt-[-1em]">$1</span></span>');
+    html = html.replace(/\\mathbf\{([^}]*)\}/g, '<span class="font-bold">$1</span>');
+    html = html.replace(/\\text\{([^}]*)\}/g, '<span class="font-sans italic opacity-80">$1</span>');
+
+    return html;
 }
