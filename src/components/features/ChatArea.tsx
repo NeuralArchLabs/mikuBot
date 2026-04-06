@@ -533,7 +533,7 @@ export const ChatArea = ({
                                                 <span className="font-mono text-xs tracking-wider animate-pulse uppercase">{t('chat.placeholders.analyzing')}</span>
                                             </div>
                                         ) : (
-                                            <div className="text-[13px] sm:text-[14px] leading-loose space-y-5 overflow-hidden break-words max-w-full w-full px-2 sm:px-4 py-2">
+                                            <div className="text-[13px] sm:text-[14px] leading-loose space-y-5 overflow-visible break-words max-w-full w-full px-2 sm:px-4 py-2">
                                                 {msg.attachments && msg.attachments.length > 0 && (
                                                     <div className="flex flex-wrap gap-2 mb-3">
                                                         {msg.attachments.map(att => (
