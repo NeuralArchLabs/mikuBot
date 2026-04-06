@@ -188,7 +188,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                             <h1 className={`font-bold text-lg text-white tracking-tight leading-tight whitespace-nowrap overflow-hidden text-ellipsis transition-all duration-300 ${isAnimatingEgg ? 'text-blue-400 font-mono text-sm' : ''}`}>
                                 {displayName}
                             </h1>
-                            <div className="text-[11px] text-slate-500/80 font-bold uppercase tracking-[0.2em] leading-tight mt-0.5">v2.1.4</div>
+                            <div className="text-[11px] text-slate-500/80 font-bold uppercase tracking-[0.2em] leading-tight mt-0.5">v2.2.0</div>
                         </div>
                         {/* Glowy aesthetic separator (absolute, no displacement) */}
                         <div className="absolute left-4 right-4 h-px bg-gradient-to-r from-transparent via-slate-700/40 to-transparent -bottom-4 pointer-events-none">

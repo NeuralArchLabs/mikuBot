@@ -1,3 +1,16 @@
+## [2.2.0] - 2026-04-05
+### Added
+- **Advanced LaTeX Math Engine**: Implemented a high-performance, zero-dependency math renderer supporting complex multiline formulas ($$), inline math ($), matrices (pmatrix, bmatrix, etc.), binomial coefficients, and physics constants (\hbar, \oint, \nabla).
+- **Obsidian-Style Collapsible Callouts**: Added support for `> [!TYPE]-` (collapsed) and `> [!TYPE]+` (expanded) syntax with rotating premium indicators and Indigo-themed styling.
+- **Synchronized Typing Animations**: Integrated progressive text reveal (typing effect) into callouts and blockquotes, fully synchronized with the streaming neural engine for a cohesive "live" response feel.
+- **Asset Protection Pipeline (3-Phase)**: Overhauled the markdown pipeline to protect images, links, and code blocks from structural corruption during HTML normalization, ensuring 100% reliable rendering of nested assets.
+- **Premium Visualization**: Standardized math containers with subtle glassmorphism and center-alignment. Inline math now features a distinctive amber-200 highlight for technical clarity.
+
+### Fixed
+- **Markdown Structural Collision**: Resolved issues where inline formatting (italics/bold) mangled complex LaTeX commands or URL backslashes.
+- **Math Clipping & Layout**: Implemented `inline-flex flex-wrap` for inline math to prevent fraction clipping and ensure responsive text wrapping in compact viewports.
+- **Missing Symbolic Definitions**: Fully populated the Greek and Operator dictionaries to include previously missing symbols like `\theta`, `\sim`, `\approx`, and `\nabla`.
+
 ## [2.1.6] - 2026-04-04
 ### Fixed
 - **UTF-8 Encoding Restoration**: Successfully repaired corrupted accented characters (á, é, í, ó, ú, ñ) in `es.json` caused by previous tool interactions. All Spanish text now renders correctly with proper encoding.
