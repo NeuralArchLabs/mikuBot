@@ -10,6 +10,7 @@ export const initMermaid = async () => {
             startOnLoad: false,
             theme: 'dark',
             securityLevel: 'loose',
+            suppressErrorRendering: true,
             fontFamily: 'JetBrains Mono, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
             themeVariables: {
                 primaryColor: '#06b6d4', // cyan-500
@@ -33,6 +34,91 @@ export const initMermaid = async () => {
 };
 
 /**
+ * Renders a single mermaid block with smooth expansion and headless calculation.
+ */
+export const renderSingleMermaidBlock = async (block: HTMLElement, index: number = 0) => {
+    if (block.getAttribute('data-processed') === 'true') return;
+    
+    // Proactive Cleanup: Remove any lingering internal Mermaid error containers
+    document.getElementById('mermaid-error-container')?.remove();
+    
+    const id = `mermaid-${Date.now()}-${index}`;
+    const encoded = block.getAttribute('data-mermaid-src');
+    
+    // 🔕 CONSOLE SILENCER: Backup original console.error to avoid Red Walls of handled errors
+    const originalConsoleError = console.error;
+    console.error = (...args) => {
+        if (args[0] && typeof args[0] === 'string' && (args[0].includes('[Mermaid]') || args[0].includes('Parse error'))) return;
+        originalConsoleError.apply(console, args);
+    };
+
+    try {
+        const content = encoded ? decodeURIComponent(encoded) : (block.textContent || '');
+        if (!content.trim() || content.includes('__HIGHLIGHT_')) return;
+
+        /** 
+         * ⚡ CPU YIELDING: Pause for 0ms to unlock main thread
+         */
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'loose', suppressErrorRendering: true });
+        
+        // 📡 STEP 1: Headless calculation
+        const { svg } = await mermaid.render(id, content.trim());
+        
+        requestAnimationFrame(() => {
+            // 🧪 STEP 2: MEASURE Target Height
+            const mirror = document.createElement('div');
+            mirror.style.cssText = 'position: absolute; visibility: hidden; width: ' + block.offsetWidth + 'px; pointer-events: none; height: auto;';
+            mirror.innerHTML = svg;
+            document.body.appendChild(mirror);
+            const targetHeight = mirror.offsetHeight;
+            document.body.removeChild(mirror);
+
+            // 🏗️ STEP 3: PREPARE TRANSITION
+            const currentHeight = block.offsetHeight;
+            block.style.height = currentHeight + 'px';
+            block.style.transition = 'height 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.8s, transform 0.8s, filter 0.8s';
+            block.style.overflow = 'hidden';
+
+            block.offsetHeight; // Force reflow
+
+            // 🚀 STEP 4: EXECUTE SMOOTH EXPANSION
+            block.innerHTML = svg;
+            block.style.height = targetHeight + 'px';
+            block.setAttribute('data-processed', 'true');
+
+            setTimeout(() => {
+                block.classList.remove('opacity-0', 'scale-95', 'blur-sm');
+                block.classList.add('opacity-100', 'scale-100', 'blur-0');
+            }, 50);
+
+            const cleanup = () => {
+                block.style.height = 'auto'; 
+                block.style.transition = '';
+                block.removeEventListener('transitionend', cleanup);
+            };
+            block.addEventListener('transitionend', (e) => {
+                if (e.propertyName === 'height') cleanup();
+            });
+        });
+    } catch (err) {
+        // Deep Cleanup of global leaks
+        document.getElementById('mermaid-error-container')?.remove();
+        
+        requestAnimationFrame(() => {
+            block.innerHTML = ''; // Full clear before showing our error
+            block.innerHTML = `<div class="text-rose-500 text-xs italic p-4 bg-rose-500/10 rounded-xl border border-rose-500/20">Syntax Error: ${err instanceof Error ? err.message : 'Invalid Syntax'}</div>`;
+            block.classList.remove('opacity-0', 'scale-95', 'blur-sm');
+            block.classList.add('opacity-100', 'scale-100', 'blur-0');
+        });
+    } finally {
+        // 🎙️ RESTORE CONSOLE: Release control
+        console.error = originalConsoleError;
+    }
+};
+
+/**
  * Robustly renders a list of mermaid blocks.
  * Useful for incremental updates or specific container refreshes.
  */
@@ -41,27 +127,6 @@ export const renderMermaidBlocks = async (container: HTMLElement) => {
     if (blocks.length === 0) return;
 
     for (let i = 0; i < blocks.length; i++) {
-        const block = blocks[i] as HTMLElement;
-        const id = `mermaid-${Date.now()}-${i}`;
-        const encoded = block.getAttribute('data-mermaid-src');
-        let content = '';
-        
-        try {
-            content = encoded ? decodeURIComponent(encoded) : (block.textContent || '');
-            
-            // Re-initialize to ensure theme is applied
-            mermaid.initialize({ startOnLoad: false, theme: 'dark' });
-            
-            const { svg } = await mermaid.render(id, content.trim());
-            block.innerHTML = svg;
-            block.setAttribute('data-processed', 'true');
-            block.classList.remove('opacity-0');
-            block.classList.add('opacity-100');
-        } catch (err) {
-            console.error(`[Mermaid] Failed to render block ${id}:`, err);
-            block.innerHTML = `<div class="text-rose-500 text-xs italic p-4 bg-rose-500/10 rounded-xl border border-rose-500/20">Diagram Syntax Error: ${err instanceof Error ? err.message : 'Invalid Syntax'}</div>`;
-            block.classList.remove('opacity-0');
-            block.classList.add('opacity-100');
-        }
+        await renderSingleMermaidBlock(blocks[i] as HTMLElement, i);
     }
 };

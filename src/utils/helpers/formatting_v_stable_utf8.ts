@@ -1,23 +1,23 @@
-/**
+﻿/**
  * Formatting Helpers
  * Data formatting and HTML conversion utilities
  */
 
 /** Emoji shortcode map */
 const EMOJI_MAP: Record<string, string> = {
-    smile: '😊', grin: '😁', joy: '😂', heart: '❤️', fire: '🔥',
-    rocket: '🚀', thumbsup: '👍', thumbsdown: '👎', star: '⭐', eyes: '👀',
-    warning: '⚠️', check: '✅', cross: '❌', tada: '🎉', clap: '👏',
-    bulb: '💡', gear: '⚙️', bug: '🐛', zap: '⚡', lock: '🔒',
-    unlock: '🔓', key: '🔑', globe: '🌍', wave: '👋', muscle: '💪',
-    brain: '🧠', robot: '🤖', sparkles: '✨', rainbow: '🌈', moon: '🌙',
-    sun: '☀️', snowflake: '❄️', crown: '👑', diamond: '💎', sword: '⚔️',
-    shield: '🛡️', target: '🎯', chart: '📊', code: '💻', book: '📚',
-    pencil: '✏️', bell: '🔔', mail: '📧', phone: '📱', camera: '📷',
-    clock: '🕐', calendar: '📅', pin: '📌', link: '🔗', search: '🔍',
-    arrow_right: '→', arrow_left: '←', arrow_up: '↑', arrow_down: '↓',
-    info: 'ℹ️', question: '❓', exclamation: '❗', red_circle: '🔴',
-    yellow_circle: '🟡', green_circle: '🟢', blue_circle: '🔵',
+    smile: '­ƒÿè', grin: '­ƒÿü', joy: '­ƒÿé', heart: 'ÔØñ´©Å', fire: '­ƒöÑ',
+    rocket: '­ƒÜÇ', thumbsup: '­ƒæì', thumbsdown: '­ƒæÄ', star: 'Ô¡É', eyes: '­ƒæÇ',
+    warning: 'ÔÜá´©Å', check: 'Ô£à', cross: 'ÔØî', tada: '­ƒÄë', clap: '­ƒæÅ',
+    bulb: '­ƒÆí', gear: 'ÔÜÖ´©Å', bug: '­ƒÉø', zap: 'ÔÜí', lock: '­ƒöÆ',
+    unlock: '­ƒöô', key: '­ƒöæ', globe: '­ƒîì', wave: '­ƒæï', muscle: '­ƒÆ¬',
+    brain: '­ƒºá', robot: '­ƒñû', sparkles: 'Ô£¿', rainbow: '­ƒîê', moon: '­ƒîÖ',
+    sun: 'ÔÿÇ´©Å', snowflake: 'ÔØä´©Å', crown: '­ƒææ', diamond: '­ƒÆÄ', sword: 'ÔÜö´©Å',
+    shield: '­ƒøí´©Å', target: '­ƒÄ»', chart: '­ƒôè', code: '­ƒÆ╗', book: '­ƒôÜ',
+    pencil: 'Ô£Å´©Å', bell: '­ƒöö', mail: '­ƒôº', phone: '­ƒô▒', camera: '­ƒôÀ',
+    clock: '­ƒòÉ', calendar: '­ƒôà', pin: '­ƒôî', link: '­ƒöù', search: '­ƒöì',
+    arrow_right: 'ÔåÆ', arrow_left: 'ÔåÉ', arrow_up: 'Ôåæ', arrow_down: 'Ôåô',
+    info: 'Ôä╣´©Å', question: 'ÔØô', exclamation: 'ÔØù', red_circle: '­ƒö┤',
+    yellow_circle: '­ƒƒí', green_circle: '­ƒƒó', blue_circle: '­ƒöÁ',
 };
 
 /**
@@ -36,7 +36,7 @@ export const toHtml = (md: string): string => {
     // Pattern: {{ ... }} with typical signature content
     html = html.replace(/\{\{\s*([^\}]+?)\s*\}\}/g, (match, signContent) => {
         // Only shield if it looks like the signature (contains brackets and typical glyphs)
-        if (signContent.includes('≈') || signContent.includes('∫') || signContent.includes('~')) {
+        if (signContent.includes('Ôëê') || signContent.includes('Ôê½') || signContent.includes('~')) {
             const id = `__BLOCK_${pieces.length}__`;
             pieces.push(`<div class="signature-wrapper mb-6 mt-2 flex items-center">`
                 + `<span class="inline-flex items-center gap-3 px-5 py-2 rounded-full font-mono text-cyan-400 font-black tracking-[0.15em] select-none `
@@ -78,8 +78,8 @@ export const toHtml = (md: string): string => {
         const displayLang = langClean || 'code';
 
         const containerClass = isDiagram 
-            ? 'relative group bg-black/55 pt-12 pb-12 px-8 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_15px_45px_rgba(0,0,0,0.65)] transition-all max-w-full selection:bg-cyan-500/30' 
-            : 'relative group bg-black/55 pt-12 pb-12 px-6 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_15px_45px_rgba(0,0,0,0.65)] backdrop-blur-md transition-all md:mx-2';
+            ? 'relative group bg-black/45 pt-12 pb-10 px-8 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_20px_50px_rgba(0,0,0,0.3)] transition-all max-w-full selection:bg-cyan-500/30' 
+            : 'relative group bg-black/40 pt-12 pb-6 px-6 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-md transition-all md:mx-2';
         
         // Studio Elite Header: Minimal Floating Language Badge
         const studioHeader = `
@@ -89,12 +89,12 @@ export const toHtml = (md: string): string => {
             </div>`;
 
         // Minimal Action: Icon-only Copy Button
-        const copyButton = `<button class="absolute top-3 right-5 text-slate-500/50 hover:text-cyan-400 p-1 opacity-0 group-hover:opacity-100 transition-all hover:scale-110 active:scale-90 cursor-pointer z-20" title="Copiar Código" onclick="const btn=this; const icon=btn.querySelector(\'i\'); const code=decodeURIComponent(\'${encodedCode.replace(/'/g, "\\'")}\'); navigator.clipboard.writeText(code).then(() => { icon.className=\'fas fa-check text-emerald-400\'; setTimeout(() => { icon.className=\'fas fa-clone\'; }, 2000); })"><i class="fas fa-clone text-[13px]"></i></button>`;
+        const copyButton = `<button class="absolute top-3 right-5 text-slate-500/50 hover:text-cyan-400 p-1 opacity-0 group-hover:opacity-100 transition-all hover:scale-110 active:scale-90 cursor-pointer z-20" title="Copiar C├│digo" onclick="const btn=this; const icon=btn.querySelector(\'i\'); const code=decodeURIComponent(\'${encodedCode.replace(/'/g, "\\'")}\'); navigator.clipboard.writeText(code).then(() => { icon.className=\'fas fa-check text-emerald-400\'; setTimeout(() => { icon.className=\'fas fa-clone\'; }, 2000); })"><i class="fas fa-clone text-[13px]"></i></button>`;
         
         if (isDiagram) {
-            pieces.push(`<div class="${containerClass} isolate overflow-visible">${studioHeader}${copyButton}<div class="overflow-x-auto w-full px-2 pb-6"><div class="mermaid opacity-0 scale-95 blur-sm transition-all duration-1000 min-h-[100px] flex items-center justify-center transform-gpu" data-mermaid-src="${encodedCode}"><code class="text-sm shadow-none font-mono leading-relaxed">${highlighted}</code></div></div></div>`);
+            pieces.push(`<div class="${containerClass} isolate overflow-visible">${studioHeader}${copyButton}<div class="overflow-x-auto w-full"><div class="mermaid opacity-0 transition-opacity duration-1000 min-h-[100px] flex items-center justify-center p-2" data-mermaid-src="${encodedCode}"><code class="text-sm shadow-none font-mono leading-relaxed">${highlighted}</code></div></div></div>`);
         } else {
-            pieces.push(`<div class="${containerClass} isolate overflow-visible code-block-anim opacity-0 scale-95 blur-sm transition-all duration-1000 transform-gpu">${studioHeader}${copyButton}<div class="overflow-x-auto w-full bg-black/90 rounded-xl p-5 pb-10 border border-transparent"><pre class="bg-transparent border-none p-0 m-0"><code class="text-sm shadow-none font-mono leading-relaxed block">${highlighted}</code></pre></div></div>`);
+            pieces.push(`<div class="${containerClass} isolate overflow-visible">${studioHeader}${copyButton}<div class="overflow-x-auto w-full"><pre class="bg-transparent border-none p-0 m-0"><code class="text-sm shadow-none font-mono leading-relaxed block p-1">${highlighted}</code></pre></div></div>`);
         }
         return `\n${id}\n`;
     });
@@ -102,7 +102,7 @@ export const toHtml = (md: string): string => {
     html = html.replace(/`([^`]+)`/g, (match, code) => {
         const id = `__BLOCK_${pieces.length}__`;
         // Escape < and > to prevent them from becoming pieces later
-        const escapedCode = code.replace(/</g, '‹').replace(/>/g, '›').replace(/\$/g, '‹DOLLAR›');
+        const escapedCode = code.replace(/</g, 'ÔÇ╣').replace(/>/g, 'ÔÇ║').replace(/\$/g, 'ÔÇ╣DOLLARÔÇ║');
         pieces.push(`<code class="bg-black/40 px-1.5 py-0.5 rounded text-amber-300 font-mono text-[0.9em] border border-white/10 mx-1">${escapedCode}</code>`);
         return id;
     });
@@ -124,19 +124,19 @@ export const toHtml = (md: string): string => {
     });
 
     // Protect raw dollars remaining (not part of math) to prevent recursive parsing
-    html = html.replace(/\$/g, '‹DOLLAR›');
+    html = html.replace(/\$/g, 'ÔÇ╣DOLLARÔÇ║');
 
     // 1. Protect HTML tags that should render as actual elements
     html = html.replace(/<details([^>]*)>([\s\S]*?)<\/details>/gi, (match, attrs, content) => {
         const id = `__BLOCK_${pieces.length}__`;
         let sMatch = content.match(/<summary>([\s\S]*?)<\/summary>/i);
-        let summaryText = sMatch ? sMatch[1].replace(/^[▶►▸▼] ?/g, '').trim() : 'Details';
+        let summaryText = sMatch ? sMatch[1].replace(/^[ÔûÂÔû║Ôû©Ôû╝] ?/g, '').trim() : 'Details';
         let bodyRaw = sMatch ? content.replace(sMatch[0], '') : content;
         const isOpen = attrs.toLowerCase().includes('open');
 
         pieces.push(`<details ${isOpen ? 'open' : ''} class="bg-black/10 border border-white/5 rounded-xl my-6 overflow-hidden group/details shadow-2xl transition-all cursor-pointer">` +
             `<summary class="px-8 py-5 font-black text-cyan-400/90 uppercase tracking-widest text-[11px] hover:bg-white/5 transition-all outline-none list-none select-none flex items-center gap-3">` +
-            `<span class="group-open/details:rotate-90 transition-transform">▶</span>${summaryText}</summary>` +
+            `<span class="group-open/details:rotate-90 transition-transform">ÔûÂ</span>${summaryText}</summary>` +
             `<div class="details-content-body px-12 py-8 text-slate-300 leading-loose bg-black/10 select-text border-t border-white/5">${toHtml(bodyRaw.trim())}</div></details>`);
         return `\n${id}\n`;
     });
@@ -148,7 +148,7 @@ export const toHtml = (md: string): string => {
         return `\n${id}\n`;
     });
 
-    // 1c. Universal Admonition Parser — Phase 1
+    // 1c. Universal Admonition Parser ÔÇö Phase 1
     html = html.replace(/^(?:>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|DANGER|INFO|SUCCESS|FAILURE|BUG|EXAMPLE|QUOTE|QUESTION|FAQ)\]([\-\+])?(?:\s+(.*))?\s*?\n?)((?:(?!(?:>\s*\[!)).*\n?)*)/gim, (match, type, collapseSign, title, body) => {
         const id = `__BLOCK_${pieces.length}__`;
         const typeUp = type.toUpperCase();
@@ -165,20 +165,20 @@ export const toHtml = (md: string): string => {
         
         const content = actualBody.join('\n').trim();
         const styles: Record<string, { icon: string, color: string, border: string, bg: string, glow?: string }> = {
-            'NOTE':      { icon: '<i class="fas fa-info-circle"></i>',      color: 'text-blue-400',    border: 'border-blue-500/40',    bg: 'bg-blue-500/10' },
-            'TIP':       { icon: '<i class="fas fa-lightbulb"></i>',        color: 'text-emerald-400', border: 'border-emerald-500/40', bg: 'bg-emerald-500/10' },
-            'IMPORTANT': { icon: '<i class="fas fa-exclamation-circle"></i>', color: 'text-amber-400',   border: 'border-amber-500/40',   bg: 'bg-amber-500/10' },
-            'WARNING':   { icon: '<i class="fas fa-exclamation-triangle"></i>', color: 'text-orange-400',  border: 'border-orange-500/40',  bg: 'bg-orange-500/10' },
-            'CAUTION':   { icon: '<i class="fas fa-hand-paper"></i>',       color: 'text-rose-400',    border: 'border-rose-500/40',    bg: 'bg-rose-500/10' },
-            'DANGER':    { icon: '<i class="fas fa-skull-crossbones"></i>', color: 'text-red-400',      border: 'border-red-500/50',      bg: 'bg-red-500/15',      glow: 'shadow-[inset_0_0_20px_rgba(239,68,68,0.05)]' },
-            'INFO':      { icon: '<i class="fas fa-info"></i>',             color: 'text-sky-400',      border: 'border-sky-500/40',      bg: 'bg-sky-500/10',      glow: 'shadow-[inset_0_0_20px_rgba(14,165,233,0.04)]' },
-            'SUCCESS':   { icon: '<i class="fas fa-check-circle"></i>',     color: 'text-green-400',    border: 'border-green-500/45',    bg: 'bg-green-500/15',    glow: 'shadow-[inset_0_0_20px_rgba(34,197,94,0.05)]' },
-            'FAILURE':   { icon: '<i class="fas fa-times-circle"></i>',     color: 'text-rose-400',     border: 'border-rose-500/50',     bg: 'bg-rose-500/15',     glow: 'shadow-[inset_0_0_20px_rgba(244,63,94,0.05)]' },
-            'BUG':       { icon: '<i class="fas fa-bug"></i>',              color: 'text-fuchsia-400',  border: 'border-fuchsia-500/45',  bg: 'bg-fuchsia-500/12',  glow: 'shadow-[inset_0_0_20px_rgba(217,70,239,0.04)]' },
-            'EXAMPLE':   { icon: '<i class="fas fa-vial"></i>',             color: 'text-violet-400',   border: 'border-violet-500/40',   bg: 'bg-violet-500/10',   glow: 'shadow-[inset_0_0_20px_rgba(139,92,246,0.04)]' },
-            'QUOTE':     { icon: '<i class="fas fa-quote-left"></i>',       color: 'text-slate-400',    border: 'border-slate-500/40',    bg: 'bg-slate-800/60',   glow: 'shadow-[inset_0_0_20px_rgba(148,163,184,0.04)]' },
-            'QUESTION':  { icon: '<i class="fas fa-question-circle"></i>',  color: 'text-cyan-400',     border: 'border-cyan-500/40',     bg: 'bg-cyan-500/10',     glow: 'shadow-[inset_0_0_20px_rgba(34,211,238,0.04)]' },
-            'FAQ':       { icon: '<i class="fas fa-comments"></i>',         color: 'text-purple-400',   border: 'border-purple-500/40',   bg: 'bg-purple-500/10',   glow: 'shadow-[inset_0_0_20px_rgba(168,85,247,0.04)]' },
+            'NOTE':      { icon: 'Ôä╣´©Å', color: 'text-blue-400',    border: 'border-blue-500/40',    bg: 'bg-blue-500/5' },
+            'TIP':       { icon: '­ƒÆí', color: 'text-emerald-400', border: 'border-emerald-500/40', bg: 'bg-emerald-500/5' },
+            'IMPORTANT': { icon: 'ÔØù', color: 'text-amber-400',   border: 'border-amber-500/40',   bg: 'bg-amber-500/5' },
+            'WARNING':   { icon: 'ÔÜá´©Å', color: 'text-orange-400',  border: 'border-orange-500/40',  bg: 'bg-orange-500/5' },
+            'CAUTION':   { icon: '­ƒö┤', color: 'text-rose-400',    border: 'border-rose-500/40',    bg: 'bg-rose-500/5' },
+            'DANGER':    { icon: 'Ôÿá´©Å', color: 'text-red-400',      border: 'border-red-500/50',      bg: 'bg-red-500/8',      glow: 'shadow-[inset_0_0_20px_rgba(239,68,68,0.05)]' },
+            'INFO':      { icon: '­ƒôï', color: 'text-sky-400',      border: 'border-sky-500/40',      bg: 'bg-sky-500/5',      glow: 'shadow-[inset_0_0_20px_rgba(14,165,233,0.04)]' },
+            'SUCCESS':   { icon: 'Ô£à', color: 'text-green-400',    border: 'border-green-500/45',    bg: 'bg-green-500/7',    glow: 'shadow-[inset_0_0_20px_rgba(34,197,94,0.05)]' },
+            'FAILURE':   { icon: '­ƒÆÑ', color: 'text-rose-400',     border: 'border-rose-500/50',     bg: 'bg-rose-500/7',     glow: 'shadow-[inset_0_0_20px_rgba(244,63,94,0.05)]' },
+            'BUG':       { icon: '­ƒÉø', color: 'text-fuchsia-400',  border: 'border-fuchsia-500/45',  bg: 'bg-fuchsia-500/6',  glow: 'shadow-[inset_0_0_20px_rgba(217,70,239,0.04)]' },
+            'EXAMPLE':   { icon: '­ƒôÄ', color: 'text-violet-400',   border: 'border-violet-500/40',   bg: 'bg-violet-500/5',   glow: 'shadow-[inset_0_0_20px_rgba(139,92,246,0.04)]' },
+            'QUOTE':     { icon: '­ƒÆ¼', color: 'text-slate-400',    border: 'border-slate-500/40',    bg: 'bg-slate-800/40',   glow: 'shadow-[inset_0_0_20px_rgba(148,163,184,0.04)]' },
+            'QUESTION':  { icon: 'ÔØô', color: 'text-cyan-400',     border: 'border-cyan-500/40',     bg: 'bg-cyan-500/5',     glow: 'shadow-[inset_0_0_20px_rgba(34,211,238,0.04)]' },
+            'FAQ':       { icon: 'ÔØö', color: 'text-purple-400',   border: 'border-purple-500/40',   bg: 'bg-purple-500/5',   glow: 'shadow-[inset_0_0_20px_rgba(168,85,247,0.04)]' },
         };
 
         const s = styles[typeUp] || styles['INFO'];
@@ -186,15 +186,15 @@ export const toHtml = (md: string): string => {
         const isCollapsible = !!collapseSign;
         const isOpen = collapseSign === '+';
 
-        const bodyHtml = content ? `<div class="text-md font-medium text-slate-300 ${isCollapsible ? 'mt-3 pt-3 border-t border-white/5' : 'leading-relaxed'} child-content typing-content">${toHtml(content)}</div>` : '';
+        const bodyHtml = content ? `<div class="text-sm text-slate-300 ${isCollapsible ? 'mt-3 pt-3 border-t border-white/5' : 'leading-relaxed'} child-content typing-content">${toHtml(content)}</div>` : '';
         
         if (isCollapsible) {
-            pieces.push(`<details class="group/callout border-l-4 ${s.border} bg-black/40 backdrop-blur-md ${s.glow || ''} shadow-xl pl-6 pr-4 py-3.5 my-5 rounded-r-xl overflow-hidden transition-all duration-300 select-none cursor-pointer border border-transparent hover:border-white/10" ${isOpen ? 'open' : ''}>`
-                + `<summary class="flex items-center gap-3 font-black text-[13px] uppercase tracking-[0.2em] ${s.color} non-typing outline-none list-none text-left">`
-                + `<span class="group-open/callout:rotate-90 transition-transform duration-300">▶</span> <span class="text-lg">${s.icon}</span> ${displayTitle}</summary>${bodyHtml}</details>`);
+            pieces.push(`<details class="group/callout border-l-4 ${s.border} ${s.bg} ${s.glow || ''} pl-4 pr-3 py-3 my-4 rounded-none overflow-hidden transition-all duration-300 select-none cursor-pointer" ${isOpen ? 'open' : ''}>`
+                + `<summary class="flex items-center gap-2 font-bold text-xs uppercase tracking-wider ${s.color} non-typing outline-none list-none text-left">`
+                + `<span class="group-open/callout:rotate-90 transition-transform duration-200">ÔûÂ</span> ${s.icon} ${displayTitle}</summary>${bodyHtml}</details>`);
         } else {
-            pieces.push(`<blockquote class="border-l-4 ${s.border} bg-black/40 backdrop-blur-md ${s.glow || ''} shadow-xl pl-6 pr-4 py-3.5 my-5 rounded-r-xl overflow-hidden border border-transparent" data-type="admonition">`
-                + `<div class="flex items-center gap-3 mb-3 font-black text-[13px] uppercase tracking-[0.2em] ${s.color} non-typing"><span class="text-lg">${s.icon}</span> ${displayTitle}</div>${bodyHtml}</blockquote>`);
+            pieces.push(`<blockquote class="border-l-4 ${s.border} ${s.bg} ${s.glow || ''} pl-4 pr-3 py-3 my-4 rounded-none overflow-hidden" data-type="admonition">`
+                + `<div class="flex items-center gap-2 mb-1.5 font-bold text-xs uppercase tracking-wider ${s.color} non-typing">${s.icon} ${displayTitle}</div>${bodyHtml}</blockquote>`);
         }
         
         const remainder = bodyLines.slice(actualBody.length).join('\n');
@@ -206,7 +206,7 @@ export const toHtml = (md: string): string => {
         if (match.includes('__BLOCK_')) return match;
         const id = `__BLOCK_${pieces.length}__`;
         const content = match.replace(/^>\s?/gm, '').trim();
-        pieces.push(`<blockquote class="border-l-4 border-cyan-500/30 pl-6 pr-4 py-3 my-4 bg-black/40 backdrop-blur-md rounded-r-xl italic text-slate-300 leading-snug child-content shadow-xl border border-transparent hover:border-white/5 transition-all text-md font-medium">${toHtml(content)}</blockquote>`);
+        pieces.push(`<blockquote class="border-l-4 border-cyan-500/20 pl-4 pr-3 py-3 my-4 bg-white/5 rounded-r-lg italic text-slate-300 leading-relaxed child-content typing-content">${toHtml(content)}</blockquote>`);
         return `\n${id}\n`;
     });
 
@@ -218,7 +218,7 @@ export const toHtml = (md: string): string => {
         let cleanAlt = altText;
 
         const url = urlRaw
-            .replace(/‹/g, '<').replace(/›/g, '>')
+            .replace(/ÔÇ╣/g, '<').replace(/ÔÇ║/g, '>')
             .replace(/&amp;/g, '&');
 
         if (altText.includes('|')) {
@@ -245,7 +245,7 @@ export const toHtml = (md: string): string => {
     html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, urlRaw) => {
         const id = `__BLOCK_${pieces.length}__`;
         const url = urlRaw
-            .replace(/‹/g, '<').replace(/›/g, '>')
+            .replace(/ÔÇ╣/g, '<').replace(/ÔÇ║/g, '>')
             .replace(/&amp;/g, '&');
             
         const isExternal = url.startsWith('http');
@@ -255,68 +255,68 @@ export const toHtml = (md: string): string => {
     });
 
     html = html
-        .replace(/<span\s*([^>]*?)>/gi, '‹span $1›')
-        .replace(/<\/span>/g, '‹/span›')
-        .replace(/<p\s*([^>]*?)>/gi, '‹p $1›')
-        .replace(/<\/p>/g, '‹/p›')
-        .replace(/<br\s*\/?>/gi, '‹br›')
-        .replace(/<h([1-6])\s*([^>]*?)>/gi, '‹h$1 $2›')
-        .replace(/<\/h([1-6])>/gi, '‹/h$1›')
-        .replace(/<strong>/g, '‹strong›')
-        .replace(/<\/strong>/g, '‹/strong›')
-        .replace(/<em>/g, '‹em›')
-        .replace(/<\/em>/g, '‹/em›')
-        .replace(/<small\s*([^>]*?)>/gi, '‹small $1›')
-        .replace(/<\/small>/g, '‹/small›')
-        .replace(/<code\s*([^>]*?)>/gi, '‹code $1›')
-        .replace(/<\/code>/g, '‹/code›')
-        .replace(/<kbd\s*([^>]*?)>/gi, '‹kbd $1›')
-        .replace(/<\/kbd>/g, '‹/kbd›')
-        .replace(/<mark\s*([^>]*?)>/gi, '‹mark $1›')
-        .replace(/<\/mark>/g, '‹/mark›')
-        .replace(/<abbr\s+([^>]+)>/gi, '‹abbr $1›')
-        .replace(/<\/abbr>/g, '‹/abbr›')
-        .replace(/<u>/g, '‹u›')
-        .replace(/<\/u>/g, '‹/u›')
-        .replace(/<center\s*([^>]*?)>/gi, '‹center $1›')
-        .replace(/<\/center>/gi, '‹/center›');
+        .replace(/<span\s*([^>]*?)>/gi, 'ÔÇ╣span $1ÔÇ║')
+        .replace(/<\/span>/g, 'ÔÇ╣/spanÔÇ║')
+        .replace(/<p\s*([^>]*?)>/gi, 'ÔÇ╣p $1ÔÇ║')
+        .replace(/<\/p>/g, 'ÔÇ╣/pÔÇ║')
+        .replace(/<br\s*\/?>/gi, 'ÔÇ╣brÔÇ║')
+        .replace(/<h([1-6])\s*([^>]*?)>/gi, 'ÔÇ╣h$1 $2ÔÇ║')
+        .replace(/<\/h([1-6])>/gi, 'ÔÇ╣/h$1ÔÇ║')
+        .replace(/<strong>/g, 'ÔÇ╣strongÔÇ║')
+        .replace(/<\/strong>/g, 'ÔÇ╣/strongÔÇ║')
+        .replace(/<em>/g, 'ÔÇ╣emÔÇ║')
+        .replace(/<\/em>/g, 'ÔÇ╣/emÔÇ║')
+        .replace(/<small\s*([^>]*?)>/gi, 'ÔÇ╣small $1ÔÇ║')
+        .replace(/<\/small>/g, 'ÔÇ╣/smallÔÇ║')
+        .replace(/<code\s*([^>]*?)>/gi, 'ÔÇ╣code $1ÔÇ║')
+        .replace(/<\/code>/g, 'ÔÇ╣/codeÔÇ║')
+        .replace(/<kbd\s*([^>]*?)>/gi, 'ÔÇ╣kbd $1ÔÇ║')
+        .replace(/<\/kbd>/g, 'ÔÇ╣/kbdÔÇ║')
+        .replace(/<mark\s*([^>]*?)>/gi, 'ÔÇ╣mark $1ÔÇ║')
+        .replace(/<\/mark>/g, 'ÔÇ╣/markÔÇ║')
+        .replace(/<abbr\s+([^>]+)>/gi, 'ÔÇ╣abbr $1ÔÇ║')
+        .replace(/<\/abbr>/g, 'ÔÇ╣/abbrÔÇ║')
+        .replace(/<u>/g, 'ÔÇ╣uÔÇ║')
+        .replace(/<\/u>/g, 'ÔÇ╣/uÔÇ║')
+        .replace(/<center\s*([^>]*?)>/gi, 'ÔÇ╣center $1ÔÇ║')
+        .replace(/<\/center>/gi, 'ÔÇ╣/centerÔÇ║');
 
     // 3. Restore protected HTML tags with styles
     html = html
-        .replace(/‹span\s*([^›]*?)›/gi, '<span $1>')
-        .replace(/‹\/span›/g, '</span>')
-        .replace(/‹p\s*([^›]*?)›/gi, '<p $1>')
-        .replace(/‹\/p›/g, '</p>')
-        .replace(/‹br›/g, '<br/>')
-        .replace(/‹h([1-6])\s*([^›]*?)›/gi, '<h$1 class="text-inherit font-black my-2" $2>')
-        .replace(/‹\/h([1-6])›/g, '</h$1>')
-        .replace(/‹strong›/g, '<strong class="text-amber-400 mx-0.5">')
-        .replace(/‹\/strong›/g, '</strong>')
-        .replace(/‹em›/g, '<em class="text-slate-300 mx-0.5">')
-        .replace(/‹\/em›/g, '</em>')
-        .replace(/‹small\s*([^›]*?)›/gi, '<small class="text-[0.85em] opacity-80 mx-1" $1>')
-        .replace(/‹\/small›/g, '</small>')
-        .replace(/‹code\s*([^›]*?)›/gi, '<code class="bg-black/40 px-1.5 py-0.5 rounded text-amber-300 font-mono text-[0.9em] border border-white/10 mx-1" $1>')
-        .replace(/‹\/code›/g, '</code>')
-        .replace(/‹kbd\s*([^›]*?)›/gi, '<kbd class="bg-black/50 border border-white/20 rounded px-1.5 py-0.5 text-xs font-mono text-slate-200 shadow-sm mx-1" $1>')
-        .replace(/‹\/kbd›/g, '</kbd>')
-        .replace(/‹mark\s*([^›]*?)›/gi, '<mark class="bg-amber-400/25 text-amber-200 px-1 py-0.5 rounded-sm border-b border-amber-400/30 mx-1" $1>')
-        .replace(/‹\/mark›/g, '</mark>')
-        .replace(/‹abbr\s+([^›]+)›/g, '<abbr $1 class="cursor-help border-b border-dotted border-cyan-400/50 decoration-cyan-400/30 text-cyan-200/90 font-bold mx-1">')
-        .replace(/‹\/abbr›/g, '</abbr>')
-        .replace(/‹u›/g, '<u class="underline underline-offset-2 decoration-cyan-500/40">')
-        .replace(/‹\/u›/g, '</u>')
-        .replace(/‹center\s*([^›]*?)›/gi, '<div class="text-center w-full" $1>')
-        .replace(/‹\/center›/g, '</div>')
-        .replace(/‹div-center›/g, '<div style="text-align:center">')
-        .replace(/‹img\s+([^›]+)›/g, '<img $1 class="max-w-full h-auto rounded-xl border border-white/10 my-4" />');
+        .replace(/ÔÇ╣span\s*([^ÔÇ║]*?)ÔÇ║/gi, '<span $1>')
+        .replace(/ÔÇ╣\/spanÔÇ║/g, '</span>')
+        .replace(/ÔÇ╣p\s*([^ÔÇ║]*?)ÔÇ║/gi, '<p $1>')
+        .replace(/ÔÇ╣\/pÔÇ║/g, '</p>')
+        .replace(/ÔÇ╣brÔÇ║/g, '<br/>')
+        .replace(/ÔÇ╣h([1-6])\s*([^ÔÇ║]*?)ÔÇ║/gi, '<h$1 class="text-inherit font-black my-2" $2>')
+        .replace(/ÔÇ╣\/h([1-6])ÔÇ║/g, '</h$1>')
+        .replace(/ÔÇ╣strongÔÇ║/g, '<strong class="text-amber-400 mx-0.5">')
+        .replace(/ÔÇ╣\/strongÔÇ║/g, '</strong>')
+        .replace(/ÔÇ╣emÔÇ║/g, '<em class="text-slate-300 mx-0.5">')
+        .replace(/ÔÇ╣\/emÔÇ║/g, '</em>')
+        .replace(/ÔÇ╣small\s*([^ÔÇ║]*?)ÔÇ║/gi, '<small class="text-[0.85em] opacity-80 mx-1" $1>')
+        .replace(/ÔÇ╣\/smallÔÇ║/g, '</small>')
+        .replace(/ÔÇ╣code\s*([^ÔÇ║]*?)ÔÇ║/gi, '<code class="bg-black/40 px-1.5 py-0.5 rounded text-amber-300 font-mono text-[0.9em] border border-white/10 mx-1" $1>')
+        .replace(/ÔÇ╣\/codeÔÇ║/g, '</code>')
+        .replace(/ÔÇ╣kbd\s*([^ÔÇ║]*?)ÔÇ║/gi, '<kbd class="bg-black/50 border border-white/20 rounded px-1.5 py-0.5 text-xs font-mono text-slate-200 shadow-sm mx-1" $1>')
+        .replace(/ÔÇ╣\/kbdÔÇ║/g, '</kbd>')
+        .replace(/ÔÇ╣mark\s*([^ÔÇ║]*?)ÔÇ║/gi, '<mark class="bg-amber-400/25 text-amber-200 px-1 py-0.5 rounded-sm border-b border-amber-400/30 mx-1" $1>')
+        .replace(/ÔÇ╣\/markÔÇ║/g, '</mark>')
+        .replace(/ÔÇ╣abbr\s+([^ÔÇ║]+)ÔÇ║/g, '<abbr $1 class="cursor-help border-b border-dotted border-cyan-400/50 decoration-cyan-400/30 text-cyan-200/90 font-bold mx-1">')
+        .replace(/ÔÇ╣\/abbrÔÇ║/g, '</abbr>')
+        .replace(/ÔÇ╣uÔÇ║/g, '<u class="underline underline-offset-2 decoration-cyan-500/40">')
+        .replace(/ÔÇ╣\/uÔÇ║/g, '</u>')
+        .replace(/ÔÇ╣center\s*([^ÔÇ║]*?)ÔÇ║/gi, '<div class="text-center w-full" $1>')
+        .replace(/ÔÇ╣\/centerÔÇ║/g, '</div>')
+        .replace(/ÔÇ╣div-centerÔÇ║/g, '<div style="text-align:center">')
+        .replace(/ÔÇ╣img\s+([^ÔÇ║]+)ÔÇ║/g, '<img $1 class="max-w-full h-auto rounded-xl border border-white/10 my-4" />');
 
     html = convertAbbreviationsToHtml(html);
     html = convertDefinitionListsToHtml(html);
 
-    html = html.replace(/\\`/g, '‹esc-backtick›');
+    html = html.replace(/\\`/g, 'ÔÇ╣esc-backtickÔÇ║');
     html = html.replace(/`([^`\n]+)`/g, '<code class="bg-black/30 px-1.5 py-0.5 rounded text-amber-300 font-mono text-xs border border-white/10">$1</code>');
-    html = html.replace(/‹esc-backtick›/g, '`');
+    html = html.replace(/ÔÇ╣esc-backtickÔÇ║/g, '`');
 
     html = convertTablesToHtml(html);
 
@@ -329,18 +329,18 @@ export const toHtml = (md: string): string => {
 
     html = html.replace(/^(?:\s*[\*\-_]){3,}\s*$/gm, '<div class="divider-container"><div class="divider-line bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent h-px my-8"></div></div>');
 
-    html = html.replace(/\\\*/g, '‹esc-asterisk›');
-    html = html.replace(/\\#/g, '‹esc-hash›');
-    html = html.replace(/\\-/g, '‹esc-dash›');
+    html = html.replace(/\\\*/g, 'ÔÇ╣esc-asteriskÔÇ║');
+    html = html.replace(/\\#/g, 'ÔÇ╣esc-hashÔÇ║');
+    html = html.replace(/\\-/g, 'ÔÇ╣esc-dashÔÇ║');
 
     html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong class="text-amber-300"><em>$1</em></strong>');
     html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="text-amber-400">$1</strong>');
     html = html.replace(/\*(.+?)\*/g, '<em class="text-slate-300">$1</em>');
     html = html.replace(/~~(.+?)~~/g, '<del class="text-slate-500 line-through">$1</del>');
 
-    html = html.replace(/‹esc-asterisk›/g, '*');
-    html = html.replace(/‹esc-hash›/g, '#');
-    html = html.replace(/‹esc-dash›/g, '-');
+    html = html.replace(/ÔÇ╣esc-asteriskÔÇ║/g, '*');
+    html = html.replace(/ÔÇ╣esc-hashÔÇ║/g, '#');
+    html = html.replace(/ÔÇ╣esc-dashÔÇ║/g, '-');
 
     html = html.replace(/==([^=\n]+)==/g, '<mark class="bg-amber-400/25 text-amber-200 px-1 py-0.5 rounded-sm border-b border-amber-400/30 mx-0.5">$1</mark>');
 
@@ -380,7 +380,7 @@ export const toHtml = (md: string): string => {
     );
     html = html.replace(/&lt;center&gt;(.*?)&lt;\/center&gt;/gi, '<div class="text-center text-slate-200">$1</div>');
 
-    // 13f. Visual progress bars — Support for [====], [████], [▓▓▓▓]
+    // 13f. Visual progress bars ÔÇö Support for [====], [ÔûêÔûêÔûêÔûê], [ÔûôÔûôÔûôÔûô]
     html = html.replace(/^([\w\s]+):\s*([\[\(])([=#\*\u2588\u2593\u2592\u2591\s]{3,})([\]\)])\s*(\d+%)\s*$/gm, (_, label, open, bar, close, pct) => {
         const percent = parseFloat(pct);
         const color = percent >= 80 ? 'bg-cyan-500' : percent >= 50 ? 'bg-blue-500' : percent >= 25 ? 'bg-amber-500' : 'bg-red-500';
@@ -411,10 +411,10 @@ export const toHtml = (md: string): string => {
 
     // 14c. Clean up escaped characters
     html = html
-        .replace(/‹DOLLAR›/g, '$')
-        .replace(/‹asterisk›/g, '*')
-        .replace(/‹hash›/g, '#')
-        .replace(/‹dash›/g, '-');
+        .replace(/ÔÇ╣DOLLARÔÇ║/g, '$')
+        .replace(/ÔÇ╣asteriskÔÇ║/g, '*')
+        .replace(/ÔÇ╣hashÔÇ║/g, '#')
+        .replace(/ÔÇ╣dashÔÇ║/g, '-');
 
     // 15. Final DIVIDER marker replacement
     html = html.replace(/---DIVIDER---/g, '<div class="divider-container"><div class="divider-line bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent h-px my-8"></div></div>');
@@ -477,64 +477,33 @@ function convertTablesToHtml(html: string): string {
 function renderTable(rows: string[][]): string {
     if (rows.length === 0) return '';
     
-    // Auto-heal column count
+    // Auto-heal column count: find the maximum width used in either header or data rows
     let maxCols = 0;
     rows.forEach(r => { if (r.length > maxCols) maxCols = r.length; });
 
+    let html = '<div class="overflow-x-auto my-4"><table class="min-w-full divide-y divide-white/10 border border-white/10 rounded-lg overflow-hidden">';
+    
+    // Auto-Grid Header
+    html += '<thead class="bg-white/5"><tr>';
     const headerRow = rows[0];
-    const bodyRows = rows.slice(1);
-
-    // HIGH-DENSITY PROFESSIONAL STUDIO ELITE DESIGN
-    let html = '<div class="table-container my-10 group/table">';
-    
-    // THE SHELL: Glassmorphism + Pure Shadow (No Borders)
-    html += '<div class="relative overflow-hidden rounded-xl bg-black/45 backdrop-blur-3xl shadow-[0_15px_40px_rgba(0,0,0,0.4)] transition-all duration-500">';
-    
-    // Ambient Shimmer
-    html += '<div class="absolute inset-0 bg-gradient-to-br from-white/[0.03] to-transparent pointer-events-none z-20"></div>';
-
-    // Internal wrapper
-    html += '<div class="overflow-x-auto relative z-10"><table class="min-w-full border-collapse m-0 p-0" style="margin: 0 !important; border: none;">';
-    
-    // 1. HEADER: Elite Tech Typography - ULTRA-COMPACT
-    html += '<thead class="bg-white/[0.05] relative z-20"><tr>';
     for (let i = 0; i < maxCols; i++) {
         const cellText = headerRow[i] || '&nbsp;';
-        const isLastHeader = i === maxCols - 1;
-        // Vertical divider for header
-        const borderX = !isLastHeader ? 'border-r border-white/[0.06]' : '';
-        html += `<th class="px-4.5 py-2.5 text-left text-[12px] font-black text-white uppercase tracking-[0.15em] whitespace-nowrap relative ${borderX}">`
-             + `<span class="relative z-10">${cellText}</span>`
-             + `<div class="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>`
-             + `</th>`;
+        html += `<th class="px-4 py-2 text-left text-xs font-bold text-slate-300 uppercase tracking-wider">${cellText}</th>`;
     }
-    html += '</tr></thead>';
+    html += '</tr></thead><tbody class="divide-y divide-white/5">';
 
-    // 2. BODY: Extreme-density rows with vertical dividers and zebra striping
-    html += '<tbody class="relative z-10">';
-    for (let r = 0; r < bodyRows.length; r++) {
-        const row = bodyRows[r];
-        const isLastRow = r === bodyRows.length - 1;
-        const zebraClass = r % 2 === 1 ? 'bg-white/[0.015]' : '';
-        html += `<tr class="${zebraClass} hover:bg-white/[0.025] transition-all duration-300 group/row relative">`;
+    // Auto-Grid Body
+    for (let r = 1; r < rows.length; r++) {
+        html += '<tr class="hover:bg-white/5 transition-colors">';
+        const row = rows[r];
         for (let c = 0; c < maxCols; c++) {
             const cellText = row[c] || '&nbsp;';
-            const isFirstCol = c === 0;
-            const isLastCol = c === maxCols - 1;
-            const textClass = isFirstCol ? 'text-slate-100 font-bold' : 'text-slate-400 font-normal';
-            
-            // Sub-pixel vertical dividers for body
-            const borderX = !isLastCol ? 'border-r border-white/[0.04]' : '';
-            
-            html += `<td class="px-4.5 py-2 text-[13px] ${textClass} ${borderX} group-hover/row:text-white transition-colors antialiased relative">`
-                 + `<span class="relative z-10">${cellText}</span>`
-                 + (!isLastRow ? `<div class="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r ${c===0 ? 'from-transparent' : (c===maxCols-1 ? '' : 'via-white/[0.05]')} ${c===maxCols-1 ? 'to-transparent via-white/[0.05]' : ''} pointer-events-none"></div>` : '')
-                 + `</td>`;
+            html += `<td class="px-4 py-2 text-sm text-slate-300 border-x border-white/5">${cellText}</td>`;
         }
         html += '</tr>';
     }
-    html += '</tbody></table></div></div></div>';
 
+    html += '</tbody></table></div>';
     return html;
 }
 
@@ -648,7 +617,7 @@ function convertListsToHtml(html: string): string {
             const depth = listStack.length;
 
             if (depth === 0) {
-                // First list item ever — open a new list
+                // First list item ever ÔÇö open a new list
                 const marginClass = 'my-2';
                 processed.push(`<${type} class="space-y-1 ${marginClass} ml-6 cursor-default">`);
                 listStack.push({ type, indent });
@@ -669,7 +638,7 @@ function convertListsToHtml(html: string): string {
                         listStack.push({ type, indent });
                     }
                 } else {
-                    // Same level — close previous <li>, stay in same list
+                    // Same level ÔÇö close previous <li>, stay in same list
                     processed.push('</li>');
                 }
             }
@@ -680,14 +649,14 @@ function convertListsToHtml(html: string): string {
                 const isChecked = marker === 'x';
                 const isPartial = marker === '/';
                 
-                let checkIcon = '☐';
+                let checkIcon = 'ÔÿÉ';
                 let textClass = 'text-slate-300';
                 
                 if (isChecked) {
-                    checkIcon = '☑';
+                    checkIcon = 'Ôÿæ';
                     textClass = 'text-slate-500 line-through decoration-white/10';
                 } else if (isPartial) {
-                    checkIcon = '▣';
+                    checkIcon = 'Ôûú';
                     textClass = 'text-cyan-100/90 font-medium';
                 }
 
@@ -701,7 +670,7 @@ function convertListsToHtml(html: string): string {
             // Skip empty lines between list groups (keep list context open)
             continue;
         } else {
-            // Non-list line — close everything
+            // Non-list line ÔÇö close everything
             if (listStack.length > 0) {
                 closeAllLists();
             }
@@ -719,12 +688,7 @@ function convertListsToHtml(html: string): string {
                 if (!startsWithBlock && !startsWithInline) {
                     processed.push(`<div class="mb-3 leading-loose">${trimmed}</div>`);
                 } else {
-                    // Check if the block is a table or blockquote and ensure it's not wrapped with extra bottom space
-                    if (trimmed.toLowerCase().startsWith('<div class="overflow-hidden') || trimmed.toLowerCase().startsWith('<blockquote')) {
-                        processed.push(trimmed);
-                    } else {
-                        processed.push(line);
-                    }
+                    processed.push(line);
                 }
             }
         }
@@ -755,7 +719,7 @@ function convertDefinitionListsToHtml(html: string): string {
 
         if (defMatch) {
             if (!inDl) {
-                // Start dl — flush the pending term first
+                // Start dl ÔÇö flush the pending term first
                 output.push('<dl class="my-3 space-y-1.5">');
                 inDl = true;
                 if (pendingTerm !== null) {
@@ -879,7 +843,7 @@ function highlightCode(code: string, lang: string): string {
     if (!code) return '';
 
     // Step 0: Escape literal $ to avoid misinterpretation by generic highlighters or recursion
-    let highlighted = code.replace(/\$/g, '‹DOLLAR›');
+    let highlighted = code.replace(/\$/g, 'ÔÇ╣DOLLARÔÇ║');
     const tokens: string[] = [];
 
     const addToken = (content: string, className: string) => {
@@ -931,10 +895,10 @@ function highlightCode(code: string, lang: string): string {
 
         // 7. General identifiers (if not already tokenized)
         highlighted = highlighted.replace(/\b(TD|LR|BT|RL|TB|int|string|date|float|PK|FK)\b/g, (match) => addToken(match, 'text-slate-400 font-mono text-[0.9em]'));
-    } else if (lang === 'tree' || highlighted.includes('├──') || highlighted.includes('└──')) {
+    } else if (lang === 'tree' || highlighted.includes('Ôö£ÔöÇÔöÇ') || highlighted.includes('ÔööÔöÇÔöÇ')) {
         // High-end Tree rendering
         // 1. Convert Tree Lines (ASCII)
-        highlighted = highlighted.replace(/([│├└]──|[│])/g, (match) => addToken(match, 'text-cyan-500/40 font-bold'));
+        highlighted = highlighted.replace(/([ÔöéÔö£Ôöö]ÔöÇÔöÇ|[Ôöé])/g, (match) => addToken(match, 'text-cyan-500/40 font-bold'));
         
         // 2. Folders (names ending with / or starting with emoji+space)
         highlighted = highlighted.replace(/([\w\-_]+\/)/g, (match) => 
@@ -964,7 +928,7 @@ function highlightCode(code: string, lang: string): string {
         highlighted = highlighted.replace(`##TOKEN_${i}##`, html);
     });
 
-    highlighted = highlighted.replace(/‹DOLLAR›/g, '$');
+    highlighted = highlighted.replace(/ÔÇ╣DOLLARÔÇ║/g, '$');
 
     return highlighted;
 }
@@ -983,7 +947,7 @@ function convertMathToHtml(math: string): string {
     html = html.replace(matrixRegex, (match, type, content) => {
         const rows = content.trim().split(/\\\\/);
         const bracketType: Record<string, [string, string]> = {
-            'p': ['(', ')'], 'b': ['[', ']'], 'v': ['|', '|'], 'V': ['‖', '‖'], 'B': ['{', '}']
+            'p': ['(', ')'], 'b': ['[', ']'], 'v': ['|', '|'], 'V': ['ÔÇû', 'ÔÇû'], 'B': ['{', '}']
         };
         const [open, close] = bracketType[type] || ['(', ')'];
         
@@ -1028,14 +992,14 @@ function convertMathToHtml(math: string): string {
 
     // 4. Common Operators & Large Symbols
     const ops: Record<string, string> = {
-        '\\int': '∫', '\\sum': 'Σ', '\\lim': 'lim', '\\prod': 'Π', '\\sqrt': '√', '\\partial': '∂', '\\nabla': '∇',
-        '\\infty': '∞', '\\approx': '≈', '\\neq': '≠', '\\leq': '≤', '\\geq': '≥', '\\pm': '±', '\\mp': '∓',
-        '\\propto': '∝', '\\sim': '∼', '\\equiv': '≡', '\\hbar': 'ℏ', '\\varepsilon_0': 'ε₀', '\\varepsilon': 'ε', 
-        '\\mathbf': '', '\\cdot': '·', '\\times': '×', '\\div': '÷',
-        '\\exists': '∃', '\\forall': '∀', '\\in': '∈', '\\notin': '∉', '\\subset': '⊂', '\\supset': '⊃', 
-        '\\cup': '∪', '\\cap': '∩', '\\setminus': '∖', '\\emptyset': '∅', '\\oint': '∮',
-        '\\rightarrow': '→', '\\leftarrow': '←', '\\leftrightarrow': '↔', '\\Rightarrow': '⇒', '\\Leftarrow': '⇐', '\\Leftrightarrow': '⇔',
-        '\\cdots': '⋯', '\\vdots': '⋮', '\\ddots': '⋱', '\\quad': '&nbsp;&nbsp;&nbsp;&nbsp;'
+        '\\int': 'Ôê½', '\\sum': '╬ú', '\\lim': 'lim', '\\prod': '╬á', '\\sqrt': 'ÔêÜ', '\\partial': 'Ôêé', '\\nabla': 'Ôêç',
+        '\\infty': 'Ôê×', '\\approx': 'Ôëê', '\\neq': 'Ôëá', '\\leq': 'Ôëñ', '\\geq': 'ÔëÑ', '\\pm': '┬▒', '\\mp': 'Ôêô',
+        '\\propto': 'ÔêØ', '\\sim': 'Ôê╝', '\\equiv': 'Ôëí', '\\hbar': 'ÔäÅ', '\\varepsilon_0': '╬ÁÔéÇ', '\\varepsilon': '╬Á', 
+        '\\mathbf': '', '\\cdot': '┬À', '\\times': '├ù', '\\div': '├À',
+        '\\exists': 'Ôêâ', '\\forall': 'ÔêÇ', '\\in': 'Ôêê', '\\notin': 'Ôêë', '\\subset': 'Ôèé', '\\supset': 'Ôèâ', 
+        '\\cup': 'Ôê¬', '\\cap': 'Ôê®', '\\setminus': 'Ôêû', '\\emptyset': 'Ôêà', '\\oint': 'Ôê«',
+        '\\rightarrow': 'ÔåÆ', '\\leftarrow': 'ÔåÉ', '\\leftrightarrow': 'Ôåö', '\\Rightarrow': 'ÔçÆ', '\\Leftarrow': 'ÔçÉ', '\\Leftrightarrow': 'Ôçö',
+        '\\cdots': 'Ôï»', '\\vdots': 'Ôï«', '\\ddots': 'Ôï▒', '\\quad': '&nbsp;&nbsp;&nbsp;&nbsp;'
     };
     Object.entries(ops).forEach(([latex, uni]) => {
         const escaped = latex.replace(/\\/g, '\\\\');
@@ -1044,12 +1008,12 @@ function convertMathToHtml(math: string): string {
 
     // 5. Greek Letters
     const greek: Record<string, string> = {
-        '\\alpha': 'α', '\\beta': 'β', '\\gamma': 'γ', '\\delta': 'δ', '\\epsilon': 'ε', '\\zeta': 'ζ', '\\eta': 'η', 
-        '\\theta': 'θ', '\\iota': 'ι', '\\kappa': 'κ', '\\lambda': 'λ', '\\mu': 'μ', '\\nu': 'ν', '\\xi': 'ξ', 
-        '\\pi': 'π', '\\rho': 'ρ', '\\sigma': 'σ', '\\tau': 'τ', '\\upsilon': 'υ', '\\phi': 'φ', '\\chi': 'χ', 
-        '\\psi': 'ψ', '\\omega': 'ω',
-        '\\Alpha': 'Α', '\\Beta': 'Β', '\\Gamma': 'Γ', '\\Delta': 'Δ', '\\Theta': 'Θ', '\\Lambda': 'Λ', 
-        '\\Pi': 'Π', '\\Sigma': 'Σ', '\\Phi': 'Φ', '\\Psi': 'Ψ', '\\Omega': 'Ω'
+        '\\alpha': '╬▒', '\\beta': '╬▓', '\\gamma': '╬│', '\\delta': '╬┤', '\\epsilon': '╬Á', '\\zeta': '╬Â', '\\eta': '╬À', 
+        '\\theta': '╬©', '\\iota': '╬╣', '\\kappa': '╬║', '\\lambda': '╬╗', '\\mu': '╬╝', '\\nu': '╬¢', '\\xi': '╬¥', 
+        '\\pi': '¤Ç', '\\rho': '¤ü', '\\sigma': '¤â', '\\tau': '¤ä', '\\upsilon': '¤à', '\\phi': '¤å', '\\chi': '¤ç', 
+        '\\psi': '¤ê', '\\omega': '¤ë',
+        '\\Alpha': '╬æ', '\\Beta': '╬Æ', '\\Gamma': '╬ô', '\\Delta': '╬ö', '\\Theta': '╬ÿ', '\\Lambda': '╬ø', 
+        '\\Pi': '╬á', '\\Sigma': '╬ú', '\\Phi': '╬ª', '\\Psi': '╬¿', '\\Omega': '╬®'
     };
     Object.entries(greek).forEach(([latex, uni]) => {
         const escaped = latex.replace(/\\/g, '\\\\');
@@ -1068,9 +1032,10 @@ function convertMathToHtml(math: string): string {
     // 7. Styling cleanups
     html = html.replace(/\\sin/g, 'sin').replace(/\\cos/g, 'cos').replace(/\\tan/g, 'tan').replace(/\\log/g, 'log').replace(/\\ln/g, 'ln');
     html = html.replace(/\\hat\{([^}]*)\}/g, '<span class="inline-flex flex-col items-center"><span>^</span><span class="mt-[-1em]">$1</span></span>');
-    html = html.replace(/\\vec\{([^}]*)\}/g, '<span class="inline-flex flex-col items-center"><span>→</span><span class="mt-[-1em]">$1</span></span>');
+    html = html.replace(/\\vec\{([^}]*)\}/g, '<span class="inline-flex flex-col items-center"><span>ÔåÆ</span><span class="mt-[-1em]">$1</span></span>');
     html = html.replace(/\\mathbf\{([^}]*)\}/g, '<span class="font-bold">$1</span>');
     html = html.replace(/\\text\{([^}]*)\}/g, '<span class="font-sans italic opacity-80">$1</span>');
 
     return html;
 }
+

@@ -309,32 +309,120 @@ export const ChatArea = ({
     };
 
     const isAgentActive = !['idle'].includes(agentStatus.phase) && isLoading;
+    const lastMessageIdRef = React.useRef<string | null>(null);
+    const [isAnchoring, setIsAnchoring] = React.useState(false);
+    const lockedScrollTopRef = React.useRef<number | null>(null);
 
-    // Responsive Auto-scroll logic: ensures the view stays at bottom during streaming or phase changes
+    // 🖱️ HUMAN INTERACTION SENSORS: Only break the lock on PHYSICAL input
     React.useEffect(() => {
-        if (scrollRef.current) {
-            const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
-            // Detect if user is near bottom or if it's a new user message
-            const isNearBottom = scrollHeight - scrollTop - clientHeight < 250;
-            const isNewMessage = messages.length > 0 && messages[messages.length - 1].isStreaming === false;
+        const container = scrollRef.current;
+        if (!container || messages.length === 0) return;
 
-            if (isNearBottom || isNewMessage) {
-                // Large timeout or requestAnimationFrame to ensure DOM is ready
-                const timer = setTimeout(() => {
-                    if (scrollRef.current) {
-                        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-                    }
-                }, 50);
-                return () => clearTimeout(timer);
+        const breakLock = () => {
+            const lastMsg = messages[messages.length - 1];
+            // 🛡️ INDESTRUCTIBLE LOCK: Only allow manual release AFTER the stream ends
+            if (isAnchoring && lastMsg && !lastMsg.isStreaming) {
+                setIsAnchoring(false);
+                lockedScrollTopRef.current = null;
             }
+        };
+
+        // Listen for actual human intent, ignoring programmatic scrolls
+        container.addEventListener('wheel', breakLock, { passive: true });
+        container.addEventListener('touchmove', breakLock, { passive: true });
+        container.addEventListener('mousedown', breakLock, { passive: true });
+
+        return () => {
+            container.removeEventListener('wheel', breakLock);
+            container.removeEventListener('touchmove', breakLock);
+            container.removeEventListener('mousedown', breakLock);
+        };
+    }, [isAnchoring, messages]);
+
+    // [SCROLL ENGINE] Physical Interaction Lock for Streaming
+    React.useEffect(() => {
+        if (!scrollRef.current || messages.length === 0) return;
+        
+        const lastMsg = messages[messages.length - 1];
+        const scrollContainer = scrollRef.current;
+        const LOCK_MARGIN = 28; // Standard spacing for icon/header visibility
+
+        // 🔄 AUTO-UNLOCK ON NEW TURN: Release lock if it's a completely new message
+        if (isAnchoring && lastMessageIdRef.current && lastMessageIdRef.current !== lastMsg.id) {
+            setIsAnchoring(false);
+            lockedScrollTopRef.current = null;
+            lastMessageIdRef.current = lastMsg.id;
+            return;
         }
-    }, [messages, agentStatus.phase, pendingApproval]);
+
+        lastMessageIdRef.current = lastMsg.id;
+        
+        // --- PHASE 1: Detection & Precision Positioning ---
+        const syncScroll = () => {
+            if (!scrollRef.current) return;
+            const container = scrollRef.current;
+            const lastMsg = messages[messages.length - 1];
+            if (!lastMsg) return;
+
+            const msgEl = document.getElementById(`msg-${lastMsg.id}`);
+            if (!msgEl) return;
+
+            const bannerEl = document.querySelector('.folder-permission-banner');
+            const bannerHeight = bannerEl ? (bannerEl as HTMLElement).offsetHeight : 0;
+            const containerRect = container.getBoundingClientRect();
+            const boundaryTop = containerRect.top + bannerHeight + LOCK_MARGIN;
+
+            // 🎯 BOUNDARY-AWARE CALCULATION: Stop overshooting
+            // idealScrollTop is where we should be to keep the message at exactly boundaryTop
+            const msgRect = msgEl.getBoundingClientRect();
+            const idealScrollTop = container.scrollTop + (msgRect.top - boundaryTop);
+
+            if (isAnchoring) {
+                // 🔒 STAY LOCKED: Absolute coordinate
+                if (lockedScrollTopRef.current !== null) {
+                    container.scrollTop = lockedScrollTopRef.current;
+                }
+            } else if (lastMsg.isStreaming) {
+                // 🚀 SOFT-BRAKE FOLLOW: Follow bottom, but never past the ideal lock point
+                const maxBottom = container.scrollHeight - container.clientHeight;
+                const nextScroll = Math.min(maxBottom, idealScrollTop);
+
+                container.scrollTop = nextScroll;
+
+                // Permanent Lock Engagement: Once we hit the ideal point, cement it
+                if (nextScroll >= idealScrollTop - 1) {
+                    setIsAnchoring(true);
+                    lockedScrollTopRef.current = idealScrollTop;
+                }
+            }
+        };
+
+        if (lastMsg.isStreaming || isAnchoring) {
+            syncScroll();
+            const frameId = requestAnimationFrame(syncScroll);
+            return () => cancelAnimationFrame(frameId);
+        }
+
+        // --- PHASE 3: Standard Auto-scroll (Fallback for User/System) ---
+        const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
+        const isNearBottom = scrollHeight - scrollTop - clientHeight < 200;
+        const isUserMsg = lastMsg.role === 'user';
+
+        if ((isNearBottom || isUserMsg) && !lastMsg.isStreaming) {
+            const timer = setTimeout(() => {
+                if (scrollRef.current) {
+                    scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+                }
+            }, 100);
+            return () => clearTimeout(timer);
+        }
+    }, [messages, agentStatus.phase, pendingApproval, isAnchoring, isAgentActive]);
 
     return (
         <div className="flex-1 flex flex-col h-full relative">
             {/* Connection Banner (Persistent Neural Link) */}
             {Object.entries(folderPermissions).some(([_, status]) => status !== 'granted') && (
-                <div className="bg-amber-900/40 border-b border-amber-500/20 p-2 sm:p-3 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 animate-in slide-in-from-top duration-500 z-[110] w-full max-w-full shadow-lg">
+                <div className="folder-permission-banner bg-amber-900/40 border-b border-amber-500/20 p-2 sm:p-3 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 animate-in slide-in-from-top duration-500 z-[110] w-full max-w-full shadow-lg">
                     <span className="text-[9px] sm:text-[11px] font-mono text-amber-200 uppercase tracking-widest flex items-center justify-center text-center gap-1.5 sm:gap-2 leading-tight w-full sm:w-auto">
                         <Icon name="exclamation-triangle" className="animate-pulse flex-shrink-0 text-[14px]" />
                         <span className="truncate whitespace-normal">{t('chat.labels.link_intermittent')}</span>
@@ -435,7 +523,7 @@ export const ChatArea = ({
                 ref={scrollRef}
             >
                 <div className="flex-1" />
-                <div className="space-y-6 w-full">
+                <div className="space-y-6 w-full max-w-[98%] sm:max-w-[90%] lg:max-w-[80%] mx-auto pb-4">
                     {messages.length === 0 && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-20">
                             <div className="w-20 h-20 rounded-full border-2 border-blue-500/15 flex items-center justify-center mb-6 text-3xl text-blue-500/20">
@@ -458,7 +546,7 @@ export const ChatArea = ({
                         const showPlaceholder = isLast && isLoading && isAgentResponse && !hasToolCall;
 
                         const MessageContent = (
-                            <div key={msg.id} className={`flex group relative ${msg.role === 'user' ? 'justify-end'
+                            <div key={msg.id} id={`msg-${msg.id}`} className={`flex group relative ${msg.role === 'user' ? 'justify-end'
                                 : msg.role === 'system' ? 'justify-center'
                                     : 'justify-start'
                                 }`}>
@@ -472,7 +560,7 @@ export const ChatArea = ({
                                         <MarkdownRenderer content={msg.text} />
                                     </div>
                                 ) : (
-                                    <div className={`relative w-auto max-w-[98%] sm:max-w-[90%] lg:max-w-[80%] p-5 sm:px-8 sm:py-6 shadow-xl transition-all duration-300 break-words message-pop-in transform-gpu rounded-2xl ${msg.role === 'user'
+                                    <div className={`relative w-auto max-w-full p-5 sm:px-8 sm:py-6 shadow-xl transition-all duration-300 break-words message-pop-in transform-gpu rounded-2xl ${msg.role === 'user'
                                         ? 'bg-blue-600/20 border border-transparent group-hover:border-blue-500/30 text-blue-50 rounded-br-none'
                                         : 'bg-slate-800 border border-transparent group-hover:border-slate-700 text-slate-200 rounded-bl-none'
                                         }`}>

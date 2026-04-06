@@ -2053,3 +2053,7 @@ select.premium-input option {
 .animate-premium {
   animation: premiumIn 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+/* Safety net for Mermaid error leaks */
+#mermaid-error-container, .error-icon {
+  display: none !important;
+}

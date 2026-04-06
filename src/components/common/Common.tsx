@@ -1,6 +1,6 @@
 import React, { useMemo, useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { toHtml, renderMermaidBlocks } from '../../utils';
+import { toHtml, renderMermaidBlocks, renderSingleMermaidBlock } from '../../utils';
 import { formatFinalResponse } from '../../services/formatters';
 
 export const Icon = ({ name, className = "" }: { name: string; className?: string }) => {
@@ -30,14 +30,18 @@ const MarkdownRendererBase = ({ content, isStreaming }: { content: string, isStr
             (entries) => {
                 entries.forEach((entry) => {
                     const el = entry.target as HTMLElement;
+                    
+                    // ⚡ ONCE-ONLY ANIMATION: Bail if already animated
+                    if (el.hasAttribute('data-animated')) return;
+
                     if (entry.isIntersecting) {
+                        el.setAttribute('data-animated', 'true'); // Lock it immediately
                         if (el.tagName === 'BLOCKQUOTE') {
                             if (!el.classList.contains('is-typing')) {
                                 el.classList.add('is-typing', 'is-visible');
                                 const fullHtml = el.getAttribute('data-original-html') || '';
                                 
                                 // HYBRID LOGIC: Preserve dimensions using a hidden placeholder
-                                // This ensures the bubble size is PRE-CALCULATED and doesn't jump.
                                 el.innerHTML = `<div class="blockquote-anim-container relative">`
                                     + `<div class="blockquote-placeholder invisible select-none pointer-events-none">${fullHtml}</div>`
                                     + `<div class="blockquote-typing absolute inset-0"></div>`
@@ -56,8 +60,6 @@ const MarkdownRendererBase = ({ content, isStreaming }: { content: string, isStr
                                         return;
                                     }
 
-                                    // Special handling for pre-rendered headers in admonitions
-                                    // If we detect a non-typing tag, we skip it or render it instantly
                                     const nextSegment = fullHtml.substring(cursor);
                                     const nonTypingMatch = nextSegment.match(/^<div class="[^"]*non-typing[^"]*">.*?<\/div>/);
                                     
@@ -80,16 +82,16 @@ const MarkdownRendererBase = ({ content, isStreaming }: { content: string, isStr
                                     }
                                 }, 8);
                             }
+                        } else if (el.classList.contains('mermaid')) {
+                            // 🏹 VIEWPORT-TRIGGERED MERMAID: Render only when seen
+                            renderSingleMermaidBlock(el);
+                        } else if (el.classList.contains('code-block-anim')) {
+                            // 💻 STANDARD CODE BLOCK: Smooth reveal on entry
+                            el.setAttribute('data-animated', 'true');
+                            el.classList.remove('opacity-0', 'scale-95', 'blur-sm');
+                            el.classList.add('opacity-100', 'scale-100', 'blur-0', 'is-visible');
                         } else {
                             el.classList.add('is-visible');
-                        }
-                    } else {
-                        el.classList.remove('is-visible');
-                        if (el.tagName === 'BLOCKQUOTE') {
-                            if ((el as any)._typeInterval) clearInterval((el as any)._typeInterval);
-                            // We don't clear innerHTML here anymore to keep the layout stable if it's already rendered
-                            // but we do reset the typing class if we want it to re-run
-                            el.classList.remove('is-typing');
                         }
                     }
                 });
@@ -97,7 +99,7 @@ const MarkdownRendererBase = ({ content, isStreaming }: { content: string, isStr
             { threshold: 0.1 }
         );
 
-        const animatedElements = containerNode.querySelectorAll('.divider-container, blockquote');
+        const animatedElements = containerNode.querySelectorAll('.divider-container, blockquote, .mermaid, .code-block-anim');
         animatedElements.forEach((el) => {
             if (el.tagName === 'BLOCKQUOTE' && !el.hasAttribute('data-original-html')) {
                 const htmlEl = el as HTMLElement;
@@ -114,13 +116,6 @@ const MarkdownRendererBase = ({ content, isStreaming }: { content: string, isStr
             });
         };
     }, [html, isStreaming]);
-
-    // ⚡ NATIVE MERMAID ENGINE: Trigger local rendering after DOM injection
-    useEffect(() => {
-        if (containerRef.current) {
-            renderMermaidBlocks(containerRef.current);
-        }
-    }, [html]);
 
     return (
         <div
