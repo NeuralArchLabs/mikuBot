@@ -929,7 +929,15 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                             </button>
                         )}
                         <button
-                            onClick={step < 10 ? () => setStep(step + 1) : finish}
+                            onClick={() => {
+                                if (step === 8) {
+                                    ['gemini', 'groq', 'ollama', 'zai'].forEach(p => {
+                                        onTestConnection(p as Provider);
+                                    });
+                                }
+                                if (step < 10) setStep(step + 1);
+                                else finish();
+                            }}
                             disabled={loading || (step === 3 && !userName)}
                             className="bg-blue-600 hover:bg-blue-500 text-white px-6 md:px-10 py-2 md:py-2.5 rounded-xl md:rounded-2xl font-black text-[9px] md:text-[11px] uppercase tracking-[0.2em] md:tracking-[0.3em] shadow-2xl active:scale-95 transition-all disabled:opacity-20 flex items-center gap-2 md:gap-3 group/btn whitespace-nowrap shrink-0"
                         >
