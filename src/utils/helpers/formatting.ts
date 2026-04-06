@@ -32,6 +32,18 @@ export const toHtml = (md: string): string => {
     let html = md;
     const pieces: string[] = [];
 
+    // 0. SIGNATURE SHIELD: Protect the assistant's visual signature
+    // Pattern: {{ ... }} with typical signature content
+    html = html.replace(/\{\{\s*([^\}]+?)\s*\}\}/g, (match, signContent) => {
+        // Only shield if it looks like the signature (contains brackets and typical glyphs)
+        if (signContent.includes('≈') || signContent.includes('∫') || signContent.includes('~')) {
+            const id = `__BLOCK_${pieces.length}__`;
+            pieces.push(`<span class="font-mono text-cyan-400 font-black tracking-tight select-none opacity-90 drop-shadow-[0_0_10px_rgba(34,211,238,0.2)] whitespace-nowrap">{{ ${signContent.trim()} }}</span>`);
+            return id;
+        }
+        return match;
+    });
+
     // 0. PRE-EXTRACTION: Protect math and code blocks first
     
     // 1a. Math block formulas ($$ ... $$) - Process FIRST to protect backslashes
@@ -294,21 +306,23 @@ export const toHtml = (md: string): string => {
 
     html = html.replace(/~([^~\n]+)~/g, '<sub class="text-slate-400 text-[0.7em] leading-none">$1</sub>');
 
-    html = html.replace(/\^([^\^\n]+)\^/g, '<sup class="text-slate-400 text-[0.7em] leading-none">$1</sup>');
-
-    html = html.replace(/\$([^$\n]+)\$/g, (match, formula) => {
-        return `<span class="font-serif italic text-amber-200 bg-white/5 px-1.5 py-0.5 rounded-md mx-0.5 shadow-sm border-b border-white/10 math-inline">${convertMathToHtml(formula)}</span>`;
-    });
-
-    // 10. Footnote definitions [^1]: 
+    // 13a. Footnote definitions [^1]: 
     html = html.replace(/^\[\^([^\]]+)\]:\s+(.*)$/gm, (match, label, content) => {
-        return `<div class="text-[11px] text-slate-400/80 mt-1.5 flex gap-2 items-baseline leading-relaxed italic group/fn">`
+        const id = `__BLOCK_${pieces.length}__`;
+        pieces.push(`<div class="text-[11px] text-slate-400/80 mt-1.5 flex gap-2 items-baseline leading-relaxed italic group/fn">`
              + `<span class="bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 font-mono px-1 rounded-sm text-[9px] min-w-[20px] text-center shadow-sm h-fit">#${label}</span>`
-             + `<span class="flex-1 text-slate-400/70 antialiased font-medium opacity-90">${content}</span></div>`;
+             + `<span class="flex-1 text-slate-400/70 antialiased font-medium opacity-90">${content}</span></div>`);
+        return `\n${id}\n`;
     });
 
-    // 13b. Footnote references [^1]
-    html = html.replace(/\[\^([^\]]+)\](?!=:)/g, '<sup class="text-cyan-400/90 font-black ml-0.5 text-[9px] tracking-tight hover:text-cyan-300 transition-colors cursor-help" style="vertical-align: super;">$1</sup>');
+    // 13b. Footnote references [^1] (Must be before generic superscript)
+    html = html.replace(/\[\^([^\]\n]+?)\]/g, (match, label) => {
+        const id = `__BLOCK_${pieces.length}__`;
+        pieces.push(`<sup class="text-cyan-400/90 font-black ml-0.5 text-[9px] tracking-tight hover:text-cyan-300 transition-colors cursor-help" style="vertical-align: super;">${label}</sup>`);
+        return id;
+    });
+
+    html = html.replace(/\^([^\^\n]+)\^/g, '<sup class="text-slate-400 text-[0.7em] leading-none">$1</sup>');
 
     // 12. Blockquotes (must be AFTER admonitions to avoid stealing lines)
     // Supports nesting: &gt;&gt; ... &gt;&gt;&gt; ...
