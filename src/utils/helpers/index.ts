@@ -8,6 +8,7 @@ export * from './validation';
 
 // Formatting helpers
 export * from './formatting';
+export * from './mermaid';
 
 // Network helpers
 export * from './network';

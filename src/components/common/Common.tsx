@@ -1,6 +1,6 @@
 import React, { useMemo, useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { toHtml } from '../../utils';
+import { toHtml, renderMermaidBlocks } from '../../utils';
 import { formatFinalResponse } from '../../services/formatters';
 
 export const Icon = ({ name, className = "" }: { name: string; className?: string }) => {
@@ -114,6 +114,13 @@ const MarkdownRendererBase = ({ content, isStreaming }: { content: string, isStr
             });
         };
     }, [html, isStreaming]);
+
+    // ⚡ NATIVE MERMAID ENGINE: Trigger local rendering after DOM injection
+    useEffect(() => {
+        if (containerRef.current) {
+            renderMermaidBlocks(containerRef.current);
+        }
+    }, [html]);
 
     return (
         <div

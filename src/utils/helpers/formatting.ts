@@ -38,7 +38,13 @@ export const toHtml = (md: string): string => {
         // Only shield if it looks like the signature (contains brackets and typical glyphs)
         if (signContent.includes('≈') || signContent.includes('∫') || signContent.includes('~')) {
             const id = `__BLOCK_${pieces.length}__`;
-            pieces.push(`<span class="font-mono text-cyan-400 font-black tracking-tight select-none opacity-90 drop-shadow-[0_0_10px_rgba(34,211,238,0.2)] whitespace-nowrap">{{ ${signContent.trim()} }}</span>`);
+            pieces.push(`<div class="signature-wrapper mb-6 mt-2 flex items-center">`
+                + `<span class="inline-flex items-center gap-3 px-5 py-2 rounded-full font-mono text-cyan-400 font-black tracking-[0.15em] select-none `
+                + `bg-gradient-to-r from-cyan-500/15 via-cyan-500/5 to-transparent border border-cyan-500/20 shadow-[0_0_20px_rgba(34,211,238,0.15)] `
+                + `backdrop-blur-sm transition-all hover:scale-[1.02] active:scale-[0.98]">`
+                + `<i class="fas fa-dna text-[10px] animate-pulse opacity-80"></i>`
+                + `{{ ${signContent.trim()} }}`
+                + `<i class="fas fa-sparkles text-[10px] opacity-60"></i></span></div>`);
             return id;
         }
         return match;
@@ -46,7 +52,62 @@ export const toHtml = (md: string): string => {
 
     // 0. PRE-EXTRACTION: Protect math and code blocks first
     
-    // 1a. Math block formulas ($$ ... $$) - Process FIRST to protect backslashes
+    // 0. PRE-EXTRACTION: Protect inline and fenced code blocks
+    html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (match, lang, code) => {
+        const id = `__BLOCK_${pieces.length}__`;
+        const langClean = lang.toLowerCase();
+        const codeTrimmed = code.trim();
+        const highlighted = highlightCode(codeTrimmed, langClean);
+        const encodedCode = encodeURIComponent(codeTrimmed);
+        const isDiagram = ['mermaid', 'flowchart', 'graph', 'sequenceDiagram', 'gantt', 'pie', 'gitGraph', 'stateDiagram', 'stateDiagram-v2', 'mindmap', 'erDiagram'].some(d => langClean.includes(d));
+        
+        // Premium Code Studio: Language-specific accent colors
+        const codeColors: Record<string, string> = {
+            python: 'text-blue-400',
+            javascript: 'text-yellow-400',
+            typescript: 'text-blue-500',
+            json: 'text-cyan-400',
+            html: 'text-orange-500',
+            css: 'text-indigo-400',
+            rust: 'text-orange-600',
+            go: 'text-sky-400',
+            bash: 'text-emerald-400',
+            yaml: 'text-rose-400'
+        };
+        const accent = codeColors[langClean] || 'text-slate-400';
+        const displayLang = langClean || 'code';
+
+        const containerClass = isDiagram 
+            ? 'relative group bg-black/45 pt-12 pb-10 px-8 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_20px_50px_rgba(0,0,0,0.3)] transition-all max-w-full selection:bg-cyan-500/30' 
+            : 'relative group bg-black/40 pt-12 pb-6 px-6 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-md transition-all md:mx-2';
+        
+        // Studio Elite Header: Minimal Floating Language Badge
+        const studioHeader = `
+            <div class="absolute top-3 left-6 flex items-center gap-2 non-typing select-none pointer-events-none">
+                <i class="fas fa-terminal text-[9px] ${accent} opacity-60"></i>
+                <span class="text-[9px] font-black uppercase tracking-[0.25em] ${accent} opacity-80">${displayLang}</span>
+            </div>`;
+
+        // Minimal Action: Icon-only Copy Button
+        const copyButton = `<button class="absolute top-3 right-5 text-slate-500/50 hover:text-cyan-400 p-1 opacity-0 group-hover:opacity-100 transition-all hover:scale-110 active:scale-90 cursor-pointer z-20" title="Copiar Código" onclick="const btn=this; const icon=btn.querySelector(\'i\'); const code=decodeURIComponent(\'${encodedCode.replace(/'/g, "\\'")}\'); navigator.clipboard.writeText(code).then(() => { icon.className=\'fas fa-check text-emerald-400\'; setTimeout(() => { icon.className=\'fas fa-clone\'; }, 2000); })"><i class="fas fa-clone text-[13px]"></i></button>`;
+        
+        if (isDiagram) {
+            pieces.push(`<div class="${containerClass} isolate overflow-visible">${studioHeader}${copyButton}<div class="overflow-x-auto w-full"><div class="mermaid opacity-0 transition-opacity duration-1000 min-h-[100px] flex items-center justify-center p-2" data-mermaid-src="${encodedCode}"><code class="text-sm shadow-none font-mono leading-relaxed">${highlighted}</code></div></div></div>`);
+        } else {
+            pieces.push(`<div class="${containerClass} isolate overflow-visible">${studioHeader}${copyButton}<div class="overflow-x-auto w-full"><pre class="bg-transparent border-none p-0 m-0"><code class="text-sm shadow-none font-mono leading-relaxed block p-1">${highlighted}</code></pre></div></div>`);
+        }
+        return `\n${id}\n`;
+    });
+
+    html = html.replace(/`([^`]+)`/g, (match, code) => {
+        const id = `__BLOCK_${pieces.length}__`;
+        // Escape < and > to prevent them from becoming pieces later
+        const escapedCode = code.replace(/</g, '‹').replace(/>/g, '›').replace(/\$/g, '‹DOLLAR›');
+        pieces.push(`<code class="bg-black/40 px-1.5 py-0.5 rounded text-amber-300 font-mono text-[0.9em] border border-white/10 mx-1">${escapedCode}</code>`);
+        return id;
+    });
+
+    // 1a. Math block formulas ($$ ... $$) - Process after code blocks to protect code $
     html = html.replace(/\$\$([\s\S]*?)\$\$/gs, (match, formula) => {
         const id = `__BLOCK_${pieces.length}__`;
         const renderedMath = convertMathToHtml(formula.trim());
@@ -62,29 +123,8 @@ export const toHtml = (md: string): string => {
         return id;
     });
 
-    // 0. PRE-EXTRACTION: Protect inline and fenced code blocks
-    html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (match, lang, code) => {
-        const id = `__BLOCK_${pieces.length}__`;
-        const langClean = lang.toLowerCase();
-        const codeTrimmed = code.trim();
-        const highlighted = highlightCode(codeTrimmed, langClean);
-        const encodedCode = encodeURIComponent(codeTrimmed);
-        const isDiagram = ['mermaid', 'tree', 'flowchart', 'graph', 'statediagram', 'pie', 'gitgraph', 'erdiagram', 'mindmap', 'statediagram-v2'].includes(langClean);
-        const containerClass = isDiagram 
-            ? 'relative group bg-black/40 px-12 py-10 rounded-3xl my-8 border border-transparent hover:border-cyan-500/25 shadow-2xl transition-all max-w-fit mx-auto min-w-[55%]' 
-            : 'relative group bg-black/30 px-6 py-5 rounded-2xl my-6 overflow-x-auto border border-transparent hover:border-cyan-500/20 transition-all';
-        const copyButton = `<button class="absolute top-5 right-5 text-slate-500/60 hover:text-cyan-400/90 p-1 opacity-0 group-hover:opacity-100 transition-all hover:scale-110 active:scale-90 cursor-pointer z-10" onclick="const btn=this; const icon=btn.querySelector('i'); const code=decodeURIComponent('${encodedCode}'); navigator.clipboard.writeText(code).then(() => { icon.className='fas fa-check text-emerald-400'; setTimeout(() => icon.className='fas fa-copy', 2000); })"><i class="fas fa-copy text-sm"></i></button>`;
-        pieces.push(`<pre class="${containerClass}">${copyButton}<code class="text-sm shadow-none font-mono leading-relaxed">${highlighted}</code></pre>`);
-        return `\n${id}\n`;
-    });
-
-    html = html.replace(/`([^`]+)`/g, (match, code) => {
-        const id = `__BLOCK_${pieces.length}__`;
-        // Escape < and > to prevent them from becoming pieces later
-        const escapedCode = code.replace(/</g, '‹').replace(/>/g, '›');
-        pieces.push(`<code class="bg-black/40 px-1.5 py-0.5 rounded text-amber-300 font-mono text-[0.9em] border border-white/10 mx-1">${escapedCode}</code>`);
-        return id;
-    });
+    // Protect raw dollars remaining (not part of math) to prevent recursive parsing
+    html = html.replace(/\$/g, '‹DOLLAR›');
 
     // 1. Protect HTML tags that should render as actual elements
     html = html.replace(/<details([^>]*)>([\s\S]*?)<\/details>/gi, (match, attrs, content) => {
@@ -360,18 +400,21 @@ export const toHtml = (md: string): string => {
 
     // 14. Restoration: inject protected blocks back
     // Use multi-pass for nested blocks (e.g., inline code inside details)
-    let iterations = 0;
-    while (html.includes('__BLOCK_') && iterations < 5) {
-        html = html.replace(/__BLOCK_(\d+)__/g, (match, indexStr) => {
-            const index = parseInt(indexStr);
-            return pieces[index] !== undefined ? pieces[index] : match;
-        });
-        iterations++;
+    // 14. Restoration: inject protected blocks back (REVERSE ORDER to handle nested indices)
+    // We use a regex and a function to replace each match exactly once.
+    for (let i = pieces.length - 1; i >= 0; i--) {
+        const placeholder = `__BLOCK_${i}__`;
+        if (html.includes(placeholder)) {
+            html = html.split(placeholder).join(pieces[i]);
+        }
     }
 
-    // 14b. Final Abbreviation pass: Apply to the fully assembled text
-    // (excluding text inside HTML tags to avoid breaking attributes/classes)
-    html = applyAbbreviationsToHtml(html);
+    // 14c. Clean up escaped characters
+    html = html
+        .replace(/‹DOLLAR›/g, '$')
+        .replace(/‹asterisk›/g, '*')
+        .replace(/‹hash›/g, '#')
+        .replace(/‹dash›/g, '-');
 
     // 15. Final DIVIDER marker replacement
     html = html.replace(/---DIVIDER---/g, '<div class="divider-container"><div class="divider-line bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent h-px my-8"></div></div>');
@@ -395,9 +438,12 @@ function convertTablesToHtml(html: string): string {
         const line = lines[i];
         
         // Guard flag to prevent parsing shell commands with pipes as tables inside code blocks
+        // Guard flag: detect if we are inside an actual <pre> block
         if (line.includes('<pre')) inPre = true;
 
         const trimmed = line.trim();
+        // A line is a table row if it contains '|' AND we are not in a pre block
+        // OR it starts with '|' and we are already in a table context.
         const isTableRow = !inPre && trimmed.includes('|') && (inTable || trimmed.startsWith('|'));
 
         if (isTableRow) {
@@ -405,10 +451,8 @@ function convertTablesToHtml(html: string): string {
                 inTable = true;
                 currentTable = [];
             }
-            if (trimmed.match(/^[|:\-\s]+$/)) {
-                if (line.includes('</pre>')) inPre = false;
-                continue; 
-            }
+            // Skip separator lines like |---|
+            if (trimmed.match(/^[|:\-\s]+$/)) continue; 
             
             const cleanLine = trimmed.replace(/^\|/, '').replace(/\|$/, '');
             const cells = cleanLine.split('|').map(c => c.trim());
@@ -554,8 +598,8 @@ function convertListsToHtml(html: string): string {
         const line = contentLines[i];
         const trimmed = line.trim();
 
-        // Task list: - [x] or - [ ]
-        const taskMatch = line.match(/^(\s*)([\*\-\u2022\u00B7]) \[(x| )\] (.*)$/i);
+        // Task list: - [x], - [ ], or - [/]
+        const taskMatch = line.match(/^(\s*)([\*\-\u2022\u00B7]) \[(x| |\/)\] (.*)$/i);
         // Standard unordered list
         const ulMatch = !taskMatch ? line.match(/^(\s*)([\*\-\u2022\u00B7]) (.*)$/) : null;
         // Ordered list
@@ -601,11 +645,23 @@ function convertListsToHtml(html: string): string {
 
             // Render the <li>
             if (isTask) {
-                const checked = taskMatch[3].toLowerCase() === 'x';
-                const checkIcon = checked ? '☑' : '☐';
-                const textClass = checked ? 'text-slate-500 line-through' : 'text-slate-300';
+                const marker = taskMatch[3].toLowerCase();
+                const isChecked = marker === 'x';
+                const isPartial = marker === '/';
+                
+                let checkIcon = '☐';
+                let textClass = 'text-slate-300';
+                
+                if (isChecked) {
+                    checkIcon = '☑';
+                    textClass = 'text-slate-500 line-through decoration-white/10';
+                } else if (isPartial) {
+                    checkIcon = '▣';
+                    textClass = 'text-cyan-100/90 font-medium';
+                }
+
                 processed.push(`<li class="list-none pl-1 flex items-center gap-3">`
-                    + `<span class="text-cyan-400/60 text-base mb-0.5 mr-0.5">${checkIcon}</span>`
+                    + `<span class="${isPartial ? 'text-cyan-400' : 'text-cyan-400/60'} text-base mb-0.5 mr-0.5">${checkIcon}</span>`
                     + `<span class="${textClass}">${content}</span>`);
             } else {
                 processed.push(`<li class="pl-1">${content}`);
@@ -786,8 +842,8 @@ export function formatNumber(num: number, decimals: number = 0): string {
 function highlightCode(code: string, lang: string): string {
     if (!code) return '';
 
-    // Code is already escaped by toHtml at the start of the process
-    let highlighted = code;
+    // Step 0: Escape literal $ to avoid misinterpretation by generic highlighters or recursion
+    let highlighted = code.replace(/\$/g, '‹DOLLAR›');
     const tokens: string[] = [];
 
     const addToken = (content: string, className: string) => {
@@ -796,24 +852,49 @@ function highlightCode(code: string, lang: string): string {
         return id;
     };
 
-    if (lang === 'mermaid' || lang === 'flowchart' || lang === 'graph' || lang === 'gitgraph' || lang === 'erdiagram' || lang === 'mindmap' || lang === 'pie' || lang.startsWith('statediagram')) {
-        // 1. Labels (between pipes) - Process first to protect content
-        highlighted = highlighted.replace(/\|([^|]+)\|/g, (_, label) => addToken(`|${label}|`, 'text-emerald-400/80 italic'));
+    if (lang === 'mermaid' || lang === 'flowchart' || lang === 'graph' || lang === 'gitgraph' || lang === 'erdiagram' || lang === 'mindmap' || lang === 'pie' || lang.startsWith('statediagram') || lang === 'gantt' || lang === 'sequencediagram') {
+        // 1. Strings in quotes - (e.g., "Label")
+        highlighted = highlighted.replace(/"([^"]+)"/g, (_, str) => addToken(`"${str}"`, 'text-emerald-400 font-medium'));
 
-        // 2. Connectors (Arrows and lines) - Must use escaped versions because input is already escaped
-        highlighted = highlighted.replace(/(--&gt;|--|==&gt;|-&gt;|-\.-&gt;|-.-|==|\|o--o\{|\|--\|\{|--o\{|--\|\{)/g, (match) => addToken(match, 'text-cyan-500 font-black'));
+        // 2. Specialized Values (e.g., : 45 in Pie charts or dates in Gantt)
+        highlighted = highlighted.replace(/(:\s*)(\d+(\.\d+)?|[\d\-]{4,})/g, 
+            (_, colon, val) => `${colon}${addToken(val, 'text-amber-400 font-black')}`
+        );
 
-        // 3. Brackets and shapes
-        highlighted = highlighted.replace(/([\[\]\(\)\{\}])/g, (match) => addToken(match, 'text-slate-500'));
+        // 3. Labels in brackets - (e.g., [Text] or {Text})
+        highlighted = highlighted.replace(/([\[\(\{])([^\]\)\}]*)([\]\)\}])/g, 
+            (_, open, content, close) => `${addToken(open, 'text-slate-500')}${addToken(content, 'text-slate-200 font-semibold')}${addToken(close, 'text-slate-500')}`
+        );
 
-        // 4. Mermaid Keywords (root types)
-        highlighted = highlighted.replace(/\b(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|stateDiagram-v2|erDiagram|journey|gantt|pie|requirementDiagram|gitGraph|mindmap|root)\b/g, (match) => addToken(match, 'text-cyan-400 font-bold italic'));
+        // 4. Connectors (Arrows and lines) - Must use escaped versions
+        highlighted = highlighted.replace(/(--&gt;|--|==&gt;|-&gt;|-\.-&gt;|-.-|==|\|o--o\{|\|--\|\{|--o\{|--\|\{|&gt;&gt;)/g, (match) => addToken(match, 'text-cyan-500 font-black drop-shadow-[0_0_5px_rgba(6,182,212,0.4)]'));
 
-        // 5. Directions and Sub-keywords
-        highlighted = highlighted.replace(/\b(TD|LR|BT|RL|TB|branch|checkout|commit|merge|tag|title|showData|int|string|date|float|PK|FK)\b/g, (match) => addToken(match, 'text-indigo-400 font-bold'));
+        // 5. Aliases - (e.g., participant U as User)
+        highlighted = highlighted.replace(/\b(as)\b/g, (match) => addToken(match, 'text-sky-500 italic'));
 
         // 6. Keywords
-        highlighted = highlighted.replace(/\b(participant|actor|as|box|subgraph|end|state|note|over|left of|right of|title|section)\b/g, (match) => addToken(match, 'text-blue-400 font-medium'));
+        // 6a. Main structure types with Icons
+        highlighted = highlighted.replace(/\b(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|stateDiagram-v2|erDiagram|journey|gantt|pie|requirementDiagram|gitGraph|mindmap|root)\b/gi, (match) => {
+            const m = match.toLowerCase();
+            let icon = 'fa-project-diagram';
+            if (m.includes('sequence')) icon = 'fa-stream';
+            if (m.includes('gantt')) icon = 'fa-tasks';
+            if (m.includes('pie')) icon = 'fa-chart-pie';
+            if (m.includes('git')) icon = 'fa-code-branch';
+            if (m.includes('mindmap')) icon = 'fa-brain';
+            if (m.includes('er')) icon = 'fa-database';
+
+            return addToken(`<i class="fas ${icon} text-[0.8em] opacity-80 mr-2"></i>${m}`, 'text-cyan-400 font-black uppercase tracking-widest italic text-[0.85em] border-b border-cyan-500/20 pb-0.5');
+        });
+        
+        // 6b. Block elements & Entities
+        highlighted = highlighted.replace(/\b(participant|actor|subgraph|end|state|note|over|left of|right of|section|title)\b/g, (match) => addToken(match, 'text-indigo-400 font-bold'));
+
+        // 6c. GitGraph & Specialized actions
+        highlighted = highlighted.replace(/\b(branch|checkout|commit|merge|tag|done|active|crit|after|dateFormat|accTitle|accDescr)\b/g, (match) => addToken(match, 'text-fuchsia-400/90 font-semibold'));
+
+        // 7. General identifiers (if not already tokenized)
+        highlighted = highlighted.replace(/\b(TD|LR|BT|RL|TB|int|string|date|float|PK|FK)\b/g, (match) => addToken(match, 'text-slate-400 font-mono text-[0.9em]'));
     } else if (lang === 'tree' || highlighted.includes('├──') || highlighted.includes('└──')) {
         // High-end Tree rendering
         // 1. Convert Tree Lines (ASCII)
@@ -842,10 +923,12 @@ function highlightCode(code: string, lang: string): string {
     highlighted = highlighted.replace(/\b(const|let|var|function|return|if|else|for|while|import|export|from|class|def|try|except|await|async|interface|type|enum|pub|mut|impl|match|use|mod|fn|String|Option|Some|None|Result|Ok|Err)\b/g, (match) => addToken(match, 'text-cyan-400'));
     highlighted = highlighted.replace(/([\{\}\(\)\[\]\.,;:\+\-\*\/=<>!&|?])/g, (match) => addToken(match, 'text-slate-500'));
 
-    // Pass 2: Restore tokens
+    // Pass 2: Restore tokens and characters
     tokens.forEach((html, i) => {
         highlighted = highlighted.replace(`##TOKEN_${i}##`, html);
     });
+
+    highlighted = highlighted.replace(/‹DOLLAR›/g, '$');
 
     return highlighted;
 }

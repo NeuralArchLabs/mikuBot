@@ -63,9 +63,9 @@ export class GemmaFormatter implements IFormatter {
         formatted = formatted.split('\n').map(line => line.trimEnd()).join('\n');
 
         // 5. Clean technical noise (Tool Calls, role tags, JSON artifacts)
-        formatted = formatted.replace(/Tool Calls:\s*\[[\s\S]*?\]/gi, '');
-        formatted = formatted.replace(/(?:^|\n)Tool Calls[:\s]*/gi, '\n');
-        formatted = formatted.replace(/\[\s*\{\s*"id":[\s\S]*?\}\s*\]/gi, '');
+        formatted = formatted.replace(/^(?:Tool Calls|Llamadas a Herramientas)[:\s]*\[[\s\S]*?\]/gim, '');
+        formatted = formatted.replace(/^(?:Tool Calls|Llamadas a Herramientas)[:\s]*/gim, '\n');
+        formatted = formatted.replace(/^\[\s*\{\s*"id":\s*"[^"]+",\s*"function":\s*\{[\s\S]*?\}\s*\}\s*\]/gim, '');
         formatted = formatted.replace(/^(?:\[assistant\]|\[tool\]|\[user\]|\[system\])[:\s]*/gim, '');
         formatted = formatted.replace(/^(?:\{"success":true,"data":.*\}|\[tool\].*)$/gim, '');
 
