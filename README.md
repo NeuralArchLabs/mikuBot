@@ -2,7 +2,7 @@
 
 <img src="./public/mikuBotICON.png" width="120" style="border-radius: 24px" alt="MikuBot Icon" />
 
-# 🌟 MikuBot v2.2.0 — Tu Asistente de IA Personal para Windows
+# 🌟 MikuBot v2.2.1 — Tu Asistente de IA Personal para Windows
 
 ![Estado](https://img.shields.io/badge/Estado-Estable-green.svg?style=for-the-badge)
 ![Plataforma](https://img.shields.io/badge/Plataforma-Windows_10%2F11-0078D4.svg?style=for-the-badge&logo=windows)
@@ -18,8 +18,8 @@
 
 <br/>
 
-<a href="https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.2.0/MikuBot-Setup-2.2.0.exe">
-  <img src="https://img.shields.io/badge/DESCARGAR_ÚLTIMA_VERSIÓN-v2.2.0-60A5FA?style=for-the-badge&logo=windows&logoColor=white" height="40" />
+<a href="https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.2.1/MikuBot-Setup-2.2.1.exe">
+  <img src="https://img.shields.io/badge/DESCARGAR_ÚLTIMA_VERSIÓN-v2.2.1-60A5FA?style=for-the-badge&logo=windows&logoColor=white" height="40" />
 </a>
 
 <br/>
@@ -39,7 +39,7 @@ Un agente y asistente de IA dirigido al público general. Diseñado como una alt
 *   **Onboarding y Personalización Profunda:** Cuenta con un proceso de configuración inicial que te guía paso a paso. Desde el primer momento, puedes nutrir al asistente con toda la información que desees que sepa sobre ti, lo que permite un nivel de personalización absoluto para que el sistema entienda exactamente tu contexto, tus necesidades y cómo ayudarte de forma hiperespecífica.
 *   **Autonomía y Modos de Operación:** Cuenta con un Modo Chat y un Modo Agente enfocados en diferentes tipos de asistencia, pero ambos con ejecución nativa de herramientas en el sistema. Puedes elegir entre un modo *completamente autónomo*, un *modo seguro* (requiere autorización previa a la ejecución), y la creación de **tareas programadas** para autonomía total.
 *   **Librería de Contexto:** Un módulo que permite crear, almacenar y tener disponibles protocolos y documentos para referenciarlos, revisarlos, mejorarlos o aplicarlos con el asistente en cualquier momento.
-*   **Visualización Avanzada y Renderizado Científico:** MikuBot integra un motor de renderizado de alto rendimiento para Markdown y HTML avanzado. Soporta **matemáticas complejas en LaTeX** (integrales, matrices, física cuántica, estadística), callouts colapsables estilo Obsidian con animaciones de flujo (*typing animation*), y una gestión premium de imágenes y enlaces. Esta capacidad convierte al asistente en una herramienta ideal para investigadores, ingenieros y estudiantes que requieren precisión técnica visual.
+*   **Visualización Avanzada y Renderizado Científico:** MikuBot integra un motor de renderizado de alto rendimiento para Markdown y HTML avanzado. Soporta **matemáticas complejas en LaTeX** (integrales, matrices), callouts colapsables estilo Obsidian con animaciones de flujo (*typing animation*), y ahora **Diagramas Mermaid Inteligentes** (Flowcharts, GitGraphs, Mindmaps) con escalado premium "Studio Elite" y gestión avanzada de imágenes y spoilers (`||peek-reveal||`). Esta capacidad convierte al asistente en una herramienta ideal para investigadores, ingenieros y estudiantes que requieren precisión técnica visual.
 *   **Edición Neural (Cortex & Command Editors):** MikuBot incluye editores especializados para modificar directamente las instrucciones y el conocimiento base del asistente. Aunque puedes ajustar estos archivos en cualquier momento para una personalización técnica, **se recomienda seguir el proceso del Onboarding Wizard** para obtener resultados óptimos. Archivos críticos como `MODES.md` dictan los protocolos de operación del agente y su manipulación manual requiere precaución para mantener la estabilidad del sistema.
 *   **Voz y Conectividad 24/7:** Incluye reconocimiento de voz nativo *out of the box* (vía Vosk) en inglés y español para dictado y reconocimiento de mensajes. Además, permite vincularse fácilmente con Telegram (vía BotFather) para operar 24/7 y mantener una comunicación permanente y eficiente.
 *   **Soporte Multilingüe al 100% (ES/EN/ZH):** A diferencia de otras alternativas en el mercado que suelen estar limitadas a un solo idioma, MikuBot está **completamente traducida y optimizada** para funcionar plenamente en **Español, Inglés y Chino**. Desde la interfaz hasta el razonamiento del agente, el sistema ofrece una experiencia nativa y fluida en los tres idiomas, dándonos una superioridad técnica y de uso global.

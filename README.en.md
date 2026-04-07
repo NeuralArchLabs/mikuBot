@@ -2,7 +2,7 @@
 
 <img src="./public/mikuBotICON.png" width="120" style="border-radius: 24px" alt="MikuBot Icon" />
 
-# 🌟 MikuBot v2.1.6 — Your Personal AI Assistant for Windows
+# 🌟 MikuBot v2.2.1 — Your Personal AI Assistant for Windows
 
 ![Status](https://img.shields.io/badge/Status-Stable-green.svg?style=for-the-badge)
 ![Platform](https://img.shields.io/badge/Platform-Windows_10%2F11-0078D4.svg?style=for-the-badge&logo=windows)
@@ -18,8 +18,8 @@
 
 <br/>
 
-<a href="https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.2.0/MikuBot-Setup-2.2.0.exe">
-  <img src="https://img.shields.io/badge/DOWNLOAD_LATEST_VERSION-v2.2.0-60A5FA?style=for-the-badge&logo=windows&logoColor=white" height="40" />
+<a href="https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.2.1/MikuBot-Setup-2.2.1.exe">
+  <img src="https://img.shields.io/badge/DOWNLOAD_LATEST_VERSION-v2.2.1-60A5FA?style=for-the-badge&logo=windows&logoColor=white" height="40" />
 </a>
 
 <br/>
@@ -39,7 +39,7 @@ An AI agent and assistant directed at the general public. Designed as a friendly
 *   **Deep Onboarding and Personalization:** Features an initial configuration process that guides you step-by-step. From the first moment, you can nurture the assistant with all the information you want it to know about you, achieving absolute personalization so it understands exactly your context, needs, and how to help you.
 *   **Autonomy and Operation Modes:** Features a Chat Mode and an Agent Mode focused on different types of assistance, both with native tool execution. Choose between a *fully autonomous* mode, a *safe mode* (requires prior authorization), and the creation of **scheduled tasks** for total autonomy.
 *   **Context Library:** A module that allows you to create, store, and reference protocols and documents to review, improve, or apply with the assistant at any time.
-*   **Advanced Visualization and Scientific Rendering:** MikuBot integrates a high-performance rendering engine for advanced Markdown and HTML. It supports **complex LaTeX math** (integrals, matrices, quantum physics, statistics), Obsidian-style collapsible callouts with smooth **typing animations**, and premium management for images and links. This capability makes the assistant an ideal tool for researchers, engineers, and students who require visual technical precision.
+*   **Advanced Visualization and Scientific Rendering:** MikuBot integrates a high-performance rendering engine for advanced Markdown and HTML. It supports **complex LaTeX math** (integrals, matrices), Obsidian-style collapsible callouts with smooth **typing animations**, and now **Intelligent Mermaid Diagrams** (Flowcharts, GitGraphs, Mindmaps) with "Studio Elite" scaling and premium spoiler support (`||peek-reveal||`). This capability makes the assistant an ideal tool for researchers, engineers, and students who require visual technical precision.
 *   **Neural Editing (Cortex & Command Editors):** MikuBot includes specialized editors to directly modify the assistant's instructions and base knowledge. While you can adjust these files at any time for technical customization, **it is recommended to follow the Onboarding Wizard process** for optimal results. Critical files like `MODES.md` dictate the agent's operating protocols, and manual changes require caution to maintain system stability.
 *   **Voice and 24/7 Connectivity:** Includes native voice recognition out-of-the-box (via Vosk) in English and Spanish. Additionally, it allows easy linking with Telegram (via BotFather) to operate 24/7.
 *   **100% Multilingual Support (EN/ES/ZH):** Unlike other alternatives on the market that are usually limited to a single language, MikuBot is **fully translated and optimized** to function perfectly in **English, Spanish, and Chinese**. From the interface to the agent's reasoning, the system offers a native and fluid experience in all three languages, providing technical superiority and global usability.

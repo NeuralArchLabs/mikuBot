@@ -4,6 +4,7 @@
  */
 
 /** Emoji shortcode map */
+import { getEmojiAnimationClass } from '../animations/emojiAnimations';
 const EMOJI_MAP: Record<string, string> = {
     smile: '😊', grin: '😁', joy: '😂', heart: '❤️', fire: '🔥',
     rocket: '🚀', thumbsup: '👍', thumbsdown: '👎', star: '⭐', eyes: '👀',
@@ -42,6 +43,13 @@ export const toHtml = (md: string): string => {
             styledInner = styledInner.replace(/([≈_∫~⟆\u033c.]+)/g, '<span class="text-cyan-300 drop-shadow-[0_0_5px_rgba(34,211,238,0.8)] font-bold">$1</span>');
             styledInner = styledInner.replace(/([\^‿])/g, '<span class="text-blue-400">$1</span>');
             styledInner = styledInner.replace(/(┬)/g, '<span class="text-blue-400">$1</span>');
+
+            // Dynamic Emoji Animations
+            // Matches modern multi-codepoint emojis securely using Unicode properties
+            styledInner = styledInner.replace(/(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu, (emojiMatch) => {
+                const animClass = getEmojiAnimationClass(emojiMatch);
+                return `<span class="${animClass}">${emojiMatch}</span>`;
+            });
             
             pieces.push(`<div class="signature-wrapper mb-8 mt-4 flex items-center">`
                 + `<span class="inline-flex items-center h-9 font-mono font-black select-none overflow-visible relative `
@@ -49,7 +57,8 @@ export const toHtml = (md: string): string => {
                 + `<div class="animate-sig-bg-walk mask-edge-fade"></div>`
                 + `<span class="relative z-10 flex items-center">`
                 + `<span class="text-[18px] text-indigo-400 opacity-80">{{</span>`
-                + `<span class="inline-flex items-center justify-center overflow-hidden animate-sig-bracket-spread whitespace-nowrap">`
+                // Directional clip-path replaces overflow-hidden to allow vertical glow bleed while clipping horizontal bounds for the spread animation
+                + `<span class="inline-flex items-center justify-center animate-sig-bracket-spread whitespace-nowrap" style="clip-path: inset(-25px 0);">`
                 + `<span class="text-[14px] text-indigo-200 uppercase animate-sig-text-glow px-2">${styledInner}</span>`
                 + `</span>`
                 + `<span class="text-[18px] text-indigo-400 opacity-80">}}</span>`
@@ -62,12 +71,13 @@ export const toHtml = (md: string): string => {
     // 0. PRE-EXTRACTION: Protect math and code blocks first
     
     // 0. PRE-EXTRACTION: Protect inline and fenced code blocks
-    html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (match, lang, code) => {
+    // Multi-fence support (3+ backticks or tildes) for nested code blocks
+    html = html.replace(/^(`{3,}|~{3,})([\w./+#-]*)[\t ]*\n([\s\S]*?)\n\s*\1/gm, (match, fence, lang, code) => {
         const id = `__BLOCK_${pieces.length}__`;
-        const langClean = lang.toLowerCase();
-        const codeTrimmed = code.trim();
-        const highlighted = highlightCode(codeTrimmed, langClean);
-        const encodedCode = encodeURIComponent(codeTrimmed);
+        const langClean = lang.toLowerCase().trim();
+        const codeTrimmed = code; // Preserve exact content for nested blocks
+        const highlighted = highlightCode(codeTrimmed.trim(), langClean);
+        const encodedCode = encodeURIComponent(codeTrimmed.trim());
         const isDiagram = ['mermaid', 'flowchart', 'graph', 'sequenceDiagram', 'gantt', 'pie', 'gitGraph', 'stateDiagram', 'stateDiagram-v2', 'mindmap', 'erDiagram'].some(d => langClean.includes(d));
         
         // Premium Code Studio: Language-specific accent colors
@@ -134,6 +144,12 @@ export const toHtml = (md: string): string => {
 
     // Protect raw dollars remaining (not part of math) to prevent recursive parsing
     html = html.replace(/\$/g, '‹DOLLAR›');
+
+    // 0.7 ESCAPE PROTECTION: Handle standard Markdown backslash escapes
+    // Characters: \ ` * _ { } [ ] ( ) # + - . ! | $
+    html = html.replace(/\\([\\`*_{}\[\]()#+\-.!|$])/g, (match, char) => {
+        return `‹esc-${char.charCodeAt(0)}›`;
+    });
 
     // 1. Protect HTML tags that should render as actual elements
     html = html.replace(/<details([^>]*)>([\s\S]*?)<\/details>/gi, (match, attrs, content) => {
@@ -328,6 +344,21 @@ export const toHtml = (md: string): string => {
     html = html.replace(/`([^`\n]+)`/g, '<code class="bg-indigo-500/10 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs border border-indigo-400/20 shadow-[0_0_8px_rgba(99,102,241,0.1)]">$1</code>');
     html = html.replace(/‹esc-backtick›/g, '`');
 
+    // 13c. Spoiler Support (||text||) - Process before tables to prevent | collision
+    html = html.replace(/\|\|(.*?)\|\|/g, (match, content) => {
+        const id = `__BLOCK_${pieces.length}__`;
+        // Use simplified inline formatting to avoid block-level <div> wrappers
+        const innerHtml = content
+            .trim()
+            .replace(/\*\*\*(.+?)\*\*\*/g, '<strong class="text-indigo-400"><em>$1</em></strong>')
+            .replace(/\*\*(.+?)\*\*/g, '<strong class="text-indigo-300">$1</strong>')
+            .replace(/\*(.+?)\*/g, '<em class="text-slate-300">$1</em>')
+            .replace(/`([^`\n]+)`/g, '<code class="bg-indigo-500/10 px-1 py-0.5 rounded text-indigo-300 font-mono text-xs border border-indigo-400/20">$1</code>');
+            
+        pieces.push(`<span class="studio-spoiler" title="Revelar spoiler">${innerHtml}</span>`);
+        return id;
+    });
+
     html = convertTablesToHtml(html);
 
     html = html.replace(/^###### (.+)$/gm, '<h6 class="text-xs font-bold text-slate-500 mt-3 mb-1">$1</h6>');
@@ -338,10 +369,6 @@ export const toHtml = (md: string): string => {
     html = html.replace(/^# (.+)$/gm, '<h1 class="text-lg font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-indigo-300 drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-6 mb-1">$1</h1><div class="h-px w-full" style="background: linear-gradient(to right, transparent 0%, rgba(34,211,238,0.3) 2%, rgba(34,211,238,0.3) 98%, transparent 100%); margin-bottom: 1.5rem;"></div>');
 
     html = html.replace(/^(?:\s*[\*\-_]){3,}\s*$/gm, '<div class="divider-container"><div class="divider-line bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent h-px my-8"></div></div>');
-
-    html = html.replace(/\\\*/g, '‹esc-asterisk›');
-    html = html.replace(/\\#/g, '‹esc-hash›');
-    html = html.replace(/\\-/g, '‹esc-dash›');
 
     html = html.replace(/\*\*\*(?!\s)(.+?)\*\*\*/g, '<strong class="text-indigo-400 drop-shadow-[1px_1.5px_0px_rgba(0,0,0,1)]"><em>$1</em></strong>');
     html = html.replace(/\*\*(?!\s)(.+?)\*\*/g, '<strong class="text-indigo-300 drop-shadow-[1px_1.5px_0px_rgba(0,0,0,1)]">$1</strong>');
@@ -360,7 +387,7 @@ export const toHtml = (md: string): string => {
     html = html.replace(/^\[\^([^\]]+)\]:\s+(.*)$/gm, (match, label, content) => {
         const id = `__BLOCK_${pieces.length}__`;
         pieces.push(`<div class="text-[11px] text-slate-400/80 mt-1.5 flex gap-2 items-baseline leading-relaxed italic group/fn">`
-             + `<span class="bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 font-mono px-1 rounded-sm text-[9px] min-w-[20px] text-center shadow-sm h-fit">#${label}</span>`
+             + `<span class="text-cyan-400 font-mono text-[10px] min-w-[15px] text-left opacity-70">${label}</span>`
              + `<span class="flex-1 text-slate-400/70 antialiased font-medium opacity-90">${content}</span></div>`);
         return `\n${id}\n`;
     });
@@ -422,9 +449,7 @@ export const toHtml = (md: string): string => {
     // 14c. Clean up escaped characters
     html = html
         .replace(/‹DOLLAR›/g, '$')
-        .replace(/‹asterisk›/g, '*')
-        .replace(/‹hash›/g, '#')
-        .replace(/‹dash›/g, '-');
+        .replace(/‹esc-(\d+)›/g, (match, code) => String.fromCharCode(parseInt(code)));
 
     // 15. Final DIVIDER marker replacement
     html = html.replace(/---DIVIDER---/g, '<div class="divider-container"><div class="divider-line bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent h-px my-8"></div></div>');

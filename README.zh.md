@@ -2,7 +2,7 @@
 
 <img src="./public/mikuBotICON.png" width="120" style="border-radius: 24px" alt="MikuBot Icon" />
 
-# 🌟 MikuBot v2.1.6 — 您的 Windows 个人 AI 助手
+# 🌟 MikuBot v2.2.1 — 您的 Windows 个人 AI 助手
 
 ![状态](https://img.shields.io/badge/状态-稳定-green.svg?style=for-the-badge)
 ![平台](https://img.shields.io/badge/平台-Windows_10%2F11-0078D4.svg?style=for-the-badge&logo=windows)
@@ -18,8 +18,8 @@
 
 <br/>
 
-<a href="https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.2.0/MikuBot-Setup-2.2.0.exe">
-  <img src="https://img.shields.io/badge/下载最新版本-v2.2.0-60A5FA?style=for-the-badge&logo=windows&logoColor=white" height="40" />
+<a href="https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.2.1/MikuBot-Setup-2.2.1.exe">
+  <img src="https://img.shields.io/badge/下载最新版本-v2.2.1-60A5FA?style=for-the-badge&logo=windows&logoColor=white" height="40" />
 </a>
 
 <br/>
@@ -39,7 +39,7 @@
 *   **深度入门和个性化：** 具有引导您逐步进行初始配置的过程。从第一刻起，您就可以向助手提供您想让它了解的关于您的所有信息，实现绝对个性化。
 *   **自主和操作模式：** 具有专注于不同类型辅助的聊天模式和代理模式，均具有原生工具执行功能。在*完全自主*模式、*安全模式*（需要事先授权）以及创建用于完全自主的**计划任务**之间进行选择。
 *   **上下文库：** 一个允许您创建、存储和引用协议和文档的模块，以便随时与助手一起审查、改进或应用。
-*   **高级可视化与科学渲染：** MikuBot 集成了一个高性能渲染引擎，用于处理高级 Markdown 和 HTML。它支持 **复杂的 LaTeX 数学公式**（微积分、矩阵、量子物理、统计学）、具有流畅 **打字动画** 的 Obsidian 风格可折叠提示框 (Callouts)，以及对图像和链接的高级渲染管理。这一能力使助手成为需要视觉技术精确度的研究人员、工程师和学生的理想工具。
+*   **高级可视化与科学渲染：** MikuBot 集成了一个高性能渲染引擎，用于处理高级 Markdown 和 HTML。它支持 **复杂的 LaTeX 数学公式**（微积分、矩阵）、具有流畅 **打字动画** 的 Obsidian 风格可折叠提示框 (Callouts)，以及全新的 **高级 Mermaid 可视化**（流程图、Git 图、思维导图）和 **Studio 剧透引擎** (`||peek-reveal||`)。这一能力使助手成为需要视觉技术精确度的研究人员、工程师和学生的理想工具。
 *   **神经编辑 (Cortex & Command Editors)：** MikuBot 包括专门的编辑器，可直接修改助手的指令和基础知识。虽然您可以随时调整这些文件进行技术自定义，但**建议遵循入门向导 (Onboarding Wizard) 流程**以获得最佳效果。像 `MODES.md` 这样的关键文件决定了代理的操作协议，手动更改需要谨慎以保持系统稳定性。
 *   **语音和 24/7 连接：** 包括开箱即用的原生语音识别（通过 Vosk）英语和西班牙语。此外，它允许通过 Telegram（通过 BotFather）轻松链接，以 24/7 全天候运行。
 *   **100% 多语言支持 (中/英/西)：** 与市场上其他通常仅限于单一语言的替代方案不同，MikuBot **经过完全翻译和优化**，可在**中文、英语和西班牙语**中完美运行。从界面到代理的推理，系统在所有三种语言中都提供原生且流畅的体验，赋予我们技术上的优越性和全球适用性。
