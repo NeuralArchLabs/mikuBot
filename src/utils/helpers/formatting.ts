@@ -134,27 +134,52 @@ export const toHtml = (md: string): string => {
         return `\n${id}\n`;
     });
 
+    // 1c. LaTeX-style math delimiters \( ... \) and \[ ... \]
+    // HEURISTIC PROTECTION: Only treat as math if it contains math signals or is very short (variable)
+    // to avoid breaking standard Markdown escapes like \[literal-bracket\] or currency.
+    const isMathHeuristic = (formula: string, isDollar = false) => {
+        const f = formula.trim();
+        if (!f) return false;
+
+        // 🛡️ EMOJI SHIELD: Math formulas rarely contain emojis
+        // If we find an emoji, it's almost certainly social/formatted text
+        if (/(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu.test(f)) return false;
+
+        // 🛡️ TABLE GUARD: Pipes (|) are common in tables but rare in inline math 
+        // unless they are paired $|x|$ or part of a set $\{x | x > 0\}$.
+        // If there's only one pipe and it's not part of a known LaTeX set notation
+        if (f.includes('|') && !/\\(?:vert|mid|bra|ket|{)/.test(f)) {
+            const pipes = (f.match(/\|/g) || []).length;
+            if (pipes === 1) return false; // Single pipe is usually a table separator
+        }
+
+        // 🛡️ Strong signals: LaTeX commands, common operators, or typical math symbols
+        const signals = isDollar 
+            ? /[\^\\=+<>∑∫∏√{}[\]]/.test(f) // Removed | from default dollar signals
+            : /[\^\\_=+*\/<>|∑∫∏√]/.test(f);
+
+        if (signals) return true;
+        
+        // Multi-line content is almost always intended as a math block
+        if (f.includes('\n')) return true;
+        
+        // Variable check: Single letters like $x$ or $i$ (Greek supported)
+        if (f.length === 1 && /[a-zA-Z\u0370-\u03ff]/.test(f)) return true;
+        
+        // Currency guard: Numbers only like $100$ or $1.50$ are usually not math
+        if (isDollar && /^[\d,.]+$/.test(f)) return false;
+
+        // Fallback for more complex expressions that don't hit signals but are short
+        return f.length <= 2 && !/^[\d,.]+$/.test(f);
+    };
+
     // 1b. Inline math ($ ... $) - Multi-line support
     html = html.replace(/\$([\s\S]+?)\$/gs, (match, formula) => {
+        if (!isMathHeuristic(formula, true)) return match;
         const id = `__BLOCK_${pieces.length}__`;
         pieces.push(`<span class="font-serif italic text-orange-200 bg-white/5 px-1.5 py-1 rounded-md mx-0.5 shadow-sm border-b border-white/10 math-inline inline-flex items-center align-middle flex-wrap">${convertMathToHtml(formula.trim())}</span>`);
         return id;
     });
-
-    // 1c. LaTeX-style math delimiters \( ... \) and \[ ... \]
-    // HEURISTIC PROTECTION: Only treat as math if it contains math signals or is very short (variable)
-    // to avoid breaking standard Markdown escapes like \[literal-bracket\].
-    const isMathHeuristic = (formula: string) => {
-        const f = formula.trim();
-        if (!f) return false;
-        // Signals: LaTeX commands, common operators, or typical math symbols
-        if (/[\^\\_=+*\/<>|∑∫∏√]/.test(f)) return true;
-        // Multi-line content is almost always intended as a math block
-        if (f.includes('\n')) return true;
-        // Very short content (1-2 chars) usually represents variables like \(x\)
-        if (f.length <= 2) return true;
-        return false;
-    };
 
     html = html.replace(/\\\[([\s\S]*?)\\\]/gs, (match, formula) => {
         if (!isMathHeuristic(formula)) return match;
