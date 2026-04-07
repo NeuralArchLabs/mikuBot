@@ -1,23 +1,22 @@
 ## [2.2.1] - 2026-04-07
+### Added
+- **Studio Elite Markdown Engine**: A complete overhaul of the rendering pipeline.
+    - **Advanced LaTeX Math**: High-performance, zero-dependency renderer supporting complex multiline formulas ($$), inline math ($), matrices, binomials, and physics constants.
+    - **Mermaid Diagram Support**: High-fidelity rendering for `mermaid`, `flowchart`, `gitGraph`, `mindmap`, and `erDiagram` with smooth "Studio Elite" expansion and transition animations.
+    - **Obsidian-Style Callouts**: Native support for `> [!TYPE]` syntax (collapsed/expanded) with rotating indicators and theme-reactive styling (14+ supported types).
+    - **Kinetic Emoji System**: Integrated an organic animation engine where emojis follow unique keyframe patterns (shimmer, bounce, pulse) based on their identity.
+    - **Interactive Progress Bars**: Support for visual trackers using `[====]`, `[████]`, or `[▓▓▓▓]` syntax with dynamic color levels based on percentage.
+    - **Studio Spoilers**: Premium glassmorphic blur for `||spoiler||` content that reveals with a smooth cyan glow on interaction.
+    - **Footnote Orchestration**: Advanced support for `[^1]` markers and matching `[^1]:` definition blocks with minimalist, standardized styling.
+- **Asset Protection Pipeline (3-Phase)**: Robust 3-phase normalization to protect images, links, and code blocks from structural corruption during complex HTML transforms.
+- **Synchronized Typing Animations**: Integrated progressive text reveal into callouts and blockquotes, synchronized with the neural streaming engine for a cohesive "live" feel.
+
 ### Changed
 - **Optimized Build Configuration**: Refined Rollup chunking strategy to isolate the heavy `mermaid` dependency and FontAwesome icons, significantly reducing the primary vendor bundle size.
 - **Circular Dependency Fix**: Consolidated framework-related chunks into the vendor bundle to eliminate circular references between React and architectural libraries.
 
 ### Fixed
 - **Version Synchronization**: Ensured version parity (`2.2.1`) across `package.json`, internal configuration constants, and localized documentation (READMEs).
-
-## [2.2.0] - 2026-04-05
-### Added
-- **Advanced LaTeX Math Engine**: Implemented a high-performance, zero-dependency math renderer supporting complex multiline formulas ($$), inline math ($), matrices (pmatrix, bmatrix, etc.), binomial coefficients, and physics constants (\hbar, \oint, \nabla).
-- **Obsidian-Style Collapsible Callouts**: Added support for `> [!TYPE]-` (collapsed) and `> [!TYPE]+` (expanded) syntax with rotating premium indicators and Indigo-themed styling.
-- **Synchronized Typing Animations**: Integrated progressive text reveal (typing effect) into callouts and blockquotes, fully synchronized with the streaming neural engine for a cohesive "live" response feel.
-- **Asset Protection Pipeline (3-Phase)**: Overhauled the markdown pipeline to protect images, links, and code blocks from structural corruption during HTML normalization, ensuring 100% reliable rendering of nested assets.
-- **Premium Visualization**: Standardized math containers with subtle glassmorphism and center-alignment. Inline math now features a distinctive amber-200 highlight for technical clarity.
-
-### Fixed
-- **Markdown Structural Collision**: Resolved issues where inline formatting (italics/bold) mangled complex LaTeX commands or URL backslashes.
-- **Math Clipping & Layout**: Implemented `inline-flex flex-wrap` for inline math to prevent fraction clipping and ensure responsive text wrapping in compact viewports.
-- **Missing Symbolic Definitions**: Fully populated the Greek and Operator dictionaries to include previously missing symbols like `\theta`, `\sim`, `\approx`, and `\nabla`.
 
 ## [2.1.6] - 2026-04-04
 ### Fixed
