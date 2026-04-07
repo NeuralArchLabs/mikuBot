@@ -24,11 +24,19 @@ export default defineConfig(({ mode }) => {
       }
     },
     build: {
-      chunkSizeWarningLimit: 1000,
+      chunkSizeWarningLimit: 2000,
       rollupOptions: {
         output: {
-          manualChunks: {
-            vendor: ['react', 'react-dom', 'zustand', 'i18next', 'react-i18next', '@fortawesome/fontawesome-free']
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('mermaid')) {
+                return 'mermaid';
+              }
+              if (id.includes('@fortawesome')) {
+                return 'fontawesome';
+              }
+              return 'vendor';
+            }
           }
         }
       }
