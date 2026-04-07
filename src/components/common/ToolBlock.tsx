@@ -119,8 +119,8 @@ export const ToolBlock: React.FC<ToolBlockProps> = ({ block, isOld }) => {
     }, [isExpanded]);
 
     return (
-        <div className={`relative mb-3 pl-6 transition-all duration-300 ${isExpanded ? 'w-full' : 'w-full max-w-3xl'}`}>
-            <div className={`tool-block overflow-hidden transition-all duration-300 ${isExpanded ? 'shadow-xl' : 'border border-slate-700/50'}`}>
+        <div className={`relative mb-4 pl-6 transition-all duration-300 ${isExpanded ? 'w-full' : 'w-full max-w-3xl'}`}>
+            <div className={`tool-block overflow-hidden transition-all duration-300 rounded-xl bg-black/60 shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),0_8px_30px_rgba(0,0,0,0.5)] border-t-[3px] border-l-[3px] border-t-slate-900/50 border-l-slate-900/50 border-b border-r border-b-white/5 border-r-white/5 ${isExpanded ? 'bg-black/70' : 'hover:bg-black/50'} ring-1 ring-slate-900/50`}>
                 {/* Consolidated Header / Summary Strip */}
                 <div
                     className={`tool-block-header flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors hover:bg-white/[0.02] ${isExpanded ? 'bg-slate-800/40 border-b border-white/5' : ''}`}
@@ -176,7 +176,7 @@ export const ToolBlock: React.FC<ToolBlockProps> = ({ block, isOld }) => {
                             <div className="text-[9px] text-slate-600 uppercase tracking-widest font-bold flex items-center gap-1">
                                 <IconComp name="code" /> {t('common.arguments')}
                             </div>
-                            <pre className="custom-scrollbar overflow-y-auto max-h-32 p-3 bg-black/40 rounded-lg text-[10px] whitespace-pre-wrap break-all text-indigo-300/60 border border-white/5 shadow-inner">
+                            <pre className="custom-scrollbar overflow-y-auto max-h-32 p-3 bg-black/40 rounded-lg text-[10px] whitespace-pre-wrap break-all text-indigo-300/60 border border-white/5">
                                 {JSON.stringify(toolCall.function.arguments, null, 2)}
                             </pre>
                         </div>

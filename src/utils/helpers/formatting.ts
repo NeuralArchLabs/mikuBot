@@ -34,7 +34,7 @@ export const toHtml = (md: string): string => {
 
     // 0. SIGNATURE SHIELD: Protect the assistant's visual signature
     // Pattern: {{ ... }} with typical signature content
-    html = html.replace(/\{\{\s*([^\}]+?)\s*\}\}/g, (match, signContent) => {
+    html = html.replace(/"?\{\{\s*([^\}]+?)\s*\}\}"?/g, (match, signContent) => {
         if (signContent.includes('≈') || signContent.includes('∫') || signContent.includes('~')) {
             const id = `__BLOCK_${pieces.length}__`;
             let styledInner = signContent.trim();
@@ -43,16 +43,16 @@ export const toHtml = (md: string): string => {
             styledInner = styledInner.replace(/([\^‿])/g, '<span class="text-blue-400">$1</span>');
             styledInner = styledInner.replace(/(┬)/g, '<span class="text-blue-400">$1</span>');
             
-            pieces.push(`<div class="signature-wrapper mb-6 mt-2 flex items-center">`
-                + `<span class="inline-flex items-center h-7 font-mono font-black select-none overflow-visible relative `
+            pieces.push(`<div class="signature-wrapper mb-8 mt-4 flex items-center">`
+                + `<span class="inline-flex items-center h-9 font-mono font-black select-none overflow-visible relative `
                 + `animate-sig-pop">`
                 + `<div class="animate-sig-bg-walk mask-edge-fade"></div>`
                 + `<span class="relative z-10 flex items-center">`
-                + `<span class="text-[14px] text-indigo-400 opacity-80">{{</span>`
+                + `<span class="text-[18px] text-indigo-400 opacity-80">{{</span>`
                 + `<span class="inline-flex items-center justify-center overflow-hidden animate-sig-bracket-spread whitespace-nowrap">`
-                + `<span class="text-[11px] text-indigo-200 uppercase animate-sig-text-glow px-2">${styledInner}</span>`
+                + `<span class="text-[14px] text-indigo-200 uppercase animate-sig-text-glow px-2">${styledInner}</span>`
                 + `</span>`
-                + `<span class="text-[14px] text-indigo-400 opacity-80">}}</span>`
+                + `<span class="text-[18px] text-indigo-400 opacity-80">}}</span>`
                 + `</span></span></div>`);
             return id;
         }
@@ -112,7 +112,7 @@ export const toHtml = (md: string): string => {
         const id = `__BLOCK_${pieces.length}__`;
         // Escape < and > to prevent them from becoming pieces later
         const escapedCode = code.replace(/</g, '‹').replace(/>/g, '›').replace(/\$/g, '‹DOLLAR›');
-        pieces.push(`<code class="bg-black/40 px-1.5 py-0.5 rounded text-amber-300 font-mono text-[0.9em] border border-white/10 mx-1">${escapedCode}</code>`);
+        pieces.push(`<code class="bg-indigo-500/10 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-[0.9em] border border-indigo-400/20 mx-1 shadow-[0_0_8px_rgba(99,102,241,0.1)]">${escapedCode}</code>`);
         return id;
     });
 
@@ -128,7 +128,7 @@ export const toHtml = (md: string): string => {
     html = html.replace(/\$([\s\S]+?)\$/gs, (match, formula) => {
         const id = `__BLOCK_${pieces.length}__`;
         // Use inline-flex and padding to prevent fraction clipping
-        pieces.push(`<span class="font-serif italic text-amber-200 bg-white/5 px-1.5 py-1 rounded-md mx-0.5 shadow-sm border-b border-white/10 math-inline inline-flex items-center align-middle flex-wrap">${convertMathToHtml(formula.trim())}</span>`);
+        pieces.push(`<span class="font-serif italic text-orange-200 bg-white/5 px-1.5 py-1 rounded-md mx-0.5 shadow-sm border-b border-white/10 math-inline inline-flex items-center align-middle flex-wrap">${convertMathToHtml(formula.trim())}</span>`);
         return id;
     });
 
@@ -174,20 +174,20 @@ export const toHtml = (md: string): string => {
         
         const content = actualBody.join('\n').trim();
         const styles: Record<string, { icon: string, color: string, border: string, bg: string, glow?: string }> = {
-            'NOTE':      { icon: '<i class="fas fa-info-circle"></i>',      color: 'text-blue-400',    border: 'border-blue-500/40',    bg: 'bg-blue-500/10' },
-            'TIP':       { icon: '<i class="fas fa-lightbulb"></i>',        color: 'text-emerald-400', border: 'border-emerald-500/40', bg: 'bg-emerald-500/10' },
-            'IMPORTANT': { icon: '<i class="fas fa-exclamation-circle"></i>', color: 'text-amber-400',   border: 'border-amber-500/40',   bg: 'bg-amber-500/10' },
-            'WARNING':   { icon: '<i class="fas fa-exclamation-triangle"></i>', color: 'text-orange-400',  border: 'border-orange-500/40',  bg: 'bg-orange-500/10' },
-            'CAUTION':   { icon: '<i class="fas fa-hand-paper"></i>',       color: 'text-rose-400',    border: 'border-rose-500/40',    bg: 'bg-rose-500/10' },
-            'DANGER':    { icon: '<i class="fas fa-skull-crossbones"></i>', color: 'text-red-400',      border: 'border-red-500/50',      bg: 'bg-red-500/15',      glow: 'shadow-[inset_0_0_20px_rgba(239,68,68,0.05)]' },
-            'INFO':      { icon: '<i class="fas fa-info"></i>',             color: 'text-sky-400',      border: 'border-sky-500/40',      bg: 'bg-sky-500/10',      glow: 'shadow-[inset_0_0_20px_rgba(14,165,233,0.04)]' },
-            'SUCCESS':   { icon: '<i class="fas fa-check-circle"></i>',     color: 'text-green-400',    border: 'border-green-500/45',    bg: 'bg-green-500/15',    glow: 'shadow-[inset_0_0_20px_rgba(34,197,94,0.05)]' },
-            'FAILURE':   { icon: '<i class="fas fa-times-circle"></i>',     color: 'text-rose-400',     border: 'border-rose-500/50',     bg: 'bg-rose-500/15',     glow: 'shadow-[inset_0_0_20px_rgba(244,63,94,0.05)]' },
-            'BUG':       { icon: '<i class="fas fa-bug"></i>',              color: 'text-fuchsia-400',  border: 'border-fuchsia-500/45',  bg: 'bg-fuchsia-500/12',  glow: 'shadow-[inset_0_0_20px_rgba(217,70,239,0.04)]' },
-            'EXAMPLE':   { icon: '<i class="fas fa-vial"></i>',             color: 'text-violet-400',   border: 'border-violet-500/40',   bg: 'bg-violet-500/10',   glow: 'shadow-[inset_0_0_20px_rgba(139,92,246,0.04)]' },
-            'QUOTE':     { icon: '<i class="fas fa-quote-left"></i>',       color: 'text-slate-400',    border: 'border-slate-500/40',    bg: 'bg-slate-800/60',   glow: 'shadow-[inset_0_0_20px_rgba(148,163,184,0.04)]' },
-            'QUESTION':  { icon: '<i class="fas fa-question-circle"></i>',  color: 'text-cyan-400',     border: 'border-cyan-500/40',     bg: 'bg-cyan-500/10',     glow: 'shadow-[inset_0_0_20px_rgba(34,211,238,0.04)]' },
-            'FAQ':       { icon: '<i class="fas fa-comments"></i>',         color: 'text-purple-400',   border: 'border-purple-500/40',   bg: 'bg-purple-500/10',   glow: 'shadow-[inset_0_0_20px_rgba(168,85,247,0.04)]' },
+            'NOTE':      { icon: '<i class="fas fa-info-circle"></i>',      color: 'text-blue-400',    border: 'border-blue-500/70',    bg: 'bg-blue-500/10' },
+            'TIP':       { icon: '<i class="fas fa-lightbulb"></i>',        color: 'text-emerald-400', border: 'border-emerald-500/70', bg: 'bg-emerald-500/10' },
+            'IMPORTANT': { icon: '<i class="fas fa-exclamation-circle"></i>', color: 'text-amber-400',   border: 'border-amber-500/70',   bg: 'bg-amber-500/10' },
+            'WARNING':   { icon: '<i class="fas fa-exclamation-triangle"></i>', color: 'text-orange-400',  border: 'border-orange-500/70',  bg: 'bg-orange-500/10' },
+            'CAUTION':   { icon: '<i class="fas fa-hand-paper"></i>',       color: 'text-rose-400',    border: 'border-rose-500/70',    bg: 'bg-rose-500/10' },
+            'DANGER':    { icon: '<i class="fas fa-skull-crossbones"></i>', color: 'text-red-400',      border: 'border-red-500/80',      bg: 'bg-red-500/15',      glow: 'shadow-[inset_0_0_20px_rgba(239,68,68,0.05)]' },
+            'INFO':      { icon: '<i class="fas fa-info"></i>',             color: 'text-sky-400',      border: 'border-sky-500/70',      bg: 'bg-sky-500/10',      glow: 'shadow-[inset_0_0_20px_rgba(14,165,233,0.04)]' },
+            'SUCCESS':   { icon: '<i class="fas fa-check-circle"></i>',     color: 'text-green-400',    border: 'border-green-500/70',    bg: 'bg-green-500/15',    glow: 'shadow-[inset_0_0_20px_rgba(34,197,94,0.05)]' },
+            'FAILURE':   { icon: '<i class="fas fa-times-circle"></i>',     color: 'text-rose-400',     border: 'border-rose-500/80',     bg: 'bg-rose-500/15',     glow: 'shadow-[inset_0_0_20px_rgba(244,63,94,0.05)]' },
+            'BUG':       { icon: '<i class="fas fa-bug"></i>',              color: 'text-fuchsia-400',  border: 'border-fuchsia-500/75',  bg: 'bg-fuchsia-500/12',  glow: 'shadow-[inset_0_0_20px_rgba(217,70,239,0.04)]' },
+            'EXAMPLE':   { icon: '<i class="fas fa-vial"></i>',             color: 'text-violet-400',   border: 'border-violet-500/70',   bg: 'bg-violet-500/10',   glow: 'shadow-[inset_0_0_20px_rgba(139,92,246,0.04)]' },
+            'QUOTE':     { icon: '<i class="fas fa-quote-left"></i>',       color: 'text-slate-400',    border: 'border-slate-500/70',    bg: 'bg-slate-800/60',   glow: 'shadow-[inset_0_0_20px_rgba(148,163,184,0.04)]' },
+            'QUESTION':  { icon: '<i class="fas fa-question-circle"></i>',  color: 'text-cyan-400',     border: 'border-cyan-500/70',     bg: 'bg-cyan-500/10',     glow: 'shadow-[inset_0_0_20px_rgba(34,211,238,0.04)]' },
+            'FAQ':       { icon: '<i class="fas fa-comments"></i>',         color: 'text-purple-400',   border: 'border-purple-500/70',   bg: 'bg-purple-500/10',   glow: 'shadow-[inset_0_0_20px_rgba(168,85,247,0.04)]' },
         };
 
         const s = styles[typeUp] || styles['INFO'];
@@ -198,11 +198,11 @@ export const toHtml = (md: string): string => {
         const bodyHtml = content ? `<div class="text-md font-medium text-slate-300 ${isCollapsible ? 'mt-3 pt-3 border-t border-white/5' : 'leading-relaxed'} child-content typing-content">${toHtml(content)}</div>` : '';
         
         if (isCollapsible) {
-            pieces.push(`<details class="group/callout border-l-4 ${s.border} bg-black/40 backdrop-blur-md ${s.glow || ''} shadow-xl pl-6 pr-4 py-3.5 my-5 rounded-r-xl overflow-hidden transition-all duration-300 select-none cursor-pointer border border-transparent hover:border-white/10" ${isOpen ? 'open' : ''}>`
+            pieces.push(`<details class="group/callout border-l-[3px] ${s.border} bg-black/40 backdrop-blur-md ${s.glow || ''} shadow-xl pl-6 pr-4 py-3.5 my-5 rounded-r-xl overflow-hidden transition-all duration-300 select-none cursor-pointer border-y border-y-transparent border-r border-r-transparent hover:border-y-white/10 hover:border-r-white/10" ${isOpen ? 'open' : ''}>`
                 + `<summary class="flex items-center gap-3 font-black text-[13px] uppercase tracking-[0.2em] ${s.color} non-typing outline-none list-none text-left">`
                 + `<span class="group-open/callout:rotate-90 transition-transform duration-300">▶</span> <span class="text-lg">${s.icon}</span> ${displayTitle}</summary>${bodyHtml}</details>`);
         } else {
-            pieces.push(`<blockquote class="border-l-4 ${s.border} bg-black/40 backdrop-blur-md ${s.glow || ''} shadow-xl pl-6 pr-4 py-3.5 my-5 rounded-r-xl overflow-hidden border border-transparent" data-type="admonition">`
+            pieces.push(`<blockquote class="border-l-[3px] ${s.border} bg-black/40 backdrop-blur-md ${s.glow || ''} shadow-xl pl-6 pr-4 py-3.5 my-5 rounded-r-xl overflow-hidden border-y border-y-transparent border-r border-r-transparent" data-type="admonition">`
                 + `<div class="flex items-center gap-3 mb-3 font-black text-[13px] uppercase tracking-[0.2em] ${s.color} non-typing"><span class="text-lg">${s.icon}</span> ${displayTitle}</div>${bodyHtml}</blockquote>`);
         }
         
@@ -297,19 +297,20 @@ export const toHtml = (md: string): string => {
         .replace(/‹p\s*([^›]*?)›/gi, '<p $1>')
         .replace(/‹\/p›/g, '</p>')
         .replace(/‹br›/g, '<br/>')
-        .replace(/‹h([1-6])\s*([^›]*?)›/gi, '<h$1 class="text-inherit font-black my-2" $2>')
+        .replace(/‹h([1-4])\s*([^›]*?)›/gi, '<h$1 class="text-inherit font-black drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] my-2" $2>')
+        .replace(/‹h([5-6])\s*([^›]*?)›/gi, '<h$1 class="text-inherit font-black my-2" $2>')
         .replace(/‹\/h([1-6])›/g, '</h$1>')
-        .replace(/‹strong›/g, '<strong class="text-amber-400 mx-0.5">')
+        .replace(/‹strong›/g, '<strong class="text-indigo-300 drop-shadow-[1px_1.5px_0px_rgba(0,0,0,1)] mx-0.5">')
         .replace(/‹\/strong›/g, '</strong>')
         .replace(/‹em›/g, '<em class="text-slate-300 mx-0.5">')
         .replace(/‹\/em›/g, '</em>')
         .replace(/‹small\s*([^›]*?)›/gi, '<small class="text-[0.85em] opacity-80 mx-1" $1>')
         .replace(/‹\/small›/g, '</small>')
-        .replace(/‹code\s*([^›]*?)›/gi, '<code class="bg-black/40 px-1.5 py-0.5 rounded text-amber-300 font-mono text-[0.9em] border border-white/10 mx-1" $1>')
+        .replace(/‹code\s*([^›]*?)›/gi, '<code class="bg-indigo-500/10 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-[0.9em] border border-indigo-400/20 mx-1 shadow-[0_0_8px_rgba(99,102,241,0.1)]" $1>')
         .replace(/‹\/code›/g, '</code>')
         .replace(/‹kbd\s*([^›]*?)›/gi, '<kbd class="bg-black/50 border border-white/20 rounded px-1.5 py-0.5 text-xs font-mono text-slate-200 shadow-sm mx-1" $1>')
         .replace(/‹\/kbd›/g, '</kbd>')
-        .replace(/‹mark\s*([^›]*?)›/gi, '<mark class="bg-amber-400/25 text-amber-200 px-1 py-0.5 rounded-sm border-b border-amber-400/30 mx-1" $1>')
+        .replace(/‹mark\s*([^›]*?)›/gi, '<mark class="bg-[#FC8F35]/25 text-[#fcc18d] px-1 py-0.5 rounded-sm border-b border-[#FC8F35]/30 mx-1 shadow-sm" $1>')
         .replace(/‹\/mark›/g, '</mark>')
         .replace(/‹abbr\s+([^›]+)›/g, '<abbr $1 class="cursor-help border-b border-dotted border-cyan-400/50 decoration-cyan-400/30 text-cyan-200/90 font-bold mx-1">')
         .replace(/‹\/abbr›/g, '</abbr>')
@@ -324,17 +325,17 @@ export const toHtml = (md: string): string => {
     html = convertDefinitionListsToHtml(html);
 
     html = html.replace(/\\`/g, '‹esc-backtick›');
-    html = html.replace(/`([^`\n]+)`/g, '<code class="bg-black/30 px-1.5 py-0.5 rounded text-amber-300 font-mono text-xs border border-white/10">$1</code>');
+    html = html.replace(/`([^`\n]+)`/g, '<code class="bg-indigo-500/10 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs border border-indigo-400/20 shadow-[0_0_8px_rgba(99,102,241,0.1)]">$1</code>');
     html = html.replace(/‹esc-backtick›/g, '`');
 
     html = convertTablesToHtml(html);
 
     html = html.replace(/^###### (.+)$/gm, '<h6 class="text-xs font-bold text-slate-500 mt-3 mb-1">$1</h6>');
-    html = html.replace(/^##### (.+)$/gm, '<h5 class="text-xs font-bold text-slate-400 mt-3 mb-1">$1</h5>');
-    html = html.replace(/^#### (.+)$/gm, '<h4 class="text-sm font-bold text-slate-200 mt-4 mb-2">$1</h4>');
-    html = html.replace(/^### (.+)$/gm, '<h3 class="text-sm font-bold text-slate-100 mt-4 mb-2">$1</h3>');
-    html = html.replace(/^## (.+)$/gm, '<h2 class="text-md font-bold text-cyan-400 mt-5 mb-1">$1</h2><div class="h-px w-full" style="background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.15) 2%, rgba(255,255,255,0.15) 98%, transparent 100%); margin-bottom: 1rem;"></div>');
-    html = html.replace(/^# (.+)$/gm, '<h1 class="text-lg font-extrabold text-white mt-6 mb-1">$1</h1><div class="h-px w-full" style="background: linear-gradient(to right, transparent 0%, rgba(34,211,238,0.3) 2%, rgba(34,211,238,0.3) 98%, transparent 100%); margin-bottom: 1.5rem;"></div>');
+    html = html.replace(/^##### (.+)$/gm, '<h5 class="text-xs font-bold text-indigo-400/70 mt-3 mb-1">$1</h5>');
+    html = html.replace(/^#### (.+)$/gm, '<h4 class="text-sm font-bold text-[#fca865] drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-4 mb-2">$1</h4>');
+    html = html.replace(/^### (.+)$/gm, '<h3 class="text-sm font-bold text-[#FC8F35] drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-4 mb-2">$1</h3>');
+    html = html.replace(/^## (.+)$/gm, '<h2 class="text-md font-bold text-cyan-400 drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-5 mb-1">$1</h2><div class="h-px w-full" style="background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.15) 2%, rgba(255,255,255,0.15) 98%, transparent 100%); margin-bottom: 1rem;"></div>');
+    html = html.replace(/^# (.+)$/gm, '<h1 class="text-lg font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-indigo-300 drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-6 mb-1">$1</h1><div class="h-px w-full" style="background: linear-gradient(to right, transparent 0%, rgba(34,211,238,0.3) 2%, rgba(34,211,238,0.3) 98%, transparent 100%); margin-bottom: 1.5rem;"></div>');
 
     html = html.replace(/^(?:\s*[\*\-_]){3,}\s*$/gm, '<div class="divider-container"><div class="divider-line bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent h-px my-8"></div></div>');
 
@@ -342,16 +343,16 @@ export const toHtml = (md: string): string => {
     html = html.replace(/\\#/g, '‹esc-hash›');
     html = html.replace(/\\-/g, '‹esc-dash›');
 
-    html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong class="text-amber-300"><em>$1</em></strong>');
-    html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="text-amber-400">$1</strong>');
-    html = html.replace(/\*(.+?)\*/g, '<em class="text-slate-300">$1</em>');
-    html = html.replace(/~~(.+?)~~/g, '<del class="text-slate-500 line-through">$1</del>');
+    html = html.replace(/\*\*\*(?!\s)(.+?)\*\*\*/g, '<strong class="text-indigo-400 drop-shadow-[1px_1.5px_0px_rgba(0,0,0,1)]"><em>$1</em></strong>');
+    html = html.replace(/\*\*(?!\s)(.+?)\*\*/g, '<strong class="text-indigo-300 drop-shadow-[1px_1.5px_0px_rgba(0,0,0,1)]">$1</strong>');
+    html = html.replace(/\*(?!\s)(.+?)\*/g, '<em class="text-slate-300">$1</em>');
+    html = html.replace(/~~(?!\s)(.+?)~~/g, '<del class="text-slate-500 line-through">$1</del>');
 
     html = html.replace(/‹esc-asterisk›/g, '*');
     html = html.replace(/‹esc-hash›/g, '#');
     html = html.replace(/‹esc-dash›/g, '-');
 
-    html = html.replace(/==([^=\n]+)==/g, '<mark class="bg-amber-400/25 text-amber-200 px-1 py-0.5 rounded-sm border-b border-amber-400/30 mx-0.5">$1</mark>');
+    html = html.replace(/==([^=\n]+)==/g, '<mark class="bg-[#FC8F35]/25 text-[#fcc18d] px-1 py-0.5 rounded-sm border-b border-[#FC8F35]/30 mx-0.5">$1</mark>');
 
     html = html.replace(/~([^~\n]+)~/g, '<sub class="text-slate-400 text-[0.7em] leading-none">$1</sub>');
 
@@ -659,13 +660,13 @@ function convertListsToHtml(html: string): string {
             if (depth === 0) {
                 // First list item ever — open a new list
                 const marginClass = 'my-2';
-                processed.push(`<${type} class="space-y-1 ${marginClass} ml-6 cursor-default">`);
+                processed.push(`<${type} class="space-y-1 ${marginClass} ml-6 cursor-default marker:text-indigo-400/60">`);
                 listStack.push({ type, indent });
             } else {
                 const top = listStack[listStack.length - 1];
 
                 if (indent > top.indent) {
-                    processed.push(`<${type} class="space-y-1 mt-0.5 ml-5 cursor-default">`);
+                    processed.push(`<${type} class="space-y-1 mt-0.5 ml-5 cursor-default marker:text-indigo-400/60">`);
                     listStack.push({ type, indent });
                 } else if (indent < top.indent) {
                     closeListsToLevel(indent);
@@ -674,7 +675,7 @@ function convertListsToHtml(html: string): string {
                         processed.push('</li>');
                     } else {
                         // All lists were closed, start fresh
-                        processed.push(`<${type} class="space-y-1 my-3 ${isUl ? 'list-disc' : 'list-decimal'} list-outside ml-6 marker:text-cyan-400/60">`);
+                        processed.push(`<${type} class="space-y-1 my-3 ${isUl ? 'list-disc' : 'list-decimal'} list-outside ml-6 marker:text-indigo-400/60">`);
                         listStack.push({ type, indent });
                     }
                 } else {
@@ -697,11 +698,11 @@ function convertListsToHtml(html: string): string {
                     textClass = 'text-slate-500 line-through decoration-white/10';
                 } else if (isPartial) {
                     checkIcon = '▣';
-                    textClass = 'text-cyan-100/90 font-medium';
+                    textClass = 'text-indigo-200 font-medium';
                 }
 
                 processed.push(`<li class="list-none pl-1 flex items-center gap-3">`
-                    + `<span class="${isPartial ? 'text-cyan-400' : 'text-cyan-400/60'} text-base mb-0.5 mr-0.5">${checkIcon}</span>`
+                    + `<span class="${isPartial ? 'text-[#fca865]' : 'text-indigo-400/60'} text-base mb-0.5 mr-0.5">${checkIcon}</span>`
                     + `<span class="${textClass}">${content}</span>`);
             } else {
                 processed.push(`<li class="pl-1">${content}`);

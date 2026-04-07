@@ -139,12 +139,12 @@ export const ChatArea = ({
         setAttachments(prev => prev.filter(a => a.id !== id));
     };
 
-    // Auto-focus input when agent finishes
+    // Auto-focus input when session changes or agent finishes
     React.useEffect(() => {
         if (!isLoading) {
             inputRef.current?.focus({ preventScroll: true });
         }
-    }, [isLoading]);
+    }, [isLoading, sessionId]);
 
     React.useEffect(() => {
         const handleGlobalKeyDown = (e: KeyboardEvent) => {
@@ -523,7 +523,7 @@ export const ChatArea = ({
                 ref={scrollRef}
             >
                 <div className="flex-1" />
-                <div className="space-y-6 w-full max-w-[98%] sm:max-w-[90%] lg:max-w-[80%] mx-auto pb-4">
+                <div className="space-y-6 w-full max-w-[98%] sm:max-w-[95%] lg:max-w-3xl mx-auto pb-4">
                     {messages.length === 0 && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-20">
                             <div className="w-20 h-20 rounded-full border-2 border-blue-500/15 flex items-center justify-center mb-6 text-3xl text-blue-500/20">
@@ -637,18 +637,34 @@ export const ChatArea = ({
                                                     </div>
                                                 )}
                                                 {msg.blocks && msg.blocks.length > 0 ? (
-                                                    <div className="space-y-4 mb-4">
+                                                    <div className="mb-4">
                                                         {msg.blocks.map((block, idx) => {
-                                                            if (block.type === 'answer') {
-                                                                return <MarkdownRenderer key={idx} content={block.content} isStreaming={msg.isStreaming} />;
-                                                            } else if (block.type === 'thought' || block.type === 'text') {
-                                                                const hasTools = msg.blocks!.some(b => b.type === 'tool_call');
-                                                                const forceCollapse = isOld || (hasTools && !debugMode) || block.type === 'thought';
-                                                                return <CollapsibleTextBlock key={idx} content={block.content} forceCollapse={forceCollapse} isThought={block.type === 'thought'} isStreaming={msg.isStreaming} />;
-                                                            } else if (block.type === 'tool_call') {
-                                                                return <ToolBlock key={idx} block={block} isOld={isOld} />;
-                                                            }
-                                                            return null;
+                                                            const prevBlock = idx > 0 ? msg.blocks![idx - 1] : null;
+                                                            const isTool = block.type === 'tool_call';
+                                                            const isPrevTool = prevBlock?.type === 'tool_call';
+                                                            const isNarrative = ['answer', 'text', 'thought'].includes(block.type);
+
+                                                            // Spacing Logic:
+                                                            // 1. Consecutive tools = compact (mt-2)
+                                                            // 2. Narrative after tool = line jump (mt-8)
+                                                            // 3. Narrative after narrative or tool after narrative = standard (mt-4)
+                                                            let spacingClass = idx === 0 ? '' : 'mt-4';
+                                                            if (isTool && isPrevTool) spacingClass = 'mt-2';
+                                                            if (isNarrative && isPrevTool) spacingClass = 'mt-8';
+
+                                                            return (
+                                                                <div key={idx} className={spacingClass}>
+                                                                    {block.type === 'answer' ? (
+                                                                        <MarkdownRenderer content={block.content} isStreaming={msg.isStreaming} />
+                                                                    ) : (block.type === 'thought' || block.type === 'text') ? (() => {
+                                                                        const hasTools = msg.blocks!.some(b => b.type === 'tool_call');
+                                                                        const forceCollapse = isOld || (hasTools && !debugMode) || block.type === 'thought';
+                                                                        return <CollapsibleTextBlock content={block.content} forceCollapse={forceCollapse} isThought={block.type === 'thought'} isStreaming={msg.isStreaming} />;
+                                                                    })() : block.type === 'tool_call' ? (
+                                                                        <ToolBlock block={block} isOld={isOld} />
+                                                                    ) : null}
+                                                                </div>
+                                                            );
                                                         })}
                                                     </div>
                                                 ) : (

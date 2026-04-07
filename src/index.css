@@ -73,11 +73,13 @@
   overflow-wrap: break-word;
   word-break: break-word;
   min-width: 0;
+  font-size: 1.0125rem;
+  line-height: 1.55;
 }
 
 .markdown-body p {
-  margin-bottom: 0.5em;
-  line-height: 1.5;
+  margin-bottom: 0.6em;
+  line-height: 1.55;
 }
 
 .markdown-body ul,
@@ -99,31 +101,31 @@
 .markdown-body ol ol ol { list-style-type: upper-roman; }
 
 .markdown-body li {
-  margin-bottom: 0.25em;
-  line-height: 1.5;
+  margin-bottom: 0.3em;
+  line-height: 1.55;
   display: list-item;
   padding-left: 0.5rem;
 }
 
 /* Ensure list markers are visible and colored by level */
 .markdown-body li::marker {
-  color: rgba(96, 165, 250, 0.7);
+  color: rgba(129, 140, 248, 0.7);
   font-size: 0.9em;
 }
 
 .markdown-body ul li::marker, 
 .markdown-body ol li::marker {
-  color: rgba(34, 211, 238, 0.6);
+  color: rgba(129, 140, 248, 0.6);
 }
 
 .markdown-body ul ul li::marker, 
 .markdown-body ol ol li::marker {
-  color: rgba(34, 211, 238, 0.4);
+  color: rgba(129, 140, 248, 0.4);
 }
 
 .markdown-body ul ul ul li::marker, 
 .markdown-body ol ol ol li::marker {
-  color: rgba(34, 211, 238, 0.25);
+  color: rgba(129, 140, 248, 0.25);
 }
 
 /* Fix for list items with custom marker classes */
@@ -140,7 +142,7 @@
 }
 
 .marker\:text-cyan-400\/60 ::marker {
-  color: rgba(96, 165, 250, 0.6);
+  color: rgba(129, 140, 248, 0.6);
 }
 
 .markdown-body h1 {
