@@ -8,13 +8,12 @@ MikuBot has transcended into its most powerful visual form yet! This version rep
 
 ### ✨ What's New in This Release?
 
-*   **📊 Premium Mermaid Visualization:** Total technical clarity. MikuBot now renders high-fidelity Mermaid diagrams, supporting everything from simple Flowcharts to complex GitGraphs, ER Diagrams, and Mindmaps with optimized "Studio Elite" scaling and smooth expansion animations.
-*   **🎭 Kinetic Emoji Engine:** The neural signature is now alive. We've implemented a custom animation dictionary where every emoji follows unique, organic keyframe patterns (shimmer, bounce, pulse, bubble) tailored to its visual identity.
-*   **👁️ Studio Spoiler Engine:** Hide sensitive information with style. Use `||spoiler||` syntax to wrap text in a premium glassmorphic blur that reveals with a smooth cyan glow and scale-up effect only when you hover over it.
-*   **📈 Interactive Progress Bars:** Support for visual trackers using `[====]`, `[████]`, or `[▓▓▓▓]` syntax. The bars feature dynamic color levels (red to cyan) based on the percentage, perfect for resource monitoring or task status.
-*   **🏗️ Variable-Length Fenced Blocks:** Total control over Markdown nesting. MikuBot now supports 4+ backtick fences (```` ````), allowing you to embed complex Markdown examples and triple-backtick blocks with dedicated per-language accent colors.
-*   **🛡️ Asset Protection Pipeline (Universal Escaping):** We've solved "stray character" bugs. Our new 3-phase escaping pipeline robustly protects images, links, and code blocks from structural corruption during HTML normalization.
-*   **📚 Modernized Footnotes & Abbreviations:** A cleaner research experience. Footnote markers `[^1]` are now minimalist and highly interactive, paired with advanced abbreviation tooltips for technical terminology.
+*   **📐 Professional Scientific Rendering (LaTeX):** MikuBot is now a power-tool for technical reporting. We've implemented a high-performance engine for complex mathematics ($$ and $), supporting integrals, matrices, binomials, and physical constants with perfect visual alignment and indigo-themed styling.
+*   **📊 Architecture & Data Logic Visualization (Mermaid):** Native high-fidelity rendering for `mermaid`, `flowchart`, `gitGraph`, `mindmap`, and `erDiagram`. This is a massive utility update that allows you to visualize architecture and logic directly within the chat thread without needing external diagramming tools.
+*   **🏗️ Advanced Structural Protection (3-Phase Pipeline):** Our most robust update to the rendering core. A new 3-phase normalization pipeline ensures that images, links, and nested code blocks maintain 100% structural integrity under any data complexity.
+*   **🎭 Kinetic Emoji & Neural Typography:** Every interaction feels alive. We've implemented organic animation patterns (pulse, shimmer, organic bounce) for emojis and the neural signature, synchronizing visual feedback with the assistant's real-time reasoning.
+*   **👁️ Studio Stealth & Privacy (Spoilers):** Hide sensitive data, passwords, or API keys with a premium frosted-glass blur (`||spoiler||`) that reveals with a smooth cyan glow only when you interact with it.
+*   **📚 Research-Grade Footnote Orchestration:** Minimalist, highly interactive footnote markers `[^1]` paired with automated definition blocks, transforming long-form AI analysis into publication-quality research documents.
 *   **📐 Proportional Readability Constraint:** Better layout for ultra-wide screens. Chat balloons are now constrained to a maximum width of `4xl` (896px), ensuring ideal line lengths and superior reading comfort on massive monitors.
 
 

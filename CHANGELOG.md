@@ -1,16 +1,14 @@
 ## [2.2.1] - 2026-04-07
 ### Added
 - **Studio Elite Markdown Engine**: A complete overhaul of the rendering pipeline.
-    - **Advanced LaTeX Math**: High-performance, zero-dependency renderer supporting complex multiline formulas ($$), inline math ($), matrices, binomials, and physics constants.
-    - **Mermaid Diagram Support**: High-fidelity rendering for `mermaid`, `flowchart`, `gitGraph`, `mindmap`, and `erDiagram` with smooth "Studio Elite" expansion and transition animations.
-    - **Obsidian-Style Callouts**: Native support for `> [!TYPE]` syntax (collapsed/expanded) with rotating indicators and theme-reactive styling (14+ supported types).
-    - **Kinetic Emoji System**: Integrated an organic animation engine where emojis follow unique keyframe patterns (shimmer, bounce, pulse) based on their identity.
-    - **Interactive Progress Bars**: Support for visual trackers using `[====]`, `[████]`, or `[▓▓▓▓]` syntax with dynamic color levels based on percentage.
-    - **Studio Spoilers**: Premium glassmorphic blur for `||spoiler||` content that reveals with a smooth cyan glow on interaction.
-    - **Footnote Orchestration**: Advanced support for `[^1]` markers and matching `[^1]:` definition blocks with minimalist, standardized styling.
-- **Asset Protection Pipeline (3-Phase)**: Robust 3-phase normalization to protect images, links, and code blocks from structural corruption during complex HTML transforms.
-- **Synchronized Typing Animations**: Integrated progressive text reveal into callouts and blockquotes, synchronized with the neural streaming engine for a cohesive "live" feel.
-
+    - **Advanced LaTeX Math Engine**: Professional-grade, high-performance renderer supporting complex multiline formulas ($$), inline math ($), matrices, binomials, and physics constants. Essential for technical documentation and scientific research.
+    - **Intelligent Mermaid Diagrams**: Native visualization for `mermaid`, `flowchart`, `gitGraph`, `mindmap`, and `erDiagram`. Eliminates the need for external tools by rendering architecture and logic directly within the chat.
+    - **Obsidian-Style Command Callouts**: Robust support for `> [!TYPE]` (collapsible/expanded) with 14+ reactive styles. Perfect for organizing multi-step instructions, logs, and structured knowledge.
+    - **Studio Spoiler & Privacy Filter**: Premium glassmorphic blur for `||spoiler||` content that reveals on interaction. Ideal for hiding sensitive data or API keys during shared sessions.
+    - **Kinetic Emoji & Typography**: Organic animation engine for the neural signature and emojis, where every symbol follows a unique pattern (bounce, pulse, shimmer) to provide visual feedback and a "living" response feel.
+    - **Technical Footnote Orchestration**: Advanced support for `[^1]` markers and interactive definition blocks, ensuring publication-quality referencing for long-form analysis.
+- **Asset Protection Pipeline (3-Phase)**: Overhauled structural normalization that prevents images, links, and nested code blocks from corruption. Guarantees 100% reliability for complex technical content.
+- **Neural Streaming Synchronization**: Fully synchronized progressive text reveal for callouts and blockquotes, ensuring the UI evolves in real-time with the assistant's internal reasoning.
 ### Changed
 - **Optimized Build Configuration**: Refined Rollup chunking strategy to isolate the heavy `mermaid` dependency and FontAwesome icons, significantly reducing the primary vendor bundle size.
 - **Circular Dependency Fix**: Consolidated framework-related chunks into the vendor bundle to eliminate circular references between React and architectural libraries.
