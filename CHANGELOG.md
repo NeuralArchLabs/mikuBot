@@ -1,3 +1,11 @@
+## [2.2.1] - 2026-04-07
+### Changed
+- **Optimized Build Configuration**: Refined Rollup chunking strategy to isolate the heavy `mermaid` dependency and FontAwesome icons, significantly reducing the primary vendor bundle size.
+- **Circular Dependency Fix**: Consolidated framework-related chunks into the vendor bundle to eliminate circular references between React and architectural libraries.
+
+### Fixed
+- **Version Synchronization**: Ensured version parity (`2.2.1`) across `package.json`, internal configuration constants, and localized documentation (READMEs).
+
 ## [2.2.0] - 2026-04-05
 ### Added
 - **Advanced LaTeX Math Engine**: Implemented a high-performance, zero-dependency math renderer supporting complex multiline formulas ($$), inline math ($), matrices (pmatrix, bmatrix, etc.), binomial coefficients, and physics constants (\hbar, \oint, \nabla).
