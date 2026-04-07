@@ -12,22 +12,46 @@ export const Icon = ({ name, className = "" }: { name: string; className?: strin
 // ⚡ GLOBAL ANIMATION QUEUE MANAGER
 // Serializes viewport interception animations to prevent simultaneous DOM thrashing.
 class AnimationQueueManager {
-    private queue: (() => Promise<void>)[] = [];
+    private queue: { el: HTMLElement; task: () => Promise<void> }[] = [];
     private isProcessing = false;
+    private readonly TASK_TIMEOUT = 12000; // 12s failsafe timeout per task
 
-    enqueue(task: () => Promise<void>) {
-        this.queue.push(task);
+    enqueue(el: HTMLElement, task: () => Promise<void>) {
+        // Prevent duplicate entries for the same element
+        if (this.queue.some(item => item.el === el)) return;
+        
+        this.queue.push({ el, task });
         if (!this.isProcessing) {
             this.processQueue();
         }
     }
 
+    /**
+     * Removes an element from the queue. 
+     * Useful when an element leaves the viewport before its animation starts.
+     */
+    dequeue(el: HTMLElement) {
+        this.queue = this.queue.filter(item => item.el !== el);
+    }
+
     private async processQueue() {
+        if (this.isProcessing) return;
         this.isProcessing = true;
+        
         while (this.queue.length > 0) {
-            const task = this.queue.shift();
-            if (task) {
-                try { await task(); } catch (e) { console.error('Animation Queue Error:', e); }
+            const item = this.queue.shift();
+            if (item) {
+                try {
+                    // 🛡️ SHIELD: Race against timeout to prevent queue hangs
+                    await Promise.race([
+                        item.task(),
+                        new Promise<void>((_, reject) => 
+                            setTimeout(() => reject(new Error('Animation Task Timeout')), this.TASK_TIMEOUT)
+                        )
+                    ]);
+                } catch (e) {
+                    console.error('Animation Queue System:', e);
+                }
             }
         }
         this.isProcessing = false;
@@ -57,48 +81,42 @@ const MarkdownRendererBase = ({ content, isStreaming }: { content: string, isStr
                 entries.forEach((entry) => {
                     const el = entry.target as HTMLElement;
                     
-                    // ⚡ ONCE-ONLY ANIMATION: Bail if already animated
+                    // ⚡ STATUS CHECK: Bail if already fully animated or specifically marked as done
                     if (el.hasAttribute('data-animated')) return;
 
                     if (entry.isIntersecting) {
-                        el.setAttribute('data-animated', 'true'); // Lock it immediately
+                        // ⚡ QUEUE PROTECTION: Don't enqueue twice 
+                        if (el.hasAttribute('data-enqueued')) return;
+                        el.setAttribute('data-enqueued', 'true');
                         
-                        // ⚡ IMMEDIATE CONCEALMENT: Force element into pre-animation hidden state
-                        // BEFORE enqueueing, so it doesn't flash its rendered content while waiting.
+                        // ⚡ IMMEDIATE CONCEALMENT (Pre-animation)
                         if (el.tagName === 'BLOCKQUOTE') {
-                            if (!el.hasAttribute('data-queued')) {
-                                el.setAttribute('data-queued', 'true');
+                            if (!el.hasAttribute('data-queued-ui')) {
+                                el.setAttribute('data-queued-ui', 'true');
                                 const fullHtml = el.getAttribute('data-original-html') || '';
-                                
-                                // Extract the title (non-typing) to keep it visible during the idle state
                                 const titleMatch = fullHtml.match(/^<div class="[^"]*non-typing[^"]*">.*?<\/div>/);
                                 const idleTitleHtml = titleMatch ? titleMatch[0] : '';
                                 
-                                // IMMEDIDATE INJECTION: Preserve blockquote background/borders + title (idle state), 
-                                // but force the text to be invisible until its turn in the queue.
                                 el.innerHTML = `<div class="blockquote-anim-container relative">`
                                     + `<div class="blockquote-placeholder invisible select-none pointer-events-none">${fullHtml}</div>`
                                     + `<div class="blockquote-typing absolute inset-0">${idleTitleHtml}</div>`
                                     + `</div>`;
                             }
-                        } else if (!el.classList.contains('code-block-anim')) {
-                            // Code blocks are already opacity-0 via their CSS classes.
-                            // Dividers/signatures have CSS-native hidden states (no is-visible = invisible).
-                            // No extra action needed for these.
                         }
-                        
-                        globalAnimationQueue.enqueue(() => {
+
+                        // ⚡ ENQUEUE TASK
+                        globalAnimationQueue.enqueue(el, () => {
                             return new Promise<void>((resolve) => {
-                                // 👁 VALIDACIÓN DINÁMICA DE VIEWPORT: Si el usuario ya huyó (scroll rápido), abortar animación lenta y saltar al resultado final
+                                // 👁 VALIDACIÓN DINÁMICA DE VIEWPORT: Si el usuario ya huyó (scroll rápido), abortar y saltar al resultado final
                                 const rect = el.getBoundingClientRect();
-                                const isVisible = rect.top < window.innerHeight + 200 && rect.bottom > -200;
+                                const isVisible = rect.top < window.innerHeight + 300 && rect.bottom > -300;
                                 
                                 if (!isVisible) {
                                     if (el.tagName === 'BLOCKQUOTE') {
                                         el.innerHTML = el.getAttribute('data-original-html') || '';
                                         el.classList.add('is-visible');
                                         el.classList.remove('is-typing');
-                                        el.removeAttribute('data-queued');
+                                        el.removeAttribute('data-queued-ui');
                                     } else if (el.classList.contains('mermaid')) {
                                         renderSingleMermaidBlock(el);
                                     } else if (el.classList.contains('code-block-anim')) {
@@ -107,18 +125,22 @@ const MarkdownRendererBase = ({ content, isStreaming }: { content: string, isStr
                                     } else {
                                         el.classList.add('is-visible');
                                     }
+                                    el.setAttribute('data-animated', 'true');
+                                    el.removeAttribute('data-enqueued');
                                     resolve();
                                     return;
                                 }
 
                                 if (el.tagName === 'BLOCKQUOTE') {
                                     if (!el.classList.contains('is-typing')) {
-                                        el.removeAttribute('data-queued');
+                                        el.removeAttribute('data-queued-ui');
                                         el.classList.add('is-typing', 'is-visible');
                                         const fullHtml = el.getAttribute('data-original-html') || '';
                                         const typingEl = el.querySelector('.blockquote-typing') as HTMLElement;
                                         
                                         if (!typingEl) {
+                                            el.setAttribute('data-animated', 'true');
+                                            el.removeAttribute('data-enqueued');
                                             resolve();
                                             return;
                                         }
@@ -126,17 +148,18 @@ const MarkdownRendererBase = ({ content, isStreaming }: { content: string, isStr
                                         const titleMatch = fullHtml.match(/^<div class="[^"]*non-typing[^"]*">.*?<\/div>/);
                                         const idleTitleHtml = titleMatch ? titleMatch[0] : '';
                                         
-                                        // Start cursor AFTER the idle title to seamlessly resume typing the payload
                                         let cursor = idleTitleHtml.length;
                                         let currentHtml = idleTitleHtml;
                                         let inTag = false;
                                         
                                         (el as any)._typeInterval = setInterval(() => {
                                             if (cursor >= fullHtml.length) {
-                                                el.innerHTML = fullHtml; // Restore original clean HTML at the end
+                                                el.innerHTML = fullHtml;
                                                 el.classList.remove('is-typing');
+                                                el.setAttribute('data-animated', 'true');
+                                                el.removeAttribute('data-enqueued');
                                                 clearInterval((el as any)._typeInterval);
-                                                resolve(); // Free the queue safely
+                                                resolve();
                                                 return;
                                             }
 
@@ -166,30 +189,56 @@ const MarkdownRendererBase = ({ content, isStreaming }: { content: string, isStr
                                         resolve(); // Failsafe
                                     }
                                 } else if (el.classList.contains('mermaid')) {
-                                    // 🏹 VIEWPORT-TRIGGERED MERMAID: Render only when seen
                                     renderSingleMermaidBlock(el);
-                                    resolve(); // Sync DOM inject, no wait
+                                    el.setAttribute('data-animated', 'true');
+                                    el.removeAttribute('data-enqueued');
+                                    resolve();
                                 } else if (el.classList.contains('code-block-anim')) {
-                                    // 💻 STANDARD CODE BLOCK: Smooth reveal on entry
                                     el.classList.remove('opacity-0', 'scale-95', 'blur-sm');
                                     el.classList.add('opacity-100', 'scale-100', 'blur-0', 'is-visible');
-                                    setTimeout(resolve, 300); // 300ms basic reveal timeline
+                                    setTimeout(() => {
+                                        el.setAttribute('data-animated', 'true');
+                                        el.removeAttribute('data-enqueued');
+                                        resolve();
+                                    }, 400); 
                                 } else if (el.classList.contains('signature-wrapper')) {
                                     el.classList.add('is-visible');
-                                    setTimeout(resolve, 1800); // 1.8s signature animation
+                                    setTimeout(() => {
+                                        el.setAttribute('data-animated', 'true');
+                                        el.removeAttribute('data-enqueued');
+                                        resolve();
+                                    }, 1800);
                                 } else if (el.classList.contains('divider-container')) {
                                     el.classList.add('is-visible');
-                                    setTimeout(resolve, 500); // 500ms line expansion
+                                    setTimeout(() => {
+                                        el.setAttribute('data-animated', 'true');
+                                        el.removeAttribute('data-enqueued');
+                                        resolve();
+                                    }, 500);
                                 } else {
                                     el.classList.add('is-visible');
-                                    resolve(); // Immediate queue free
+                                    el.setAttribute('data-animated', 'true');
+                                    el.removeAttribute('data-enqueued');
+                                    resolve();
                                 }
                             });
                         });
+                    } else {
+                        // ⚡ DYNAMIC PRUNING: If element leaves viewport before animation starts, remove it from queue
+                        if (el.hasAttribute('data-enqueued') && !el.classList.contains('is-typing')) {
+                            globalAnimationQueue.dequeue(el);
+                            el.removeAttribute('data-enqueued');
+                            
+                            // Revert concealment if it's a blockquote
+                            if (el.tagName === 'BLOCKQUOTE' && el.hasAttribute('data-queued-ui')) {
+                                el.innerHTML = el.getAttribute('data-original-html') || '';
+                                el.removeAttribute('data-queued-ui');
+                            }
+                        }
                     }
                 });
             },
-            { threshold: 0.1 }
+            { threshold: 0.1, rootMargin: '100px' }
         );
 
         const animatedElements = containerNode.querySelectorAll('.divider-container, blockquote, .mermaid, .code-block-anim, .signature-wrapper');

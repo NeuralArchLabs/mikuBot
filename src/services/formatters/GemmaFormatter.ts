@@ -52,12 +52,47 @@ export class GemmaFormatter implements IFormatter {
         // 1. Normalize line endings
         formatted = formatted.replace(/\r\n/g, '\n');
 
-        // 2. Unescape literal \n strings
+        // --- PHASE 1: ASSET PROTECTION (BLOCKS) ---
+        // Extract and protect blocks that should NEVER be affected by generic unescaping logic (\n, \t)
+        const pieces: string[] = [];
+        
+        // 2a. Fenced Code Blocks
+        formatted = formatted.replace(/^(`{3,}|~{3,})([\w./+#-]*)[\t ]*\n([\s\S]*?)\n\s*\1/gm, (match) => {
+            const id = `___PROTECTED_BLOCK_${pieces.length}___`;
+            pieces.push(match);
+            return `\n${id}\n`;
+        });
+
+        // 2b. Math Blocks ($$, \[, \()
+        formatted = formatted.replace(/\$\$[\s\S]*?\$\$/g, (match) => {
+            const id = `___PROTECTED_BLOCK_${pieces.length}___`;
+            pieces.push(match);
+            return id;
+        });
+        formatted = formatted.replace(/\\\[[\s\S]*?\\\]/g, (match) => {
+            const id = `___PROTECTED_BLOCK_${pieces.length}___`;
+            pieces.push(match);
+            return id;
+        });
+        formatted = formatted.replace(/\\\([\s\S]*?\\\)/g, (match) => {
+            const id = `___PROTECTED_BLOCK_${pieces.length}___`;
+            pieces.push(match);
+            return id;
+        });
+
+        // --- PHASE 2: NORMALIZATION (TEXT ONLY) ---
+        // 2. Unescape literal \n strings (standard result of JSON-based streaming)
         formatted = formatted.replace(/\\n/g, '\n');
 
-        // 3. Fix double escaping
+        // 3. Selective unescaping (ONLY if not part of a technical command)
+        // We only unescape \t if it's NOT likely a LaTeX command or part of a path
         formatted = formatted.replace(/\\t/g, '    ');
         formatted = formatted.replace(/\\"/g, '"');
+
+        // --- PHASE 3: RE-INJECTION ---
+        for (let i = 0; i < pieces.length; i++) {
+            formatted = formatted.replace(`___PROTECTED_BLOCK_${i}___`, pieces[i]);
+        }
 
         // 4. Trim trailing whitespace
         formatted = formatted.split('\n').map(line => line.trimEnd()).join('\n');

@@ -661,7 +661,7 @@ export const ChatArea = ({
                                                                         const forceCollapse = isOld || (hasTools && !debugMode) || block.type === 'thought';
                                                                         return <CollapsibleTextBlock content={block.content} forceCollapse={forceCollapse} isThought={block.type === 'thought'} isStreaming={msg.isStreaming} />;
                                                                     })() : block.type === 'tool_call' ? (
-                                                                        <ToolBlock block={block} isOld={isOld} />
+                                                                        <ToolBlock block={block} isOld={isOld} isStreaming={msg.isStreaming} />
                                                                     ) : null}
                                                                 </div>
                                                             );

@@ -137,7 +137,36 @@ export const toHtml = (md: string): string => {
     // 1b. Inline math ($ ... $) - Multi-line support
     html = html.replace(/\$([\s\S]+?)\$/gs, (match, formula) => {
         const id = `__BLOCK_${pieces.length}__`;
-        // Use inline-flex and padding to prevent fraction clipping
+        pieces.push(`<span class="font-serif italic text-orange-200 bg-white/5 px-1.5 py-1 rounded-md mx-0.5 shadow-sm border-b border-white/10 math-inline inline-flex items-center align-middle flex-wrap">${convertMathToHtml(formula.trim())}</span>`);
+        return id;
+    });
+
+    // 1c. LaTeX-style math delimiters \( ... \) and \[ ... \]
+    // HEURISTIC PROTECTION: Only treat as math if it contains math signals or is very short (variable)
+    // to avoid breaking standard Markdown escapes like \[literal-bracket\].
+    const isMathHeuristic = (formula: string) => {
+        const f = formula.trim();
+        if (!f) return false;
+        // Signals: LaTeX commands, common operators, or typical math symbols
+        if (/[\^\\_=+*\/<>|∑∫∏√]/.test(f)) return true;
+        // Multi-line content is almost always intended as a math block
+        if (f.includes('\n')) return true;
+        // Very short content (1-2 chars) usually represents variables like \(x\)
+        if (f.length <= 2) return true;
+        return false;
+    };
+
+    html = html.replace(/\\\[([\s\S]*?)\\\]/gs, (match, formula) => {
+        if (!isMathHeuristic(formula)) return match;
+        const id = `__BLOCK_${pieces.length}__`;
+        const renderedMath = convertMathToHtml(formula.trim());
+        pieces.push(`<div class="my-6 p-6 bg-black/20 border border-white/5 rounded-xl text-center font-serif text-lg italic text-slate-100 overflow-x-auto shadow-inner math-container">${renderedMath}</div>`);
+        return `\n${id}\n`;
+    });
+
+    html = html.replace(/\\\(([\s\S]*?)\\\)/gs, (match, formula) => {
+        if (!isMathHeuristic(formula)) return match;
+        const id = `__BLOCK_${pieces.length}__`;
         pieces.push(`<span class="font-serif italic text-orange-200 bg-white/5 px-1.5 py-1 rounded-md mx-0.5 shadow-sm border-b border-white/10 math-inline inline-flex items-center align-middle flex-wrap">${convertMathToHtml(formula.trim())}</span>`);
         return id;
     });
@@ -447,6 +476,7 @@ export const toHtml = (md: string): string => {
     }
 
     // 14c. Clean up escaped characters
+    // 14c. Clean up escaped characters
     html = html
         .replace(/‹DOLLAR›/g, '$')
         .replace(/‹esc-(\d+)›/g, (match, code) => String.fromCharCode(parseInt(code)));
@@ -458,45 +488,54 @@ export const toHtml = (md: string): string => {
 };
 
 
-// DO NOT MODIFY: Auto-healing logic for 2D table parser
 /**
- * Converts markdown tables to HTML with styling.
+ * Converts markdown tables to HTML with styling and alignment support.
  */
 function convertTablesToHtml(html: string): string {
     const lines = html.split('\n');
     let inTable = false;
     let currentTable: string[][] = [];
+    let alignments: ('left' | 'center' | 'right')[] = [];
     const outputLines: string[] = [];
     let inPre = false;
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-        
-        // Guard flag to prevent parsing shell commands with pipes as tables inside code blocks
-        // Guard flag: detect if we are inside an actual <pre> block
         if (line.includes('<pre')) inPre = true;
 
         const trimmed = line.trim();
-        // A line is a table row if it contains '|' AND we are not in a pre block
-        // OR it starts with '|' and we are already in a table context.
         const isTableRow = !inPre && trimmed.includes('|') && (inTable || trimmed.startsWith('|'));
 
         if (isTableRow) {
             if (!inTable) {
                 inTable = true;
                 currentTable = [];
+                alignments = [];
             }
-            // Skip separator lines like |---|
-            if (trimmed.match(/^[|:\-\s]+$/)) continue; 
+            
+            const sepMatch = trimmed.match(/^[|:\-\+ ]+$/);
+            if (sepMatch) {
+                const parts = trimmed.split('|').filter(p => p.trim() !== '');
+                alignments = parts.map(p => {
+                    const t = p.trim();
+                    const left = t.startsWith(':');
+                    const right = t.endsWith(':');
+                    if (left && right) return 'center';
+                    if (right) return 'right';
+                    return 'left';
+                });
+                continue; 
+            }
             
             const cleanLine = trimmed.replace(/^\|/, '').replace(/\|$/, '');
             const cells = cleanLine.split('|').map(c => c.trim());
             currentTable.push(cells);
         } else {
             if (inTable) {
-                outputLines.push(renderTable(currentTable));
+                outputLines.push(renderTable(currentTable, alignments));
                 inTable = false;
                 currentTable = [];
+                alignments = [];
             }
             outputLines.push(line);
         }
@@ -504,48 +543,40 @@ function convertTablesToHtml(html: string): string {
         if (line.includes('</pre>')) inPre = false;
     }
 
-    if (inTable) outputLines.push(renderTable(currentTable));
-
+    if (inTable) outputLines.push(renderTable(currentTable, alignments));
     return outputLines.join('\n');
 }
 
-function renderTable(rows: string[][]): string {
+function renderTable(rows: string[][], alignments: ('left' | 'center' | 'right')[] = []): string {
     if (rows.length === 0) return '';
     
-    // Auto-heal column count
     let maxCols = 0;
     rows.forEach(r => { if (r.length > maxCols) maxCols = r.length; });
 
     const headerRow = rows[0];
     const bodyRows = rows.slice(1);
 
-    // HIGH-DENSITY PROFESSIONAL STUDIO ELITE DESIGN
     let html = '<div class="table-container my-10 group/table">';
-    
-    // THE SHELL: Glassmorphism + Pure Shadow (No Borders)
     html += '<div class="relative overflow-hidden rounded-xl bg-black/45 backdrop-blur-3xl shadow-[0_15px_40px_rgba(0,0,0,0.4)] transition-all duration-500">';
-    
-    // Ambient Shimmer
     html += '<div class="absolute inset-0 bg-gradient-to-br from-white/[0.03] to-transparent pointer-events-none z-20"></div>';
-
-    // Internal wrapper
     html += '<div class="overflow-x-auto relative z-10"><table class="min-w-full border-collapse m-0 p-0" style="margin: 0 !important; border: none;">';
     
-    // 1. HEADER: Elite Tech Typography - ULTRA-COMPACT
+    // 1. HEADER
     html += '<thead class="bg-white/[0.05] relative z-20"><tr>';
     for (let i = 0; i < maxCols; i++) {
         const cellText = headerRow[i] || '&nbsp;';
         const isLastHeader = i === maxCols - 1;
-        // Vertical divider for header
         const borderX = !isLastHeader ? 'border-r border-white/[0.06]' : '';
-        html += `<th class="px-4.5 py-2.5 text-left text-[12px] font-black text-white uppercase tracking-[0.15em] whitespace-nowrap relative ${borderX}">`
+        const align = alignments[i] || 'left';
+        
+        html += `<th class="px-4.5 py-3 text-${align} text-[12px] font-black text-white uppercase tracking-[0.15em] whitespace-nowrap relative ${borderX}">`
              + `<span class="relative z-10">${cellText}</span>`
              + `<div class="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>`
              + `</th>`;
     }
     html += '</tr></thead>';
 
-    // 2. BODY: Extreme-density rows with vertical dividers and zebra striping
+    // 2. BODY
     html += '<tbody class="relative z-10">';
     for (let r = 0; r < bodyRows.length; r++) {
         const row = bodyRows[r];
@@ -554,14 +585,13 @@ function renderTable(rows: string[][]): string {
         html += `<tr class="${zebraClass} hover:bg-white/[0.025] transition-all duration-300 group/row relative">`;
         for (let c = 0; c < maxCols; c++) {
             const cellText = row[c] || '&nbsp;';
-            const isFirstCol = c === 0;
             const isLastCol = c === maxCols - 1;
-            const textClass = isFirstCol ? 'text-slate-100 font-bold' : 'text-slate-400 font-normal';
+            const align = alignments[c] || 'left';
             
-            // Sub-pixel vertical dividers for body
+            const textClass = 'text-slate-200 font-normal';
             const borderX = !isLastCol ? 'border-r border-white/[0.04]' : '';
             
-            html += `<td class="px-4.5 py-2 text-[13px] ${textClass} ${borderX} group-hover/row:text-white transition-colors antialiased relative">`
+            html += `<td class="px-4.5 py-2.5 text-[13px] text-${align} ${textClass} ${borderX} group-hover/row:text-white transition-colors antialiased relative">`
                  + `<span class="relative z-10">${cellText}</span>`
                  + (!isLastRow ? `<div class="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r ${c===0 ? 'from-transparent' : (c===maxCols-1 ? '' : 'via-white/[0.05]')} ${c===maxCols-1 ? 'to-transparent via-white/[0.05]' : ''} pointer-events-none"></div>` : '')
                  + `</td>`;
@@ -569,7 +599,6 @@ function renderTable(rows: string[][]): string {
         html += '</tr>';
     }
     html += '</tbody></table></div></div></div>';
-
     return html;
 }
 
@@ -913,7 +942,7 @@ export function formatNumber(num: number, decimals: number = 0): string {
 function highlightCode(code: string, lang: string): string {
     if (!code) return '';
 
-    // Step 0: Escape literal $ to avoid misinterpretation by generic highlighters or recursion
+    // Step 0: Escape literal $ to avoid misinterpretation
     let highlighted = code.replace(/\$/g, '‹DOLLAR›');
     const tokens: string[] = [];
 
@@ -922,6 +951,16 @@ function highlightCode(code: string, lang: string): string {
         tokens.push(`<span class="${className}">${content}</span>`);
         return id;
     };
+
+    // 0. Basic Comments (Single line // or #)
+    // At start of line
+    highlighted = highlighted.replace(/^(\s*)(\/\/|#)(.*)$/gm, (match, space, prefix, content) => 
+        space + addToken(prefix + content, 'text-slate-600 italic font-medium')
+    );
+    // Inline (preceded by space)
+    highlighted = highlighted.replace(/([ \t]+)(\/\/|#)(.*)$/gm, (match, space, prefix, content) => 
+        space + addToken(prefix + content, 'text-slate-600 italic font-medium')
+    );
 
     if (lang === 'mermaid' || lang === 'flowchart' || lang === 'graph' || lang === 'gitgraph' || lang === 'erdiagram' || lang === 'mindmap' || lang === 'pie' || lang.startsWith('statediagram') || lang === 'gantt' || lang === 'sequencediagram') {
         // 1. Strings in quotes - (e.g., "Label")

@@ -8,10 +8,57 @@ interface ToolBlockProps {
     isOld?: boolean;
 }
 
-export const ToolBlock: React.FC<ToolBlockProps> = ({ block, isOld }) => {
+export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = ({ block, isOld, isStreaming }) => {
     const { t, i18n } = useTranslation();
     const [isExpanded, setIsExpanded] = useState(false);
     const { toolCall, result } = block;
+
+    const [isReplaying, setIsReplaying] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const hasReplayedRef = useRef(false);
+    const wasVisibleDuringLiveRef = useRef(false);
+    const [isVisible, setIsVisible] = useState(false);
+    
+    // 🎭 ENTRANCE GUARD: Track if this tool block was born during an active stream
+    const isNewRef = useRef(!result);
+
+    // 🎯 VISIBILITY SENSOR: Tracks presence for live witnessed executions and final replays
+    useEffect(() => {
+        if (!containerRef.current) return;
+        const observer = new IntersectionObserver(([entry]) => {
+            setIsVisible(entry.isIntersecting);
+            // If it enters the viewport while still pending or streaming, we mark it as "witnessed"
+            if (entry.isIntersecting && (!result || isStreaming)) {
+                wasVisibleDuringLiveRef.current = true;
+            }
+        }, { threshold: 0.1 });
+        observer.observe(containerRef.current);
+        return () => observer.disconnect();
+    }, [result, isStreaming]);
+
+    // ✨ SCENARIO 1: Live Completion Landing (Synced with Stream End)
+    // Triggers when the tool finishes AND the message stream is done.
+    useEffect(() => {
+        if (isStreaming || !result || hasReplayedRef.current) return;
+
+        if (isVisible || wasVisibleDuringLiveRef.current) {
+            hasReplayedRef.current = true;
+            setIsReplaying(true);
+            setTimeout(() => setIsReplaying(false), 1100);
+        }
+    }, [isStreaming, result]);
+
+    // 🔄 SCENARIO 2: Deferred Scroll-In Replay
+    // Triggers if a result finished out of view and the user encounters it for the first time later.
+    useEffect(() => {
+        if (isStreaming || !result || hasReplayedRef.current) return;
+
+        if (isVisible) {
+            hasReplayedRef.current = true;
+            setIsReplaying(true);
+            setTimeout(() => setIsReplaying(false), 1100);
+        }
+    }, [isVisible, isStreaming]);
 
     // Auto-collapse old tools
     useEffect(() => {
@@ -35,6 +82,12 @@ export const ToolBlock: React.FC<ToolBlockProps> = ({ block, isOld }) => {
     const isSuccess = result?.success && result?.data?.success !== false;
     const hasError = result?.error || (result?.data?.success === false && result?.data?.error);
     const isPending = !result;
+    
+    // 🚧 PLACEHOLDER LOGIC: Stay as a spinning cog while streaming, pending, or replaying
+    const isPlaceholder = isStreaming || isPending || isReplaying;
+
+    // ✨ ENTRANCE ANIMATION: Smooth entry for live blocks only
+    const entranceClass = (isNewRef.current && (isStreaming || isPending)) ? 'animate-in fade-in zoom-in slide-in-from-top-2 duration-700' : '';
 
     const getSourceLabel = (src?: string) => {
         if (!src) return t('settings.pathways.workspace');
@@ -47,7 +100,7 @@ export const ToolBlock: React.FC<ToolBlockProps> = ({ block, isOld }) => {
     };
 
     const getFriendlySummary = () => {
-        if (!result) return t('common.processing');
+        if (!result || isReplaying) return t('common.processing');
         const data = result.data || {};
         const args = toolCall.function.arguments || {};
         const name = toolCall.function.name;
@@ -112,14 +165,8 @@ export const ToolBlock: React.FC<ToolBlockProps> = ({ block, isOld }) => {
         ? friendlySummary.substring(0, 80) + '...'
         : friendlySummary;
 
-    useEffect(() => {
-        if (!isExpanded) {
-            // No action needed on collapse for now, but keeping the hook structure
-        }
-    }, [isExpanded]);
-
     return (
-        <div className={`relative mb-4 pl-6 transition-all duration-300 ${isExpanded ? 'w-full' : 'w-full max-w-3xl'}`}>
+        <div ref={containerRef} className={`relative mb-4 pl-6 transition-all duration-300 ${entranceClass} ${isExpanded ? 'w-full' : 'w-full max-w-3xl'}`}>
             <div className={`tool-block overflow-hidden transition-all duration-300 rounded-xl bg-black/60 shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),0_8px_30px_rgba(0,0,0,0.5)] border-t-[3px] border-l-[3px] border-t-slate-900/50 border-l-slate-900/50 border-b border-r border-b-white/5 border-r-white/5 ${isExpanded ? 'bg-black/70' : 'hover:bg-black/50'} ring-1 ring-slate-900/50`}>
                 {/* Consolidated Header / Summary Strip */}
                 <div
@@ -127,19 +174,25 @@ export const ToolBlock: React.FC<ToolBlockProps> = ({ block, isOld }) => {
                     onClick={() => setIsExpanded(!isExpanded)}
                 >
                     <div className="flex items-center gap-2 flex-shrink-0">
-                        <div className={isSuccess ? 'tool-icon-success' : hasError ? 'tool-icon-error' : 'tool-icon-pending'}>
-                            <IconComp name={isSuccess ? 'check-circle' : hasError ? 'exclamation-triangle' : 'cog'} className={isPending ? 'animate-spin' : ''} />
+                        <div 
+                            key={isPlaceholder ? 'placeholder' : 'result'}
+                            className={isPlaceholder ? 'tool-icon-pending' : (isSuccess ? 'tool-icon-success' : hasError ? 'tool-icon-error' : 'tool-icon-pending')}
+                        >
+                            <IconComp 
+                                name={isPlaceholder ? 'cog' : (isSuccess ? 'check-circle' : hasError ? 'exclamation-triangle' : 'cog')} 
+                                className={isPlaceholder ? 'animate-spin' : ''} 
+                            />
                         </div>
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
                             {toolCall.function.name}
                         </span>
-                        {isSuccess && <span className="text-[9px] text-emerald-500/50 font-mono font-bold ml-1 hidden sm:inline">{t('common.ready')}</span>}
+                        {(isSuccess && !isPlaceholder) && <span className="text-[9px] text-emerald-500/50 font-mono font-bold ml-1 hidden sm:inline">{t('common.ready')}</span>}
                     </div>
 
                     {!isExpanded && (
                         <>
                             <div className="w-px h-3 bg-white/10 flex-shrink-0" />
-                            <span className={`text-[11px] truncate flex-1 font-mono tracking-tight ${isSuccess ? 'text-emerald-400/80' : hasError ? 'text-rose-400/80' : 'text-slate-500 italic'}`}>
+                            <span className={`text-[11px] truncate flex-1 font-mono tracking-tight ${isPlaceholder ? 'text-slate-500 italic animate-pulse' : (isSuccess ? 'text-emerald-400/80' : hasError ? 'text-rose-400/80' : 'text-slate-500 italic')}`}>
                                 {truncatedText}
                             </span>
                         </>
