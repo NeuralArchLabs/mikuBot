@@ -2057,3 +2057,164 @@ select.premium-input option {
 #mermaid-error-container, .error-icon {
   display: none !important;
 }
+
+/* -- Premium Signature Animation ------------------- */
+@keyframes sig-pop {
+    0% {
+        opacity: 0;
+        transform: scale(0.5);
+        padding: 0 10px;
+    }
+    15% {
+        opacity: 1;
+        transform: scale(1.1);
+        padding: 0 10px;
+    }
+    30% {
+        transform: scale(1);
+        padding: 0 10px;
+    }
+    100% {
+        padding: 0 24px;
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes sig-bracket-spread {
+    0%, 30% {
+        max-width: 0;
+        opacity: 0;
+    }
+    100% {
+        max-width: 300px;
+        opacity: 1;
+    }
+}
+
+@keyframes sig-text-glow {
+    0%, 50% {
+        opacity: 0;
+        filter: blur(4px);
+        letter-spacing: 0em;
+    }
+    100% {
+        opacity: 1;
+        filter: blur(0);
+        letter-spacing: 0.2em;
+    }
+}
+
+@keyframes sig-bg-sweep {
+    0% { left: -100%; opacity: 0; }
+    20% { opacity: 1; }
+    80% { opacity: 1; }
+    100% { left: 100%; opacity: 0; }
+}
+
+.animate-sig-bg-walk {
+    background-color: rgba(0, 0, 0, 0.3); /* Synced with markdown code block backgrounds */
+    border-radius: 9999px;
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    z-index: 0;
+    /* Substantial but subtle drop shadow for elegance */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); 
+    border: 1px solid rgba(255, 255, 255, 0.03); /* Almost invisible border for crisp edges */
+}
+
+.animate-sig-bg-walk::before {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0; left: -100%;
+    width: 100%;
+    background: linear-gradient(90deg, 
+        transparent, 
+        rgba(99, 102, 241, 0.3) 30%, 
+        rgba(168, 85, 247, 0.6) 50%, 
+        rgba(99, 102, 241, 0.3) 70%, 
+        transparent
+    );
+}
+
+.signature-wrapper.is-visible .animate-sig-bg-walk::before {
+    animation: sig-bg-sweep 2.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    animation-delay: 0.2s;
+}
+
+.mask-edge-fade {
+    /* Mask removed per user request to keep edges crisp but capsule-shaped */
+    mask-image: none !important;
+    -webkit-mask-image: none !important;
+}
+
+.animate-sig-pop {
+    opacity: 0;
+    transform: scale(0.5);
+    padding: 0 10px;
+}
+.signature-wrapper.is-visible .animate-sig-pop {
+    animation: sig-pop 1.8s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+}
+
+/* ======================================================== */
+/* ⚡ STREAMING PLACEHOLDER OVERRIDES                      */
+/* Intercepts the animation block during active LLM streams */
+/* ======================================================== */
+
+@property --sig-scan-pos {
+    syntax: '<percentage>';
+    inherits: true;
+    initial-value: -150%;
+}
+
+@keyframes global-sig-scan {
+    0% { --sig-scan-pos: -150%; }
+    100% { --sig-scan-pos: 150%; }
+}
+
+.markdown-body.is-streaming {
+    /* Attached to the root node which is NEVER destroyed by innerHTML */
+    animation: global-sig-scan 1.2s infinite alternate ease-in-out;
+}
+
+/* Maintain the initial bracket configuration statically */
+.markdown-body.is-streaming .signature-wrapper .animate-sig-pop {
+    opacity: 1 !important;
+    transform: scale(1) !important;
+    padding: 0 12px !important;
+    animation: none !important;
+}
+
+/* Inherit the animated variable passively so DOM tearing doesn't break motion */
+.markdown-body.is-streaming .signature-wrapper .animate-sig-bg-walk::before {
+    left: 0 !important;
+    width: 150% !important;
+    transform: translateX(var(--sig-scan-pos)) !important;
+    background: linear-gradient(90deg, 
+        transparent, 
+        rgba(168, 85, 247, 0.8) 30%, 
+        rgba(6, 182, 212, 1) 50%, 
+        rgba(168, 85, 247, 0.8) 70%, 
+        transparent
+    ) !important;
+    animation: none !important;
+}
+
+/* Keep internal text structurally hidden so ONLY the brackets pressed together are visible */
+.markdown-body.is-streaming .signature-wrapper .animate-sig-bracket-spread {
+    max-width: 0 !important;
+    opacity: 0 !important;
+}
+.signature-wrapper.is-visible .animate-sig-bracket-spread {
+    animation: sig-bracket-spread 1.8s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+}
+
+.animate-sig-text-glow {
+    opacity: 0;
+    filter: blur(4px);
+}
+.signature-wrapper.is-visible .animate-sig-text-glow {
+    animation: sig-text-glow 1.8s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+}

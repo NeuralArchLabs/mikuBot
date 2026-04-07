@@ -9,6 +9,32 @@ export const Icon = ({ name, className = "" }: { name: string; className?: strin
     return <i className={`${family} fa-${name} ${className}`} aria-hidden="true" />;
 };
 
+// ⚡ GLOBAL ANIMATION QUEUE MANAGER
+// Serializes viewport interception animations to prevent simultaneous DOM thrashing.
+class AnimationQueueManager {
+    private queue: (() => Promise<void>)[] = [];
+    private isProcessing = false;
+
+    enqueue(task: () => Promise<void>) {
+        this.queue.push(task);
+        if (!this.isProcessing) {
+            this.processQueue();
+        }
+    }
+
+    private async processQueue() {
+        this.isProcessing = true;
+        while (this.queue.length > 0) {
+            const task = this.queue.shift();
+            if (task) {
+                try { await task(); } catch (e) { console.error('Animation Queue Error:', e); }
+            }
+        }
+        this.isProcessing = false;
+    }
+}
+const globalAnimationQueue = new AnimationQueueManager();
+
 // ⚡ ABSOLUTE PROTECTION: CORE MARKDOWN RENDERER ENGINE
 // This component manages the final sanitization and HTML injection.
 // DO NOT ALTER recursion logic or sanitizer settings.
@@ -36,70 +62,137 @@ const MarkdownRendererBase = ({ content, isStreaming }: { content: string, isStr
 
                     if (entry.isIntersecting) {
                         el.setAttribute('data-animated', 'true'); // Lock it immediately
+                        
+                        // ⚡ IMMEDIATE CONCEALMENT: Force element into pre-animation hidden state
+                        // BEFORE enqueueing, so it doesn't flash its rendered content while waiting.
                         if (el.tagName === 'BLOCKQUOTE') {
-                            if (!el.classList.contains('is-typing')) {
-                                el.classList.add('is-typing', 'is-visible');
+                            if (!el.hasAttribute('data-queued')) {
+                                el.setAttribute('data-queued', 'true');
                                 const fullHtml = el.getAttribute('data-original-html') || '';
                                 
-                                // HYBRID LOGIC: Preserve dimensions using a hidden placeholder
+                                // Extract the title (non-typing) to keep it visible during the idle state
+                                const titleMatch = fullHtml.match(/^<div class="[^"]*non-typing[^"]*">.*?<\/div>/);
+                                const idleTitleHtml = titleMatch ? titleMatch[0] : '';
+                                
+                                // IMMEDIDATE INJECTION: Preserve blockquote background/borders + title (idle state), 
+                                // but force the text to be invisible until its turn in the queue.
                                 el.innerHTML = `<div class="blockquote-anim-container relative">`
                                     + `<div class="blockquote-placeholder invisible select-none pointer-events-none">${fullHtml}</div>`
-                                    + `<div class="blockquote-typing absolute inset-0"></div>`
+                                    + `<div class="blockquote-typing absolute inset-0">${idleTitleHtml}</div>`
                                     + `</div>`;
-                                
-                                const typingEl = el.querySelector('.blockquote-typing') as HTMLElement;
-                                let cursor = 0;
-                                let currentHtml = '';
-                                let inTag = false;
-                                
-                                (el as any)._typeInterval = setInterval(() => {
-                                    if (cursor >= fullHtml.length) {
-                                        el.innerHTML = fullHtml; // Restore original clean HTML at the end
-                                        el.classList.remove('is-typing');
-                                        clearInterval((el as any)._typeInterval);
-                                        return;
-                                    }
-
-                                    const nextSegment = fullHtml.substring(cursor);
-                                    const nonTypingMatch = nextSegment.match(/^<div class="[^"]*non-typing[^"]*">.*?<\/div>/);
-                                    
-                                    if (nonTypingMatch) {
-                                        currentHtml += nonTypingMatch[0];
-                                        cursor += nonTypingMatch[0].length;
-                                    } else {
-                                        currentHtml += fullHtml[cursor];
-                                        if (fullHtml[cursor] === '<') inTag = true;
-                                        if (fullHtml[cursor] === '>') inTag = false;
-                                        cursor++;
-                                    }
-
-                                    if (!inTag && typingEl) {
-                                        if (cursor < fullHtml.length) {
-                                            typingEl.innerHTML = currentHtml + '<span class="inline-block w-[4px] h-[13px] ml-0.5 bg-cyan-400/80 animate-pulse rounded-sm shadow-[0_0_8px_rgba(34,211,238,0.6)] translate-y-[1px]"></span>';
-                                        } else {
-                                            typingEl.innerHTML = currentHtml;
-                                        }
-                                    }
-                                }, 8);
                             }
-                        } else if (el.classList.contains('mermaid')) {
-                            // 🏹 VIEWPORT-TRIGGERED MERMAID: Render only when seen
-                            renderSingleMermaidBlock(el);
-                        } else if (el.classList.contains('code-block-anim')) {
-                            // 💻 STANDARD CODE BLOCK: Smooth reveal on entry
-                            el.setAttribute('data-animated', 'true');
-                            el.classList.remove('opacity-0', 'scale-95', 'blur-sm');
-                            el.classList.add('opacity-100', 'scale-100', 'blur-0', 'is-visible');
-                        } else {
-                            el.classList.add('is-visible');
+                        } else if (!el.classList.contains('code-block-anim')) {
+                            // Code blocks are already opacity-0 via their CSS classes.
+                            // Dividers/signatures have CSS-native hidden states (no is-visible = invisible).
+                            // No extra action needed for these.
                         }
+                        
+                        globalAnimationQueue.enqueue(() => {
+                            return new Promise<void>((resolve) => {
+                                // 👁 VALIDACIÓN DINÁMICA DE VIEWPORT: Si el usuario ya huyó (scroll rápido), abortar animación lenta y saltar al resultado final
+                                const rect = el.getBoundingClientRect();
+                                const isVisible = rect.top < window.innerHeight + 200 && rect.bottom > -200;
+                                
+                                if (!isVisible) {
+                                    if (el.tagName === 'BLOCKQUOTE') {
+                                        el.innerHTML = el.getAttribute('data-original-html') || '';
+                                        el.classList.add('is-visible');
+                                        el.classList.remove('is-typing');
+                                        el.removeAttribute('data-queued');
+                                    } else if (el.classList.contains('mermaid')) {
+                                        renderSingleMermaidBlock(el);
+                                    } else if (el.classList.contains('code-block-anim')) {
+                                        el.classList.remove('opacity-0', 'scale-95', 'blur-sm');
+                                        el.classList.add('opacity-100', 'scale-100', 'blur-0', 'is-visible');
+                                    } else {
+                                        el.classList.add('is-visible');
+                                    }
+                                    resolve();
+                                    return;
+                                }
+
+                                if (el.tagName === 'BLOCKQUOTE') {
+                                    if (!el.classList.contains('is-typing')) {
+                                        el.removeAttribute('data-queued');
+                                        el.classList.add('is-typing', 'is-visible');
+                                        const fullHtml = el.getAttribute('data-original-html') || '';
+                                        const typingEl = el.querySelector('.blockquote-typing') as HTMLElement;
+                                        
+                                        if (!typingEl) {
+                                            resolve();
+                                            return;
+                                        }
+
+                                        const titleMatch = fullHtml.match(/^<div class="[^"]*non-typing[^"]*">.*?<\/div>/);
+                                        const idleTitleHtml = titleMatch ? titleMatch[0] : '';
+                                        
+                                        // Start cursor AFTER the idle title to seamlessly resume typing the payload
+                                        let cursor = idleTitleHtml.length;
+                                        let currentHtml = idleTitleHtml;
+                                        let inTag = false;
+                                        
+                                        (el as any)._typeInterval = setInterval(() => {
+                                            if (cursor >= fullHtml.length) {
+                                                el.innerHTML = fullHtml; // Restore original clean HTML at the end
+                                                el.classList.remove('is-typing');
+                                                clearInterval((el as any)._typeInterval);
+                                                resolve(); // Free the queue safely
+                                                return;
+                                            }
+
+                                            const nextSegment = fullHtml.substring(cursor);
+                                            const nonTypingMatch = nextSegment.match(/^<div class="[^"]*non-typing[^"]*">.*?<\/div>/);
+                                            
+                                            if (nonTypingMatch) {
+                                                currentHtml += nonTypingMatch[0];
+                                                cursor += nonTypingMatch[0].length;
+                                            } else {
+                                                currentHtml += fullHtml[cursor];
+                                                if (fullHtml[cursor] === '<') inTag = true;
+                                                if (fullHtml[cursor] === '>') inTag = false;
+                                                cursor++;
+                                            }
+
+                                            if (!inTag && typingEl) {
+                                                const isTypingFinished = fullHtml.substring(cursor).replace(/<[^>]+>/g, '').trim() === '';
+                                                if (cursor < fullHtml.length && !isTypingFinished) {
+                                                    typingEl.innerHTML = currentHtml + '<span class="inline-block w-[4px] h-[13px] ml-0.5 bg-cyan-400/80 animate-pulse rounded-sm shadow-[0_0_8px_rgba(34,211,238,0.6)] translate-y-[1px]"></span>';
+                                                } else {
+                                                    typingEl.innerHTML = currentHtml;
+                                                }
+                                            }
+                                        }, 8);
+                                    } else {
+                                        resolve(); // Failsafe
+                                    }
+                                } else if (el.classList.contains('mermaid')) {
+                                    // 🏹 VIEWPORT-TRIGGERED MERMAID: Render only when seen
+                                    renderSingleMermaidBlock(el);
+                                    resolve(); // Sync DOM inject, no wait
+                                } else if (el.classList.contains('code-block-anim')) {
+                                    // 💻 STANDARD CODE BLOCK: Smooth reveal on entry
+                                    el.classList.remove('opacity-0', 'scale-95', 'blur-sm');
+                                    el.classList.add('opacity-100', 'scale-100', 'blur-0', 'is-visible');
+                                    setTimeout(resolve, 300); // 300ms basic reveal timeline
+                                } else if (el.classList.contains('signature-wrapper')) {
+                                    el.classList.add('is-visible');
+                                    setTimeout(resolve, 1800); // 1.8s signature animation
+                                } else if (el.classList.contains('divider-container')) {
+                                    el.classList.add('is-visible');
+                                    setTimeout(resolve, 500); // 500ms line expansion
+                                } else {
+                                    el.classList.add('is-visible');
+                                    resolve(); // Immediate queue free
+                                }
+                            });
+                        });
                     }
                 });
             },
             { threshold: 0.1 }
         );
 
-        const animatedElements = containerNode.querySelectorAll('.divider-container, blockquote, .mermaid, .code-block-anim');
+        const animatedElements = containerNode.querySelectorAll('.divider-container, blockquote, .mermaid, .code-block-anim, .signature-wrapper');
         animatedElements.forEach((el) => {
             if (el.tagName === 'BLOCKQUOTE' && !el.hasAttribute('data-original-html')) {
                 const htmlEl = el as HTMLElement;
@@ -120,7 +213,7 @@ const MarkdownRendererBase = ({ content, isStreaming }: { content: string, isStr
     return (
         <div
             ref={containerRef}
-            className="markdown-body font-mono px-1"
+            className={`markdown-body font-mono px-1 ${isStreaming ? 'is-streaming' : ''}`}
             dangerouslySetInnerHTML={{ __html: html }}
         />
     );

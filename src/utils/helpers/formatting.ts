@@ -35,16 +35,25 @@ export const toHtml = (md: string): string => {
     // 0. SIGNATURE SHIELD: Protect the assistant's visual signature
     // Pattern: {{ ... }} with typical signature content
     html = html.replace(/\{\{\s*([^\}]+?)\s*\}\}/g, (match, signContent) => {
-        // Only shield if it looks like the signature (contains brackets and typical glyphs)
         if (signContent.includes('≈') || signContent.includes('∫') || signContent.includes('~')) {
             const id = `__BLOCK_${pieces.length}__`;
+            let styledInner = signContent.trim();
+            // Multi-tone typography logic
+            styledInner = styledInner.replace(/([≈_∫~⟆\u033c.]+)/g, '<span class="text-cyan-300 drop-shadow-[0_0_5px_rgba(34,211,238,0.8)] font-bold">$1</span>');
+            styledInner = styledInner.replace(/([\^‿])/g, '<span class="text-blue-400">$1</span>');
+            styledInner = styledInner.replace(/(┬)/g, '<span class="text-blue-400">$1</span>');
+            
             pieces.push(`<div class="signature-wrapper mb-6 mt-2 flex items-center">`
-                + `<span class="inline-flex items-center gap-3 px-5 py-2 rounded-full font-mono text-cyan-400 font-black tracking-[0.15em] select-none `
-                + `bg-gradient-to-r from-cyan-500/15 via-cyan-500/5 to-transparent border border-cyan-500/20 shadow-[0_0_20px_rgba(34,211,238,0.15)] `
-                + `backdrop-blur-sm transition-all hover:scale-[1.02] active:scale-[0.98]">`
-                + `<i class="fas fa-dna text-[10px] animate-pulse opacity-80"></i>`
-                + `{{ ${signContent.trim()} }}`
-                + `<i class="fas fa-sparkles text-[10px] opacity-60"></i></span></div>`);
+                + `<span class="inline-flex items-center h-7 font-mono font-black select-none overflow-visible relative `
+                + `animate-sig-pop">`
+                + `<div class="animate-sig-bg-walk mask-edge-fade"></div>`
+                + `<span class="relative z-10 flex items-center">`
+                + `<span class="text-[14px] text-indigo-400 opacity-80">{{</span>`
+                + `<span class="inline-flex items-center justify-center overflow-hidden animate-sig-bracket-spread whitespace-nowrap">`
+                + `<span class="text-[11px] text-indigo-200 uppercase animate-sig-text-glow px-2">${styledInner}</span>`
+                + `</span>`
+                + `<span class="text-[14px] text-indigo-400 opacity-80">}}</span>`
+                + `</span></span></div>`);
             return id;
         }
         return match;
