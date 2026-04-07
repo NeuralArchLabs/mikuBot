@@ -120,7 +120,7 @@ export const CollapsibleTextBlock: React.FC<CollapsibleTextBlockProps> = ({ cont
     }, []);
 
     return (
-        <div className={`relative group/text-block mb-3 pl-6 transition-all duration-300 ${isCollapsed ? 'w-full max-w-3xl' : 'w-full h-auto'}`}>
+        <div className={`relative group/text-block mb-3 pl-6 transition-all duration-300 w-full ${isCollapsed ? '' : 'h-auto'}`}>
             {/* Neural connector line (Thread trace) */}
             <div 
                 className={`absolute left-[5px] top-0 bottom-[-15px] w-0.5 transition-all duration-700 ${isCollapsed ? 'bg-slate-700/20' : 'shadow-[0_0_8px_rgba(59,130,246,0.2)]'}`}
@@ -143,17 +143,22 @@ export const CollapsibleTextBlock: React.FC<CollapsibleTextBlockProps> = ({ cont
                 /* COLLAPSED ... */
                 <button
                     onClick={handleToggle}
-                    className="w-full text-left cursor-pointer group/inner relative bg-slate-900/40 hover:bg-slate-800/80 border border-white/5 hover:border-blue-500/30 rounded-xl p-3 py-2 text-[11px] text-slate-400 transition-all flex items-center gap-4 shadow-lg focus:outline-none focus:ring-1 focus:ring-blue-500/20"
+                    className="w-full text-left cursor-pointer group/inner relative bg-slate-900/40 hover:bg-slate-800/80 border border-white/5 hover:border-blue-500/30 rounded-xl p-3 py-2 text-[11px] text-slate-400 transition-all flex items-center gap-3 shadow-lg focus:outline-none focus:ring-1 focus:ring-blue-500/20 overflow-hidden"
                 >
                     <div className="flex-shrink-0 flex items-center gap-2">
                         <Icon name="brain" className={`text-[11px] ${isThought ? 'text-blue-400' : 'text-slate-500'}`} />
                         <span className="text-[9px] uppercase tracking-[0.2em] font-black text-blue-500/70">{t('chat.labels.reasoning')}</span>
                     </div>
-                    <div className="w-px h-3 bg-white/10" />
-                    <span className="truncate opacity-50 group-hover/inner:opacity-100 font-mono tracking-tight transition-opacity flex-1">
-                        {summary}
-                    </span>
-                    <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
+                    <div className="w-px h-3 bg-white/10 flex-shrink-0" />
+                    
+                    {/* Zero-Intrinsic-Width Flex Wrapper */}
+                    <div className="flex-1 relative h-4 min-w-0">
+                        <span className="absolute inset-0 truncate opacity-50 group-hover/inner:opacity-100 font-mono tracking-tight transition-opacity leading-4">
+                            {summary}
+                        </span>
+                    </div>
+
+                    <div className="w-4 h-4 flex items-center justify-center flex-shrink-0 ml-auto">
                         <Icon name="chevron-down" className="text-[10px] opacity-40 group-hover/inner:opacity-100 transition-all transform group-hover/inner:translate-y-0.5" />
                     </div>
                 </button>
