@@ -426,7 +426,8 @@
             "select_files": "选择文件",
             "resume_task": "继续任务",
             "close_debug": "关闭调试界面",
-            "hide": "隐藏"
+            "hide": "隐藏",
+            "show": "显示"
         },
         "alerts": {
             "voice_error": "❌ 语音错误：{{error}}",

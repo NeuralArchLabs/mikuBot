@@ -1,12 +1,12 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Message, AgentStatus, PendingToolApproval, AgentMode, ApprovalMode, Attachment } from '../../types';
 import { Icon, MarkdownRenderer } from '../common/Common';
 import { ToolApprovalPanel } from '../panels/ToolApprovalPanel';
 import { AgentStatusPanel } from '../panels/AgentStatusPanel';
 import { ToolBlock } from '../common/ToolBlock';
-import { CollapsibleTextBlock } from '../common/CollapsibleTextBlock';
 import { CollapsibleMessage } from '../common/CollapsibleMessage';
+import { CollapsibleTextBlock } from '../common/CollapsibleTextBlock';
 import { TypewriterIdle } from '../common/TypewriterIdle';
 
 interface ChatAreaProps {
@@ -77,6 +77,15 @@ export const ChatArea = ({
     const { t } = useTranslation();
     const inputRef = React.useRef<HTMLTextAreaElement>(null);
     const [isSent, setIsSent] = React.useState(false);
+
+    // ✨ SELECTIVE EXPANSION ENGINE v1.1
+    // Prioritizes interaction focus by auto-collapsing legacy context.
+    // Keeps only the last 2 interactions per role expanded by default.
+    const priorityIndices = useMemo(() => {
+        const userIndices = messages.map((m, i) => m.role === 'user' ? i : -1).filter(i => i !== -1).slice(-2);
+        const assistantIndices = messages.map((m, i) => m.role === 'assistant' ? i : -1).filter(i => i !== -1).slice(-2);
+        return [...userIndices, ...assistantIndices];
+    }, [messages]);
     const [boltGlow, setBoltGlow] = React.useState(false);
     const [isRecording, setIsRecording] = React.useState(false);
     const [partialText, setPartialText] = React.useState('');
@@ -545,8 +554,10 @@ export const ChatArea = ({
                         // Show placeholder only for the last loading assistant message
                         const showPlaceholder = isLast && isLoading && isAgentResponse && !hasToolCall;
 
+                        const isPriority = index >= messages.length - 4 || priorityIndices.includes(index) || msg.isStreaming || isLast;
+
                         const MessageContent = (
-                            <div key={msg.id} id={`msg-${msg.id}`} className={`flex group relative ${msg.role === 'user' ? 'justify-end'
+                            <div key={msg.id} id={`msg-${msg.id}`} className={`flex group relative w-full ${msg.role === 'user' ? 'justify-end'
                                 : msg.role === 'system' ? 'justify-center'
                                     : 'justify-start'
                                 }`}>
@@ -705,7 +716,7 @@ export const ChatArea = ({
                                 <CollapsibleMessage
                                     key={msg.id}
                                     message={msg}
-                                    initiallyCollapsed={msg.isInitiallyCollapsed ?? isOld}
+                                    initiallyCollapsed={msg.isInitiallyCollapsed === true || !isPriority}
                                 >
                                     {MessageContent}
                                 </CollapsibleMessage>

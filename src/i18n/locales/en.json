@@ -426,7 +426,8 @@
             "select_files": "Select files",
             "resume_task": "Resume Task",
             "close_debug": "Close Debug Interface",
-            "hide": "Hide"
+            "hide": "Hide",
+            "show": "Show"
         },
         "alerts": {
             "voice_error": "❌ Voice Error: {{error}}",

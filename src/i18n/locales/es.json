@@ -441,7 +441,8 @@
                                  "select_files":  "Seleccionar archivos",
                                  "resume_task":  "Reanudar Tarea",
                                  "close_debug":  "Cerrar Interfaz de Depuración",
-                                 "hide":  "Ocultar"
+                                 "hide":  "Ocultar",
+                                 "show":  "Mostrar"
                              },
                  "alerts":  {
                                 "voice_error":  "❌ Error de Voz: {{error}}",

@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Message } from '../../types';
 import { Icon } from './Common';
 
@@ -10,13 +11,12 @@ interface CollapsibleMessageProps {
 }
 
 export const CollapsibleMessage: React.FC<CollapsibleMessageProps> = ({ message, children, initiallyCollapsed = true }) => {
+    const { t } = useTranslation();
     const [isCollapsed, setIsCollapsed] = React.useState(initiallyCollapsed);
 
-    // Sync with prop only if it becomes true (auto-collapse as chat progresses)
-    // We use a ref to track if user has manually interacted, to avoid annoying auto-collapse while reading?
-    // Actually, simple effect:
+    // Sync with prop to ensure auto-collapse works as chat progresses
     React.useEffect(() => {
-        if (initiallyCollapsed) setIsCollapsed(true);
+        setIsCollapsed(initiallyCollapsed);
     }, [initiallyCollapsed]);
 
     const isUser = message.role === 'user';
@@ -42,7 +42,7 @@ export const CollapsibleMessage: React.FC<CollapsibleMessageProps> = ({ message,
                     className={`absolute -bottom-2 ${buttonPositionClass} bg-slate-800 border border-slate-700 text-slate-400 hover:text-white px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider shadow-lg flex items-center gap-1 z-20 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all duration-300 translate-y-1 group-hover:translate-y-0`}
                     title="Collapse message"
                 >
-                    <Icon name="compress-alt" /> Hide
+                    <Icon name="compress-alt" /> {t('chat.actions.hide')}
                 </button>
             </div>
         );
@@ -84,7 +84,7 @@ export const CollapsibleMessage: React.FC<CollapsibleMessageProps> = ({ message,
                 </div>
 
                 <div className="text-[9px] font-bold text-slate-600 uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 flex items-center gap-1">
-                    <Icon name="expand-alt" /> Show
+                    <Icon name="expand-alt" /> {t('chat.actions.show')}
                 </div>
             </div>
         </div>
