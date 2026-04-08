@@ -74,7 +74,7 @@ export const ChatArea = ({
     userName,
     assistantAlias
 }: ChatAreaProps) => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const inputRef = React.useRef<HTMLTextAreaElement>(null);
     const [isSent, setIsSent] = React.useState(false);
 
@@ -615,7 +615,13 @@ export const ChatArea = ({
                                                 {!msg.isStreaming && (
                                                     <span className="opacity-60 lowercase tracking-tighter flex items-center gap-1 ml-1 border-l border-white/10 pl-2">
                                                         <Icon name="clock" className="text-[8px]" />
-                                                        {new Date(msg.timestamp).toLocaleString(undefined, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '')}
+                                                        {(() => {
+                                                            const d = new Date(msg.timestamp);
+                                                            const month = d.toLocaleString(i18n.language, { month: 'short' }).toUpperCase().replace('.', '');
+                                                            const day = d.toLocaleString(i18n.language, { day: '2-digit' });
+                                                            const time = d.toLocaleString(i18n.language, { hour: '2-digit', minute: '2-digit', hour12: false });
+                                                            return `${month}/${day} ${time}`;
+                                                        })()}
                                                     </span>
                                                 )}
                                             </div>

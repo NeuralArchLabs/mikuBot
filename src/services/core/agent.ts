@@ -113,7 +113,12 @@ export async function sendAgentMessage(
         const msg = { ...m } as any;
         // Inject timestamp ONLY for user messages for temporal reference
         if (msg.role === 'user' && m.timestamp) {
-            const ts = new Date(m.timestamp).toLocaleString('es-ES', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '');
+            const d = new Date(m.timestamp);
+            const locale = config.language || 'en';
+            const month = d.toLocaleString(locale, { month: 'short' }).toUpperCase().replace('.', '');
+            const day = d.toLocaleString(locale, { day: '2-digit' });
+            const time = d.toLocaleString(locale, { hour: '2-digit', minute: '2-digit', hour12: false });
+            const ts = `${month}/${day} ${time}`;
             msg.content = `[${ts}] ${msg.content || ''}`;
         }
         if (msg.role === 'assistant' && msg.tool_calls && msg.tool_calls.length > 0) {

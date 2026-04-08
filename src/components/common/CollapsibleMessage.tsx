@@ -50,14 +50,14 @@ export const CollapsibleMessage: React.FC<CollapsibleMessageProps> = ({ message,
 
     // Role-specific styling for the collapsed state
     const bgClass = isUser
-        ? 'bg-blue-900/10 border-blue-500/10 hover:bg-blue-900/20 hover:border-blue-500/30'
+        ? 'bg-blue-900/10 border-transparent hover:bg-blue-900/20 hover:border-blue-500/30'
         : isScheduler
             ? (message as any).isScheduledResponse
-                ? 'bg-indigo-950/20 border-indigo-500/20 hover:bg-indigo-900/30 hover:border-indigo-500/40'
-                : 'bg-orange-950/20 border-orange-500/20 hover:bg-orange-900/30 hover:border-orange-500/40'
+                ? 'bg-indigo-950/20 border-transparent hover:bg-indigo-900/30 hover:border-indigo-500/40'
+                : 'bg-orange-950/20 border-transparent hover:bg-orange-900/30 hover:border-orange-500/40'
             : isSystem
-                ? 'bg-amber-950/10 border-amber-500/10 hover:bg-amber-900/20 hover:border-amber-500/30'
-                : 'bg-slate-800/30 border-slate-700/30 hover:bg-slate-800/50 hover:border-slate-600/50';
+                ? 'bg-amber-950/10 border-transparent hover:bg-amber-900/20 hover:border-amber-500/30'
+                : 'bg-slate-800/30 border-transparent hover:bg-slate-800/50 hover:border-slate-600/50';
 
     const iconColorClass = isUser ? 'text-blue-400' : (isScheduler ? ((message as any).isScheduledResponse ? 'text-indigo-400' : 'text-orange-400') : (isSystem ? 'text-amber-500' : 'text-slate-500'));
     const iconName = isUser ? 'user' : (isScheduler ? ((message as any).isScheduledResponse ? 'brain' : 'bell') : (isSystem ? 'shield-alt' : 'brain'));
@@ -71,7 +71,7 @@ export const CollapsibleMessage: React.FC<CollapsibleMessageProps> = ({ message,
         <div key={message.id} className={`flex ${justifyClass} my-2 w-full`}>
             <div
                 onClick={() => setIsCollapsed(false)}
-                className={`cursor-pointer group flex items-center justify-between gap-3 px-4 py-2 rounded-xl transition-all duration-300 border w-full max-w-[350px] min-h-[40px] ${bgClass}`}
+                className={`cursor-pointer group flex items-center justify-between gap-3 px-4 py-2 rounded-xl transition-all duration-300 border border-transparent w-full max-w-[350px] min-h-[40px] ${bgClass}`}
             >
                 <div className="flex items-center gap-3 overflow-hidden">
                     <div className={`text-[10px] font-bold uppercase tracking-widest flex-shrink-0 ${iconColorClass}`}>

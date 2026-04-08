@@ -59,7 +59,12 @@ export async function sendStreamingMessage(
         { role: 'system', content: systemPrompt },
         ...messages.map(m => {
             if (m.role === 'user' && m.timestamp) {
-                const ts = new Date(m.timestamp).toLocaleString('es-ES', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '');
+                const d = new Date(m.timestamp);
+                const locale = config.language || 'en';
+                const month = d.toLocaleString(locale, { month: 'short' }).toUpperCase().replace('.', '');
+                const day = d.toLocaleString(locale, { day: '2-digit' });
+                const time = d.toLocaleString(locale, { hour: '2-digit', minute: '2-digit', hour12: false });
+                const ts = `${month}/${day} ${time}`;
                 return { ...m, content: `[${ts}] ${m.content || ''}` };
             }
             return { ...m, content: m.content || '' };
