@@ -434,62 +434,87 @@ export async function sendAgentMessage(
                 break;
             }
 
-
-            // TOOL EXECUTION
+            // ─── TOOL EXECUTION ENGINE (SAFE vs BATCH) ───
             localOnStatus({ phase: 'tool_calling' });
             const READ_ONLY = new Set(['read_file', 'list_files', 'search_files', 'web_search', 'read_url', 'get_file_outline']);
-            
+
             const isAuto = (tc: ToolCall) => {
-                if (isScheduled || isRemote || !isInstructionMode) return true;
                 const tn = tc.function.name;
+                const args = tc.function.arguments;
+
+                // 1. DANGEROUS OPERATIONS: ALWAYS REQUIRE MANUAL APPROVAL
+                if (tn === 'run_console' || tn === 'request_agent_mode') return false;
+                if (tn === 'batch_operation' && args.operation === 'delete') return false;
+                if (tn === 'delete_file') {
+                    const { cleanFilename: cf } = resolvePathAndSource(args.filename || '', args.source);
+                    const lowCf = (cf || '').toLowerCase();
+                    if (lowCf !== 'tasks.md' && lowCf !== 'active_context.md') return false;
+                }
+
+                // 2. CONTEXTUAL OVERRIDE (Remote/Scheduled usually auto-approve non-dangerous things)
+                if (isScheduled || isRemote || !isInstructionMode) return true;
+
+                // 3. READ-ONLY OPERATIONS
                 if (READ_ONLY.has(tn)) return true;
-                const { target, cleanFilename: cf } = resolvePathAndSource(tc.function.arguments.filename || '', tc.function.arguments.source);
+
+                // 4. STRATEGIC AGENT FILES (Internal state)
+                const { target, cleanFilename: cf } = resolvePathAndSource(args.filename || '', args.source);
                 if (target === 'core' && (cf.toLowerCase() === 'tasks.md' || cf.toLowerCase() === 'active_context.md')) return true;
-                if (isAgentMode && tn !== 'run_console') return true;
+
+                // 5. AGENT MODE: Broad autonomy for development tools (except dangerous ones)
+                if (isAgentMode) return true;
+
                 return false;
             };
 
+            const toolsToExecute: ToolCall[] = [];
+
+            // 1. APPROVAL PHASE (Always Sequential to prevent UI collisions)
             for (const tc of uniqueToolCalls) {
                 const approval = approvalMode === 'manual' || !isAuto(tc);
                 if (approval && !await onToolApproval(tc)) {
-                    agentMessages.push({ 
-                        role: 'tool', 
-                        tool_name: tc.function.name, 
-                        content: 'Rejected', 
-                        tool_call_id: tc.id, 
+                    agentMessages.push({
+                        role: 'tool',
+                        tool_name: tc.function.name,
+                        content: 'Rejected',
+                        tool_call_id: tc.id,
                         tool_args: tc.function.arguments,
                         thought_signature: (tc as any).thought_signature
                     });
                     turnHasFailure = true;
                     continue;
                 }
+                toolsToExecute.push(tc);
+            }
+
+            // 2. EXECUTION PHASE
+            const executeAndLog = async (tc: ToolCall) => {
                 const res = await executeToolCall(tc, currentFiles, currentAdditional, currentWorkSpace, currentTools, currentRoot, saveFileFn, deleteFileFn, config, onAddTask);
                 const b = allBlocks.find(x => x.toolCall?.id === tc.id);
                 if (b) { b.result = res; b.status = res.success ? 'success' : 'error'; }
+
                 if (!res.success) {
-                    retries++;
-                    agentMessages.push({ 
-                        role: 'tool', 
-                        tool_name: tc.function.name, 
-                        content: res.error, 
-                        tool_call_id: tc.id, 
+                    turnHasFailure = true;
+                    agentMessages.push({
+                        role: 'tool',
+                        tool_name: tc.function.name,
+                        content: res.error,
+                        tool_call_id: tc.id,
                         tool_args: tc.function.arguments,
                         thought_signature: (tc as any).thought_signature
                     });
-                    turnHasFailure = true;
                 } else {
-                    retries = 0;
                     successfulCalls.push(tc);
                     actionHistory.push(`${tc.function.name}(${JSON.stringify(tc.function.arguments)})`);
-                    agentMessages.push({ 
-                        role: 'tool', 
-                        tool_name: tc.function.name, 
-                        content: JSON.stringify(res), 
-                        tool_call_id: tc.id, 
+                    agentMessages.push({
+                        role: 'tool',
+                        tool_name: tc.function.name,
+                        content: JSON.stringify(res),
+                        tool_call_id: tc.id,
                         tool_args: tc.function.arguments,
                         thought_signature: (tc as any).thought_signature
                     });
-                    
+
                     // Update Local State (Only for persistent file operations)
                     if (tc.function.name === 'update_file' || tc.function.name === 'delete_file') {
                         const { target, cleanFilename: cf } = resolvePathAndSource(tc.function.arguments.filename || '', tc.function.arguments.source);
@@ -498,7 +523,19 @@ export async function sendAgentMessage(
                         if (tc.function.name === 'delete_file') delete store[cf];
                     }
                 }
+            };
+
+            if (safeMode) {
+                // SAFE MODE: Strict sequential execution
+                for (const tc of toolsToExecute) {
+                    await executeAndLog(tc);
+                }
+            } else {
+                // BATCH MODE: High-performance parallel execution
+                await Promise.all(toolsToExecute.map(tc => executeAndLog(tc)));
             }
+
+            if (turnHasFailure) retries++; else retries = 0;
 
             // [State Awareness Refresh] Correctly update feedback for the NEXT loop iteration
             const lastCall = successfulCalls[successfulCalls.length - 1] || uniqueToolCalls[0];
@@ -514,7 +551,8 @@ export async function sendAgentMessage(
         hasFatalError = true;
         const errorMsg = `[CRITICAL_FAIL] ${err instanceof Error ? err.message : String(err)}`;
         log('error', errorMsg);
-        onChunk(`\n\n❌ ERROR EN EL NÚCLEO:\n${errorMsg}`, false, [...allBlocks, { type: 'answer', content: `\n\n⚠️ ${errorMsg}` }]);
+        // Only provide a minimal chunk to avoid visual clutter during fallback transitions
+        onChunk(`\n\n${errorMsg}`, false, []);
         throw err;
     } finally {
         if (!hasFatalError) onStatus({ phase: 'idle', elapsedMs: Date.now() - startTime });

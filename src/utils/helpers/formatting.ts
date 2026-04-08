@@ -118,7 +118,17 @@ export const toHtml = (md: string): string => {
         return `\n${id}\n`;
     });
 
-    html = html.replace(/`([^`]+)`/g, (match, code) => {
+    // 0a. Double inline code block protection (supports internal single backticks)
+    html = html.replace(/``([^`\n]+?)``/g, (match, code) => {
+        const id = `__BLOCK_${pieces.length}__`;
+        const codeTrimmed = code.replace(/^ | $/g, ''); // Trim exactly one space on each side if present
+        const escapedCode = codeTrimmed.replace(/</g, '‹').replace(/>/g, '›').replace(/\$/g, '‹DOLLAR›');
+        pieces.push(`<code class="bg-indigo-500/10 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-[0.9em] border border-indigo-400/20 mx-1 shadow-[0_0_8px_rgba(99,102,241,0.1)]">${escapedCode}</code>`);
+        return id;
+    });
+
+    // 0b. Single inline code protection
+    html = html.replace(/`([^`\n]+)`/g, (match, code) => {
         const id = `__BLOCK_${pieces.length}__`;
         // Escape < and > to prevent them from becoming pieces later
         const escapedCode = code.replace(/</g, '‹').replace(/>/g, '›').replace(/\$/g, '‹DOLLAR›');
@@ -158,26 +168,42 @@ export const toHtml = (md: string): string => {
             ? /[\^\\=+<>∑∫∏√{}[\]]/.test(f) // Removed | from default dollar signals
             : /[\^\\_=+*\/<>|∑∫∏√]/.test(f);
 
-        if (signals) return true;
+        if (signals) {
+            // 🛡️ STRUCTURAL BLACKLIST: Abort if it looks like Markdown structure is being swallowed
+            // Patterns: List markers, Blockquotes, or Headers
+            if (/^[\s]*[\*\-+•·] /m.test(f) || /^[\s]*\d+\. /m.test(f) || /^[\s]*[>#]/m.test(f)) return false;
+            return true;
+        }
         
-        // Multi-line content is almost always intended as a math block
+        // Multi-line content is likely math, but must not cross paragraph boundaries (already handled in regex)
         if (f.includes('\n')) return true;
         
-        // Variable check: Single letters like $x$ or $i$ (Greek supported)
+        // Variable check: Single letters like $x$ or $i$
         if (f.length === 1 && /[a-zA-Z\u0370-\u03ff]/.test(f)) return true;
         
-        // Currency guard: Numbers only like $100$ or $1.50$ are usually not math
-        if (isDollar && /^[\d,.]+$/.test(f)) return false;
+        // 🛡️ Currency & Unit Guard: Ignore things like $100, $6.6 billones, $510M
+        if (isDollar && /^[\d,.\s]+(billones|millones|trillones|M|k|m|b|t)?$/i.test(f)) return false;
 
-        // Fallback for more complex expressions that don't hit signals but are short
+        // Fallback for more complex expressions
         return f.length <= 2 && !/^[\d,.]+$/.test(f);
     };
 
-    // 1b. Inline math ($ ... $) - Multi-line support
-    html = html.replace(/\$([\s\S]+?)\$/gs, (match, formula) => {
-        if (!isMathHeuristic(formula, true)) return match;
+    // 1b. Inline math ($ ... $) - Steel-Mesh Hardening v2
+    // Restricted to not cross double newlines and structural markers
+    html = html.replace(/\$((?:[^\$]|\\\$)+?)\$/g, (match, formula) => {
+        const f = formula.trim();
+        // 🛡️ SECURITY CAPS: Empty or way too long captures are probably not inline math
+        if (!f || f.length > 350 || f.includes('\n\n')) return match;
+        
+        // 🛡️ MULTILINE PROTECTION: Allow crossing a line ONLY if it contains high-signal LaTeX commands
+        if (f.includes('\n') && !/\\/.test(f)) return match;
+
+        if (!isMathHeuristic(f, true)) return match;
+        
         const id = `__BLOCK_${pieces.length}__`;
-        pieces.push(`<span class="font-serif italic text-orange-200 bg-white/5 px-1.5 py-1 rounded-md mx-0.5 shadow-sm border-b border-white/10 math-inline inline-flex items-center align-middle flex-wrap">${convertMathToHtml(formula.trim())}</span>`);
+        // Convert to HTML but keep it inline
+        const rendered = convertMathToHtml(f);
+        pieces.push(`<span class="font-serif italic text-orange-200 bg-white/5 px-1.5 py-1 rounded-md mx-0.5 shadow-sm border-b border-white/10 math-inline inline-flex items-center align-middle flex-wrap">${rendered}</span>`);
         return id;
     });
 
@@ -1069,18 +1095,21 @@ function highlightCode(code: string, lang: string): string {
 }
 /**
  * Converts basic LaTeX-like math syntax to styled HTML/Unicode.
- * Handles: Fractions, Greek letters, Operators, Matrices, and Brackets.
+ * Handles: Fractions, Greek letters, Operators, Matrices, Aligned, and Brackets.
+ *
+ * ⚠️ ARCHITECTURE: HTML entity escaping MUST happen AFTER structural block parsers
+ * (aligned, cases, matrix) that split on LaTeX '&'. Escaping '&' first breaks those splits.
+ * Instead we protect existing HTML tags with tokens and escape residual plain chars at the end.
  */
 function convertMathToHtml(math: string): string {
     let html = math;
 
-    // 1. Basic cleaning and escaping
-    html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    // NOTE: No early HTML escaping here — see comment above.
 
     // 2. Matrices: \begin{pmatrix} a & b \\ c & d \end{pmatrix}
     const matrixRegex = /\\begin\{(p|b|v|V|B)matrix\}([\s\S]*?)\\end\{\1matrix\}/g;
     html = html.replace(matrixRegex, (match, type, content) => {
-        const rows = content.trim().split(/\\\\/);
+        const rows = content.trim().split(/\\\\(?:\[[^\]]+\])?/g);
         const bracketType: Record<string, [string, string]> = {
             'p': ['(', ')'], 'b': ['[', ']'], 'v': ['|', '|'], 'V': ['‖', '‖'], 'B': ['{', '}']
         };
@@ -1114,15 +1143,55 @@ function convertMathToHtml(math: string): string {
 
     // 3c. Cases: \begin{cases} ... \end{cases}
     html = html.replace(/\\begin\{cases\}([\s\S]*?)\\end\{cases\}/g, (match, content) => {
-        const rows = content.trim().split(/\\\\/);
+        const rows = content.trim().split(/\\\\(?:\[[^\]]+\])?/g);
         let casesHtml = `<span class="inline-flex items-center mx-1"><span class="text-4xl font-extralight scale-y-[2.2] scale-x-[0.8] mr-2 text-cyan-400/40">{</span>`;
         casesHtml += `<span class="flex flex-col text-left text-sm gap-1">`;
         rows.forEach(row => {
+            if (!row.trim()) return;
             const parts = row.split(/&/);
             casesHtml += `<span class="flex gap-4"><span>${convertMathToHtml(parts[0].trim())}</span>${parts[1] ? `<span class="opacity-60">${convertMathToHtml(parts[1].trim())}</span>` : ''}</span>`;
         });
         casesHtml += `</span></span>`;
         return casesHtml;
+    });
+
+    // 3d. Aligned / Align: \begin{aligned} ... \end{aligned} or \begin{align} ... \end{align}
+    html = html.replace(/\\begin\{(aligned|align\*?)\}([\s\S]*?)\\end\{\1\}/g, (match, type, content) => {
+        const rows = content.trim().split(/\\\\(?:\[[^\]]+\])?/g).filter(r => r.trim());
+        let maxCols = 0;
+        const processedRows = rows.map(row => {
+            const parts = row.split(/&/);
+            maxCols = Math.max(maxCols, parts.length);
+            return parts;
+        });
+
+        let alignedHtml = `<span class="grid gap-x-2 gap-y-1.5 items-center my-2 w-full justify-center overflow-x-auto" style="grid-template-columns: repeat(${maxCols}, max-content)">`;
+        
+        processedRows.forEach(parts => {
+            for (let i = 0; i < maxCols; i++) {
+                const part = parts[i] || '';
+                const alignClass = i % 2 === 0 ? 'text-right justify-self-end' : 'text-left justify-self-start';
+                alignedHtml += `<span class="${alignClass}">${convertMathToHtml(part.trim())}</span>`;
+            }
+        });
+        alignedHtml += `</span>`;
+        return alignedHtml;
+    });
+
+    // ✅ HTML ESCAPE (post-block): Protect <span> tags generated by block parsers above,
+    // escape bare & < > in residual LaTeX text, then restore the protected span tags.
+    const _tagTokens: string[] = [];
+    html = html.replace(/<[^>]+>/g, (tag) => {
+        const id = `\x00T${_tagTokens.length}\x00`;
+        _tagTokens.push(tag);
+        return id;
+    });
+    // Now only raw math text remains — safe to escape
+    html = html.replace(/&(?!amp;|lt;|gt;|nbsp;|#)/g, '&amp;');
+    html = html.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    // Restore HTML tag tokens
+    _tagTokens.forEach((tag, i) => {
+        html = html.replace(`\x00T${i}\x00`, tag);
     });
 
     // 4. Common Operators & Large Symbols

@@ -523,8 +523,10 @@ export async function executeToolCall(
                         return text.replace(rootRegex, '@ROOT');
                     };
 
+                    const isSuccess = result.code === 0;
                     return {
-                        success: result.code === 0,
+                        success: isSuccess,
+                        error: isSuccess ? undefined : (obfuscatePaths(result.stderr) || `Command failed with code ${result.code}`),
                         data: {
                             stdout: obfuscatePaths((result.stdout || '').slice(0, 2000)),
                             stderr: obfuscatePaths((result.stderr || '').slice(0, 500)),
@@ -570,6 +572,15 @@ export async function executeToolCall(
                 }
             }
 
+            case 'request_agent_mode': {
+                return { 
+                    success: true, 
+                    data: { 
+                        message: `Mode switch requested: ${args.reason}. The user must approve this transition to enable Agent Mode.` 
+                    } 
+                };
+            }
+            
             default: {
                 // Dynamic Skills Integration
                 const isElectron = typeof window !== 'undefined' && (window as any).electron?.listSkills;

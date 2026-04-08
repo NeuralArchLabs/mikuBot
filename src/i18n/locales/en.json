@@ -1,5 +1,6 @@
 {
     "common": {
+        "routing_fallback": "Main routing failed, switching to backup model",
         "cancel": "Cancel",
         "save": "Save",
         "delete": "Delete",

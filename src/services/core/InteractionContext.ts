@@ -31,8 +31,9 @@ export class InteractionContext {
      * Telegram (isRemote) ALWAYS defaults to 'chat' mode for security and identity consistency.
      */
     getEffectiveMode(uiMode: AgentMode): AgentMode {
-        if (this.isRemote) return 'chat';
         if (this.isScheduled) return this.forceToolMode ? 'agent' : 'chat';
+        
+        // Follow the global mode (or forced mode) for both UI and Remote (Telegram)
         return (this.forceToolMode || uiMode === 'agent') ? 'agent' : 'chat';
     }
 

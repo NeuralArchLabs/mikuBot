@@ -24,18 +24,30 @@ export interface TelegramUpdate {
             file_size?: number;
         };
     };
+    callback_query?: {
+        id: string;
+        from: {
+            id: number;
+            username?: string;
+        };
+        message?: TelegramUpdate['message'];
+        data: string;
+    };
 }
 
 class TelegramService {
-    private polling = false;
-    private lastUpdateId = 0;
+    private static polling = false;
+    private static lastUpdateId = 0;
+    private static currentPollingId = 0;
+    private static processedUpdateIds = new Set<number>();
+    
     private abortController: AbortController | null = null;
-    private typingInterval: ReturnType<typeof setInterval> | null = null;
+    private typingInterval: any = null;
 
     async getUpdates(config: AppConfig): Promise<TelegramUpdate[]> {
         if (!config.telegramBotToken) return [];
 
-        const offset = this.lastUpdateId ? this.lastUpdateId + 1 : 0;
+        const offset = TelegramService.lastUpdateId ? TelegramService.lastUpdateId + 1 : 0;
         const url = `https://api.telegram.org/bot${config.telegramBotToken}/getUpdates?offset=${offset}&timeout=30`;
 
         try {
@@ -45,7 +57,7 @@ class TelegramService {
 
             if (data.ok && data.result.length > 0) {
                 const updates = data.result as TelegramUpdate[];
-                this.lastUpdateId = updates[updates.length - 1].update_id;
+                TelegramService.lastUpdateId = updates[updates.length - 1].update_id;
                 return updates;
             }
         } catch (e) {
@@ -97,18 +109,83 @@ class TelegramService {
         }
     }
 
-    async startPolling(config: AppConfig, onMessage: (message: TelegramUpdate['message']) => Promise<void> | void) {
-        if (this.polling) return;
-        this.polling = true;
+    /**
+     * Sends a plain text message (with HTML support) to a Telegram chat.
+     */
+    async sendMessage(token: string, chatId: string, text: string): Promise<void> {
+        try {
+            await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: chatId,
+                    text,
+                    parse_mode: 'HTML'
+                })
+            });
+        } catch (e) {
+            console.error('[TelegramService] sendMessage failed:', e);
+        }
+    }
+
+    async sendMessageWithButtons(token: string, chatId: string, text: string, buttons: { text: string; data: string }[][]): Promise<void> {
+        const replyMarkup = {
+            inline_keyboard: buttons.map(row => row.map(btn => ({ text: btn.text, callback_data: btn.data })))
+        };
+
+        try {
+            await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: chatId,
+                    text,
+                    reply_markup: replyMarkup,
+                    parse_mode: 'HTML'
+                })
+            });
+        } catch (e) {
+            console.error('[TelegramService] sendMessageWithButtons failed:', e);
+        }
+    }
+
+    async answerCallback(token: string, callbackQueryId: string, text?: string): Promise<void> {
+        try {
+            await fetch(`https://api.telegram.org/bot${token}/answerCallbackQuery`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    callback_query_id: callbackQueryId,
+                    text: text || ''
+                })
+            });
+        } catch (e) {
+            console.error('[TelegramService] answerCallback failed:', e);
+        }
+    }
+
+    async startPolling(
+        config: AppConfig, 
+        onMessage: (message: TelegramUpdate['message'], updateId: number) => Promise<void> | void,
+        onCallback?: (callback: TelegramUpdate['callback_query'], updateId: number) => Promise<void> | void
+    ) {
+        // Restore singleton guard to prevent multiple while loops
+        if (TelegramService.polling) return;
+        
+        // Increment ID for versioning logic
+        TelegramService.currentPollingId++;
+        const localLoopId = TelegramService.currentPollingId;
+        
+        TelegramService.polling = true;
 
         // On first start, try to skip old messages if lastUpdateId is 0
-        if (this.lastUpdateId === 0) {
+        if (TelegramService.lastUpdateId === 0) {
             try {
                 const initResp = await fetch(`https://api.telegram.org/bot${config.telegramBotToken}/getUpdates?limit=1&offset=-1`);
                 const initData = await initResp.json();
                 if (initData.ok && initData.result.length > 0) {
-                    this.lastUpdateId = initData.result[0].update_id;
-                    console.log(`[TelegramService] Skipping old messages. Starting from update_id: ${this.lastUpdateId}`);
+                    TelegramService.lastUpdateId = initData.result[0].update_id;
+                    console.log(`[TelegramService] Skipping old messages. Starting from update_id: ${TelegramService.lastUpdateId}`);
                 }
             } catch (e) {
                 console.warn('[TelegramService] Could not fetch initial offset:', e);
@@ -117,11 +194,35 @@ class TelegramService {
 
         console.log('[TelegramService] Starting poll loop...');
 
-        while (this.polling) {
+        while (TelegramService.polling && TelegramService.currentPollingId === localLoopId) {
             const updates = await this.getUpdates(config);
-            if (!this.polling) break;
+            
+            // Check again after long poll returns
+            if (!TelegramService.polling || TelegramService.currentPollingId !== localLoopId) {
+                console.log(`[TelegramService] Loop ${localLoopId} invalidated or stopped. Exiting.`);
+                break;
+            }
 
             for (const update of updates) {
+                // Deduplication Case: If we already processed this update ID, skip it.
+                if (TelegramService.processedUpdateIds.has(update.update_id)) {
+                    continue;
+                }
+                TelegramService.processedUpdateIds.add(update.update_id);
+                
+                // Limit set size to avoid memory leak
+                if (TelegramService.processedUpdateIds.size > 200) {
+                    const oldest = Array.from(TelegramService.processedUpdateIds)[0];
+                    TelegramService.processedUpdateIds.delete(oldest);
+                }
+
+                // Handle Callbacks (Buttons)
+                if (update.callback_query && onCallback) {
+                    if (config.telegramChatId && update.callback_query.from.id.toString() !== config.telegramChatId) continue;
+                    await onCallback(update.callback_query, update.update_id);
+                    continue;
+                }
+
                 if (update.message) {
                     if (config.telegramChatId && update.message.chat.id.toString() !== config.telegramChatId) continue;
 
@@ -133,7 +234,7 @@ class TelegramService {
                     try {
                         // Handle Text Messages
                         if (update.message.text) {
-                            await onMessage(update.message);
+                            await onMessage(update.message, update.update_id);
                         }
                         // Handle Voice Messages
                         else if (update.message.voice && (window as any).electron) {
@@ -145,14 +246,14 @@ class TelegramService {
                                     ...update.message,
                                     text: `[Mensaje de Voz] ${res.text}`
                                 };
-                                await onMessage(voiceMsg);
+                                await onMessage(voiceMsg, update.update_id);
                             } else {
                                 console.warn('[TelegramService] Voice transcription failed:', res.error);
                                 const errorMsg = {
                                     ...update.message,
                                     text: `[Sistema] No pude transcribir el mensaje de voz. Error: ${res.error || 'Desconocido'}`
                                 };
-                                await onMessage(errorMsg);
+                                await onMessage(errorMsg, update.update_id);
                             }
                         }
                     } catch (err) {
@@ -162,12 +263,12 @@ class TelegramService {
                     }
                 }
             }
-            if (this.polling) await new Promise(r => setTimeout(r, 1000));
+            if (TelegramService.polling) await new Promise(r => setTimeout(r, 1000));
         }
     }
 
     stopPolling() {
-        this.polling = false;
+        TelegramService.polling = false;
         this.stopTypingIndicator();
         if (this.abortController) {
             this.abortController.abort();

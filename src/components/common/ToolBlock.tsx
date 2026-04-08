@@ -8,6 +8,35 @@ interface ToolBlockProps {
     isOld?: boolean;
 }
 
+const AtomLoader = ({ className }: { className?: string }) => (
+    <svg 
+        viewBox="0 0 24 24" 
+        className={`${className} atom-loader-svg`} 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="1.5"
+    >
+        {/* Nucleus with glow */}
+        <circle cx="12" cy="12" r="2.5" fill="currentColor" className="animate-atom-nucleus" />
+        
+        {/* Orbit 1 - Clockwise */}
+        <g className="animate-atom-orbit-cw text-blue-400/30 atom-orbit-group">
+            <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(45 12 12)" stroke="currentColor" strokeWidth="0.5" />
+            <circle cx="22" cy="12" r="1.5" fill="currentColor" className="text-blue-400" transform="rotate(45 12 12)">
+                <animate attributeName="r" values="1.2;1.8;1.2" dur="2s" repeatCount="indefinite" />
+            </circle>
+        </g>
+        
+        {/* Orbit 2 - Counter-Clockwise */}
+        <g className="animate-atom-orbit-ccw text-purple-400/30 atom-orbit-group">
+            <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(-45 12 12)" stroke="currentColor" strokeWidth="0.5" />
+            <circle cx="2" cy="12" r="1.5" fill="currentColor" className="text-purple-400" transform="rotate(-45 12 12)">
+                <animate attributeName="r" values="1.8;1.2;1.8" dur="1.5s" repeatCount="indefinite" />
+            </circle>
+        </g>
+    </svg>
+);
+
 export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = ({ block, isOld, isStreaming }) => {
     const { t, i18n } = useTranslation();
     const [isExpanded, setIsExpanded] = useState(false);
@@ -36,29 +65,20 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
         return () => observer.disconnect();
     }, [result, isStreaming]);
 
-    // ✨ SCENARIO 1: Live Completion Landing (Synced with Stream End)
-    // Triggers when the tool finishes AND the message stream is done.
+    // ✨ LIVE COMPLETION LANDING: Only trigger pulse/glow when it actually finishes live
+    // This is now unblocked from isStreaming to provide immediate feedback
     useEffect(() => {
-        if (isStreaming || !result || hasReplayedRef.current) return;
+        if (!result || hasReplayedRef.current) return;
 
         if (isVisible || wasVisibleDuringLiveRef.current) {
             hasReplayedRef.current = true;
             setIsReplaying(true);
-            setTimeout(() => setIsReplaying(false), 1100);
-        }
-    }, [isStreaming, result]);
-
-    // 🔄 SCENARIO 2: Deferred Scroll-In Replay
-    // Triggers if a result finished out of view and the user encounters it for the first time later.
-    useEffect(() => {
-        if (isStreaming || !result || hasReplayedRef.current) return;
-
-        if (isVisible) {
+            setTimeout(() => setIsReplaying(false), 800);
+        } else {
+            // If it finished off-screen, just mark as played without the fanfare
             hasReplayedRef.current = true;
-            setIsReplaying(true);
-            setTimeout(() => setIsReplaying(false), 1100);
         }
-    }, [isVisible, isStreaming]);
+    }, [result]);
 
     // Auto-collapse old tools
     useEffect(() => {
@@ -79,12 +99,22 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
 
     if (!toolCall) return null;
 
-    const isSuccess = result?.success && result?.data?.success !== false;
-    const hasError = result?.error || (result?.data?.success === false && result?.data?.error);
+    const isSuccess = result?.success && 
+                      result?.data?.success !== false && 
+                      (result?.data?.exitCode === undefined || result?.data?.exitCode === 0);
+    
+    const hasError = !!(result?.error || 
+                       result?.data?.success === false || 
+                       (result?.data?.exitCode !== undefined && result?.data?.exitCode !== 0) ||
+                       (result?.data?.stderr && !result?.data?.stdout && result?.data?.exitCode !== 0));
     const isPending = !result;
     
-    // 🚧 PLACEHOLDER LOGIC: Stay as a spinning cog while streaming, pending, or replaying
-    const isPlaceholder = isStreaming || isPending || isReplaying;
+    // 🚧 PLACEHOLDER LOGIC: Gear ONLY shows while the tool is pending (execution in progress)
+    // We remove isStreaming so it transforms to "Ready" immediately upon result arrival
+    const isPlaceholder = isPending;
+    
+    // ✨ SHOW RESULT LANDING: True when we have a result and we want to show the 'transformation'
+    const showTransformation = !!result && isReplaying;
 
     // ✨ ENTRANCE ANIMATION: Smooth entry for live blocks only
     const entranceClass = (isNewRef.current && (isStreaming || isPending)) ? 'animate-in fade-in zoom-in slide-in-from-top-2 duration-700' : '';
@@ -105,8 +135,8 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
         const args = toolCall.function.arguments || {};
         const name = toolCall.function.name;
 
-        if (!isSuccess && hasError) {
-            return `${t('common.error')}: ${result.error || data.error || t('common.operation_failed')}`;
+        if (hasError) {
+            return `${t('common.error')}: ${result.error || data.error || data.stderr || t('common.operation_failed')}`;
         }
 
         switch (name) {
@@ -174,14 +204,19 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
                     onClick={() => setIsExpanded(!isExpanded)}
                 >
                     <div className="flex items-center gap-2 flex-shrink-0">
-                        <div 
-                            key={isPlaceholder ? 'placeholder' : 'result'}
-                            className={isPlaceholder ? 'tool-icon-pending' : (isSuccess ? 'tool-icon-success' : hasError ? 'tool-icon-error' : 'tool-icon-pending')}
-                        >
-                            <IconComp 
-                                name={isPlaceholder ? 'cog' : (isSuccess ? 'check-circle' : hasError ? 'exclamation-triangle' : 'cog')} 
-                                className={isPlaceholder ? 'animate-spin' : ''} 
-                            />
+                        <div className={`relative w-4 h-4 flex items-center justify-center rounded-full transition-all duration-700 ${showTransformation ? 'tool-completion-glow' : ''}`}>
+                            {/* Loading Atom (Fades out when result arrives) */}
+                            <div className={`absolute inset-0 flex items-center justify-center transition-all duration-700 cubic-bezier(0.34, 1.56, 0.64, 1) ${!isPlaceholder ? 'opacity-0 scale-0 rotate-180' : 'opacity-100 scale-100 tool-icon-pending'}`}>
+                                <AtomLoader className="w-full h-full" />
+                            </div>
+                            
+                            {/* Result Icon (Morphs in when result arrives) */}
+                            <div className={`absolute inset-0 flex items-center justify-center transition-all duration-700 cubic-bezier(0.34, 1.56, 0.64, 1) ${isPlaceholder ? 'opacity-0 scale-0 -rotate-180' : (isSuccess ? 'tool-icon-success' : hasError ? 'tool-icon-error' : 'tool-icon-pending')}`}>
+                                <IconComp 
+                                    name={isSuccess ? 'check-circle' : hasError ? 'exclamation-triangle' : 'cog'} 
+                                    className={`icon-center-rig fa-fw ${showTransformation ? 'animate-tool-pulse' : ''} ${!isPlaceholder && !isOld ? 'animate-tool-morph' : ''}`} 
+                                />
+                            </div>
                         </div>
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
                             {toolCall.function.name}

@@ -264,5 +264,19 @@ export const AGENT_TOOLS: ToolDefinition[] = [
                 required: ['name', 'prompt', 'scheduleType', 'schedule']
             }
         }
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'request_agent_mode',
+            description: 'Request the user to switch the session to Agent Mode for complex tasks (multiple files, multi-step planning). This provides an interactive authorization dialog.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    reason: { type: 'string', description: 'Explain why the switch to Agent Mode is necessary (e.g., complexity of the request).' }
+                },
+                required: ['reason']
+            }
+        }
     }
 ];

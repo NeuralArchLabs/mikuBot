@@ -505,7 +505,7 @@ export const ChatArea = ({
                                         )}
                                     </div>
                                     <div className="text-slate-400 leading-relaxed whitespace-pre-wrap break-all border-l-2 border-white/10 pl-4">
-                                        {m.content || t('chat.labels.empty_body')}
+                                        {m.content || (m.role === 'tool' && m.error ? m.error : t('chat.labels.empty_body'))}
                                         {m.tool_calls && (
                                             <div className="mt-2 p-2 bg-blue-500/10 rounded border border-blue-500/20 text-blue-300">
                                                 <strong>{t('chat.labels.tool_calls')}:</strong> {JSON.stringify(m.tool_calls, null, 2)}
@@ -532,7 +532,7 @@ export const ChatArea = ({
                 ref={scrollRef}
             >
                 <div className="flex-1" />
-                <div className="space-y-6 w-full max-w-[98%] sm:max-w-[95%] lg:max-w-3xl mx-auto pb-4">
+                <div className="space-y-6 w-full max-w-[98%] sm:max-w-[95%] lg:max-w-4xl mx-auto pb-4">
                     {messages.length === 0 && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-20">
                             <div className="w-20 h-20 rounded-full border-2 border-blue-500/15 flex items-center justify-center mb-6 text-3xl text-blue-500/20">
@@ -571,9 +571,9 @@ export const ChatArea = ({
                                         <MarkdownRenderer content={msg.text} />
                                     </div>
                                 ) : (
-                                    <div className={`relative w-auto max-w-full p-5 sm:px-8 sm:py-6 shadow-xl transition-all duration-300 break-words message-pop-in transform-gpu rounded-2xl ${msg.role === 'user'
-                                        ? 'bg-blue-600/20 border border-transparent group-hover:border-blue-500/30 text-blue-50 rounded-br-none'
-                                        : 'bg-slate-800 border border-transparent group-hover:border-slate-700 text-slate-200 rounded-bl-none'
+                                    <div className={`relative w-auto max-w-[88%] sm:max-w-[85%] p-5 sm:px-8 sm:py-6 transition-all duration-300 break-words message-pop-in transform-gpu rounded-[32px] ${msg.role === 'user'
+                                        ? 'bg-blue-600/20 border border-transparent group-hover:border-blue-500/30 text-blue-50 rounded-br-none shadow-[0_15px_35px_-10px_rgba(0,0,0,0.6)]'
+                                        : 'bg-slate-800 border border-transparent group-hover:border-slate-700 text-slate-200 rounded-bl-none shadow-[0_10px_25px_-3px_rgba(0,0,0,0.9)]'
                                         }`}>
 
                                         {/* --- Action Bar --- */}

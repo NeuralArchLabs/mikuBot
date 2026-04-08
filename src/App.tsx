@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { InteractionContext } from './services/core/InteractionContext';
 import { AppState, AgentStatus, Message, PendingToolApproval, AgentMode, ModelInfo, FileSystemDirectoryHandle, FileSystemFileHandle, FileTarget, Session, ApprovalMode, SessionMetadata, PermissionStatus, Provider, AppConfig, Attachment } from './types';
-import { DEFAULT_CONFIG, DEFAULT_FILES, AGENT_TOOLS } from './constants';
+import { DEFAULT_CONFIG, DEFAULT_FILES, AGENT_TOOLS, PROVIDERS } from './constants';
 import { createDefaultAgentStatus } from './utils';
 import { useAgentStore, selectMessages, selectAgentStatus, selectIsLoading, selectInput, selectPendingToolApproval } from './stores/useAgentStore';
 import {
@@ -88,8 +88,16 @@ export const App = () => {
         setPendingToolApproval: setPendingToolApprovalStore
     } = useAgentStore();
 
-    const [models, setModels] = useState<Record<Provider, ModelInfo[]>>({ groq: [], gemini: [], ollama: [] });
-    const [loadingModels, setLoadingModels] = useState<Record<Provider, boolean>>({ groq: false, gemini: false, ollama: false });
+    const [models, setModels] = useState<Record<Provider, ModelInfo[]>>(() => {
+        const initial: any = {};
+        Object.keys(PROVIDERS).forEach(p => initial[p] = []);
+        return initial;
+    });
+    const [loadingModels, setLoadingModels] = useState<Record<Provider, boolean>>(() => {
+        const initial: any = {};
+        Object.keys(PROVIDERS).forEach(p => initial[p] = false);
+        return initial;
+    });
     const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'connected' | 'error'>('idle');
     const [sessions, setSessions] = useState<SessionMetadata[]>([]);
     const [loadingSessions, setLoadingSessions] = useState(true);
@@ -119,11 +127,14 @@ export const App = () => {
     const scrollRef = useRef<HTMLDivElement>(null);
     const stateRef = useRef(state);
     const messagesRef = useRef(messages);
+    const modelsRef = useRef(models);
+    const lastProcessedUpdateIdRef = useRef<number>(0);
     const namedSessionsTurnsRef = useRef<Map<string, number>>(new Map());
     const skillsCacheRef = useRef<any[]>([]);
     const lastSkillsFetchRef = useRef<number>(0);
     const processMessageRef = useRef<(text: string, force: boolean, remote: boolean) => Promise<void>>(async () => { });
     const sendToTelegramRef = useRef<(text: string) => void>(() => { });
+    const pendingToolApprovalRef = useRef<((approved: boolean) => void) | null>(null);
 
     useEffect(() => {
         stateRef.current = state;
@@ -132,6 +143,10 @@ export const App = () => {
     useEffect(() => {
         messagesRef.current = messages;
     }, [messages]);
+
+    useEffect(() => {
+        modelsRef.current = models;
+    }, [models]);
 
     // ── Persistence Handlers ─────────────────────────────────────────────
 
@@ -407,12 +422,163 @@ export const App = () => {
     // ── Telegram Remote Listener ───────────────────────────────────────
     useEffect(() => {
         if (state.config.telegramBotToken && state.config.telegramChatId) {
-            telegramService.startPolling(state.config, async (msg) => {
-                if (msg && msg.text) {
-                    // Always use the latest processMessage closure via ref
-                    await processMessageRef.current(msg.text, false, true);
+            telegramService.startPolling(
+                state.config, 
+                async (msg, updateId) => {
+                    // Aegis UI-Level Fail-safe
+                    if (updateId <= lastProcessedUpdateIdRef.current) {
+                        console.log(`[App] Aegis blocked duplicate update: ${updateId}`);
+                        return;
+                    }
+                    lastProcessedUpdateIdRef.current = updateId;
+
+                    if (msg && msg.text) {
+                        const cmd = msg.text.trim().toLowerCase();
+                        
+                        // Handler for text-based approval commands (/approve, /decline, etc.)
+                        if (['/approve', '/ok', '/yes', '/decline', '/reject', '/no'].some(c => cmd.startsWith(c))) {
+                            if (pendingToolApprovalRef.current) {
+                                const approved = ['/approve', '/ok', '/yes'].some(c => cmd.startsWith(c));
+                                pendingToolApprovalRef.current(approved);
+                                pendingToolApprovalRef.current = null;
+                                setPendingToolApprovalStore(null);
+                                sendToTelegramRef.current?.(approved ? '✅ <b>Aprobado</b> (vía comando)' : '❌ <b>Rechazado</b> (vía comando)');
+                                return;
+                            }
+                        }
+
+                        // Always use the latest processMessage closure via ref
+                        await processMessageRef.current(msg.text, false, true);
+                    }
+                },
+                async (callback, updateId) => {
+                    // Aegis UI-Level Fail-safe
+                    if (updateId <= lastProcessedUpdateIdRef.current) {
+                        console.log(`[App] Aegis blocked duplicate update (callback): ${updateId}`);
+                        return;
+                    }
+                    lastProcessedUpdateIdRef.current = updateId;
+
+                    if (callback && callback.data) {
+                        // 1. Tool Approval Callbacks
+                        if (callback.data.includes('_tool') && pendingToolApprovalRef.current) {
+                            const approved = callback.data === 'approve_tool';
+                            pendingToolApprovalRef.current(approved);
+                            pendingToolApprovalRef.current = null;
+                            setPendingToolApprovalStore(null);
+                            
+                            await telegramService.answerCallback(state.config.telegramBotToken!, callback.id, approved ? 'Aprobado ✅' : 'Rechazado ❌');
+                            sendToTelegramRef.current?.(approved ? '✅ <b>Aprobado</b> (vía botón)' : '❌ <b>Rechazado</b> (vía botón)');
+                            return;
+                        }
+
+                        // 2. Mode Selection Callbacks
+                        if (callback.data.startsWith('set_mode_')) {
+                            const mode = callback.data === 'set_mode_agent' ? 'agent' : 'chat';
+                            setState(prev => ({ 
+                                ...prev, 
+                                agentMode: mode,
+                                safeMode: mode === 'agent' ? true : prev.safeMode
+                            }));
+                            
+                            await telegramService.answerCallback(state.config.telegramBotToken!, callback.id, `Modo ${mode.toUpperCase()} activado 🎯`);
+                            sendToTelegramRef.current?.(`🎯 Modo cambiado a: <b>${mode === 'agent' ? '🤖 Agent' : '💬 Chat'}</b>${mode === 'agent' ? ' (Safe Mode: ON)' : ''}`);
+                            return;
+                        }
+
+                        // 3. Model Stack Selection (Multi-step)
+                        if (callback.data.startsWith('selmod:')) {
+                            const parts = callback.data.split(':');
+                            const phase = parts[1];
+                            const target = parts[2] as 'chat' | 'agent' | 'primary';
+
+                            if (phase === 'target') {
+                                // Phase 1: Target selected -> Show providers from registry
+                                const provMsg = `📂 <b>Configurando: ${target.toUpperCase()}</b>\n\nSelecciona el proveedor:`;
+                                
+                                // Group providers into rows of 2 for better UI
+                                const allProviders = Object.keys(PROVIDERS) as Provider[];
+                                const rows: any[][] = [];
+                                for (let i = 0; i < allProviders.length; i += 2) {
+                                    const chunk = allProviders.slice(i, i + 2);
+                                    rows.push(chunk.map(p => ({
+                                        text: `${PROVIDERS[p].name} ${p === 'ollama' ? '🏠' : p === 'zai' ? '⚡' : '✨'}`,
+                                        data: `selmod:prov:${target}:${p}`
+                                    })));
+                                }
+
+                                telegramService.sendMessageWithButtons(state.config.telegramBotToken!, state.config.telegramChatId!, provMsg, rows);
+                                await telegramService.answerCallback(state.config.telegramBotToken!, callback.id);
+                            } else if (phase === 'prov') {
+                                // Phase 2: Provider selected -> Show models
+                                const provider = parts[3] as Provider;
+                                let availableModels = modelsRef.current[provider] || [];
+
+                                // PROACTIVE FETCH: If no models are loaded for this provider, try to fetch them now
+                                if (availableModels.length === 0) {
+                                    await telegramService.answerCallback(state.config.telegramBotToken!, callback.id, `Sincronizando modelos para ${provider.toUpperCase()}... 🔄`);
+                                    try {
+                                        // We use the latest config from stateRef to ensure we have the API keys
+                                        const fetched = await fetchModels(provider, stateRef.current.config);
+                                        if (fetched && fetched.length > 0) {
+                                            setModels(prev => ({ ...prev, [provider]: fetched }));
+                                            availableModels = fetched;
+                                        }
+                                    } catch (e) {
+                                        console.error(`[App] Telegram on-demand sync failed for ${provider}:`, e);
+                                    }
+                                }
+
+                                if (availableModels.length === 0) {
+                                    sendToTelegramRef.current?.(`⚠️ No se detectaron modelos para <b>${provider.toUpperCase()}</b>. Asegúrate de tener la API Key configurada.`);
+                                    await telegramService.answerCallback(state.config.telegramBotToken!, callback.id);
+                                    return;
+                                }
+
+                                const modelMsg = `🤖 <b>Configurando: ${target.toUpperCase()}</b>\nProveedor: <b>${provider.toUpperCase()}</b>\n\nSelecciona el modelo:`;
+                                
+                                // Split models into rows of 2 to avoid huge vertical keyboards
+                                const modelButtons = [];
+                                const displayModels = availableModels.slice(0, 20); // Limit to top 20 to keep keyboard manageable
+                                for (let i = 0; i < displayModels.length; i += 2) {
+                                    const row = [{ text: displayModels[i].name, data: `selmod:save:${target}:${provider}:${displayModels[i].id}` }];
+                                    if (i + 1 < displayModels.length) {
+                                        row.push({ text: displayModels[i + 1].name, data: `selmod:save:${target}:${provider}:${displayModels[i + 1].id}` });
+                                    }
+                                    modelButtons.push(row);
+                                }
+
+                                telegramService.sendMessageWithButtons(state.config.telegramBotToken!, state.config.telegramChatId!, modelMsg, modelButtons);
+                                await telegramService.answerCallback(state.config.telegramBotToken!, callback.id);
+                            } else if (phase === 'save') {
+                                // Phase 3: Model selected -> Save
+                                const provider = parts[3] as any;
+                                const modelId = parts[4];
+
+                                const updatedConfig = { ...stateRef.current.config };
+                                if (target === 'chat') {
+                                    updatedConfig.chatProvider = provider;
+                                    updatedConfig.chatModel = modelId;
+                                } else if (target === 'agent') {
+                                    updatedConfig.agentProvider = provider;
+                                    updatedConfig.agentModel = modelId;
+                                } else {
+                                    updatedConfig.provider = provider;
+                                    updatedConfig.model = modelId;
+                                }
+
+                                // Update state and persist
+                                setState(prev => ({ ...prev, config: updatedConfig }));
+                                await persistence.saveSettings(updatedConfig, stateRef.current.agentMode, stateRef.current.safeMode, stateRef.current.approvalMode);
+
+                                await telegramService.answerCallback(state.config.telegramBotToken!, callback.id, 'Configuración guardada ✅');
+                                sendToTelegramRef.current?.(`✅ <b>Configuración Actualizada</b>\n\nObjetivo: ${target.toUpperCase()}\nModelo: <code>${modelId}</code>\nProveedor: <code>${provider}</code>`);
+                            }
+                            return;
+                        }
+                    }
                 }
-            });
+            );
         }
         return () => telegramService.stopPolling();
     }, [state.config.telegramBotToken, state.config.telegramChatId]);
@@ -1096,6 +1262,7 @@ To see all your additional enabled skills and their full technical parameters, y
         setIsLoadingStore(false);
         updateAgentPhase('aborted');
         setPendingToolApprovalStore(null);
+        pendingToolApprovalRef.current = null;
     }, []);
 
     const handleApproveToolCall = useCallback(() => {
@@ -1172,10 +1339,84 @@ To see all your additional enabled skills and their full technical parameters, y
                 // But for now, sessions is in dependency array of processMessage? Yes.
                 setSessions,
                 onNewSession,
-                updateConfig
+                updateConfig,
+                resolveApproval: (approved: boolean) => {
+                    if (pendingToolApprovalRef.current) {
+                        pendingToolApprovalRef.current(approved);
+                        pendingToolApprovalRef.current = null;
+                        setPendingToolApprovalStore(null);
+                    }
+                }
             });
 
             if (result) {
+                if (result === 'TRIGGER_MODE_SELECTION') {
+                    if (isRemote) {
+                        telegramService.sendMessageWithButtons(state.config.telegramBotToken!, state.config.telegramChatId!, '🎯 <b>Selección de Modo</b>\n\nElige el nivel de autonomía para esta sesión:', [
+                            [
+                                { text: '🤖 Agent Mode', data: 'set_mode_agent' },
+                                { text: '💬 Chat Mode', data: 'set_mode_chat' }
+                            ]
+                        ]);
+                    }
+                    setInputStore('');
+                    return;
+                }
+
+                if (result === 'TRIGGER_MODEL_FLOW') {
+                    if (isRemote) {
+                        telegramService.sendMessageWithButtons(state.config.telegramBotToken!, state.config.telegramChatId!, '🎯 <b>Model Stack Configuration</b>\n\nChoose which model purpose you want to update:', [
+                            [
+                                { text: '👤 Chat Model', data: 'selmod:target:chat' },
+                                { text: '🤖 Agent Model', data: 'selmod:target:agent' },
+                                { text: '🛠️ Fallback Model', data: 'selmod:target:primary' }
+                            ]
+                        ]);
+                    }
+                    setInputStore('');
+                    return;
+                }
+
+                if (result === 'TRIGGER_STATUS') {
+                    if (isRemote) {
+                        // Gather config and metrics
+                        const cfg = state.config;
+                        let metricsLines = '';
+                        
+                        if ((window as any).electron?.getSystemMetrics) {
+                            try {
+                                const metricsRes = await (window as any).electron.getSystemMetrics();
+                                if (metricsRes.ok) {
+                                    const m = metricsRes.metrics;
+                                    metricsLines = `🖥️ <b>Hardware Metrics</b>\n` +
+                                                 `• Platform: <code>${m.platform}</code>\n` +
+                                                 `• CPU: <code>${m.cpu.usage}</code>\n` +
+                                                 `• RAM: <code>${m.memory.total} (${m.memory.usage})</code>\n` +
+                                                 `• Uptime: <code>${m.uptime}</code>\n\n`;
+                                }
+                            } catch (e) {
+                                console.error('Failed to fetch metrics for /status:', e);
+                            }
+                        }
+
+                        const statusMsg = `📊 <b>mikuBot STATUS DASHBOARD</b>\n\n` +
+                                        `⚙️ <b>Orchestration</b>\n` +
+                                        `• Mode: <b>${state.agentMode.toUpperCase()}</b>\n` +
+                                        `• Safety: <b>${state.safeMode ? 'SAFE ON 🛡️' : 'SAFE OFF 🔓'}</b>\n` +
+                                        `• Approval: <code>${state.approvalMode}</code>\n\n` +
+                                        `🧠 <b>Model Stack</b>\n` +
+                                        `• Chat: <code>${cfg.chatProvider}</code> / <code>${cfg.chatModel || 'default'}</code>\n` +
+                                        `• Agent: <code>${cfg.agentProvider}</code> / <code>${cfg.agentModel || 'default'}</code>\n` +
+                                        `• Primary: <code>${cfg.provider}</code> / <code>${cfg.model}</code>\n\n` +
+                                        metricsLines +
+                                        `✨ <i>mikuBot is standing by.</i>`;
+
+                        telegramService.sendMessage(state.config.telegramBotToken!, state.config.telegramChatId!, statusMsg);
+                    }
+                    setInputStore('');
+                    return;
+                }
+
                 const isNewSessionCmd = text.toLowerCase().startsWith('/new');
 
                 // If it's NOT a session reset, we might want to show the command.
@@ -1413,7 +1654,8 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                     ...AGENT_TOOLS.filter(t => [
                         'read_file', 'list_files', 'search_files', 'web_search', 'read_url', 
                         'update_file', 'patch_file', 'delete_file', 'add_scheduled_task',
-                        'get_file_outline', 'get_system_metrics', 'send_telegram_message'
+                        'get_file_outline', 'get_system_metrics', 'send_telegram_message',
+                        'request_agent_mode'
                     ].includes(t.function.name)),
                     ...dynamicSkills
                 ]
@@ -1455,7 +1697,38 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                         if (p.rawMessages) finalHistory = p.rawMessages;
                         setAgentStatusStore(p);
                     },
-                    (toolCall) => new Promise(resolve => setPendingToolApprovalStore({ toolCall, resolve })),
+                    (toolCall) => new Promise(resolve => {
+                        const wrappedResolve = (approved: boolean) => {
+                            if (approved && toolCall.function.name === 'request_agent_mode') {
+                                console.log('[App] Auto-switching to AGENT mode via tool approval');
+                                setState(prev => ({ ...prev, agentMode: 'agent', safeMode: true }));
+                                if (stateRef.current.config) {
+                                    persistence.saveSettings(stateRef.current.config, 'agent', true, stateRef.current.approvalMode);
+                                }
+                            }
+                            resolve(approved);
+                        };
+
+                        setPendingToolApprovalStore({ toolCall, resolve: wrappedResolve });
+                        pendingToolApprovalRef.current = wrappedResolve;
+                        
+                        // If remote, send interactive buttons to Telegram
+                        if (ctx.isRemote && state.config.telegramBotToken && state.config.telegramChatId) {
+                            const isModeRequest = toolCall.function.name === 'request_agent_mode';
+                            const reason = toolCall.function.arguments.reason || 'Tarea compleja detectada';
+                            
+                            const tcmsg = isModeRequest
+                                ? `🤖 <b>Solicitud de Modo Agente</b>\n\nEl asistente sugiere el cambio para proceder.\n\n<b>Razón:</b> ${reason}\n\n¿Activar modo agente y continuar?`
+                                : `⚠️ <b>Solicitud de Autorización</b>\n\nMiku desea ejecutar: <code>${toolCall.function.name}</code>\n\n¿Permitir esta acción?`;
+
+                            telegramService.sendMessageWithButtons(state.config.telegramBotToken, state.config.telegramChatId, tcmsg, [
+                                [
+                                    { text: isModeRequest ? '✅ Activar' : '✅ Approve', data: 'approve_tool' },
+                                    { text: isModeRequest ? '❌ Cancel' : '❌ Decline', data: 'decline_tool' }
+                                ]
+                            ]);
+                        }
+                    }),
                     async (task: any) => {
                         const newTask = neuralScheduler.addTask(task);
                         return newTask.id;
@@ -1483,7 +1756,7 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
 
                 if (hasMasterFallback) {
                     console.warn(`[Fallback] Primary provider ${effectiveProvider}/${effectiveModel} failed. Retrying with master: ${currentState.config.provider}/${currentState.config.model}`);
-                    updateMessageContent(modelMsgId, `⚠️ ${effectiveProvider} falló. Reintentando con master fallback (${currentState.config.provider}/${currentState.config.model})...\n\n`, []);
+                    updateMessageContent(modelMsgId, `⚠️ ${t('common.routing_fallback')} (${currentState.config.provider}/${currentState.config.model})...\n\n`, []);
 
                     const masterConfig = {
                         ...currentState.config,

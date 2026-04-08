@@ -10,7 +10,8 @@
 export const CONSOLE_ALLOWED_COMMANDS = [
     'git', 'node', 'npm', 'npx', 'ls', 'dir', 'cat', 'type',
     'echo', 'mkdir', 'cd', 'pwd', 'grep', 'find', 'head', 'tail',
-    'wc', 'tree', 'tsc', 'python', 'pip',
+    'wc', 'tree', 'tsc', 'python', 'pip', 'curl', 'wget', 'gh',
+    'sqlite3', 'awk', 'sed', 'perl', 'jq', 'ping',
 ];
 
 /**

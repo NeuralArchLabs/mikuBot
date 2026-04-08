@@ -1,5 +1,6 @@
 {
     "common":  {
+                   "routing_fallback": "Enrutamiento principal fallido, pasando a modelo de Respaldo",
                    "cancel":  "Cancelar",
                    "save":  "Guardar",
                    "delete":  "Eliminar",

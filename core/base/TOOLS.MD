@@ -36,7 +36,7 @@ When mikuBot suggests terminal commands, it must adhere to the following:
 The `run_console` tool provides workspace console access. **Security restrictions apply:**
 
 ### Allowed Commands
-`git`, `node`, `npm`, `npx`, `ls`, `dir`, `cat`, `type`, `echo`, `mkdir`, `cd`, `pwd`, `grep`, `find`, `head`, `tail`, `wc`, `tree`, `tsc`, `python`, `pip`
+`git`, `node`, `npm`, `npx`, `ls`, `dir`, `cat`, `type`, `echo`, `mkdir`, `cd`, `pwd`, `grep`, `find`, `head`, `tail`, `wc`, `tree`, `tsc`, `python`, `pip`, `curl`, `wget`, `gh`, `sqlite3`, `awk`, `sed`, `perl`, `jq`, `ping`
 
 ### Blocked Patterns
 The following are **NEVER** allowed in arguments:
@@ -58,7 +58,7 @@ The following are **NEVER** allowed in arguments:
 }
 ```
 
-> ⚠️ Console commands require **elevated approval** from the user.
+> ⚠️ **HIGH SECURITY TOOLS:** All console commands (`run_console`), batch deletions (`batch_operation: delete`), and file deletions (`delete_file`) require **mandatory manual approval** from the user, even in Agent Mode or Remote sessions.
 
 ## 📂 File Management (`read_file`, `update_file`, `patch_file`)
 

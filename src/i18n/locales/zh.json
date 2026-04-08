@@ -1,5 +1,6 @@
 {
     "common": {
+        "routing_fallback": "主路由失败，正在切换到备用模型",
         "cancel": "取消",
         "save": "保存",
         "delete": "删除",
