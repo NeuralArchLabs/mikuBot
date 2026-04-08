@@ -61,7 +61,8 @@ export async function sendAgentMessage(
     safeMode: boolean = false,
     approvalMode: ApprovalMode = 'auto',
     isInstructionMode: boolean = false,
-    isScheduled: boolean = false
+    isScheduled: boolean = false,
+    isRemote: boolean = false
 ): Promise<void> {
 
     console.log(`[Agent] sendAgentMessage called: isScheduled=${isScheduled}, isAgentMode=${isAgentMode}, safeMode=${safeMode}, approvalMode=${approvalMode}, isInstructionMode=${isInstructionMode}`);
@@ -439,7 +440,7 @@ export async function sendAgentMessage(
             const READ_ONLY = new Set(['read_file', 'list_files', 'search_files', 'web_search', 'read_url', 'get_file_outline']);
             
             const isAuto = (tc: ToolCall) => {
-                if (isScheduled) return true;
+                if (isScheduled || isRemote || !isInstructionMode) return true;
                 const tn = tc.function.name;
                 if (READ_ONLY.has(tn)) return true;
                 const { target, cleanFilename: cf } = resolvePathAndSource(tc.function.arguments.filename || '', tc.function.arguments.source);
