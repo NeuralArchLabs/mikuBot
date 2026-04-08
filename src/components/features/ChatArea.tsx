@@ -322,6 +322,11 @@ export const ChatArea = ({
     const [isAnchoring, setIsAnchoring] = React.useState(false);
     const lockedScrollTopRef = React.useRef<number | null>(null);
 
+    // 🔧 DYNAMIC BLOCK-AWARE LOCKING: Track blocks to reset lock on new text after tools
+    const lastBlocksRef = React.useRef<any[]>([]);
+    const lastBlockCountRef = React.useRef(0);
+    const lastBlockTypeRef = React.useRef<string | null>(null);
+
     // 🖱️ HUMAN INTERACTION SENSORS: Only break the lock on PHYSICAL input
     React.useEffect(() => {
         const container = scrollRef.current;
@@ -427,8 +432,106 @@ export const ChatArea = ({
         }
     }, [messages, agentStatus.phase, pendingApproval, isAnchoring, isAgentActive]);
 
+    // 🔧 DYNAMIC BLOCK-AWARE LOCKING: Detect new text blocks after tool execution
+    React.useEffect(() => {
+        if (messages.length === 0 || !scrollRef.current) return;
+
+        const lastMsg = messages[messages.length - 1];
+        const currentBlocks = lastMsg.blocks || [];
+
+        // Skip if no blocks or not an assistant message
+        if (currentBlocks.length === 0 || lastMsg.role !== 'assistant') {
+            lastBlocksRef.current = currentBlocks;
+            lastBlockCountRef.current = currentBlocks.length;
+            return;
+        }
+
+        const prevBlocks = lastBlocksRef.current;
+        const prevBlockCount = lastBlockCountRef.current;
+        const LOCK_MARGIN = 28;
+
+        // Update refs for next comparison
+        lastBlocksRef.current = currentBlocks;
+        lastBlockCountRef.current = currentBlocks.length;
+
+        // 🔍 DETECT 1: New block added
+        let shouldReanchor = false;
+        let targetBlockIndex = -1;
+
+        if (currentBlocks.length > prevBlockCount) {
+            const newBlockIndex = currentBlocks.length - 1;
+            const newBlock = currentBlocks[newBlockIndex];
+            const prevLastBlockType = prevBlocks.length > 0 ? prevBlocks[prevBlocks.length - 1]?.type : null;
+
+            // Check if we transitioned from tool_call to narrative (answer/thought/text)
+            const narrativeTypes = ['answer', 'thought', 'text'];
+            const isNarrativeAfterTool = prevLastBlockType === 'tool_call' && narrativeTypes.includes(newBlock.type);
+
+            if (isNarrativeAfterTool) {
+                shouldReanchor = true;
+                targetBlockIndex = newBlockIndex;
+            }
+
+            // Update last block type for tracking
+            lastBlockTypeRef.current = newBlock.type;
+        }
+
+        // 🔍 DETECT 2: Content growth in last narrative block after tool_call
+        if (!shouldReanchor && currentBlocks.length === prevBlockCount && prevBlocks.length > 0) {
+            const lastBlock = currentBlocks[currentBlocks.length - 1];
+            const prevLastBlock = prevBlocks[prevBlocks.length - 1];
+
+            // Check if we're in a narrative block after a tool_call
+            const narrativeTypes = ['answer', 'thought', 'text'];
+            const isNarrative = narrativeTypes.includes(lastBlock.type);
+            const prevWasTool = prevBlocks.some(b => b.type === 'tool_call');
+
+            // If content grew and we're in narrative after tool, re-anchor
+            if (isNarrative && prevWasTool && lastBlock.content !== prevLastBlock.content) {
+                // Check if this is a "new content after tool" scenario
+                // by comparing with previously seen narrative blocks
+                const hasSeenThisNarrativeBefore = prevBlocks.some(
+                    (b, i) => i > 0 && prevBlocks[i - 1]?.type === 'tool_call' &&
+                    narrativeTypes.includes(b.type)
+                );
+
+                if (!hasSeenThisNarrativeBefore) {
+                    shouldReanchor = true;
+                    targetBlockIndex = currentBlocks.length - 1;
+                }
+            }
+        }
+
+        // 🔓 RE-ANCHOR: Release old lock and establish new one on target block
+        if (shouldReanchor && targetBlockIndex >= 0) {
+            if (isAnchoring) {
+                setIsAnchoring(false);
+                lockedScrollTopRef.current = null;
+            }
+
+            // 🎯 FOCUS ON TARGET BLOCK: Scroll to bring the block into view
+            const blockEl = document.getElementById(`block-${lastMsg.id}-${targetBlockIndex}`);
+            if (blockEl && scrollRef.current) {
+                // Calculate position to show the new block with LOCK_MARGIN
+                const bannerEl = document.querySelector('.folder-permission-banner');
+                const bannerHeight = bannerEl ? (bannerEl as HTMLElement).offsetHeight : 0;
+                const containerRect = scrollRef.current.getBoundingClientRect();
+                const blockRect = blockEl.getBoundingClientRect();
+                const boundaryTop = containerRect.top + bannerHeight + LOCK_MARGIN;
+                const idealScrollTop = scrollRef.current.scrollTop + (blockRect.top - boundaryTop);
+
+                // Scroll to the block
+                scrollRef.current.scrollTop = idealScrollTop;
+
+                // 🔒 RE-ENGAGE LOCK: Lock on the new block
+                setIsAnchoring(true);
+                lockedScrollTopRef.current = idealScrollTop;
+            }
+        }
+    }, [messages, isAnchoring]);
+
     return (
-        <div className="flex-1 flex flex-col h-full relative">
+        <div className="flex-1 flex flex-col h-full relative contain-layout">
             {/* Connection Banner (Persistent Neural Link) */}
             {Object.entries(folderPermissions).some(([_, status]) => status !== 'granted') && (
                 <div className="folder-permission-banner bg-amber-900/40 border-b border-amber-500/20 p-2 sm:p-3 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 animate-in slide-in-from-top duration-500 z-[110] w-full max-w-full shadow-lg">
@@ -571,7 +674,7 @@ export const ChatArea = ({
                                         <MarkdownRenderer content={msg.text} />
                                     </div>
                                 ) : (
-                                    <div className={`relative w-auto max-w-[88%] sm:max-w-[85%] p-5 sm:px-8 sm:py-6 transition-all duration-300 break-words message-pop-in transform-gpu rounded-[32px] ${msg.role === 'user'
+                                    <div className={`relative w-auto max-w-[88%] sm:max-w-[85%] p-5 sm:px-8 sm:py-6 transition-colors duration-300 break-words message-pop-in transform-gpu rounded-[32px] ${msg.role === 'user'
                                         ? 'bg-blue-600/20 border border-transparent group-hover:border-blue-500/30 text-blue-50 rounded-br-none shadow-[0_15px_35px_-10px_rgba(0,0,0,0.6)]'
                                         : 'bg-slate-800 border border-transparent group-hover:border-slate-700 text-slate-200 rounded-bl-none shadow-[0_10px_25px_-3px_rgba(0,0,0,0.9)]'
                                         }`}>
@@ -670,7 +773,7 @@ export const ChatArea = ({
                                                             if (isNarrative && isPrevTool) spacingClass = 'mt-8';
 
                                                             return (
-                                                                <div key={idx} className={spacingClass}>
+                                                                <div key={idx} id={`block-${msg.id}-${idx}`} className={spacingClass} data-block-type={block.type}>
                                                                     {block.type === 'answer' ? (
                                                                         <MarkdownRenderer content={block.content} isStreaming={msg.isStreaming} />
                                                                     ) : (block.type === 'thought' || block.type === 'text') ? (() => {

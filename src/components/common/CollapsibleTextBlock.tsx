@@ -71,8 +71,8 @@ const StreamingRenderer: React.FC<ContentRendererProps> = ({ content, isStreamin
                 setIsFinished(true);
                 clearInterval(interval);
             }
-        }, 12); 
-        
+        }, 12);
+
         return () => clearInterval(interval);
     }, [content]);
 

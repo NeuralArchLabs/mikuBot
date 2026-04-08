@@ -9,3 +9,4 @@ export * from './useLocalStorage';
 export * from './useDebounce';
 export * from './useKeyboardShortcuts';
 export * from './useAgentStatus';
+export * from './useSmartResizeTransition';

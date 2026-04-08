@@ -7,3 +7,4 @@ export * from './AppContext';
 export * from './AgentContext';
 export * from './FileDialogContext';
 export * from './NotificationContext';
+export * from './ResizeContext';

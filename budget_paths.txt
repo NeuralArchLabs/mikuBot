@@ -1,2 +1,0 @@
-D:\Armando\Desktop\workSpace\ProyectosDev\mikuCentralv1.0\core\base\blueprints\library\budget.json
-D:\Armando\Desktop\workSpace\ProyectosDev\mikuCentralv1.0\release\win-unpacked\resources\core\base\blueprints\library\budget.json

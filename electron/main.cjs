@@ -436,6 +436,9 @@ function getVoskModelPath() {
 ipcMain.handle('api-stream', async (event, { provider, model, body, ollamaUrl, streamId }) => {
     const sender = event.sender;
     const keys = getApiKeys();
+    // Use longer timeout for Ollama (30 minutes) as local models can take a while to load
+    // Default 5 minutes for other providers
+    const timeoutMs = provider === 'ollama' ? 1800000 : 300000;
 
     try {
         let url, headers;
@@ -471,7 +474,7 @@ ipcMain.handle('api-stream', async (event, { provider, model, body, ollamaUrl, s
         console.log(`[Main Process] Starting SSE Stream (${provider}/${model}) -> ${url.split('?')[0]}`);
 
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 300000); // 5 min timeout for deep thinking
+        const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
         // Standard SSE headers to prevent buffering
         headers['Accept'] = 'text/event-stream';
@@ -525,9 +528,10 @@ ipcMain.handle('api-stream', async (event, { provider, model, body, ollamaUrl, s
         if (!sender.isDestroyed()) {
             sender.send('api-stream-chunk', { streamId, chunk: null, done: true, error: error.message });
         }
+        const timeoutSeconds = Math.round(timeoutMs / 1000);
         return {
             ok: false,
-            error: isTimeout ? 'Stream timed out (120s).' : error.message,
+            error: isTimeout ? `Stream timed out after ${timeoutSeconds}s.` : error.message,
         };
     }
 });

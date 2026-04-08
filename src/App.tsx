@@ -2033,9 +2033,9 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
     };
 
     return (
-        <div className="flex flex-col h-screen w-full bg-[#0f172a] text-slate-200 overflow-hidden font-sans miku-app-isolate">
+        <div className="flex flex-col h-screen w-full bg-[#0f172a] text-slate-200 overflow-hidden font-sans miku-app-isolate contain-layout">
             {state.config.isConfigured && <TitleBar />}
-            <div className="flex flex-1 overflow-hidden relative">
+            <div className="flex flex-1 overflow-hidden relative contain-layout">
             {!state.config.isConfigured && (
                 <OnboardingWizard 
                     onComplete={handleOnboardingComplete} 
@@ -2068,7 +2068,7 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
             />
 
             {/* Persistent UI Shell Container to prevent flashes on tab swap */}
-            <div className="flex-1 flex flex-col h-full bg-slate-950/40 overflow-hidden relative">
+            <div className="flex-1 flex flex-col h-full bg-slate-950/40 overflow-hidden relative contain-layout">
                 {state.activeTab === 'chat' && (
                     <div className="flex-1 flex flex-col h-full">
                         <ChatArea

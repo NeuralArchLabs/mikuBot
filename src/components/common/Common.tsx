@@ -263,6 +263,7 @@ const MarkdownRendererBase = ({ content, isStreaming }: { content: string, isStr
         <div
             ref={containerRef}
             className={`markdown-body font-mono px-1 ${isStreaming ? 'is-streaming' : ''}`}
+            lang="es"
             dangerouslySetInnerHTML={{ __html: html }}
         />
     );
@@ -361,7 +362,7 @@ const InteractiveMarkdownRendererBase = ({ content, isStreaming }: InteractiveMa
 
 
     return (
-        <div ref={containerRef} className="markdown-body font-mono px-1">
+        <div ref={containerRef} className="markdown-body font-mono px-1" lang="es">
             {/* Render interactive checkboxes */}
             {checkboxElements.map(item => (
                 <CheckboxItem

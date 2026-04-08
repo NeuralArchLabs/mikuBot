@@ -97,8 +97,8 @@ export const toHtml = (md: string): string => {
         const displayLang = langClean || 'code';
 
         const containerClass = isDiagram 
-            ? 'relative group bg-black/55 pt-12 pb-12 px-8 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_15px_45px_rgba(0,0,0,0.65)] transition-all max-w-full selection:bg-cyan-500/30' 
-            : 'relative group bg-black/55 pt-12 pb-12 px-6 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_15px_45px_rgba(0,0,0,0.65)] backdrop-blur-md transition-all md:mx-2';
+            ? 'relative group bg-black/55 pt-12 pb-12 px-8 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_15px_45px_rgba(0,0,0,0.65)] transition max-w-full selection:bg-cyan-500/30' 
+            : 'relative group bg-black/55 pt-12 pb-12 px-6 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_15px_45px_rgba(0,0,0,0.65)] backdrop-blur-md transition md:mx-2';
         
         // Studio Elite Header: Minimal Floating Language Badge
         const studioHeader = `
@@ -108,12 +108,12 @@ export const toHtml = (md: string): string => {
             </div>`;
 
         // Minimal Action: Icon-only Copy Button
-        const copyButton = `<button class="absolute top-3 right-5 text-slate-500/50 hover:text-cyan-400 p-1 opacity-0 group-hover:opacity-100 transition-all hover:scale-110 active:scale-90 cursor-pointer z-20" title="Copiar Código" onclick="const btn=this; const icon=btn.querySelector(\'i\'); const code=decodeURIComponent(\'${encodedCode.replace(/'/g, "\\'")}\'); navigator.clipboard.writeText(code).then(() => { icon.className=\'fas fa-check text-emerald-400\'; setTimeout(() => { icon.className=\'fas fa-clone\'; }, 2000); })"><i class="fas fa-clone text-[13px]"></i></button>`;
+        const copyButton = `<button class="absolute top-3 right-5 text-slate-500/50 hover:text-cyan-400 p-1 opacity-0 group-hover:opacity-100 transition hover:scale-110 active:scale-90 cursor-pointer z-20" title="Copiar Código" onclick="const btn=this; const icon=btn.querySelector(\'i\'); const code=decodeURIComponent(\'${encodedCode.replace(/'/g, "\\'")}\'); navigator.clipboard.writeText(code).then(() => { icon.className=\'fas fa-check text-emerald-400\'; setTimeout(() => { icon.className=\'fas fa-clone\'; }, 2000); })"><i class="fas fa-clone text-[13px]"></i></button>`;
         
         if (isDiagram) {
-            pieces.push(`<div class="${containerClass} isolate overflow-visible">${studioHeader}${copyButton}<div class="overflow-x-auto w-full px-2 pb-6"><div class="mermaid opacity-0 scale-95 blur-sm transition-all duration-1000 min-h-[100px] flex items-center justify-center transform-gpu" data-mermaid-src="${encodedCode}"><code class="text-sm shadow-none font-mono leading-relaxed">${highlighted}</code></div></div></div>`);
+            pieces.push(`<div class="${containerClass} isolate overflow-visible">${studioHeader}${copyButton}<div class="overflow-x-auto w-full px-2 pb-6"><div class="mermaid opacity-0 scale-95 blur-sm transition duration-1000 min-h-[100px] flex items-center justify-center transform-gpu" data-mermaid-src="${encodedCode}"><code class="text-sm shadow-none font-mono leading-relaxed">${highlighted}</code></div></div></div>`);
         } else {
-            pieces.push(`<div class="${containerClass} isolate overflow-visible code-block-anim opacity-0 scale-95 blur-sm transition-all duration-1000 transform-gpu">${studioHeader}${copyButton}<div class="overflow-x-auto w-full bg-black/90 rounded-xl p-5 pb-10 border border-transparent"><pre class="bg-transparent border-none p-0 m-0"><code class="text-sm shadow-none font-mono leading-relaxed block">${highlighted}</code></pre></div></div>`);
+            pieces.push(`<div class="${containerClass} isolate overflow-visible code-block-anim opacity-0 scale-95 blur-sm transition duration-1000 transform-gpu">${studioHeader}${copyButton}<div class="overflow-x-auto w-full bg-black/90 rounded-xl p-5 pb-10 border border-transparent"><pre class="bg-transparent border-none p-0 m-0"><code class="text-sm shadow-none font-mono leading-relaxed block">${highlighted}</code></pre></div></div>`);
         }
         return `\n${id}\n`;
     });
@@ -239,8 +239,8 @@ export const toHtml = (md: string): string => {
         let bodyRaw = sMatch ? content.replace(sMatch[0], '') : content;
         const isOpen = attrs.toLowerCase().includes('open');
 
-        pieces.push(`<details ${isOpen ? 'open' : ''} class="bg-black/10 border border-white/5 rounded-xl my-6 overflow-hidden group/details shadow-2xl transition-all cursor-pointer">` +
-            `<summary class="px-8 py-5 font-black text-cyan-400/90 uppercase tracking-widest text-[11px] hover:bg-white/5 transition-all outline-none list-none select-none flex items-center gap-3">` +
+        pieces.push(`<details ${isOpen ? 'open' : ''} class="bg-black/10 border border-white/5 rounded-xl my-6 overflow-hidden group/details shadow-2xl transition cursor-pointer">` +
+            `<summary class="px-8 py-5 font-black text-cyan-400/90 uppercase tracking-widest text-[11px] hover:bg-white/5 transition outline-none list-none select-none flex items-center gap-3">` +
             `<span class="group-open/details:rotate-90 transition-transform">▶</span>${summaryText}</summary>` +
             `<div class="details-content-body px-12 py-8 text-slate-300 leading-loose bg-black/10 select-text border-t border-white/5">${toHtml(bodyRaw.trim())}</div></details>`);
         return `\n${id}\n`;
@@ -294,7 +294,7 @@ export const toHtml = (md: string): string => {
         const bodyHtml = content ? `<div class="text-md font-medium text-slate-300 ${isCollapsible ? 'mt-3 pt-3 border-t border-white/5' : 'leading-relaxed'} child-content typing-content">${toHtml(content)}</div>` : '';
         
         if (isCollapsible) {
-            pieces.push(`<details class="group/callout border-l-[3px] ${s.border} bg-black/40 backdrop-blur-md ${s.glow || ''} shadow-xl pl-6 pr-4 py-3.5 my-5 rounded-r-xl overflow-hidden transition-all duration-300 select-none cursor-pointer border-y border-y-transparent border-r border-r-transparent hover:border-y-white/10 hover:border-r-white/10" ${isOpen ? 'open' : ''}>`
+            pieces.push(`<details class="group/callout border-l-[3px] ${s.border} bg-black/40 backdrop-blur-md ${s.glow || ''} shadow-xl pl-6 pr-4 py-3.5 my-5 rounded-r-xl overflow-hidden transition duration-300 select-none cursor-pointer border-y border-y-transparent border-r border-r-transparent hover:border-y-white/10 hover:border-r-white/10" ${isOpen ? 'open' : ''}>`
                 + `<summary class="flex items-center gap-3 font-black text-[13px] uppercase tracking-[0.2em] ${s.color} non-typing outline-none list-none text-left">`
                 + `<span class="group-open/callout:rotate-90 transition-transform duration-300">▶</span> <span class="text-lg">${s.icon}</span> ${displayTitle}</summary>${bodyHtml}</details>`);
         } else {
@@ -306,12 +306,11 @@ export const toHtml = (md: string): string => {
         return `\n${id}\n${remainder}`;
     });
 
-    // 1d. Standard Blockquote Parser (Phase 1)
+    // 1d. Standard Blockquote Parser (Phase 1) — Nesting-aware line-by-line
     html = html.replace(/^((?:>.*\n?)+)/gm, (match) => {
         if (match.includes('__BLOCK_')) return match;
         const id = `__BLOCK_${pieces.length}__`;
-        const content = match.replace(/^>\s?/gm, '').trim();
-        pieces.push(`<blockquote class="border-l-4 border-cyan-500/30 pl-6 pr-4 py-3 my-4 bg-black/40 backdrop-blur-md rounded-r-xl italic text-slate-300 leading-snug child-content shadow-xl border border-transparent hover:border-white/5 transition-all text-md font-medium">${toHtml(content)}</blockquote>`);
+        pieces.push(convertBlockquotesToHtml(match));
         return `\n${id}\n`;
     });
 
@@ -340,7 +339,7 @@ export const toHtml = (md: string): string => {
         }
 
         pieces.push(`<div class="image-container flex flex-col items-center justify-center my-6 group/img">` +
-            `<img src="${url}" alt="${cleanAlt}" ${width} ${height} class="max-w-full h-auto rounded-2xl border border-white/10 shadow-2xl transition-all group-hover/img:scale-[1.01] hover:shadow-cyan-500/10" />` +
+            `<img src="${url}" alt="${cleanAlt}" ${width} ${height} class="max-w-full h-auto rounded-2xl border border-white/10 shadow-2xl transition group-hover/img:scale-[1.01] hover:shadow-cyan-500/10" />` +
             (cleanAlt ? `<span class="mt-2 text-[10px] text-slate-500 font-mono tracking-tight opacity-0 group-hover/img:opacity-100 transition-opacity italic">${cleanAlt}</span>` : '') +
             `</div>`);
         return `\n${id}\n`;
@@ -355,7 +354,7 @@ export const toHtml = (md: string): string => {
             
         const isExternal = url.startsWith('http');
         const icon = isExternal ? '<i class="fas fa-external-link-alt text-[10px] ml-1 opacity-50 group-hover:opacity-100"></i>' : '';
-        pieces.push(`<a href="${url}" target="_blank" rel="noopener noreferrer" class="group inline-flex items-baseline text-cyan-400 hover:text-cyan-300 font-bold underline underline-offset-4 decoration-cyan-500/30 hover:decoration-cyan-400/60 transition-all mx-0.5">${text}${icon}</a>`);
+        pieces.push(`<a href="${url}" target="_blank" rel="noopener noreferrer" class="group inline-flex items-baseline text-cyan-400 hover:text-cyan-300 font-bold underline underline-offset-4 decoration-cyan-500/30 hover:decoration-cyan-400/60 transition mx-0.5">${text}${icon}</a>`);
         return id;
     });
 
@@ -481,9 +480,7 @@ export const toHtml = (md: string): string => {
 
     html = html.replace(/\^([^\^\n]+)\^/g, '<sup class="text-slate-400 text-[0.7em] leading-none">$1</sup>');
 
-    // 12. Blockquotes (must be AFTER admonitions to avoid stealing lines)
-    // Supports nesting: &gt;&gt; ... &gt;&gt;&gt; ...
-    html = convertBlockquotesToHtml(html);
+    // 12. Blockquotes — now handled in Phase 1 (section 1d) with nesting support
 
     // 13. Structural normalization (Lists with task support, Dividers)
     html = convertListsToHtml(html);
@@ -504,7 +501,7 @@ export const toHtml = (md: string): string => {
         return `<div class="flex items-center gap-3 my-4 shadow-sm select-none">`
             + `<span class="text-slate-400 text-xs font-mono min-w-[90px]">${label.trim()}:</span>`
             + `<div class="flex-1 max-w-[200px] h-2.5 bg-black/40 rounded-full overflow-hidden border border-white/10 ring-1 ring-white/5">`
-            + `<div class="h-full ${color} rounded-full transition-all duration-1000 shadow-[0_0_10px_currentColor]/40" style="width:${percent}%"></div>`
+            + `<div class="h-full ${color} rounded-full transition duration-1000 shadow-[0_0_10px_currentColor]/40" style="width:${percent}%"></div>`
             + `</div>`
             + `<span class="text-xs font-mono font-black text-slate-300 w-[45px] text-right">${pct}</span>`
             + `</div>`;
@@ -514,6 +511,9 @@ export const toHtml = (md: string): string => {
     html = html.replace(/:([a-z_]+):/g, (match, code) => {
         return EMOJI_MAP[code] || match;
     });
+
+    // 13h. Apply cached abbreviations to text
+    html = applyAbbreviationsToHtml(html);
 
     // 14. Restoration: inject protected blocks back
     // Use multi-pass for nested blocks (e.g., inline code inside details)
@@ -608,7 +608,7 @@ function renderTable(rows: string[][], alignments: ('left' | 'center' | 'right')
     const bodyRows = rows.slice(1);
 
     let html = '<div class="table-container my-10 group/table">';
-    html += '<div class="relative overflow-hidden rounded-xl bg-black/45 backdrop-blur-3xl shadow-[0_15px_40px_rgba(0,0,0,0.4)] transition-all duration-500">';
+    html += '<div class="relative overflow-hidden rounded-xl bg-black/45 backdrop-blur-3xl shadow-[0_15px_40px_rgba(0,0,0,0.4)] transition duration-500">';
     html += '<div class="absolute inset-0 bg-gradient-to-br from-white/[0.03] to-transparent pointer-events-none z-20"></div>';
     html += '<div class="overflow-x-auto relative z-10"><table class="min-w-full border-collapse m-0 p-0" style="margin: 0 !important; border: none;">';
     
@@ -633,7 +633,7 @@ function renderTable(rows: string[][], alignments: ('left' | 'center' | 'right')
         const row = bodyRows[r];
         const isLastRow = r === bodyRows.length - 1;
         const zebraClass = r % 2 === 1 ? 'bg-white/[0.015]' : '';
-        html += `<tr class="${zebraClass} hover:bg-white/[0.025] transition-all duration-300 group/row relative">`;
+        html += `<tr class="${zebraClass} hover:bg-white/[0.025] transition duration-300 group/row relative">`;
         for (let c = 0; c < maxCols; c++) {
             const cellText = row[c] || '&nbsp;';
             const isLastCol = c === maxCols - 1;
@@ -654,41 +654,76 @@ function renderTable(rows: string[][], alignments: ('left' | 'center' | 'right')
 }
 
 /**
- * Converts markdown links to HTML with URL sanitization.
+ * Processes inline markdown elements (bold, italic, code, links, etc.)
+ * Used for blockquote content which is protected from main pipeline processing.
  */
-function convertLinksToHtml(html: string): string {
-    const sanitizeUrl = (url: string): string => {
-        const decoded = url.replace(/&amp;/g, '&');
-        const trimmed = decoded.trim().toLowerCase();
-        return (trimmed.startsWith('http:') || trimmed.startsWith('https:') || trimmed.startsWith('mailto:')) ? url : '';
-    };
+function processInlineMarkdown(text: string): string {
+    let result = text;
 
-    return html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => {
-        const safe = sanitizeUrl(url);
-        return safe ? `<a href="${safe}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors">${text}</a>` : text;
+    // Links [text](url) - must be processed first to avoid conflicts
+    result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, linkText, url) => {
+        const cleanUrl = url.replace(/‹/g, '<').replace(/›/g, '>').replace(/&amp;/g, '&');
+        const isExternal = cleanUrl.startsWith('http');
+        const icon = isExternal ? '<i class="fas fa-external-link-alt text-[10px] ml-1 opacity-50"></i>' : '';
+        return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="group inline-flex items-baseline text-cyan-400 hover:text-cyan-300 font-bold underline underline-offset-4 decoration-cyan-500/30 hover:decoration-cyan-400/60 transition mx-0.5">${linkText}${icon}</a>`;
     });
+
+    // Escaped backticks
+    result = result.replace(/\\`/g, '‹esc-backtick›');
+    // Inline code `text`
+    result = result.replace(/`([^`\n]+)`/g, '<code class="bg-indigo-500/10 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs border border-indigo-400/20 shadow-[0_0_8px_rgba(99,102,241,0.1)]">$1</code>');
+    result = result.replace(/‹esc-backtick›/g, '`');
+
+    // Bold and italic combos ***text***
+    result = result.replace(/\*\*\*(?!\s)(.+?)\*\*\*/g, '<strong class="text-indigo-400 drop-shadow-[1px_1.5px_0px_rgba(0,0,0,1)]"><em>$1</em></strong>');
+    // Bold **text**
+    result = result.replace(/\*\*(?!\s)(.+?)\*\*/g, '<strong class="text-indigo-300 drop-shadow-[1px_1.5px_0px_rgba(0,0,0,1)]">$1</strong>');
+    // Italic *text*
+    result = result.replace(/\*(?!\s)(.+?)\*/g, '<em class="text-slate-300">$1</em>');
+    // Strikethrough ~~text~~
+    result = result.replace(/~~(?!\s)(.+?)~~/g, '<del class="text-slate-500 line-through">$1</del>');
+    // Highlight ==text==
+    result = result.replace(/==([^=\n]+)==/g, '<mark class="bg-[#FC8F35]/25 text-[#fcc18d] px-1 py-0.5 rounded-sm border-b border-[#FC8F35]/30 mx-0.5">$1</mark>');
+    // Superscript ^text^
+    result = result.replace(/\^([^\^\n]+)\^/g, '<sup class="text-slate-400 text-[0.7em] leading-none">$1</sup>');
+    // Subscript ~text~
+    result = result.replace(/~([^~\n]+)~/g, '<sub class="text-slate-400 text-[0.7em] leading-none">$1</sub>');
+
+    return result;
 }
 
 /**
- * Converts blockquotes including nested levels (&gt;&gt; nested)
+ * Converts blockquotes including nested levels (>> nested, >>> deep)
+ * Operates on RAW `>` prefixes (not HTML-escaped &gt;).
+ * Produces depth-aware premium styled blockquotes.
  */
-function convertBlockquotesToHtml(html: string): string {
-    const lines = html.split('\n');
+function convertBlockquotesToHtml(block: string): string {
+    const lines = block.split('\n');
     const output: string[] = [];
     let openLevels = 0;
 
+    // Depth-based styling: each nesting level gets progressively dimmer border
+    const depthStyles = [
+        // Level 1 — Primary
+        'border-l-4 border-cyan-500/30 pl-6 pr-4 py-3 my-4 bg-black/40 backdrop-blur-md rounded-r-xl italic text-slate-300 leading-snug shadow-xl text-md font-medium',
+        // Level 2 — Secondary
+        'border-l-[3px] border-indigo-400/25 pl-5 pr-3 py-2 my-2 bg-indigo-500/5 rounded-r-lg italic text-slate-400 leading-snug text-sm',
+        // Level 3+ — Tertiary
+        'border-l-2 border-slate-500/20 pl-4 pr-2 py-1.5 my-1 bg-white/[0.02] rounded-r-md italic text-slate-500 leading-snug text-sm',
+    ];
+
     for (const line of lines) {
-        // Count how many &gt; prefixes this line has
-        const match = line.match(/^((?:&gt;\s*)+)(.*)$/);
+        // Count how many > prefixes this line has (supports `>`, `> >`, `> > >` and `>>`, `>>>`)
+        const match = line.match(/^((?:>\s*)+)(.*)$/);
         if (match) {
             const prefix = match[1];
             const content = match[2].trim();
-            const level = (prefix.match(/&gt;/g) || []).length;
+            const level = (prefix.match(/>/g) || []).length;
 
             // Open any new levels
             while (openLevels < level) {
-                const opacity = Math.max(10, 50 - (openLevels * 15));
-                output.push(`<blockquote class="border-l-4 border-cyan-500/${opacity} pl-3 italic text-slate-300 my-4 bg-cyan-500/5 py-3 pr-2 rounded-none">`);
+                const styleIdx = Math.min(openLevels, depthStyles.length - 1);
+                output.push(`<blockquote class="${depthStyles[styleIdx]}" data-type="blockquote">`);
                 openLevels++;
             }
             // Close excess levels
@@ -696,15 +731,18 @@ function convertBlockquotesToHtml(html: string): string {
                 output.push('</blockquote>');
                 openLevels--;
             }
-            // Add content directly to the current blockquote level
-            output.push(content);
+            // Add content (process inline markdown)
+            if (content) {
+                output.push(processInlineMarkdown(content));
+            }
         } else {
-            // Close all open blockquotes
+            // Non-quote line — close all open blockquotes
             while (openLevels > 0) {
                 output.push('</blockquote>');
                 openLevels--;
             }
-            output.push(line);
+            const trimmed = line.trim();
+            if (trimmed) output.push(line);
         }
     }
     // Close remaining

@@ -171,7 +171,7 @@ export async function sendAgentMessage(
         activeContext = filtered.slice(-windowSize);
     }
 
-    const agentMessages: any[] = [
+    let agentMessages: any[] = [
         { role: 'system', content: systemPrompt },
         ...activeContext,
     ];
@@ -184,8 +184,11 @@ export async function sendAgentMessage(
     const currentRoot = { ...rootFiles };
 
     const MAX_RETRIES = 10;
+    const NUDGE_DELAY_MS = 3000; // 3 seconds delay before sending nudge
+    const MAX_CONSECUTIVE_NUDGES = 3; // Maximum nudges before stopping
     let iterations = 0;
     let retries = 0;
+    let consecutiveNudges = 0; // Track consecutive nudges to prevent infinite loops
     let actionHistory: string[] = [];
     const missionTrigger = [...historicalContext].reverse().find(m => m.role === 'user')?.content || 'Sin objetivo definido.';
     let lastExecutionFeedback = 'Inicio de misión.';
@@ -232,6 +235,22 @@ export async function sendAgentMessage(
     let memorySaved = false;
     let hasFatalError = false;
     let allNarrative = '';
+
+    // Helper function to remove previous nudge messages from history to prevent loops
+    const cleanNudgesFromHistory = () => {
+        const nudgeMarkers = [
+            '⚠️ TURN GENERATED NO ACTIONS:',
+            '⚠️ INCOMPLETE AGENT PROTOCOL:',
+            '⚠️ EMPTY RESPONSE:',
+            '⚠️ PROTOCOLO DE AGENTE INCOMPLETO:'
+        ];
+        agentMessages = agentMessages.filter(msg => {
+            if (msg.role === 'user' && msg.content) {
+                return !nudgeMarkers.some(marker => msg.content.includes(marker));
+            }
+            return true;
+        });
+    };
 
     // --- Main Loop ---
     try {
@@ -403,19 +422,47 @@ export async function sendAgentMessage(
 
             allBlocks = [...allBlocks, ...mergedBlocks];
             if (uniqueToolCalls.length === 0) {
+                // Check for consecutive nudges limit to prevent infinite loops
+                if (consecutiveNudges >= MAX_CONSECUTIVE_NUDGES) {
+                    log('warn', `Max consecutive nudges reached (${MAX_CONSECUTIVE_NUDGES}). Stopping to prevent loop.`);
+                    localOnStatus({ phase: 'error', errorCount: retries, elapsedMs: Date.now() - startTime, rawMessages: [...agentMessages] });
+                    onChunk('\n\n⚠️ El asistente ha generado múltiples respuestas vacías. Deteniendo para evitar bucle infinito.', true, []);
+                    break;
+                }
+
                 if (retries < MAX_RETRIES && (!content || content.trim() === '')) {
+                    // Wait before sending nudge to give model time
+                    await new Promise(resolve => setTimeout(resolve, NUDGE_DELAY_MS));
+
+                    // Clean previous nudges from history to prevent loops
+                    cleanNudgesFromHistory();
+
                     retries++;
-                    const nudge = (turnHasFailure || lastExecutionFeedback.includes('⚠️')) 
+                    consecutiveNudges++;
+                    const nudge = (turnHasFailure || lastExecutionFeedback.includes('⚠️'))
                         ? "⚠️ TURN GENERATED NO ACTIONS: Blockers or errors detected. Do not stop, try a different approach."
-                        : (isAgentMode || isInstructionMode) 
+                        : (isAgentMode || isInstructionMode)
                             ? "⚠️ INCOMPLETE AGENT PROTOCOL: You must provide a response or execute tools to proceed."
                             : "⚠️ EMPTY RESPONSE: Please provide a response to continue the conversation.";
                     agentMessages.push({ role: 'user', content: nudge });
                     continue;
                 }
+
+                // Reset consecutive nudges counter if we have valid content
+                if (content && content.trim()) {
+                    consecutiveNudges = 0;
+                }
+
                 if (isAgentMode || isInstructionMode) {
                     if (retries < MAX_RETRIES && !allNarrative.trim()) {
+                        // Wait before sending nudge to give model time
+                        await new Promise(resolve => setTimeout(resolve, NUDGE_DELAY_MS));
+
+                        // Clean previous nudges from history to prevent loops
+                        cleanNudgesFromHistory();
+
                         retries++;
+                        consecutiveNudges++;
                         agentMessages.push({ role: 'user', content: "⚠️ PROTOCOLO DE AGENTE INCOMPLETO: Debes proporcionar una respuesta para concluir tu misión." });
                         continue;
                     }
@@ -535,7 +582,10 @@ export async function sendAgentMessage(
                 await Promise.all(toolsToExecute.map(tc => executeAndLog(tc)));
             }
 
-            if (turnHasFailure) retries++; else retries = 0;
+            if (turnHasFailure) retries++; else {
+                retries = 0;
+                consecutiveNudges = 0; // Reset nudge counter on successful tool execution
+            }
 
             // [State Awareness Refresh] Correctly update feedback for the NEXT loop iteration
             const lastCall = successfulCalls[successfulCalls.length - 1] || uniqueToolCalls[0];
