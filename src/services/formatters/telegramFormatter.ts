@@ -75,6 +75,39 @@ export class TelegramFormatter implements IFormatter {
         // 2. Clear thinking blocks
         text = text.replace(/<thought>[\s\S]*?<\/think>/gi, '').trim();
 
+        // 2b. SIGNATURE SHIELD — Telegram Edition
+        // Tier 1: Full {{ ... }} wrapper → strip seagulls, clean internal tokens
+        text = text.replace(/"?\{\{\s*([^\}]+?)\s*\}\}"?/g, (match, signContent) => {
+            if (signContent.includes('≈') || signContent.includes('∫') || signContent.includes('~') || signContent.includes('┬')) {
+                let clean = signContent.trim();
+                // Strip backticks and quotes wrapping individual tokens
+                clean = clean.replace(/`([^`\n]+?)`/g, '$1');
+                clean = clean.replace(/"([^"\n]+?)"/g, '$1');
+                clean = clean.replace(/'([^'\n]+?)'/g, '$1');
+                // Collapse extra whitespace
+                clean = clean.replace(/\s{2,}/g, ' ').trim();
+                return `
+{{ ${clean} }}
+`;
+            }
+            return match;
+        });
+
+        // Tier 3: Core pattern without {{ }} — detect, clean, complete
+        text = text.replace(
+            /[`"']*(?:\{\{)?\s*[`"']*\s*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E)*)\s*[`"']*\s*(≈̼\^\.┬\.̼\^≈‿⟆)\s*[`"']*\s*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E)*)\s*[`"']*\s*(?:\}\})?[`"']*/gu,
+            (fullMatch, leadEmojis, core, trailEmojis) => {
+                if (!core || !core.includes('┬')) return fullMatch;
+                // Normalize emojis
+                let lead = (leadEmojis || '').replace(/[\uFE0E\uFE0F]/g, '').trim();
+                let trail = (trailEmojis || '').replace(/[\uFE0E\uFE0F]/g, '').trim();
+                // Fill missing with defaults
+                if (!lead) lead = '✨';
+                if (!trail) trail = '🌸';
+                return `\n{{ ${lead} ${core} ${trail} }}\n`;
+            }
+        );
+
         // 3. Process tables and replace dividers
         const lines = text.split('\n');
         let inTable = false;

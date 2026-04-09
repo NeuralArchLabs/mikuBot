@@ -328,10 +328,10 @@ export async function executeToolCall(
                             return { success: true, data: response.data };
                         }
                         console.warn("Native Search failed, falling back to APIs...", response.error);
-                        if (response.error?.includes('Engine not installed') || response.error?.includes('ECONNREFUSED')) {
+                        if (response.error?.includes('Engine not installed') || response.error?.includes('ECONNREFUSED') || response.error?.includes('no responde') || response.error?.includes('Timeout')) {
                             return {
                                 success: false,
-                                error: `Native Search failed: ${response.error}. TIP: El motor searXena no parece estar activo. Puedes arrancarlo desde la Configuración.`
+                                error: `Native Search failed: ${response.error}. TIP: El motor searXena no parece estar activo o no responde. Verifica que esté arrancado y no esté saturado.`
                             };
                         }
                     } catch (e) {

@@ -1200,25 +1200,58 @@ To see all your additional enabled skills and their full technical parameters, y
 
         const modesContent = getFileDeep('MODES.md') || getFileDeep('MODES.MD') ||
             getFileDeep('AGENTS_MODES.md') || getFileDeep('AGENTS_MODES.MD') ||
-            getFileDeep('AGENT_MODES.md') || getFileDeep('AGENT_MODES.MD');
+            getFileDeep('AGENT_MODES.md') || getFileDeep('AGENT_MODES.MD') || '';
 
-        let finalPrompt = "";
+        // ═══════ DIAGNOSTIC: Trace MODES.md resolution ═══════
+        const allKeys = Object.keys(allFiles);
+        const modesKeys = allKeys.filter(k => k.toLowerCase().includes('mode'));
+        console.log('[DIAG] MODES.md lookup:', {
+            found: !!modesContent,
+            contentLength: modesContent.length,
+            allFileCount: allKeys.length,
+            modesRelatedKeys: modesKeys,
+            first100: modesContent.substring(0, 100) || '<<NOT FOUND>>'
+        });
+        // ═══════ END DIAGNOSTIC ═══════
+
+        const getModeBlock = (content: string, tag: string) => {
+            if (!content) return '';
+            const pattern = `\\[${tag}\\]\\s*\\r?\\n([\\s\\S]*?)(?=\\n\\s*\\[\\/${tag}\\]|$)`;
+            const regex = new RegExp(pattern);
+            const match = content.match(regex);
+            // ═══════ DIAGNOSTIC ═══════
+            if (!match) {
+                // Try simpler test: does the tag even exist in the content?
+                const simpleFind = content.indexOf(`[${tag}]`);
+                console.log(`[DIAG] getModeBlock FAILED for tag "${tag}":`, {
+                    pattern,
+                    tagExistsInContent: simpleFind !== -1,
+                    tagPosition: simpleFind,
+                    surroundingChars: simpleFind !== -1 ? JSON.stringify(content.substring(simpleFind, simpleFind + tag.length + 20)) : 'N/A'
+                });
+            }
+            // ═══════ END DIAGNOSTIC ═══════
+            return match ? match[1].trim() : '';
+        };
+
+        let systemBase = "";
+        let reinforcement = "";
+        let scheduledReinforcement = "";
+
+        if (ctx.isScheduled) {
+            scheduledReinforcement = getModeBlock(modesContent, 'SCHEDULED_TASK_AUTO-PILOT');
+        }
 
         if (isAgentOrInstruction) {
             const identity = getFileDeep('IDENTITY.md') || getFileDeep('IDENTITY.MD') || '';
-            const tasksContent = getFileDeep('TASKS.md') || getFileDeep('TASKS.MD');
-            const workingMemory = `\n[CURRENT_WORK_PLAN]\n${tasksContent || 'No active tasks.'}\n[/CURRENT_WORK_PLAN]\n`;
 
-            let modePart = "";
-            if (modesContent) {
-                const match = modesContent.match(/## \[INSTRUCTION MODE.*?\]\r?\n([\s\S]*?)(?=\n##|$)/);
-                modePart = match ? match[1].trim() : modesContent.trim();
-            } else {
-                modePart = getFileDeep('AGENT_PROTOCOL.md') || getFileDeep('AGENT_PROTOCOL.MD') ||
-                    getFileDeep('COMMANDS.md') || getFileDeep('COMMANDS.MD') ||
-                    'Agent Protocol missing.';
-            }
-            finalPrompt = `${identity}\n${workingMemory}\n${modePart}`;
+            const modePart = getModeBlock(modesContent, 'INSTRUCTION_MODE_MANDATORY') || 
+                getFileDeep('AGENT_PROTOCOL.md') || getFileDeep('AGENT_PROTOCOL.MD') ||
+                getFileDeep('COMMANDS.md') || getFileDeep('COMMANDS.MD') ||
+                'Agent Protocol missing.';
+                
+            reinforcement = getModeBlock(modesContent, 'AGENT_TIPS');
+            systemBase = `${identity}\n${modePart}`;
         } else {
             const segments: string[] = [];
             ['SOUL', 'USER', 'ACTIVE_CONTEXT'].forEach(name => {
@@ -1234,27 +1267,21 @@ To see all your additional enabled skills and their full technical parameters, y
 
             let promptBase = segments.join('\n\n') || getFileDeep('IDENTITY.md') || getFileDeep('IDENTITY.MD') || 'System Identity missing.';
 
-            if (modesContent) {
-                const match = modesContent.match(/## \[CHAT MODE.*?\]\r?\n([\s\S]*?)(?=\n##|$)/);
-                if (match) {
-                    promptBase += `\n\n${match[1].trim()}`;
-                }
-            }
-            finalPrompt = promptBase;
-        }
-
-        // Add scheduled part if needed
-        if (ctx.isScheduled && modesContent) {
-            const scheduledMatch = modesContent.match(/## \[SCHEDULED TASK.*?\]\r?\n([\s\S]*?)(?=\n##|$)/);
-            if (scheduledMatch) {
-                finalPrompt += `\n\n${scheduledMatch[1].trim()}`;
-            }
+            const chatModePart = getModeBlock(modesContent, 'CHAT_MODE_CASUAL');
+            if (chatModePart) promptBase += `\n\n${chatModePart}`;
+            
+            reinforcement = getModeBlock(modesContent, 'CHAT_MODE_TIPS');
+            systemBase = promptBase;
         }
 
         const skillsBlock = isAgentOrInstruction ? buildSkillsBlock() : "";
-        let finalResult = (finalPrompt + skillsBlock + buildSkillsConfigBlock()).replace(/{{CURRENT_TIME}}/g, timeStr);
+        let finalResult = (systemBase + skillsBlock + buildSkillsConfigBlock()).replace(/{{CURRENT_TIME}}/g, timeStr);
 
-        return `[SYSTEM TIME]\n${timeStr}\n\n${finalResult}`;
+        return {
+            systemInstruction: `[SYSTEM TIME]\n${timeStr}\n\n${finalResult}`,
+            reinforcement,
+            scheduledReinforcement
+        };
     };
 
     const handleAbortAgent = useCallback(() => {
@@ -1597,7 +1624,6 @@ To see all your additional enabled skills and their full technical parameters, y
             chatHistoryLocal = currentMessages
                 .filter(m => !m.excludeFromContext)
                 .map(m => ({ role: m.role, content: m.text, timestamp: m.timestamp, attachments: m.attachments }));
-            chatHistoryLocal.push({ role: 'user', content: text, timestamp: Date.now(), attachments: userAttachments });
 
             const isAgentLoop = useAgentEngine;
             const isChatTools = effectiveMode === 'chat';
@@ -1635,7 +1661,58 @@ To see all your additional enabled skills and their full technical parameters, y
                 }
             }
 
-            let systemInstruction = constructSystemInstruction(ctx, freshState, dynamicSkills);
+            const instructionData = constructSystemInstruction(ctx, freshState, dynamicSkills);
+            let systemInstruction = instructionData.systemInstruction;
+
+            // ═══════ DIAGNOSTIC: Remove after confirming injection works ═══════
+            console.log('[DIAG] constructSystemInstruction returned:', {
+                hasSystemInstruction: !!instructionData.systemInstruction,
+                systemInstructionLength: instructionData.systemInstruction?.length || 0,
+                reinforcement: instructionData.reinforcement ? instructionData.reinforcement.substring(0, 120) : '<<EMPTY>>',
+                scheduledReinforcement: instructionData.scheduledReinforcement ? 'YES' : '<<EMPTY>>',
+                effectiveMode: ctx.getEffectiveMode(currentState.agentMode),
+                isScheduled: ctx.isScheduled
+            });
+            // ═══════ END DIAGNOSTIC ═══════
+            
+            let combinedReinforcement = [];
+            if (ctx.isScheduled && instructionData.scheduledReinforcement) {
+                combinedReinforcement.push(instructionData.scheduledReinforcement);
+            }
+            if (instructionData.reinforcement) {
+                combinedReinforcement.push(instructionData.reinforcement);
+            }
+
+            let finalUserText = text;
+            if (combinedReinforcement.length > 0) {
+                const isAgent = ctx.getEffectiveMode(currentState.agentMode) !== 'chat';
+                const header = isAgent ? 'PROTOCOL REINFORCEMENT' : 'USEFUL REMINDERS';
+                finalUserText = `[${header}]\n${combinedReinforcement.join('\n\n')}\n\n[USER MESSAGE]\n${text}`;
+                
+                // DEBUG: Log reinforcement injection for verification
+                console.log('[DEBUG] Reinforcement Injected:', {
+                    tagType: header,
+                    hasScheduledReinforcement: !!instructionData.scheduledReinforcement,
+                    hasModeReinforcement: !!instructionData.reinforcement,
+                    reinforcementSections: combinedReinforcement.length,
+                    userMessageLength: text.length,
+                    totalLength: finalUserText.length,
+                    agentMode: ctx.getEffectiveMode(currentState.agentMode),
+                    timestamp: new Date().toISOString(),
+                    preview: finalUserText.substring(0, 150) + '...'
+                });
+            }
+
+            // Append the final user message to the history, now that we have the reinforcement string
+            chatHistoryLocal.push({ role: 'user', content: finalUserText, timestamp: Date.now(), attachments: userAttachments });
+            
+            // DEBUG: Verify final message structure
+            console.log('[DEBUG] Final User Message in History:', {
+                role: 'user',
+                contentStartsWith: finalUserText.substring(0, 50),
+                timestamp: Date.now(),
+                tagsPresent: finalUserText.match(/\[SISTEMA:|\[AGENT_|\[CHAT_|\[MENSAJE DEL USUARIO\]/g) || []
+            });
 
             if (ctx.isRemote) {
                 const wsPath = currentState.config.folderPaths?.workSpace || 'No configurado';

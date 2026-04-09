@@ -113,6 +113,8 @@ export async function sendAgentMessage(
     const historicalContext = chatMessages.map(m => {
         const msg = { ...m } as any;
         // Inject timestamp ONLY for user messages for temporal reference
+        // CRITICAL FIX: Do NOT prepend timestamp if message contains system tags like [SISTEMA:
+        // This prevents corruption of Protocol Reinforcement tags injected by App.tsx
         if (msg.role === 'user' && m.timestamp) {
             const d = new Date(m.timestamp);
             const locale = config.language || 'en';
@@ -120,7 +122,16 @@ export async function sendAgentMessage(
             const day = d.toLocaleString(locale, { day: '2-digit' });
             const time = d.toLocaleString(locale, { hour: '2-digit', minute: '2-digit', hour12: false });
             const ts = `${month}/${day} ${time}`;
-            msg.content = `[${ts}] ${msg.content || ''}`;
+            const content = msg.content || '';
+            // Check if message contains system-level tags that should not be prepended
+            const hasSystemTags = content.match(/^\[SISTEMA:|^\[AGENT_|^\[CHAT_/);
+            if (hasSystemTags) {
+                // Append timestamp at the END to preserve tag structure
+                msg.content = `${content}\n[Timestamp: ${ts}]`;
+            } else {
+                // Normal case: prepend timestamp
+                msg.content = `[${ts}] ${content}`;
+            }
         }
         if (msg.role === 'assistant' && msg.tool_calls && msg.tool_calls.length > 0) {
             try {
@@ -158,7 +169,9 @@ export async function sendAgentMessage(
                 else if (parsed.message) summary += `: ${parsed.message.substring(0, 80)}...`;
                 if (isSuccess) summary += ` | Status: SUCCESS`;
                 else summary += ` | Status: ERROR (${(parsed.error || parsed.data?.error || 'Falló').substring(0, 100)})`;
-                return { role: 'user', content: `[LOG DE SISTEMA] ${summary}` };
+                // IMPROVED: Preserve tool metadata for future tool-aware processing
+                // Convert to user role for model compatibility, but keep original tool context
+                return { role: 'user', content: `[LOG DE SISTEMA] ${summary}`, tool_name: toolName, original_role: 'tool' };
             } catch { return m; }
         }
         return msg;
@@ -167,7 +180,9 @@ export async function sendAgentMessage(
     let activeContext = historicalContext;
     if (isAgentMode || isInstructionMode) {
         const filtered = historicalContext.filter(m => !m.content.startsWith('⚠️ Command Executed:'));
-        const windowSize = isInstructionMode ? 10 : 30;
+        // INCREASED CONTEXT WINDOW: Changed from 10/30 to 40/60 to preserve reinforcement injections
+        // Larger window ensures Protocol Reinforcement messages are retained longer
+        const windowSize = isInstructionMode ? 40 : 60;
         activeContext = filtered.slice(-windowSize);
     }
 
@@ -252,6 +267,19 @@ export async function sendAgentMessage(
         });
     };
 
+    // ─── EPHEMERAL AWARENESS: Marker for cleanup ───
+    const AWARENESS_MARKER = '[AGENT_STATE]';
+    const cleanAwareness = () => {
+        agentMessages = agentMessages.filter(m => !(m.role === 'user' && m.content?.startsWith(AWARENESS_MARKER)));
+    };
+
+    // ─── INITIAL AWARENESS (Turn 0 → before first model call) ───
+    // Per MODES.md A2;A3: inject the starting state so the agent knows its mission from the first turn
+    if (isAgentMode || isInstructionMode) {
+        const initialAwareness = `[AGENT_STATE]\nOriginal Mission: "${missionTrigger}"\nCurrent Turn: 1 of ${MAX_RETRIES}\n[/AGENT_STATE]\n[OPERATION_FOCUS]\nPrevious Result: Mission Start.\nNext Action: Analyze the mission and execute the most relevant action\n[/OPERATION_FOCUS]\n[CURRENT_WORK_PLAN]\nNo active tasks.\n[/CURRENT_WORK_PLAN]`;
+        agentMessages.push({ role: 'user', content: initialAwareness });
+    }
+
     // --- Main Loop ---
     try {
         while (!abortSignal.aborted) {
@@ -267,42 +295,9 @@ export async function sendAgentMessage(
             let tasksContent = '';
             let successfulCalls: ToolCall[] = [];
 
-            // System Prompt Refresh (Strict Protocol: @CORE/tasks.md)
             if (isAgentMode || isInstructionMode) {
                 const taskMatch = getSystemTasks();
                 tasksContent = taskMatch?.content || '';
-
-                
-                const taskLines = tasksContent.trim() ? tasksContent.split('\n') : [];
-                // Always show next action — guide the agent
-                let nextAction = 'Analyze the mission and execute the most relevant action';
-                if (taskLines.length > 0) {
-                    const nextTodo = taskLines.find(l => l.includes('[ ]'))?.trim();
-                    nextAction = nextTodo || 'All tasks completed — Prepare final answer';
-                }
-                const taskProgressBlock = `\nNext Action: ${nextAction}`;
-
-                const autoTaskInfo = turnAutoTasks.length > 0 ? `\n✨ AUTO-SYNC: Tasks automatically completed: ${turnAutoTasks.join(', ')}` : "";
-                const unplannedInfo = (successfulCalls.length > 0 && turnAutoTasks.length === 0 && tasksContent.includes('[ ]')) 
-                    ? "\n⚠️ NOTE: You have performed actions that do not seem to match any pending task in your plan." : "";
-
-                const awarenessBlock = `[AGENT_STATE]\nOriginal Mission: "${missionTrigger}"\nCurrent Turn: ${iterations} of ${MAX_RETRIES}\n[/AGENT_STATE]\n[OPERATION_FOCUS]\nPrevious Result: ${lastExecutionFeedback}${autoTaskInfo}${unplannedInfo}${taskProgressBlock}\n[/OPERATION_FOCUS]`;
-                const workPlanBlock = `\n[CURRENT_WORK_PLAN]\n${(tasksContent || '').trim() || 'No active tasks.'}\n[/CURRENT_WORK_PLAN]\n`;
-                let sCurrent = agentMessages[0].content;
-                const wpStart = sCurrent.indexOf("[CURRENT_WORK_PLAN]");
-                const wpEnd = sCurrent.indexOf("[/CURRENT_WORK_PLAN]");
-                if (wpStart !== -1 && wpEnd !== -1) {
-                    sCurrent = sCurrent.substring(0, wpStart).trimEnd() + "\n" + workPlanBlock + "\n" + sCurrent.substring(wpEnd + "[/CURRENT_WORK_PLAN]".length).trimStart();
-                }
-                const mStart = "[AGENT_STATE]";
-                const mEnd = "[/OPERATION_FOCUS]";
-                const si = sCurrent.indexOf(mStart);
-                const ei = sCurrent.indexOf(mEnd);
-                if (si !== -1 && ei !== -1) {
-                    agentMessages[0].content = sCurrent.substring(0, si) + awarenessBlock + sCurrent.substring(ei + mEnd.length);
-                } else {
-                    agentMessages[0].content = awarenessBlock + "\n" + sCurrent;
-                }
             }
 
             localOnStatus({
@@ -319,6 +314,19 @@ export async function sendAgentMessage(
             let nativeToolCalls: any[];
             let nativeReasoning: string | undefined;
             try {
+                // TAG VALIDATION: Ensure Protocol Reinforcement tags survive to API call
+                // This is critical for verifying the injection pipeline works end-to-end
+                const userMessages = agentMessages.filter(m => m.role === 'user');
+                if (userMessages.length > 0) {
+                    const lastUserMsg = userMessages[userMessages.length - 1].content;
+                    const hasProtocolTags = lastUserMsg.match(/\[SISTEMA: REFUERZO DE PROTOCOLO\]|\[AGENT_TIPS\]|\[CHAT_MODE_TIPS\]|\[SCHEDULED_TASK_AUTO-PILOT\]/);
+                    if (hasProtocolTags) {
+                        onStatus({
+                            phase: 'thinking',
+                            debug: `✅ Protocol Reinforcement tags validated in user message. Tags found: ${hasProtocolTags.join(', ')}`
+                        });
+                    }
+                }
                 const res = await streamModelRequest([...agentMessages], useTextExtraction, bridgedOnStatus);
                 content = res.content;
                 nativeToolCalls = res.toolCalls;
@@ -596,6 +604,33 @@ export async function sendAgentMessage(
 
             const { turnAutoTasks: autoT } = await applyBatchTaskTicking([...successfulCalls], currentFiles, currentWorkSpace, saveFileFn, (m) => log('info', m));
             turnAutoTasks = autoT;
+
+            // ─── POST-TOOL: Clean old awareness, inject fresh one (A2;A3) ───
+            // Per MODES.md: ephemeral — only the LATEST awareness exists at any time
+            if (isAgentMode || isInstructionMode) {
+                // 1. Purge the previous awareness (genuine removal from array)
+                cleanAwareness();
+
+                // 2. Re-read tasks for freshest state
+                const freshTasks = getSystemTasks();
+                const freshTasksContent = freshTasks?.content || tasksContent;
+
+                const taskLines = freshTasksContent.trim() ? freshTasksContent.split('\n') : [];
+                let nextAction = 'Analyze the mission and execute the most relevant action';
+                if (taskLines.length > 0) {
+                    const nextTodo = taskLines.find(l => l.includes('[ ]'))?.trim();
+                    nextAction = nextTodo || 'All tasks completed — Prepare final answer';
+                }
+                const taskProgressBlock = `\nNext Action: ${nextAction}`;
+                const autoTaskInfo = turnAutoTasks.length > 0 ? `\n✨ AUTO-SYNC: Tasks automatically completed: ${turnAutoTasks.join(', ')}` : '';
+                const unplannedInfo = (successfulCalls.length > 0 && turnAutoTasks.length === 0 && freshTasksContent.includes('[ ]'))
+                    ? '\n⚠️ NOTE: You have performed actions that do not seem to match any pending task in your plan.' : '';
+
+                // 3. Inject fresh awareness (model sees this on next iteration)
+                const workPlan = `[CURRENT_WORK_PLAN]\n${freshTasksContent.trim() || 'No active tasks.'}\n[/CURRENT_WORK_PLAN]`;
+                const awarenessBlock = `[AGENT_STATE]\nOriginal Mission: "${missionTrigger}"\nCurrent Turn: ${iterations} of ${MAX_RETRIES}\n[/AGENT_STATE]\n[OPERATION_FOCUS]\nPrevious Result: ${lastExecutionFeedback}${autoTaskInfo}${unplannedInfo}${taskProgressBlock}\n[/OPERATION_FOCUS]\n${workPlan}`;
+                agentMessages.push({ role: 'user', content: awarenessBlock });
+            }
         }
     } catch (err) {
         hasFatalError = true;
@@ -606,6 +641,8 @@ export async function sendAgentMessage(
         throw err;
     } finally {
         if (!hasFatalError) onStatus({ phase: 'idle', elapsedMs: Date.now() - startTime });
+        // ─── FINAL SWEEP: Remove all ephemeral awareness from saved history ───
+        cleanAwareness();
         if (onFinalRawHistory) onFinalRawHistory([...agentMessages]);
     }
 }

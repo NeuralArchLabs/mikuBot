@@ -39,6 +39,13 @@ export const toHtml = (md: string): string => {
         if (signContent.includes('≈') || signContent.includes('∫') || signContent.includes('~')) {
             const id = `__BLOCK_${pieces.length}__`;
             let styledInner = signContent.trim();
+
+            // TIER 2: Strip inline backticks/quotes wrapping individual tokens inside the signature.
+            // Handles: `🌸`, `≈̼^.┬.̼^≈‿⟆`, "token", 'token' — removes the wrappers, keeps the content.
+            // SAFE: Only strips matched pairs of backticks/quotes immediately around a token (no spaces inside pair).
+            styledInner = styledInner.replace(/`([^`\n]+?)`/g, '$1');   // `token` → token
+            styledInner = styledInner.replace(/"([^"\n]+?)"/g, '$1');   // "token" → token
+            styledInner = styledInner.replace(/'([^'\n]+?)'/g, '$1');   // 'token' → token
             // Multi-tone typography logic
             styledInner = styledInner.replace(/([≈_∫~⟆\u033c.]+)/g, '<span class="text-cyan-300 drop-shadow-[0_0_5px_rgba(34,211,238,0.8)] font-bold">$1</span>');
             styledInner = styledInner.replace(/([\^‿])/g, '<span class="text-blue-400">$1</span>');
@@ -48,7 +55,10 @@ export const toHtml = (md: string): string => {
             // Matches modern multi-codepoint emojis securely using Unicode properties
             styledInner = styledInner.replace(/(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu, (emojiMatch) => {
                 const animClass = getEmojiAnimationClass(emojiMatch);
-                return `<span class="${animClass}">${emojiMatch}</span>`;
+                // Strip existing variation selectors and force Variation Selector-16 (color emoji)
+                const forcedEmoji = emojiMatch.replace(/[\uFE0E\uFE0F]/g, '') + '\uFE0F';
+                // Force a color-emoji specific font stack to prevent OS from rendering text variants
+                return `<span class="${animClass}" style="font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Segoe UI Symbol', emoji;">${forcedEmoji}</span>`;
             });
             
             pieces.push(`<div class="signature-wrapper mb-8 mt-4 flex items-center">`
@@ -58,7 +68,7 @@ export const toHtml = (md: string): string => {
                 + `<span class="relative z-10 flex items-center">`
                 + `<span class="text-[18px] text-indigo-400 opacity-80">{{</span>`
                 // Directional clip-path replaces overflow-hidden to allow vertical glow bleed while clipping horizontal bounds for the spread animation
-                + `<span class="inline-flex items-center justify-center animate-sig-bracket-spread whitespace-nowrap" style="clip-path: inset(-25px 0);">`
+                + `<span class="inline-flex items-center justify-center animate-sig-bracket-spread whitespace-nowrap" style="clip-path: inset(-25px -20px);">`
                 + `<span class="text-[14px] text-indigo-200 uppercase animate-sig-text-glow px-2">${styledInner}</span>`
                 + `</span>`
                 + `<span class="text-[18px] text-indigo-400 opacity-80">}}</span>`
@@ -68,7 +78,64 @@ export const toHtml = (md: string): string => {
         return match;
     });
 
-    // 0. PRE-EXTRACTION: Protect math and code blocks first
+    // 0b. SIGNATURE SHIELD — TIER 3: Core Pattern Detector
+    // Catches the inner DNA pattern ≈̼^.┬.̼^≈‿⟆ even without {{ }} wrapper.
+    // Handles: backtick-wrapped, quote-wrapped, emoji-preceded/followed, broken outer brackets.
+    // SAFE: The pattern is unique enough (Unicode combining chars + box-drawing) to never
+    //       false-positive on code, math, tables, or any other markdown construct.
+    html = html.replace(
+        // Match optional leading junk (backticks, quotes, `{{`) + optional emojis
+        // + the core pattern + optional emojis + optional trailing junk (`}}`, quotes, backticks)
+        /[`"']*(?:\{\{)?\s*[`"']*\s*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E)*)\s*[`"']*\s*(≈̼\^\.┬\.̼\^≈‿⟆)\s*[`"']*\s*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E)*)\s*[`"']*\s*(?:\}\})?[`"']*/gu,
+        (fullMatch, leadEmojis, core, trailEmojis) => {
+            // Safety: only act if the core unicode pattern is genuinely present
+            if (!core || !core.includes('┬')) return fullMatch;
+
+            // Already handled by Tier 1 (full {{ }}) → skip to avoid double render
+            if (fullMatch.includes('__BLOCK_')) return fullMatch;
+
+            // Normalize emojis — strip variation selectors for clean detection
+            const normalizeEmoji = (s: string) => s.replace(/[\uFE0E\uFE0F]/g, '').trim();
+            let lead = normalizeEmoji(leadEmojis);
+            let trail = normalizeEmoji(trailEmojis);
+
+            // Fill missing emojis with generics
+            const DEFAULT_LEAD = '✨';
+            const DEFAULT_TRAIL = '🌸';
+            if (!lead) lead = DEFAULT_LEAD;
+            if (!trail) trail = DEFAULT_TRAIL;
+
+            // Build a canonical signature string to pass through the Tier 1 render path
+            const canonical = `${lead} ${core} ${trail}`;
+
+            // Render same pipeline as Tier 1
+            let styledInner = canonical;
+            styledInner = styledInner.replace(/([≈_∫~⟆\u033c.]+)/g, '<span class="text-cyan-300 drop-shadow-[0_0_5px_rgba(34,211,238,0.8)] font-bold">$1</span>');
+            styledInner = styledInner.replace(/([\^‿])/g, '<span class="text-blue-400">$1</span>');
+            styledInner = styledInner.replace(/(┬)/g, '<span class="text-blue-400">$1</span>');
+            styledInner = styledInner.replace(/(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu, (emojiMatch) => {
+                const animClass = getEmojiAnimationClass(emojiMatch);
+                const forcedEmoji = emojiMatch.replace(/[\uFE0E\uFE0F]/g, '') + '\uFE0F';
+                return `<span class="${animClass}" style="font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Segoe UI Symbol', emoji;">${forcedEmoji}</span>`;
+            });
+
+            const id = `__BLOCK_${pieces.length}__`;
+            pieces.push(`<div class="signature-wrapper mb-8 mt-4 flex items-center">`
+                + `<span class="inline-flex items-center h-9 font-mono font-black select-none overflow-visible relative `
+                + `animate-sig-pop">`
+                + `<div class="animate-sig-bg-walk mask-edge-fade"></div>`
+                + `<span class="relative z-10 flex items-center">`
+                + `<span class="text-[18px] text-indigo-400 opacity-80">{{</span>`
+                + `<span class="inline-flex items-center justify-center animate-sig-bracket-spread whitespace-nowrap" style="clip-path: inset(-25px -20px);">`
+                + `<span class="text-[14px] text-indigo-200 uppercase animate-sig-text-glow px-2">${styledInner}</span>`
+                + `</span>`
+                + `<span class="text-[18px] text-indigo-400 opacity-80">}}</span>`
+                + `</span></span></div>`);
+            return id;
+        }
+    );
+
+
     
     // 0. PRE-EXTRACTION: Protect inline and fenced code blocks
     // Multi-fence support (3+ backticks or tildes) for nested code blocks

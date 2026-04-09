@@ -608,7 +608,26 @@ export const ChatArea = ({
                                         )}
                                     </div>
                                     <div className="text-slate-400 leading-relaxed whitespace-pre-wrap break-all border-l-2 border-white/10 pl-4">
-                                        {m.content || (m.role === 'tool' && m.error ? m.error : t('chat.labels.empty_body'))}
+                                        {(m.thought || m.reasoning_content || m.reasoning) && (
+                                            <div className="mb-3 p-3 bg-fuchsia-500/5 rounded border border-fuchsia-500/20 text-fuchsia-300/80 italic text-[10px]">
+                                                <strong>[{t('chat.labels.active_reasoning')?.toUpperCase() || 'ACTIVE REASONING'}]</strong><br/>
+                                                {m.thought || m.reasoning_content || m.reasoning}
+                                            </div>
+                                        )}
+                                        {Array.isArray(m.content) 
+                                            ? m.content.map((c: any, ci: number) => (
+                                                <div key={ci} className="mb-2">
+                                                    {c.type === 'text' && c.text}
+                                                    {c.type === 'thinking' && (
+                                                        <div className="mb-2 p-3 bg-fuchsia-500/5 rounded border border-fuchsia-500/20 text-fuchsia-300/80 italic text-[10px]">
+                                                            <strong>[{t('chat.labels.active_reasoning')?.toUpperCase() || 'ACTIVE REASONING'}]</strong><br/>
+                                                            {c.thinking}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))
+                                            : (m.content || (m.role === 'tool' && m.error ? m.error : t('chat.labels.empty_body')))
+                                        }
                                         {m.tool_calls && (
                                             <div className="mt-2 p-2 bg-blue-500/10 rounded border border-blue-500/20 text-blue-300">
                                                 <strong>{t('chat.labels.tool_calls')}:</strong> {JSON.stringify(m.tool_calls, null, 2)}
@@ -781,7 +800,7 @@ export const ChatArea = ({
                                                                         const forceCollapse = isOld || (hasTools && !debugMode) || block.type === 'thought';
                                                                         return <CollapsibleTextBlock content={block.content} forceCollapse={forceCollapse} isThought={block.type === 'thought'} isStreaming={msg.isStreaming} />;
                                                                     })() : block.type === 'tool_call' ? (
-                                                                        <ToolBlock block={block} isOld={isOld} isStreaming={msg.isStreaming} />
+                                                                        <ToolBlock block={block} isOld={isOld} isStreaming={msg.isStreaming} invertRotation={idx % 2 !== 0} />
                                                                     ) : null}
                                                                 </div>
                                                             );

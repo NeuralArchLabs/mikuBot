@@ -7,11 +7,10 @@
    Generics & Fallbacks
    ========================================= */
 @keyframes emoji-breathe {
-    0%, 100% { transform: scale(1); opacity: 0.8; filter: brightness(1); }
-    40% { transform: scale(1.03); opacity: 1; filter: brightness(1.1); }
-    70% { transform: scale(0.98); opacity: 0.9; }
+    0%, 100% { transform: scale(1) translateY(0); opacity: 0.85; filter: brightness(1) drop-shadow(0 0 0 transparent); }
+    50% { transform: scale(1.05) translateY(-1px); opacity: 1; filter: brightness(1.15) drop-shadow(0 2px 4px rgba(255,255,255,0.15)); }
 }
-.emoji-anim-breathe { animation: emoji-breathe 4s ease-in-out infinite; display: inline-block; }
+.emoji-anim-breathe { animation: emoji-breathe 3s ease-in-out infinite; display: inline-block; }
 
 @keyframes emoji-breathe-subtle {
     0%, 100% { transform: translateY(0); filter: brightness(1); }
@@ -476,10 +475,10 @@
 .emoji-anim-swing { animation: emoji-swing 4s ease-in-out infinite; display: inline-block; transform-origin: top center; }
 
 @keyframes emoji-radiate {
-    0%, 100% { filter: drop-shadow(0 0 5px orange) brightness(1); }
-    50% { filter: drop-shadow(0 0 15px yellow) brightness(1.2); }
+    0%, 100% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 5px orange) brightness(1); }
+    50% { transform: scale(1.15) rotate(15deg); filter: drop-shadow(0 0 15px yellow) brightness(1.3); }
 }
-.emoji-anim-radiate { animation: emoji-radiate 3s infinite; display: inline-block; }
+.emoji-anim-radiate { animation: emoji-radiate 4s ease-in-out infinite; display: inline-block; transform-origin: center center; }
 
 @keyframes emoji-rain {
     0% { transform: translateY(0); filter: drop-shadow(0 0 0 transparent); }

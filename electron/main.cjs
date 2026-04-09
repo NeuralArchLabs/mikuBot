@@ -1626,11 +1626,13 @@ ipcMain.handle('run-search', async (event, { query }) => {
             port: 8000,
             path: '/api/v1/search',
             method: 'POST',
+            agent: false,
             headers: {
                 'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(data)
+                'Content-Length': Buffer.byteLength(data),
+                'Connection': 'close'
             },
-            timeout: 10000
+            timeout: 30000
         };
 
         const req = http.request(options, (res) => {
@@ -1676,11 +1678,13 @@ ipcMain.handle('run-extract', async (event, { url }) => {
             port: 8000,
             path: '/api/v1/extract',
             method: 'POST',
+            agent: false,
             headers: {
                 'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(data)
+                'Content-Length': Buffer.byteLength(data),
+                'Connection': 'close'
             },
-            timeout: 15000
+            timeout: 30000
         };
 
         const req = http.request(options, (res) => {

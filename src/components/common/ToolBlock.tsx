@@ -6,9 +6,10 @@ import { Icon as IconComp } from './Common';
 interface ToolBlockProps {
     block: MessageBlock;
     isOld?: boolean;
+    invertRotation?: boolean;
 }
 
-const AtomLoader = ({ className }: { className?: string }) => (
+const AtomLoader = ({ className, invertRotation }: { className?: string, invertRotation?: boolean }) => (
     <svg 
         viewBox="0 0 24 24" 
         className={`${className} atom-loader-svg`} 
@@ -16,28 +17,43 @@ const AtomLoader = ({ className }: { className?: string }) => (
         stroke="currentColor" 
         strokeWidth="1.5"
     >
+        <defs>
+            <path id="orbit1" d="M 22 12 A 10 4 0 1 1 2 12 A 10 4 0 1 1 22 12" />
+            <path id="orbit2" d="M 2 12 A 10 4 0 1 1 22 12 A 10 4 0 1 1 2 12" />
+        </defs>
+
         {/* Nucleus with glow */}
         <circle cx="12" cy="12" r="2.5" fill="currentColor" className="animate-atom-nucleus" />
         
-        {/* Orbit 1 - Clockwise */}
-        <g className="animate-atom-orbit-cw text-blue-400/30 atom-orbit-group">
-            <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(45 12 12)" stroke="currentColor" strokeWidth="0.5" />
-            <circle cx="22" cy="12" r="1.5" fill="currentColor" className="text-blue-400" transform="rotate(45 12 12)">
-                <animate attributeName="r" values="1.2;1.8;1.2" dur="2s" repeatCount="indefinite" />
-            </circle>
+        {/* Orbit 1 - Clockwise Track, Path Traversal */}
+        <g className={`animate-atom-orbit-${invertRotation ? 'ccw' : 'cw'} text-blue-400/30 atom-orbit-group`}>
+            <g transform="rotate(45 12 12)">
+                <ellipse cx="12" cy="12" rx="10" ry="4" stroke="currentColor" strokeWidth="0.5" />
+                <circle r="1.5" fill="currentColor" className="text-blue-400 drop-shadow-[0_0_3px_currentColor]">
+                    <animateMotion dur="1s" repeatCount="indefinite">
+                        <mpath href="#orbit1" />
+                    </animateMotion>
+                    <animate attributeName="r" values="1.5;0.7;1.5" dur="2s" repeatCount="indefinite" />
+                </circle>
+            </g>
         </g>
         
-        {/* Orbit 2 - Counter-Clockwise */}
-        <g className="animate-atom-orbit-ccw text-purple-400/30 atom-orbit-group">
-            <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(-45 12 12)" stroke="currentColor" strokeWidth="0.5" />
-            <circle cx="2" cy="12" r="1.5" fill="currentColor" className="text-purple-400" transform="rotate(-45 12 12)">
-                <animate attributeName="r" values="1.8;1.2;1.8" dur="1.5s" repeatCount="indefinite" />
-            </circle>
+        {/* Orbit 2 - Counter-Clockwise Track, Path Traversal */}
+        <g className={`animate-atom-orbit-${invertRotation ? 'cw' : 'ccw'} text-purple-400/30 atom-orbit-group`}>
+            <g transform="rotate(-45 12 12)">
+                <ellipse cx="12" cy="12" rx="10" ry="4" stroke="currentColor" strokeWidth="0.5" />
+                <circle r="1.5" fill="currentColor" className="text-purple-400 drop-shadow-[0_0_3px_currentColor]">
+                    <animateMotion dur="0.8s" repeatCount="indefinite">
+                        <mpath href="#orbit2" />
+                    </animateMotion>
+                    <animate attributeName="r" values="0.7;1.5;0.7" dur="1.5s" repeatCount="indefinite" />
+                </circle>
+            </g>
         </g>
     </svg>
 );
 
-export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = ({ block, isOld, isStreaming }) => {
+export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = ({ block, isOld, isStreaming, invertRotation }) => {
     const { t, i18n } = useTranslation();
     const [isExpanded, setIsExpanded] = useState(false);
     const { toolCall, result } = block;
@@ -207,7 +223,7 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
                         <div className={`relative w-4 h-4 flex items-center justify-center rounded-full transition-all duration-700 ${showTransformation ? 'tool-completion-glow' : ''}`}>
                             {/* Loading Atom (Fades out when result arrives) */}
                             <div className={`absolute inset-0 flex items-center justify-center transition-all duration-700 cubic-bezier(0.34, 1.56, 0.64, 1) ${!isPlaceholder ? 'opacity-0 scale-0 rotate-180' : 'opacity-100 scale-100 tool-icon-pending'}`}>
-                                <AtomLoader className="w-full h-full" />
+                                <AtomLoader className="w-5 h-5 flex-shrink-0 text-amber-500" invertRotation={invertRotation} />
                             </div>
                             
                             {/* Result Icon (Morphs in when result arrives) */}

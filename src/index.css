@@ -880,7 +880,7 @@
 
 @keyframes atom-nucleus-pulse-kf {
   0%, 100% { transform: scale(1); opacity: 0.8; filter: drop-shadow(0 0 2px currentColor); }
-  50% { transform: scale(1.2); opacity: 1; filter: drop-shadow(0 0 8px currentColor) brightness(1.5); }
+  50% { transform: scale(1.5); opacity: 1; filter: drop-shadow(0 0 8px currentColor) brightness(1.5); }
 }
 
 .animate-atom-orbit-cw {
@@ -893,6 +893,7 @@
 
 .animate-atom-nucleus {
   animation: atom-nucleus-pulse-kf 1s ease-in-out infinite;
+  transform-origin: center !important;
 }
 
 .atom-loader-svg {
