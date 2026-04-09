@@ -84,7 +84,7 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
     // ✨ LIVE COMPLETION LANDING: Only trigger pulse/glow when it actually finishes live
     // This is now unblocked from isStreaming to provide immediate feedback
     useEffect(() => {
-        if (!result || hasReplayedRef.current) return;
+        if ((!result && block.status !== 'denied') || hasReplayedRef.current) return;
 
         if (isVisible || wasVisibleDuringLiveRef.current) {
             hasReplayedRef.current = true;
@@ -94,7 +94,7 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
             // If it finished off-screen, just mark as played without the fanfare
             hasReplayedRef.current = true;
         }
-    }, [result]);
+    }, [result, block.status, isVisible]);
 
     // Auto-collapse old tools
     useEffect(() => {
@@ -123,14 +123,15 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
                        result?.data?.success === false || 
                        (result?.data?.exitCode !== undefined && result?.data?.exitCode !== 0) ||
                        (result?.data?.stderr && !result?.data?.stdout && result?.data?.exitCode !== 0));
-    const isPending = !result;
+    const isDenied = block.status === 'denied';
+    const isPending = !result && isStreaming && !isDenied;
+    const isAborted = !result && !isStreaming && !isOld && !isDenied;
     
     // 🚧 PLACEHOLDER LOGIC: Gear ONLY shows while the tool is pending (execution in progress)
-    // We remove isStreaming so it transforms to "Ready" immediately upon result arrival
     const isPlaceholder = isPending;
     
     // ✨ SHOW RESULT LANDING: True when we have a result and we want to show the 'transformation'
-    const showTransformation = !!result && isReplaying;
+    const showTransformation = (!!result || isDenied) && isReplaying;
 
     // ✨ ENTRANCE ANIMATION: Smooth entry for live blocks only
     const entranceClass = (isNewRef.current && (isStreaming || isPending)) ? 'animate-in fade-in zoom-in slide-in-from-top-2 duration-700' : '';
@@ -146,6 +147,8 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
     };
 
     const getFriendlySummary = () => {
+        if (isDenied) return t('common.denied_execution');
+        if (isAborted) return t('common.aborted_execution');
         if (!result || isReplaying) return t('common.processing');
         const data = result.data || {};
         const args = toolCall.function.arguments || {};
@@ -227,10 +230,10 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
                             </div>
                             
                             {/* Result Icon (Morphs in when result arrives) */}
-                            <div className={`absolute inset-0 flex items-center justify-center transition-all duration-700 cubic-bezier(0.34, 1.56, 0.64, 1) ${isPlaceholder ? 'opacity-0 scale-0 -rotate-180' : (isSuccess ? 'tool-icon-success' : hasError ? 'tool-icon-error' : 'tool-icon-pending')}`}>
+                            <div className={`absolute inset-0 flex items-center justify-center transition-all duration-700 cubic-bezier(0.34, 1.56, 0.64, 1) ${isPlaceholder ? 'opacity-0 scale-0 -rotate-180' : ((isSuccess && !isAborted && !isDenied) ? 'tool-icon-success' : (hasError || isAborted || isDenied) ? 'tool-icon-error' : 'tool-icon-pending')}`}>
                                 <IconComp 
-                                    name={isSuccess ? 'check-circle' : hasError ? 'exclamation-triangle' : 'cog'} 
-                                    className={`icon-center-rig fa-fw ${showTransformation ? 'animate-tool-pulse' : ''} ${!isPlaceholder && !isOld ? 'animate-tool-morph' : ''}`} 
+                                    name={(isSuccess && !isAborted && !isDenied) ? 'check-circle' : isDenied ? 'ban' : isAborted ? 'stop-circle' : hasError ? 'exclamation-triangle' : 'cog'} 
+                                    className={`icon-center-rig fa-fw ${showTransformation ? 'animate-tool-pulse' : ''} ${!isPlaceholder && !isOld ? 'animate-tool-morph' : ''} ${isAborted ? 'text-orange-500/50' : isDenied ? 'text-rose-500/50' : ''}`} 
                                 />
                             </div>
                         </div>
@@ -243,7 +246,7 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
                     {!isExpanded && (
                         <>
                             <div className="w-px h-3 bg-white/10 flex-shrink-0" />
-                            <span className={`text-[11px] truncate flex-1 font-mono tracking-tight ${isPlaceholder ? 'text-slate-500 italic animate-pulse' : (isSuccess ? 'text-emerald-400/80' : hasError ? 'text-rose-400/80' : 'text-slate-500 italic')}`}>
+                            <span className={`text-[11px] truncate flex-1 font-mono tracking-tight ${isPlaceholder ? 'text-slate-500 italic animate-pulse' : (isAborted || isDenied) ? 'text-orange-500/40 italic' : (isSuccess ? 'text-emerald-400/80' : hasError ? 'text-rose-400/80' : 'text-slate-500 italic')}`}>
                                 {truncatedText}
                             </span>
                         </>

@@ -8,23 +8,19 @@ import { ToolBlock } from '../common/ToolBlock';
 import { CollapsibleMessage } from '../common/CollapsibleMessage';
 import { CollapsibleTextBlock } from '../common/CollapsibleTextBlock';
 import { TypewriterIdle } from '../common/TypewriterIdle';
+import { useAgentStore, selectInput, selectMessages, selectAgentStatus, selectIsLoading, selectPendingToolApproval } from '../../stores/useAgentStore';
+import { persistence } from '../../services';
 
 interface ChatAreaProps {
     sessionId: string;
-    messages: Message[];
-    isLoading: boolean;
-    input: string;
-    setInput: (s: string) => void;
     onSend: (attachments: Attachment[]) => void;
     onSendAsInstruction: (attachments: Attachment[]) => void;
     onAbort: () => void;
     onReprompt: () => void;
     onRewind: (index: number) => void;
     scrollRef: React.RefObject<HTMLDivElement | null>;
-    agentStatus: AgentStatus;
-    pendingApproval: PendingToolApproval | null;
-    onApproveToolCall: () => void;
-    onRejectToolCall: () => void;
+    onApproveToolCall: (feedback?: string) => void;
+    onRejectToolCall: (feedback?: string) => void;
     agentMode: AgentMode;
     onAgentModeChange: (mode: AgentMode) => void;
     safeMode: boolean;
@@ -40,21 +36,221 @@ interface ChatAreaProps {
     voskModelPath?: string;
     userName?: string;
     assistantAlias?: string;
+    sessions?: any[];
+    onSessionsUpdate?: (sessions: any[] | ((prev: any[]) => any[])) => void;
 }
+
+const ChatInputControls = React.memo(({
+    isRecording, partialText, agentMode, isLoading, agentIteration, agentPhase, agentIsInstructionMode, attachments, t,
+    inputRef, fileInputRef,
+    toggleRecording, onAbort, handleSend, handleSendAsInstruction, onReprompt, handleFileChange, handleRemoveAttachment, boltGlow, isSent, safeMode, approvalMode, debugMode, onDebugModeChange
+}: any) => {
+    // Character-level isolation: Use local state for typing to avoid global store overhead on every keystroke.
+    const globalInput = useAgentStore(selectInput);
+    const setGlobalInput = useAgentStore(state => state.setInput);
+    const [localInput, setLocalInput] = useState(globalInput);
+
+    // Sync local input with store when global input changes (e.g. session swap, clear)
+    useEffect(() => {
+        setLocalInput(globalInput);
+    }, [globalInput]);
+
+    // Debounced sync to store for "Draft" persistence
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (localInput !== globalInput) {
+                setGlobalInput(localInput);
+            }
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [localInput, globalInput, setGlobalInput]);
+
+    const handleSendWithSync = () => {
+        setGlobalInput(localInput); // Ensure store is up to date before sending
+        setTimeout(handleSend, 0);
+    };
+
+    const handleSendAsInstructionWithSync = () => {
+        setGlobalInput(localInput);
+        setTimeout(handleSendAsInstruction, 0);
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            if (e.altKey) {
+                e.preventDefault();
+                if (localInput.trim() || attachments.length > 0) {
+                    handleSendAsInstructionWithSync();
+                }
+            } else if (!e.shiftKey) {
+                e.preventDefault();
+
+                const hasContent = localInput.trim() || attachments.length > 0;
+                const canReprompt = !isLoading && agentIteration > 0 && agentPhase !== 'idle';
+
+                if (!hasContent && canReprompt) {
+                    onReprompt();
+                } else if (hasContent) {
+                    handleSendWithSync();
+                }
+            }
+        }
+    };
+
+    return (
+        <div className="relative max-w-5xl mx-auto flex flex-col gap-2">
+            <div className="flex items-center">
+                {/* Attachments Preview (Left) */}
+                {attachments.length > 0 && (
+                    <div className="flex gap-2 pb-1">
+                        {attachments.map((att: any) => (
+                            <div key={att.id} className="relative group bg-slate-800 border border-slate-700 rounded-lg p-1 flex items-center justify-center w-10 h-10 shadow-sm">
+                                {att.type.startsWith('image/') ? (
+                                    <img src={att.data} alt={att.name} className="w-full h-full object-cover rounded-md" />
+                                ) : (
+                                    <Icon name="file-alt" className="text-slate-400 text-[16px]" />
+                                )}
+                                <button
+                                    onClick={() => handleRemoveAttachment(att.id)}
+                                    className="absolute -top-1.5 -right-1.5 bg-red-500/90 hover:bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center w-4 h-4 shadow-sm"
+                                    title={t('chat.actions.remove_attachment')}
+                                    aria-label={t('chat.actions.remove_attachment')}
+                                >
+                                    <Icon name="times" className="text-[8px]" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* File Input (Hidden) & Trigger (Left of textarea) */}
+                <div className={`mode-transition-wrap mx-1 ${!isLoading ? 'visible-mode' : 'hidden-mode'}`}>
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                        className="hidden"
+                        multiple
+                        accept="image/png, image/jpeg, image/webp"
+                        title={t('chat.actions.select_files')}
+                    />
+                    <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="h-[50px] w-[50px] bg-slate-800/40 border border-transparent hover:text-slate-200 hover:bg-slate-700/60 hover:border-slate-700/50 rounded-xl flex items-center justify-center transition-all duration-300 shadow-lg shadow-black/20 text-slate-400"
+                        title={t('chat.actions.attach')}
+                    >
+                        <Icon name="plus" className="text-lg" />
+                    </button>
+                </div>
+
+                <div className="relative flex-1 group/input flex items-center mx-1">
+                    <textarea
+                        ref={inputRef}
+                        value={localInput}
+                        onChange={(e) => setLocalInput(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        placeholder={isRecording ? (partialText || t('chat.placeholders.recording')) : (agentMode === 'agent' ? t('chat.placeholders.agent') : t('chat.placeholders.idle'))}
+                        className={`w-full bg-slate-900/60 backdrop-blur-sm border rounded-xl py-3.5 px-4 text-slate-200 font-mono text-sm placeholder-slate-600 focus:ring-1 outline-none resize-none min-h-[50px] transition-all duration-300 ${isRecording
+                            ? 'border-emerald-500/50 ring-1 ring-emerald-500/20 pr-32'
+                            : 'border-slate-800/60 focus:ring-cyan-500/30 focus:border-cyan-500/40 pr-16'
+                            }`}
+                        rows={1}
+                    />
+                    {isRecording && (
+                        <div className="absolute right-12 flex items-center gap-2 px-2.5 py-1 bg-slate-950/80 backdrop-blur-md rounded-full border border-emerald-500/30 animate-pulse pointer-events-none shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                            <span className="text-[8px] font-black text-emerald-400 uppercase tracking-[0.15em]">{t('chat.placeholders.live_rec')}</span>
+                        </div>
+                    )}
+
+                    {/* Voice Button Overlay (Right side of textarea) */}
+                    <button
+                        onClick={toggleRecording}
+                        className={`absolute right-2 w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300 ${isRecording
+                            ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/40'
+                            : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                            }`}
+                        title={isRecording ? t('chat.actions.stop_record') : t('chat.actions.record')}
+                    >
+                        <Icon name={isRecording ? "stop" : "microphone"} className={isRecording ? 'text-[10px]' : 'text-lg'} />
+                    </button>
+                </div>
+
+                {/* Abort Group (Active when Loading) */}
+                <div className={`mode-transition-wrap mx-1 ${isLoading ? 'visible-mode action-enter' : 'hidden-mode action-exit'}`}>
+                    <button
+                        onClick={onAbort}
+                        className={`h-[50px] px-4 btn-abort-premium text-white rounded-xl flex items-center justify-center min-w-[50px] shadow-lg shadow-red-900/20 ${agentIsInstructionMode ? 'btn-halo-abort' : ''}`}
+                        title={t('chat.actions.abort')}
+                    >
+                        <span key={isLoading ? 'loading' : 'idle'} className="inline-block">
+                            <Icon name="stop" className={isLoading ? 'icon-stop-spin' : 'icon-spin-reverse'} />
+                        </span>
+                    </button>
+                </div>
+
+                {/* Send/Instruction Group (Active when Idle) */}
+                <div className={`flex items-center ${agentMode !== 'agent' ? 'gap-2' : ''} mode-transition-wrap mx-1 ${!isLoading ? 'visible-mode action-enter' : 'hidden-mode action-exit'}`}>
+                    <button
+                        onClick={handleSendWithSync}
+                        disabled={!localInput.trim() && attachments.length === 0}
+                        className={`h-[50px] px-4 rounded-xl flex items-center justify-center min-w-[50px] disabled:opacity-30 disabled:cursor-not-allowed btn-send-morph shadow-lg ${agentMode === 'agent' ? 'is-agent shadow-purple-900/20' : 'is-chat shadow-blue-900/20'}`}
+                        title={t('chat.actions.send')}
+                    >
+                        {/* Background Clipping Layer */}
+                        <div className="btn-send-morph-bg">
+                            {/* Base Layer: Standard Chat Color (Blue) */}
+                            <div className="btn-send-morph-blue" />
+
+                            {/* Ripple Layer: Instruction Color (Purple) - Grows or Shrinks */}
+                            <div
+                                key={agentMode}
+                                className="btn-send-morph-purple"
+                            />
+                        </div>
+
+                        {/* Rainbow Aura (Expanding wave) */}
+                        <div
+                            key={`aura-${agentMode}`}
+                            className={`btn-morph-aura ${agentMode !== 'agent' ? 'reverse' : ''}`}
+                        />
+
+                        <Icon name="arrow-right" className={`text-lg ${isSent ? 'send-icon-fly' : ''} ${agentMode === 'agent' ? 'rainbow-icon' : ''}`} />
+                    </button>
+
+                    <div className={`transition-all duration-500 ${agentMode !== 'agent' ? 'w-[50px] opacity-100' : 'w-0 opacity-0 overflow-hidden'} mode-transition-wrap ${agentMode !== 'agent' ? 'visible-mode instruction-enter' : 'hidden-mode instruction-exit'}`}>
+                        <button
+                            onClick={handleSendAsInstructionWithSync}
+                            disabled={!localInput.trim() && attachments.length === 0}
+                            className={`h-[50px] px-4 w-full btn-instruction-premium text-white rounded-xl flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed text-[10px] font-bold shadow-lg shadow-purple-900/20 ${boltGlow ? 'pulse-glow' : ''}`}
+                            title={t('chat.actions.send_instruction_desc')}
+                        >
+                            <Icon name="bolt" className={`text-lg ${boltGlow ? 'instruction-bolt-glow' : (isSent ? 'icon-pulse' : '')}`} />
+                        </button>
+                    </div>
+                </div>
+
+                {!isLoading && agentIteration > 0 && agentPhase !== 'idle' && (
+                    <button
+                        onClick={onReprompt}
+                        className="h-[50px] px-4 btn-continue-premium text-white rounded-xl flex items-center justify-center min-w-[50px] shadow-lg shadow-orange-900/20 mx-1"
+                        title={t('chat.actions.resume_task')}
+                    >
+                        <Icon name="redo" className="icon-spin-once text-lg" />
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+});
 
 export const ChatArea = ({
     sessionId,
-    messages,
-    isLoading,
-    input,
-    setInput,
     onSend,
     onSendAsInstruction,
     onAbort,
     onReprompt,
     scrollRef,
-    agentStatus,
-    pendingApproval,
     onApproveToolCall,
     onRejectToolCall,
     agentMode,
@@ -72,9 +268,68 @@ export const ChatArea = ({
     askAlert,
     voskModelPath,
     userName,
-    assistantAlias
+    assistantAlias,
+    sessions,
+    onSessionsUpdate
 }: ChatAreaProps) => {
     const { t, i18n } = useTranslation();
+
+    // High-frequency UI isolation: Subscribing locally to the store nodes.
+    const messages = useAgentStore(selectMessages);
+    const agentStatus = useAgentStore(selectAgentStatus);
+    const isLoading = useAgentStore(selectIsLoading);
+    const pendingApproval = useAgentStore(selectPendingToolApproval);
+
+    // [Performance Fix] Scroll Logic moved here from App.tsx to keep App from re-rendering on every streaming letter.
+    useEffect(() => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+    }, [messages, isLoading, pendingApproval, agentStatus.phase, scrollRef]);
+
+    // [Performance Fix] Session Auto-saver moved here from App.tsx.
+    useEffect(() => {
+        if (sessionId && sessions && onSessionsUpdate) {
+            const timer = setTimeout(() => {
+                const currentSession = sessions.find(s => s.id === sessionId);
+                const firstRealMsg = messages.find(m => !m.excludeFromContext && m.role === 'user');
+                const candidateContent = firstRealMsg?.text?.slice(0, 30);
+
+                const isDefaultTitle = !currentSession?.title ||
+                    currentSession.title === t('common.new_neural_branch') ||
+                    currentSession.title === t('common.active_session') ||
+                    (candidateContent && currentSession.title === candidateContent);
+
+                const title = isDefaultTitle
+                    ? (candidateContent || currentSession?.title || t('common.new_neural_branch'))
+                    : (currentSession?.title || t('common.new_neural_branch'));
+
+                persistence.saveSession({
+                    id: sessionId,
+                    title,
+                    messages,
+                    timestamp: Date.now(),
+                    agentMode,
+                    safeMode,
+                    approvalMode,
+                    debugMode,
+                    draft: useAgentStore.getState().input
+                });
+
+                onSessionsUpdate(prev => prev.map(s =>
+                    s.id === sessionId
+                        ? {
+                            ...s,
+                            title,
+                            messageCount: messages.filter(m => !m.excludeFromContext).length,
+                            lastModified: Date.now()
+                        }
+                        : s
+                ));
+            }, 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [messages, sessionId, agentMode, safeMode, approvalMode, debugMode, sessions, onSessionsUpdate, t]);
     const inputRef = React.useRef<HTMLTextAreaElement>(null);
     const [isSent, setIsSent] = React.useState(false);
 
@@ -173,9 +428,9 @@ export const ChatArea = ({
 
         const cleanupResult = (window as any).electron.onVoiceRecognitionResult((data: any) => {
             if (data.final) {
-                const currentInput = (inputRef.current as any)?.value || "";
+                const currentInput = useAgentStore.getState().input || "";
                 const separator = currentInput.trim() ? ' ' : '';
-                setInput(currentInput.trim() + separator + data.text);
+                useAgentStore.getState().setInput(currentInput.trim() + separator + data.text);
                 setPartialText('');
             } else {
                 setPartialText(data.text);
@@ -278,27 +533,7 @@ export const ChatArea = ({
         }
     };
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter') {
-            if (e.altKey) {
-                e.preventDefault();
-                if (input.trim() || attachments.length > 0) {
-                    handleSendAsInstruction();
-                }
-            } else if (!e.shiftKey) {
-                e.preventDefault();
 
-                const hasContent = input.trim() || attachments.length > 0;
-                const canReprompt = !isLoading && agentStatus.iteration > 0 && agentStatus.phase !== 'idle';
-
-                if (!hasContent && canReprompt) {
-                    onReprompt();
-                } else if (hasContent) {
-                    handleSend();
-                }
-            }
-        }
-    };
 
     const handleCopyAllLogs = () => {
         const lastHistoryMsg = [...messages].reverse().find(m => m.rawHistory);
@@ -859,6 +1094,7 @@ export const ChatArea = ({
 
             {pendingApproval && (
                 <ToolApprovalPanel
+                    key={pendingApproval.toolCall.id}
                     pending={pendingApproval}
                     onApprove={onApproveToolCall}
                     onReject={onRejectToolCall}
@@ -958,149 +1194,32 @@ export const ChatArea = ({
                         </button>
                     </div>
                 </div>
-                <div className="relative max-w-5xl mx-auto flex flex-col gap-2">
-                <div className="flex items-center"> {/* Removed gap-2 to handle spacing via mx-1 and fix phantom gaps from hidden elements */}
-                        {/* Attachments Preview (Left) */}
-                        {attachments.length > 0 && (
-                            <div className="flex gap-2 pb-1">
-                                {attachments.map(att => (
-                                    <div key={att.id} className="relative group bg-slate-800 border border-slate-700 rounded-lg p-1 flex items-center justify-center w-10 h-10 shadow-sm">
-                                        {att.type.startsWith('image/') ? (
-                                            <img src={att.data} alt={att.name} className="w-full h-full object-cover rounded-md" />
-                                        ) : (
-                                            <Icon name="file-alt" className="text-slate-400 text-[16px]" />
-                                        )}
-                                        <button
-                                            onClick={() => handleRemoveAttachment(att.id)}
-                                            className="absolute -top-1.5 -right-1.5 bg-red-500/90 hover:bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center w-4 h-4 shadow-sm"
-                                            title={t('chat.actions.remove_attachment')}
-                                            aria-label={t('chat.actions.remove_attachment')}
-                                        >
-                                            <Icon name="times" className="text-[8px]" />
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        {/* File Input (Hidden) & Trigger (Left of textarea) */}
-                        <div className={`mode-transition-wrap mx-1 ${!isLoading ? 'visible-mode' : 'hidden-mode'}`}>
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                onChange={handleFileChange}
-                                className="hidden"
-                                multiple
-                                accept="image/png, image/jpeg, image/webp"
-                                title={t('chat.actions.select_files')}
-                            />
-                            <button
-                                onClick={() => fileInputRef.current?.click()}
-                                className="h-[50px] w-[50px] bg-slate-800/40 border border-transparent hover:text-slate-200 hover:bg-slate-700/60 hover:border-slate-700/50 rounded-xl flex items-center justify-center transition-all duration-300 shadow-lg shadow-black/20 text-slate-400"
-                                title={t('chat.actions.attach')}
-                            >
-                                <Icon name="plus" className="text-lg" />
-                            </button>
-                        </div>
-
-                        <div className="relative flex-1 group/input flex items-center mx-1">
-                            <textarea
-                                ref={inputRef}
-                                value={input}
-                                onChange={(e) => setInput(e.target.value)}
-                                onKeyDown={handleKeyDown}
-                                placeholder={isRecording ? (partialText || t('chat.placeholders.recording')) : (agentMode === 'agent' ? t('chat.placeholders.agent') : t('chat.placeholders.idle'))}
-                                className={`w-full bg-slate-900/60 backdrop-blur-sm border rounded-xl py-3.5 px-4 text-slate-200 font-mono text-sm placeholder-slate-600 focus:ring-1 outline-none resize-none min-h-[50px] transition-all duration-300 ${isRecording
-                                    ? 'border-emerald-500/50 ring-1 ring-emerald-500/20 pr-32'
-                                    : 'border-slate-800/60 focus:ring-cyan-500/30 focus:border-cyan-500/40 pr-16'
-                                    }`}
-                                rows={1}
-                            />
-                            {isRecording && (
-                                <div className="absolute right-12 flex items-center gap-2 px-2.5 py-1 bg-slate-950/80 backdrop-blur-md rounded-full border border-emerald-500/30 animate-pulse pointer-events-none shadow-[0_0_15px_rgba(16,185,129,0.15)]">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-                                    <span className="text-[8px] font-black text-emerald-400 uppercase tracking-[0.15em]">{t('chat.placeholders.live_rec')}</span>
-                                </div>
-                            )}
-
-                            {/* Voice Button Overlay (Right side of textarea) */}
-                            <button
-                                onClick={toggleRecording}
-                                className={`absolute right-2 w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300 ${isRecording
-                                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/40'
-                                    : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
-                                    }`}
-                                title={isRecording ? t('chat.actions.stop_record') : t('chat.actions.record')}
-                            >
-                                <Icon name={isRecording ? "stop" : "microphone"} className={isRecording ? 'text-[10px]' : 'text-lg'} />
-                            </button>
-                        </div>
-
-                        {/* Abort Group (Active when Loading) */}
-                        <div className={`mode-transition-wrap mx-1 ${isLoading ? 'visible-mode action-enter' : 'hidden-mode action-exit'}`}>
-                            <button
-                                onClick={onAbort}
-                                className={`h-[50px] px-4 btn-abort-premium text-white rounded-xl flex items-center justify-center min-w-[50px] shadow-lg shadow-red-900/20 ${agentStatus.isInstructionMode ? 'btn-halo-abort' : ''}`}
-                                title={t('chat.actions.abort')}
-                            >
-                                <span key={isLoading ? 'loading' : 'idle'} className="inline-block">
-                                    <Icon name="stop" className={isLoading ? 'icon-stop-spin' : 'icon-spin-reverse'} />
-                                </span>
-                            </button>
-                        </div>
-
-                        {/* Send/Instruction Group (Active when Idle) */}
-                        <div className={`flex items-center ${agentMode !== 'agent' ? 'gap-2' : ''} mode-transition-wrap mx-1 ${!isLoading ? 'visible-mode action-enter' : 'hidden-mode action-exit'}`}>
-                            <button
-                                onClick={handleSend}
-                                disabled={!input.trim() && attachments.length === 0}
-                                className={`h-[50px] px-4 rounded-xl flex items-center justify-center min-w-[50px] disabled:opacity-30 disabled:cursor-not-allowed btn-send-morph shadow-lg ${agentMode === 'agent' ? 'is-agent shadow-purple-900/20' : 'is-chat shadow-blue-900/20'}`}
-                                title={t('chat.actions.send')}
-                            >
-                                {/* Background Clipping Layer */}
-                                <div className="btn-send-morph-bg">
-                                    {/* Base Layer: Standard Chat Color (Blue) */}
-                                    <div className="btn-send-morph-blue" />
-
-                                    {/* Ripple Layer: Instruction Color (Purple) - Grows or Shrinks */}
-                                    <div
-                                        key={agentMode}
-                                        className="btn-send-morph-purple"
-                                    />
-                                </div>
-
-                                {/* Rainbow Aura (Expanding wave) */}
-                                <div
-                                    key={`aura-${agentMode}`}
-                                    className={`btn-morph-aura ${agentMode !== 'agent' ? 'reverse' : ''}`}
-                                />
-
-                                <Icon name="arrow-right" className={`text-lg ${isSent ? 'send-icon-fly' : ''} ${agentMode === 'agent' ? 'rainbow-icon' : ''}`} />
-                            </button>
-
-                            <div className={`transition-all duration-500 ${agentMode !== 'agent' ? 'w-[50px] opacity-100' : 'w-0 opacity-0 overflow-hidden'} mode-transition-wrap ${agentMode !== 'agent' ? 'visible-mode instruction-enter' : 'hidden-mode instruction-exit'}`}>
-                                <button
-                                    onClick={handleSendAsInstruction}
-                                    disabled={!input.trim() && attachments.length === 0}
-                                    className={`h-[50px] px-4 w-full btn-instruction-premium text-white rounded-xl flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed text-[10px] font-bold shadow-lg shadow-purple-900/20 ${boltGlow ? 'pulse-glow' : ''}`}
-                                    title={t('chat.actions.send_instruction_desc')}
-                                >
-                                    <Icon name="bolt" className={`text-lg ${boltGlow ? 'instruction-bolt-glow' : (isSent ? 'icon-pulse' : '')}`} />
-                                </button>
-                            </div>
-                        </div>
-
-                        {!isLoading && agentStatus.iteration > 0 && agentStatus.phase !== 'idle' && (
-                            <button
-                                onClick={onReprompt}
-                                className="h-[50px] px-4 btn-continue-premium text-white rounded-xl flex items-center justify-center min-w-[50px] shadow-lg shadow-orange-900/20 mx-1"
-                                title={t('chat.actions.resume_task')}
-                            >
-                                <Icon name="redo" className="icon-spin-once text-lg" />
-                            </button>
-                        )}
-                    </div>
-                </div>
+                <ChatInputControls
+                    isRecording={isRecording}
+                    partialText={partialText}
+                    agentMode={agentMode}
+                    isLoading={isLoading}
+                    agentIteration={agentStatus.iteration}
+                    agentPhase={agentStatus.phase}
+                    agentIsInstructionMode={agentStatus.isInstructionMode}
+                    attachments={attachments}
+                    t={t}
+                    inputRef={inputRef}
+                    fileInputRef={fileInputRef}
+                    toggleRecording={toggleRecording}
+                    onAbort={onAbort}
+                    handleSend={handleSend}
+                    handleSendAsInstruction={handleSendAsInstruction}
+                    onReprompt={onReprompt}
+                    handleFileChange={handleFileChange}
+                    handleRemoveAttachment={handleRemoveAttachment}
+                    boltGlow={boltGlow}
+                    isSent={isSent}
+                    safeMode={safeMode}
+                    approvalMode={approvalMode}
+                    debugMode={debugMode}
+                    onDebugModeChange={onDebugModeChange}
+                />
             </div>
         </div>
     );

@@ -11,8 +11,10 @@ import {
     AgentLogEntry, 
     FileTarget, 
     ApprovalMode, 
+    Provider,
     MessageBlock 
 } from '../../types';
+import { useAgentStore } from '../../stores/useAgentStore';
 import { 
     PROTECTED_CORE_FILES, 
     CONSOLE_ALLOWED_COMMANDS, 
@@ -52,7 +54,7 @@ export async function sendAgentMessage(
     deleteFileFn: (name: string, target: FileTarget) => Promise<boolean>,
     onChunk: (text: string, replace?: boolean, blocks?: any[]) => void,
     onStatus: (status: Partial<AgentStatus>) => void,
-    onToolApproval: (toolCall: ToolCall) => Promise<boolean>,
+    onToolApproval: (toolCall: ToolCall) => Promise<{ approved: boolean, feedback?: string }>,
     onAddTask: (task: any) => Promise<string>,
     abortSignal: AbortSignal,
     onFinalRawHistory?: (history: any[]) => void,
@@ -291,6 +293,7 @@ export async function sendAgentMessage(
 
             iterations++;
             let turnHasFailure = false;
+            let turnHasDenial = false;
             let turnAutoTasks: string[] = [];
             let tasksContent = '';
             let successfulCalls: ToolCall[] = [];
@@ -523,20 +526,34 @@ export async function sendAgentMessage(
             };
 
             const toolsToExecute: ToolCall[] = [];
+            const toolFeedbackMap = new Map<string, string>();
 
             // 1. APPROVAL PHASE (Always Sequential to prevent UI collisions)
             for (const tc of uniqueToolCalls) {
                 const approval = approvalMode === 'manual' || !isAuto(tc);
-                if (approval && !await onToolApproval(tc)) {
+                const approvalResult = await onToolApproval(tc);
+                const isApproved = typeof approvalResult === 'boolean' ? approvalResult : (approvalResult?.approved ?? true);
+                const feedback = typeof approvalResult === 'object' ? approvalResult?.feedback : undefined;
+
+                if (feedback) toolFeedbackMap.set(tc.id!, feedback);
+
+                if (approval && !isApproved) {
+                    const content = feedback 
+                        ? `manual mode error: user denied tool excecution. Feedback: ${feedback}`
+                        : 'manual mode error: user denied tool excecution';
+                    
+                    const b = allBlocks.find(x => x.toolCall?.id === tc.id);
+                    if (b) { b.status = 'denied'; }
+
                     agentMessages.push({
                         role: 'tool',
                         tool_name: tc.function.name,
-                        content: 'Rejected',
+                        content: content,
                         tool_call_id: tc.id,
                         tool_args: tc.function.arguments,
                         thought_signature: (tc as any).thought_signature
                     });
-                    turnHasFailure = true;
+                    turnHasDenial = true;
                     continue;
                 }
                 toolsToExecute.push(tc);
@@ -561,10 +578,15 @@ export async function sendAgentMessage(
                 } else {
                     successfulCalls.push(tc);
                     actionHistory.push(`${tc.function.name}(${JSON.stringify(tc.function.arguments)})`);
+                    const feedback = toolFeedbackMap.get(tc.id!);
+                    const content = feedback 
+                        ? `[User Note: ${feedback}]\n\n${JSON.stringify(res)}`
+                        : JSON.stringify(res);
+
                     agentMessages.push({
                         role: 'tool',
                         tool_name: tc.function.name,
-                        content: JSON.stringify(res),
+                        content: content,
                         tool_call_id: tc.id,
                         tool_args: tc.function.arguments,
                         thought_signature: (tc as any).thought_signature
@@ -583,16 +605,24 @@ export async function sendAgentMessage(
             if (safeMode) {
                 // SAFE MODE: Strict sequential execution
                 for (const tc of toolsToExecute) {
+                    // Check for abort before each tool execution
+                    if (useAgentStore.getState().agentStatus.phase === 'aborted') break;
                     await executeAndLog(tc);
                 }
             } else {
                 // BATCH MODE: High-performance parallel execution
-                await Promise.all(toolsToExecute.map(tc => executeAndLog(tc)));
+                // In batch mode, we can't easily stop already-started tools,
+                // but we check the phase to avoid starting if already aborted.
+                if (useAgentStore.getState().agentStatus.phase !== 'aborted') {
+                    await Promise.all(toolsToExecute.map(tc => executeAndLog(tc)));
+                }
             }
 
-            if (turnHasFailure) retries++; else {
+            if (turnHasFailure) {
+                retries++;
+            } else {
                 retries = 0;
-                consecutiveNudges = 0; // Reset nudge counter on successful tool execution
+                consecutiveNudges = 0; // Reset nudge counter on success or intentional denial
             }
 
             // [State Awareness Refresh] Correctly update feedback for the NEXT loop iteration

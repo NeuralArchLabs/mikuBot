@@ -142,6 +142,15 @@ export const AgentStatusPanel = React.memo(({
                 </div>
             </div>
 
+            {/* Diagnostic Debug Banner */}
+            {status.debug && (
+                <div className="px-3 py-1 bg-slate-900/60 border-b border-white/5 flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-300">
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_5px_rgba(59,130,246,0.5)] animate-pulse" />
+                    <span className="text-[9px] text-blue-300/80 font-bold uppercase tracking-widest">{t('status.log_types.debug')}:</span>
+                    <span className="text-[10px] text-slate-400 font-mono truncate">{status.debug}</span>
+                </div>
+            )}
+
             <div ref={logContainerRef} className="max-h-32 overflow-y-auto custom-scrollbar p-2 space-y-1 bg-slate-900/40">
                 {status.log.map((entry, i) => {
                     const isOptimization = entry.message.includes('optimizado para el llamado');

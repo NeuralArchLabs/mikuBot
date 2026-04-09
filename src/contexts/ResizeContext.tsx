@@ -25,4 +25,4 @@
 export const useSmartResizeTransition = (): boolean => {
     return false;
 };
-};
+

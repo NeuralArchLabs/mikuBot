@@ -46,5 +46,5 @@ export interface ToolResult {
 /** Pending Tool Approval */
 export interface PendingToolApproval {
     toolCall: ToolCall;
-    resolve: (approved: boolean) => void;
+    resolve: (result: { approved: boolean, feedback?: string }) => void;
 }

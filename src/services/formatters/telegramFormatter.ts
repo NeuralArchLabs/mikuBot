@@ -62,6 +62,49 @@ function formatTelegramTable(lines: string[]): string {
 }
 
 /**
+ * Helper to convert LaTeX math to a readable plain-text format for Telegram.
+ */
+function convertMathToTelegram(formula: string): string {
+    let math = formula.trim();
+
+    // 1. Common Operators & Large Symbols (Subset from formatting.ts)
+    const ops: Record<string, string> = {
+        '\\int': '∫', '\\sum': 'Σ', '\\lim': 'lim', '\\prod': 'Π', '\\sqrt': '√', '\\partial': '∂', '\\nabla': '∇',
+        '\\infty': '∞', '\\approx': '≈', '\\neq': '≠', '\\leq': '≤', '\\geq': '≥', '\\pm': '±', '\\mp': '∓',
+        '\\cdot': '·', '\\times': '×', '\\div': '÷', '\\exists': '∃', '\\forall': '∀', '\\in': '∈',
+        '\\rightarrow': '→', '\\Rightarrow': '⇒', '\\leftrightarrow': '↔', '\\Leftrightarrow': '⇔',
+        '\\cdots': '⋯', '\\vdots': '⋮', '\\ddots': '⋱', '\\quad': '    '
+    };
+
+    // 2. Greek Letters
+    const greek: Record<string, string> = {
+        '\\alpha': 'α', '\\beta': 'β', '\\gamma': 'γ', '\\delta': 'δ', '\\epsilon': 'ε', '\\zeta': 'ζ', '\\eta': 'η', 
+        '\\theta': 'θ', '\\iota': 'ι', '\\kappa': 'κ', '\\lambda': 'λ', '\\mu': 'μ', '\\nu': 'ν', '\\xi': 'ξ', 
+        '\\pi': 'π', '\\rho': 'ρ', '\\sigma': 'σ', '\\tau': 'τ', '\\upsilon': 'υ', '\\phi': 'φ', '\\chi': 'χ', 
+        '\\psi': 'ψ', '\\omega': 'ω',
+        '\\Alpha': 'Α', '\\Beta': 'Β', '\\Gamma': 'Γ', '\\Delta': 'Δ', '\\Theta': 'Θ', '\\Lambda': 'Λ', 
+        '\\Pi': 'Π', '\\Sigma': 'Σ', '\\Phi': 'Φ', '\\Psi': 'Ψ', '\\Omega': 'Ω'
+    };
+
+    // Apply substitutions
+    Object.entries(ops).forEach(([latex, uni]) => {
+        math = math.replace(new RegExp(latex.replace(/\\/g, '\\\\'), 'g'), uni);
+    });
+    Object.entries(greek).forEach(([latex, uni]) => {
+        math = math.replace(new RegExp(latex.replace(/\\/g, '\\\\'), 'g'), uni);
+    });
+
+    // Subscripts and superscripts (Simplified for Telegram)
+    math = math.replace(/_\{((?:[^{}]|\{[^{}]*\})*)\}/g, '_($1)');
+    math = math.replace(/\^\{((?:[^{}]|\{[^{}]*\})*)\}/g, '^($1)');
+    
+    // Clean remaining LaTeX commands (strip \cmd)
+    math = math.replace(/\\[a-zA-Z]+/g, ' ').replace(/\s{2,}/g, ' ');
+
+    return math.trim();
+}
+
+/**
  * Telegram formatter implementing IFormatter.
  * Includes format() for standard use and formatAsChunks() for Telegram API.
  */
@@ -107,6 +150,40 @@ export class TelegramFormatter implements IFormatter {
                 return `\n{{ ${lead} ${core} ${trail} }}\n`;
             }
         );
+
+        // 2c. PRE-PROCESSING: Protect Iframes and Math formulas using placeholders
+        // We do this BEFORE markdown conversion to prevent collision with *, _, etc.
+        const placeholders: string[] = [];
+        const protect = (content: string) => {
+            const id = `__TG_PROT_${placeholders.length}__`;
+            placeholders.push(content);
+            return id;
+        };
+
+        // Iframes -> Links
+        text = text.replace(/<iframe[^>]+src=["']([^"']+)["'][^>]*>.*?<\/iframe>/gi, (match, url) => {
+            return protect(`\n🔗 <b>[Link: ${url}]</b>\n`);
+        });
+
+        // Math Formulas (Block and Inline)
+        // Block math: $$ ... $$ and \[ ... \]
+        text = text.replace(/\$\$([\s\S]*?)\$\$/g, (match, formula) => {
+            const safeMath = convertMathToTelegram(formula);
+            return protect(`\n<pre>${safeMath}</pre>\n`);
+        });
+        text = text.replace(/\\\[([\s\S]*?)\\\]/g, (match, formula) => {
+            const safeMath = convertMathToTelegram(formula);
+            return protect(`\n<pre>${safeMath}</pre>\n`);
+        });
+        // Inline math: $ ... $ and \( ... \)
+        text = text.replace(/\$((?:[^\$]|\\\$)+?)\$/g, (match, formula) => {
+            const safeMath = convertMathToTelegram(formula);
+            return protect(`<code>${safeMath}</code>`);
+        });
+        text = text.replace(/\\\(([\s\S]*?)\\\)/g, (match, formula) => {
+            const safeMath = convertMathToTelegram(formula);
+            return protect(`<code>${safeMath}</code>`);
+        });
 
         // 3. Process tables and replace dividers
         const lines = text.split('\n');
@@ -154,7 +231,13 @@ export class TelegramFormatter implements IFormatter {
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
-            .replace(/&lt;(\/)?(b|i|code|pre|a)(.*?)&gt;/g, '<$1$2$3>');
+            // Restore allowed Telegram tags (comprehensive list)
+            .replace(/&lt;(\/)?(b|strong|i|em|u|ins|s|strike|del|code|pre|blockquote|a|tg-spoiler|tg-emoji)(.*?)&gt;/g, '<$1$2$3>');
+
+        // 4b. RESTORE protected blocks
+        placeholders.forEach((content, i) => {
+            text = text.replace(`__TG_PROT_${i}__`, content);
+        });
 
         // 5. Convert Markdown to Telegram HTML
         text = text.replace(/^(?:#{1,6})\s*(.*)$/gm, '<b>$1</b>');

@@ -5,8 +5,8 @@ import { useTranslation } from 'react-i18next';
 
 interface ToolApprovalPanelProps {
     pending: PendingToolApproval;
-    onApprove: () => void;
-    onReject: () => void;
+    onApprove: (feedback?: string) => void;
+    onReject: (feedback?: string) => void;
 }
 
 export const ToolApprovalPanel = React.memo(({
@@ -16,6 +16,7 @@ export const ToolApprovalPanel = React.memo(({
 }: ToolApprovalPanelProps) => {
     const { t } = useTranslation();
     const [status, setStatus] = useState<'waiting' | 'approved' | 'rejected'>('waiting');
+    const [feedback, setFeedback] = useState('');
 
     React.useEffect(() => {
         const handleKeyDownMain = (e: KeyboardEvent) => {
@@ -37,14 +38,14 @@ export const ToolApprovalPanel = React.memo(({
     const handleApprove = () => {
         setStatus('approved');
         setTimeout(() => {
-            onApproveProp();
+            onApproveProp(feedback);
         }, 2200); // 2.2s delay for a sophisticated and visible animation
     };
 
     const handleReject = () => {
         setStatus('rejected');
         setTimeout(() => {
-            onRejectProp();
+            onRejectProp(feedback);
         }, 600);
     };
 
@@ -158,12 +159,36 @@ export const ToolApprovalPanel = React.memo(({
                 </div>
             )}
 
-            {/* Content */}
             <div className="p-4 bg-slate-900/20">
                 <div className="text-[10px] text-slate-400 mb-2 uppercase tracking-wide opacity-70">{t('chat.approval.params_requested')}</div>
                 <pre className="text-[11px] text-indigo-300/90 font-mono bg-black/40 rounded-lg p-3 border border-indigo-500/10 custom-scrollbar max-h-40 overflow-y-auto whitespace-pre-wrap break-all shadow-inner">
                     {displayArgs}
                 </pre>
+
+                {/* Optional Feedback Input (Rich Aesthetics) */}
+                <div className="mt-4 group/feedback">
+                    <div className="text-[9px] text-slate-500 mb-1.5 uppercase tracking-widest font-bold ml-1 transition-colors group-focus-within/feedback:text-blue-400/60">
+                        {t('chat.approval.feedback_optional')}
+                    </div>
+                    <textarea 
+                        value={feedback}
+                        onChange={(e) => setFeedback(e.target.value)}
+                        placeholder={t('chat.approval.feedback_placeholder')}
+                        className="w-full bg-black/20 border border-white/5 focus:border-blue-500/30 focus:bg-black/40 rounded-lg p-2.5 text-[11px] font-mono text-slate-300 placeholder-slate-700 outline-none transition-all duration-300 min-h-[44px] max-h-32 resize-none shadow-inner"
+                        rows={1}
+                        onKeyDown={(e) => {
+                            // Stop propagation to prevent global shortcuts if typing here
+                            e.stopPropagation();
+                            if (e.altKey && e.key === 'Enter') {
+                                e.preventDefault();
+                                handleApprove();
+                            } else if (e.altKey && e.key === 'Backspace') {
+                                e.preventDefault();
+                                handleReject();
+                            }
+                        }}
+                    />
+                </div>
             </div>
 
             {/* Actions */}

@@ -15,7 +15,7 @@ export interface MessageBlock {
     toolCall?: ToolCall;
     isCollapsed?: boolean;
     result?: ToolResult;
-    status?: 'success' | 'error' | 'pending';
+    status?: 'success' | 'error' | 'pending' | 'denied';
     isFromNarrative?: boolean;
     isFromFinalTool?: boolean;
 }

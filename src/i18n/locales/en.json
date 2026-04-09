@@ -54,7 +54,9 @@
         "rewind_confirm": "Rewind conversation to this point? All subsequent messages will be lost.",
         "config_import_success": "Neural Engine: Configuration imported and synchronized successfully.",
         "no_folder_configured": "No folder configured for \"{{target}}\". Select one in Settings.",
-        "subsystems_online": "Neural Subsystems Online!\n\nLinkages restored automatically via internal framework."
+        "subsystems_online": "Neural Subsystems Online!\n\nLinkages restored automatically via internal framework.",
+        "aborted_execution": "Aborted Execution",
+        "denied_execution": "Execution Denied"
     },
     "tools": {
         "metrics_summary": "System metrics obtained: {{platform}} [CPU: {{cpu}}%, RAM: {{ram}}]",
@@ -473,7 +475,9 @@
             "params_requested": "Parameters Requested:",
             "deny": "Deny",
             "authorize_console": "Authorize Console",
-            "authorize_exec": "Authorize Execution"
+            "authorize_exec": "Authorize Execution",
+            "feedback_optional": "User Feedback (Optional)",
+            "feedback_placeholder": "Add instructions, reasons or context for the agent..."
         }
     },
     "library": {
@@ -540,7 +544,8 @@
             "tool_call": "CALL",
             "tool_result": "RESULT",
             "warn": "WARNING",
-            "enhanced_engine": "ENHANCED ENGINE"
+            "enhanced_engine": "ENHANCED ENGINE",
+            "debug": "Diagnostic"
         },
         "step": "Step {{count}}",
         "retries": "↻ {{count}}/{{max}} retries",

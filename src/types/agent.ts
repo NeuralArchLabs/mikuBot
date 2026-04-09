@@ -33,4 +33,5 @@ export interface AgentStatus {
     currentSystemPrompt?: string;
     lastExecutionFeedback?: string;
     isInstructionMode?: boolean;
+    debug?: string;
 }

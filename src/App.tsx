@@ -58,11 +58,9 @@ export const App = () => {
     });
 
     // Zustand store - atomic state for high frequency (streaming)
-    const messages = useAgentStore(selectMessages);
-    const agentStatus = useAgentStore(selectAgentStatus);
-    const isLoading = useAgentStore(selectIsLoading);
-    const input = useAgentStore(selectInput);
-    const pendingToolApproval = useAgentStore(selectPendingToolApproval);
+    // Removed subscriptions to messages, agentStatus, isLoading, and pendingToolApproval 
+    // to prevent root-level re-render loops during streaming or typing.
+    // Child components now subscribe to these values directly.
 
     const [coreHandle, setCoreHandle] = useState<FileSystemDirectoryHandle | null>(null);
     const [extraHandle, setExtraHandle] = useState<FileSystemDirectoryHandle | null>(null);
@@ -126,7 +124,6 @@ export const App = () => {
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const stateRef = useRef(state);
-    const messagesRef = useRef(messages);
     const modelsRef = useRef(models);
     const lastProcessedUpdateIdRef = useRef<number>(0);
     const namedSessionsTurnsRef = useRef<Map<string, number>>(new Map());
@@ -139,10 +136,6 @@ export const App = () => {
     useEffect(() => {
         stateRef.current = state;
     }, [state]);
-
-    useEffect(() => {
-        messagesRef.current = messages;
-    }, [messages]);
 
     useEffect(() => {
         modelsRef.current = models;
@@ -315,11 +308,11 @@ export const App = () => {
             persistence.exportSession({
                 id,
                 title: sessions.find(s => s.id === id)?.title || t('common.active_session'),
-                messages,
+                messages: useAgentStore.getState().messages,
                 timestamp: Date.now()
             });
         }
-    }, [state.sessionId, messages, sessions, t]);
+    }, [state.sessionId, sessions, t]);
 
     const onImportSession = useCallback(async () => {
         const session = await persistence.importSessionFromFile();
@@ -339,63 +332,17 @@ export const App = () => {
     }, [onSelectSession]);
 
     const onRewind = useCallback(async (index: number) => {
-        const msg = messages[index];
+        const currentMessages = useAgentStore.getState().messages;
+        const msg = currentMessages[index];
         if (msg.role !== 'user') return;
 
         if (await askConfirm(t('common.rewind_confirm'), 'right')) {
-            const newHistory = messages.slice(0, index);
+            const newHistory = currentMessages.slice(0, index);
             setMessagesStore(newHistory);
             setInputStore(msg.text);
             resetAgentStatus();
         }
-    }, [messages, askConfirm, t]);
-
-    // Auto-save current session and update title in sidebar
-    useEffect(() => {
-        if (state.sessionId) {
-            const timer = setTimeout(() => {
-                const currentSession = sessions.find(s => s.id === state.sessionId);
-
-                const firstRealMsg = messages.find(m => !m.excludeFromContext && m.role === 'user');
-                const candidateContent = firstRealMsg?.text?.slice(0, 30);
-
-                // A title is "default" (and thus replaceable) if it matches our generic strings OR matches the first message content
-                const isDefaultTitle = !currentSession?.title ||
-                    currentSession.title === t('common.new_neural_branch') ||
-                    currentSession.title === t('common.active_session') ||
-                    (candidateContent && currentSession.title === candidateContent);
-
-                const title = isDefaultTitle
-                    ? (candidateContent || currentSession?.title || t('common.new_neural_branch'))
-                    : currentSession!.title;
-
-                persistence.saveSession({
-                    id: state.sessionId!,
-                    title,
-                    messages,
-                    timestamp: Date.now(),
-                    agentMode: state.agentMode,
-                    safeMode: state.safeMode,
-                    approvalMode: state.approvalMode,
-                    debugMode: state.debugMode,
-                    draft: input
-                });
-
-                // Update sidebar metadata optimistically
-                setSessions(prev => prev.map(s =>
-                    s.id === state.sessionId
-                        ? {
-                            ...s,
-                            title,
-                            messageCount: messages.filter(m => !m.excludeFromContext).length,
-                            lastModified: Date.now()
-                        }
-                        : s
-                ));
-            }, 1000);
-            return () => clearTimeout(timer);
-        }
-    }, [messages, input, state.sessionId, state.agentMode, state.safeMode, state.approvalMode, state.debugMode, sessions, t]);
+    }, [askConfirm, t]);
 
     useEffect(() => {
         loadGlobalSettings();
@@ -1076,12 +1023,7 @@ export const App = () => {
     }, [restoreAndSync]);
 
     // ── Chat Logic ─────────────────────────────────────────────
-
-    useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        }
-    }, [messages, isLoading, pendingToolApproval, agentStatus.phase]);
+    // Note: scrollRef and messages logic moved to ChatArea.tsx for better performance.
 
     const updateConfig = useCallback((key: string, value: any) => {
         setState(prev => ({
@@ -1292,24 +1234,34 @@ To see all your additional enabled skills and their full technical parameters, y
         pendingToolApprovalRef.current = null;
     }, []);
 
-    const handleApproveToolCall = useCallback(() => {
-        if (pendingToolApproval) {
-            pendingToolApproval.resolve(true);
+    const handleApproveToolCall = useCallback((feedback?: string) => {
+        const pending = useAgentStore.getState().pendingToolApproval;
+        if (pending) {
+            pending.resolve({ approved: true, feedback });
             setPendingToolApprovalStore(null);
+            pendingToolApprovalRef.current = null;
         }
-    }, [pendingToolApproval]);
+    }, []);
 
-    const handleRejectToolCall = useCallback(() => {
-        if (pendingToolApproval) {
-            pendingToolApproval.resolve(false);
+    const handleRejectToolCall = useCallback((feedback?: string) => {
+        const pending = useAgentStore.getState().pendingToolApproval;
+        if (pending) {
+            pending.resolve({ approved: false, feedback });
             setPendingToolApprovalStore(null);
+            pendingToolApprovalRef.current = null;
         }
-    }, [pendingToolApproval]);
+    }, []);
 
     const sendToTelegramDirectly = useCallback((text: string) => {
         if (!state.config.telegramBotToken || !state.config.telegramChatId) {
             console.warn("[Telegram Notifier] Missing Telegram configuration (Bot Token or Chat ID). Skipping notification.");
             askAlert(t('dialogs.telegram_cancelled'));
+            return;
+        }
+
+        const isBusy = useAgentStore.getState().isLoading;
+        if (isBusy) {
+            askAlert(t('dialogs.telegram_busy'));
             return;
         }
 
@@ -1339,7 +1291,7 @@ To see all your additional enabled skills and their full technical parameters, y
                     .catch(err => console.error("Remote response error:", err));
             }, index * 300); // 300ms delay between messages
         });
-    }, [state.config.telegramBotToken, state.config.telegramChatId, askAlert]);
+    }, [state.config.telegramBotToken, state.config.telegramChatId, askAlert, t]);
 
     // Keep sendToTelegram ref up-to-date for scheduler
     useEffect(() => {
@@ -1351,7 +1303,7 @@ To see all your additional enabled skills and their full technical parameters, y
         const ctx = new InteractionContext({ forceToolMode, isRemote, isScheduled });
 
         // Allow scheduled background tasks to bypass the isLoading guard
-        if ((!text.trim() && userAttachments.length === 0) || (isLoading && !ctx.isScheduled)) return;
+        if ((!text.trim() && userAttachments.length === 0) || (useAgentStore.getState().isLoading && !ctx.isScheduled)) return;
 
         // [COMMAND INTERCEPTOR]
         console.log(`[ProcessMessage] Text: "${text}", isRemote: ${isRemote}, isScheduled: ${isScheduled}`);
@@ -1620,7 +1572,7 @@ To see all your additional enabled skills and their full technical parameters, y
         let chatHistoryLocal: { role: string; content: string; timestamp: number; attachments?: Attachment[] }[] = [];
 
         try {
-            const currentMessages = messagesRef.current;
+            const currentMessages = useAgentStore.getState().messages;
             chatHistoryLocal = currentMessages
                 .filter(m => !m.excludeFromContext)
                 .map(m => ({ role: m.role, content: m.text, timestamp: m.timestamp, attachments: m.attachments }));
@@ -1775,15 +1727,25 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                         setAgentStatusStore(p);
                     },
                     (toolCall) => new Promise(resolve => {
-                        const wrappedResolve = (approved: boolean) => {
-                            if (approved && toolCall.function.name === 'request_agent_mode') {
+                        const abortHandler = () => {
+                            console.log('[App] Abort detected during tool approval. Cancelling...');
+                            setPendingToolApprovalStore(null);
+                            pendingToolApprovalRef.current = null;
+                            resolve({ approved: false });
+                            ac.signal.removeEventListener('abort', abortHandler);
+                        };
+                        ac.signal.addEventListener('abort', abortHandler);
+
+                        const wrappedResolve = (result: { approved: boolean, feedback?: string }) => {
+                            ac.signal.removeEventListener('abort', abortHandler);
+                            if (result.approved && toolCall.function.name === 'request_agent_mode') {
                                 console.log('[App] Auto-switching to AGENT mode via tool approval');
                                 setState(prev => ({ ...prev, agentMode: 'agent', safeMode: true }));
                                 if (stateRef.current.config) {
                                     persistence.saveSettings(stateRef.current.config, 'agent', true, stateRef.current.approvalMode);
                                 }
                             }
-                            resolve(approved);
+                            resolve(result);
                         };
 
                         setPendingToolApprovalStore({ toolCall, resolve: wrappedResolve });
@@ -1876,7 +1838,7 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                 let historyForNaming = chatHistoryLocal.length > 0 ? chatHistoryLocal : [];
                 if (historyForNaming.length === 0) {
                     // Fallback to ref if local was empty (e.g. error in try block)
-                    historyForNaming = messagesRef.current
+                    historyForNaming = useAgentStore.getState().messages
                         .filter(m => !m.excludeFromContext)
                         .map(m => ({ role: m.role, content: m.text, timestamp: m.timestamp }));
                 }
@@ -1931,7 +1893,7 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                         if (cleanTitle && cleanTitle.length > 2) {
                             setSessions(prev => prev.map(s => s.id === sid ? { ...s, title: cleanTitle } : s));
                             // Save to persistence
-                            const latestMsgs = messagesRef.current;
+                            const latestMsgs = useAgentStore.getState().messages;
                             persistence.saveSession({
                                 id: sid,
                                 title: cleanTitle,
@@ -1951,7 +1913,7 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
 
             return finalAssistantText;
         }
-    }, [isLoading, sessions, agentStatus.rawMessages, sendToTelegramDirectly, constructSystemInstruction, saveFile, requestFolderPermission, coreHandle, extraHandle, workSpaceHandle, toolsHandle, syncFiles]);
+    }, [sessions, sendToTelegramDirectly, constructSystemInstruction, saveFile, requestFolderPermission, coreHandle, extraHandle, workSpaceHandle, toolsHandle, syncFiles, t]);
 
     // Keep the ref valid
     useEffect(() => {
@@ -2006,16 +1968,21 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Feed user-activity lock to scheduler
+    // Feed user-activity lock to scheduler without triggering App re-renders
     useEffect(() => {
-        neuralScheduler.setUserActive(isLoading);
-    }, [isLoading]);
+        const unsubscribe = useAgentStore.subscribe(
+            (state) => {
+                neuralScheduler.setUserActive(state.isLoading);
+            }
+        );
+        return () => unsubscribe();
+    }, []);
 
     const handleReprompt = useCallback(() => {
-        if (lastUserTextRef.current && !isLoading) {
+        if (lastUserTextRef.current && !useAgentStore.getState().isLoading) {
             processMessage('Continue from where you stopped.', lastForceToolModeRef.current, false, false);
         }
-    }, [isLoading, processMessage]);
+    }, [processMessage]);
 
     const handleClear = useCallback(() => {
         clearMessages();
@@ -2150,10 +2117,10 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                     <div className="flex-1 flex flex-col h-full">
                         <ChatArea
                             sessionId={state.sessionId || 'empty'}
-                            messages={messages} isLoading={isLoading} input={input} setInput={setInputStore}
-                            onSend={(atts) => processMessage(input, false, false, false, atts)} onSendAsInstruction={(atts) => processMessage(input, true, false, false, atts)}
+                            onSend={(atts) => processMessage(useAgentStore.getState().input, false, false, false, atts)} 
+                            onSendAsInstruction={(atts) => processMessage(useAgentStore.getState().input, true, false, false, atts)}
                             onAbort={handleAbortAgent} onReprompt={handleReprompt} onRewind={onRewind} scrollRef={scrollRef}
-                            agentStatus={agentStatus} pendingApproval={pendingToolApproval}
+                            sessions={sessions} onSessionsUpdate={setSessions}
                             onApproveToolCall={handleApproveToolCall} onRejectToolCall={handleRejectToolCall}
                             agentMode={state.agentMode} onAgentModeChange={(m) => setState(p => ({ ...p, agentMode: m, safeMode: m === 'agent' ? true : p.safeMode }))}
                             safeMode={state.safeMode} onSafeModeChange={(s) => setState(p => ({ ...p, safeMode: s }))}
