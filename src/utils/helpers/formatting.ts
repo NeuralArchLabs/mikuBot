@@ -324,6 +324,24 @@ export const toHtml = (md: string): string => {
         return `\n${id}\n`;
     });
 
+    // Protect <iframe> to prevent it from being wrapped in <p> or having its attributes mangled
+    // IMPROVED: Global Iframe Hardener for Production Compatibility
+    html = html.replace(/<iframe\s+([^>]*?)>([\s\S]*?)<\/iframe>/gi, (match, attrs, content) => {
+        let enhancedAttrs = attrs;
+        
+        // 1. Ensure global referrer policy (critical for production builds)
+        if (!enhancedAttrs.includes('referrerpolicy')) {
+            enhancedAttrs += ' referrerpolicy="strict-origin-when-cross-origin"';
+        }
+
+        // 2. Cleanup 'allow' attribute (remove unrecognized features that cause console noise)
+        enhancedAttrs = enhancedAttrs.replace(/web-share[;]?\s*/g, '');
+
+        const id = `__BLOCK_${pieces.length}__`;
+        pieces.push(`<iframe ${enhancedAttrs}>${content}</iframe>`);
+        return `\n${id}\n`;
+    });
+
     // 1c. Universal Admonition Parser — Phase 1
     html = html.replace(/^[ \t]*(?:>\s*)?\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|DANGER|INFO|SUCCESS|FAILURE|BUG|EXAMPLE|QUOTE|QUESTION|FAQ)\]([\-\+])?(?:[ \t]+(.*))?\s*?\n?((?:(?!(?:[ \t]*>\s*\[!)).*\n?)*)/gim, (match, type, collapseSign, title, body) => {
         const id = `__BLOCK_${pieces.length}__`;

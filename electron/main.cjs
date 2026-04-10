@@ -3,6 +3,93 @@ const { spawn, exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const { Readable } = require('stream');
+const http = require('http');
+
+// ── Local Production Server ──────────────────────────────────────────
+// In production, we serve the app via a local HTTP server to provide a
+// valid http:// origin. This is required because external services like
+// YouTube block embeds from non-HTTP origins (file://, custom://).
+let localServerPort = null;
+
+const MIME_TYPES = {
+    '.html': 'text/html; charset=utf-8',
+    '.js': 'application/javascript; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.json': 'application/json; charset=utf-8',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.svg': 'image/svg+xml',
+    '.ico': 'image/x-icon',
+    '.webp': 'image/webp',
+    '.woff': 'font/woff',
+    '.woff2': 'font/woff2',
+    '.ttf': 'font/ttf',
+    '.eot': 'application/vnd.ms-fontobject',
+    '.map': 'application/json',
+    '.wasm': 'application/wasm',
+};
+
+function startLocalServer(distPath) {
+    return new Promise((resolve, reject) => {
+        const server = http.createServer((req, res) => {
+            let urlPath = req.url.split('?')[0].split('#')[0];
+            if (urlPath === '/') urlPath = '/index.html';
+
+            // Decode URI components (e.g. %20 -> space)
+            urlPath = decodeURIComponent(urlPath);
+
+            const filePath = path.join(distPath, urlPath);
+
+            // Security: prevent path traversal
+            if (!filePath.startsWith(distPath)) {
+                res.writeHead(403);
+                res.end('Forbidden');
+                return;
+            }
+
+            if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+                // SPA fallback: serve index.html for client-side routes
+                const indexPath = path.join(distPath, 'index.html');
+                if (fs.existsSync(indexPath)) {
+                    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+                    res.end(fs.readFileSync(indexPath));
+                } else {
+                    res.writeHead(404);
+                    res.end('Not found');
+                }
+                return;
+            }
+
+            const ext = path.extname(filePath).toLowerCase();
+            const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+
+            try {
+                const content = fs.readFileSync(filePath);
+                res.writeHead(200, { 'Content-Type': contentType });
+                res.end(content);
+            } catch (e) {
+                res.writeHead(500);
+                res.end('Internal Server Error');
+            }
+        });
+
+        // Listen on a random available port, bound to localhost only (security)
+        // Note: Using 'localhost' instead of '127.0.0.1' is critical for cross-origin
+        // trust in modern Chromium versions (it represents a Secure Context).
+        server.listen(0, 'localhost', () => {
+            const port = server.address().port;
+            console.log(`[Main Process] Local production server started at http://localhost:${port}`);
+            resolve(port);
+        });
+
+        server.on('error', (err) => {
+            console.error('[Main Process] Failed to start local server:', err);
+            reject(err);
+        });
+    });
+}
 
 const https = require('https');
 const agentActions = require('./agentActions.cjs');
@@ -2498,7 +2585,11 @@ function createWindow() {
     const isDev = !app.isPackaged;
     if (isDev) {
         mainWin.loadURL('http://localhost:3001');
+    } else if (localServerPort) {
+        // Use local HTTP server in production via localhost authority
+        mainWin.loadURL(`http://localhost:${localServerPort}`);
     } else {
+        // Fallback: load from file directly (embeds may not work)
         mainWin.loadFile(path.join(__dirname, '../dist/index.html'));
     }
 
@@ -2601,6 +2692,17 @@ if (!gotTheLock) {
     });
 
     app.whenReady().then(async () => {
+        // 0. Start local HTTP server for production builds
+        if (app.isPackaged) {
+            try {
+                const distPath = path.join(__dirname, '../dist');
+                localServerPort = await startLocalServer(distPath);
+                console.log(`[Main Process] Production server ready on port ${localServerPort}`);
+            } catch (e) {
+                console.error('[Main Process] Local server failed, falling back to file://', e);
+            }
+        }
+
         // 1. Initialize environment
         try {
             const workspace = initCurrentWorkspacePath();

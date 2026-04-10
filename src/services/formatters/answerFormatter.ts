@@ -51,6 +51,13 @@ export function formatFinalResponse(rawText: any): string {
         return id;
     });
 
+    // 2c. Iframe Protection (Prevents attribute corruption during JSON unescaping)
+    formatted = formatted.replace(/<iframe[\s\S]*?<\/iframe>/gi, (match) => {
+        const id = `___PROTECTED_BLOCK_${pieces.length}___`;
+        pieces.push(match);
+        return id;
+    });
+
     // --- PHASE 2: NORMALIZATION (TEXT ONLY) ---
     // 2. Unescape literal \n strings (standard result of JSON-based streaming)
     formatted = formatted.replace(/\\n/g, '\n');
