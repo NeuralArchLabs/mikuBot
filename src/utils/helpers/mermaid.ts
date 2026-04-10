@@ -47,47 +47,58 @@ function openMermaidFullscreen(svgSource: string) {
     const overlay = document.createElement('div');
     overlay.id = 'mermaid-fullscreen-overlay';
     overlay.style.cssText = `
-        position: fixed; inset: 0; z-index: 9999;
-        background: rgba(2, 6, 23, 0.95);
-        backdrop-filter: blur(12px);
+        position: fixed; inset: 0; z-index: 99999;
+        background: rgba(2, 6, 23, 0.97);
+        backdrop-filter: blur(16px);
         display: flex; flex-direction: column;
         align-items: center; justify-content: center;
         animation: mermaid-overlay-in 0.3s ease-out;
         cursor: grab;
     `;
 
-    // Header bar
-    const header = document.createElement('div');
-    header.style.cssText = `
-        position: absolute; top: 0; left: 0; right: 0;
-        display: flex; align-items: center; justify-content: space-between;
-        padding: 16px 24px;
-        background: linear-gradient(to bottom, rgba(2,6,23,0.9), transparent);
+    // ── Bottom Control Bar (avoids overlap with app buttons in top-right) ──
+    const controlBar = document.createElement('div');
+    controlBar.style.cssText = `
+        position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+        display: flex; align-items: center; gap: 16px;
+        padding: 10px 24px;
+        background: rgba(15, 23, 42, 0.85);
+        border: 1px solid rgba(6, 182, 212, 0.15);
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
         z-index: 10; user-select: none;
+        backdrop-filter: blur(8px);
     `;
-    header.innerHTML = `
-        <span style="color: #06b6d4; font-size: 11px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; opacity: 0.7;">
-            <i class="fas fa-expand" style="margin-right: 8px;"></i>Mermaid Inspector
+    controlBar.innerHTML = `
+        <span style="color: #06b6d4; font-size: 10px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; opacity: 0.6;">
+            <i class="fas fa-search-plus" style="margin-right: 6px;"></i>INSPECTOR
         </span>
-        <div style="display: flex; gap: 12px; align-items: center;">
-            <span id="mermaid-zoom-label" style="color: #94a3b8; font-size: 11px; font-family: monospace;">100%</span>
-            <button id="mermaid-zoom-reset" style="color: #94a3b8; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 11px; transition: all 0.2s;">
-                Reset
-            </button>
-            <button id="mermaid-close-btn" style="color: #f87171; background: none; border: none; cursor: pointer; font-size: 20px; padding: 4px 8px; transition: transform 0.2s;" title="Cerrar (Esc)">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
+        <span style="width: 1px; height: 16px; background: rgba(255,255,255,0.1);"></span>
+        <span id="mermaid-zoom-label" style="color: #94a3b8; font-size: 12px; font-family: monospace; min-width: 40px; text-align: center;">100%</span>
+        <button id="mermaid-zoom-in" style="color: #94a3b8; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; width: 28px; height: 28px; cursor: pointer; font-size: 14px; transition: all 0.2s; display: flex; align-items: center; justify-content: center;" title="Acercar">
+            <i class="fas fa-plus" style="font-size: 10px;"></i>
+        </button>
+        <button id="mermaid-zoom-out" style="color: #94a3b8; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; width: 28px; height: 28px; cursor: pointer; font-size: 14px; transition: all 0.2s; display: flex; align-items: center; justify-content: center;" title="Alejar">
+            <i class="fas fa-minus" style="font-size: 10px;"></i>
+        </button>
+        <button id="mermaid-zoom-reset" style="color: #94a3b8; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 4px 12px; height: 28px; cursor: pointer; font-size: 11px; transition: all 0.2s;">
+            Reset
+        </button>
+        <span style="width: 1px; height: 16px; background: rgba(255,255,255,0.1);"></span>
+        <button id="mermaid-close-btn" style="color: #f87171; background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.2); border-radius: 6px; width: 28px; height: 28px; cursor: pointer; font-size: 14px; transition: all 0.2s; display: flex; align-items: center; justify-content: center;" title="Cerrar (Esc)">
+            <i class="fas fa-times" style="font-size: 11px;"></i>
+        </button>
     `;
-    overlay.appendChild(header);
+    overlay.appendChild(controlBar);
 
-    // SVG container — pan + zoom target
+    // ── SVG container — pan + zoom target ──
     const container = document.createElement('div');
     container.id = 'mermaid-fullscreen-content';
     container.style.cssText = `
         width: 100%; height: 100%;
         display: flex; align-items: center; justify-content: center;
         overflow: hidden; position: relative;
+        padding: 40px;
     `;
 
     const svgWrapper = document.createElement('div');
@@ -95,17 +106,29 @@ function openMermaidFullscreen(svgSource: string) {
         transform-origin: center center;
         transition: transform 0.15s ease-out;
         will-change: transform;
+        display: flex; align-items: center; justify-content: center;
     `;
     svgWrapper.innerHTML = svgSource;
 
-    // Make SVG fill available space
+    // Make SVG properly visible and sized for the viewport
     const svgEl = svgWrapper.querySelector('svg');
     if (svgEl) {
-        svgEl.style.maxWidth = '90vw';
-        svgEl.style.maxHeight = '85vh';
-        svgEl.style.width = 'auto';
-        svgEl.style.height = 'auto';
+        // Preserve viewBox for proper scaling; remove hardcoded width/height
+        const vb = svgEl.getAttribute('viewBox');
+        if (!vb) {
+            // If no viewBox, create one from current dimensions
+            const w = svgEl.getAttribute('width') || svgEl.getBoundingClientRect()?.width || 800;
+            const h = svgEl.getAttribute('height') || svgEl.getBoundingClientRect()?.height || 600;
+            svgEl.setAttribute('viewBox', `0 0 ${w} ${h}`);
+        }
+        svgEl.removeAttribute('width');
+        svgEl.removeAttribute('height');
+        svgEl.setAttribute('width', '85vw');
+        svgEl.setAttribute('height', '80vh');
+        svgEl.style.maxWidth = '85vw';
+        svgEl.style.maxHeight = '80vh';
     }
+
 
     container.appendChild(svgWrapper);
     overlay.appendChild(container);
@@ -141,16 +164,6 @@ function openMermaidFullscreen(svgSource: string) {
         overlay.style.cursor = 'grabbing';
         svgWrapper.style.transition = 'none';
     });
-    window.addEventListener('mousemove', (e) => {
-        if (!isDragging) return;
-        panX = e.clientX - startX;
-        panY = e.clientY - startY;
-        applyTransform();
-    });
-    window.addEventListener('mouseup', () => {
-        isDragging = false;
-        overlay.style.cursor = 'grab';
-    });
 
     // Reset button
     overlay.querySelector('#mermaid-zoom-reset')?.addEventListener('click', () => {
@@ -159,11 +172,38 @@ function openMermaidFullscreen(svgSource: string) {
         applyTransform();
     });
 
-    // Close handlers
+    // Zoom in/out buttons
+    overlay.querySelector('#mermaid-zoom-in')?.addEventListener('click', () => {
+        scale = Math.min(5, scale * 1.25);
+        svgWrapper.style.transition = 'transform 0.2s ease-out';
+        applyTransform();
+    });
+    overlay.querySelector('#mermaid-zoom-out')?.addEventListener('click', () => {
+        scale = Math.max(0.2, scale * 0.8);
+        svgWrapper.style.transition = 'transform 0.2s ease-out';
+        applyTransform();
+    });
+
+    // Close handlers — also clean up global listeners to prevent memory leaks
+    const onMouseMove = (e: MouseEvent) => {
+        if (!isDragging) return;
+        panX = e.clientX - startX;
+        panY = e.clientY - startY;
+        applyTransform();
+    };
+    const onMouseUp = () => {
+        isDragging = false;
+        overlay.style.cursor = 'grab';
+    };
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+
     const closeOverlay = () => {
         overlay.style.animation = 'mermaid-overlay-out 0.2s ease-in forwards';
         setTimeout(() => overlay.remove(), 200);
         window.removeEventListener('keydown', escHandler);
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mouseup', onMouseUp);
     };
 
     const escHandler = (e: KeyboardEvent) => {
@@ -172,7 +212,7 @@ function openMermaidFullscreen(svgSource: string) {
     window.addEventListener('keydown', escHandler);
     overlay.querySelector('#mermaid-close-btn')?.addEventListener('click', closeOverlay);
 
-    // Click on background (not SVG) to close
+    // Double-click on background to close
     overlay.addEventListener('dblclick', (e) => {
         if (e.target === container || e.target === overlay) closeOverlay();
     });
