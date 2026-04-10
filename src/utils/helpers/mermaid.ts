@@ -1,80 +1,12 @@
 import mermaid from 'mermaid';
 
-/**
- * 🎨 Interactive Hover CSS — injected into the SVG via themeCSS.
- * This is the ONLY reliable way to style SVG internals since external CSS
- * cannot penetrate SVG element boundaries.
- */
-const MERMAID_INTERACTIVE_CSS = `
-    /* ── Base Transitions ─────────────────────────────────────── */
-    .node rect, .node circle, .node ellipse, .node polygon, .node path,
-    .actor, .note, .labelBox, .loopLine,
-    .state, .entityBox, .pieCircle,
-    .cluster rect, .cluster path {
-        transition: filter 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-                    stroke-width 0.3s ease,
-                    stroke 0.3s ease !important;
-        cursor: pointer;
-    }
-
-    /* ── Node Hover: Glow + Brighten ──────────────────────────── */
-    .node:hover rect, .node:hover circle, .node:hover ellipse,
-    .node:hover polygon, .node:hover path {
-        filter: brightness(1.25) drop-shadow(0 0 10px rgba(6, 182, 212, 0.5)) !important;
-        stroke: #22d3ee !important;
-        stroke-width: 2.5px !important;
-    }
-
-    /* ── Actor / Note / State Hover ───────────────────────────── */
-    .actor:hover, .note:hover, .state:hover, .entityBox:hover {
-        filter: brightness(1.2) drop-shadow(0 0 8px rgba(6, 182, 212, 0.4)) !important;
-        stroke: #22d3ee !important;
-        stroke-width: 2px !important;
-    }
-
-    /* ── Cluster Hover ────────────────────────────────────────── */
-    .cluster:hover rect, .cluster:hover path {
-        filter: brightness(1.15) drop-shadow(0 0 6px rgba(99, 102, 241, 0.4)) !important;
-        stroke: #818cf8 !important;
-    }
-
-    /* ── Text Sharpening on Node Hover ────────────────────────── */
-    .node:hover .nodeLabel, .node:hover text,
-    .actor:hover text, .label:hover text {
-        fill: #fff !important;
-        filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.3)) !important;
-    }
-
-    /* ── Edge / Link Interaction ──────────────────────────────── */
-    .edgePath path {
-        transition: stroke 0.3s ease, stroke-width 0.3s ease, filter 0.3s ease !important;
-    }
-    .edgePath:hover path {
-        stroke: #22d3ee !important;
-        stroke-width: 3px !important;
-        filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.6)) !important;
-    }
-
-    /* ── Edge Labels ──────────────────────────────────────────── */
-    .edgeLabel:hover {
-        filter: brightness(1.3) drop-shadow(0 0 4px rgba(255, 255, 255, 0.2)) !important;
-    }
-
-    /* ── Pie Slice Hover ──────────────────────────────────────── */
-    .pieCircle:hover {
-        filter: brightness(1.3) drop-shadow(0 0 12px rgba(255, 255, 255, 0.3)) !important;
-        cursor: pointer;
-    }
-`;
-
-/** Shared Mermaid config object */
+/** Shared Mermaid config object — NO themeCSS, keeps Mermaid rendering pristine */
 const MERMAID_CONFIG = {
     startOnLoad: false,
     theme: 'dark' as const,
     securityLevel: 'loose' as const,
     suppressErrorRendering: true,
     fontFamily: 'JetBrains Mono, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-    themeCSS: MERMAID_INTERACTIVE_CSS,
     themeVariables: {
         primaryColor: '#06b6d4',
         primaryTextColor: '#fff',
@@ -103,6 +35,78 @@ export const initMermaid = async () => {
         console.error('[Mermaid] Initialization failed:', err);
     }
 };
+
+/**
+ * 🔍 Post-render: Attach lightweight hover/click zoom to individual SVG elements.
+ * This runs AFTER Mermaid has fully rendered the SVG, so it never interferes
+ * with Mermaid's internal rendering pipeline.
+ */
+function attachInteractiveZoom(block: HTMLElement) {
+    const svg = block.querySelector('svg');
+    if (!svg) return;
+
+    // Target interactive elements inside the SVG
+    const interactiveSelectors = '.node, .actor, .note, .cluster, .state, .entityBox, .pieCircle';
+    const elements = svg.querySelectorAll(interactiveSelectors);
+    if (elements.length === 0) return;
+
+    elements.forEach((el) => {
+        const svgEl = el as SVGGraphicsElement;
+
+        // Lightweight inline styles — no themeCSS, no global stylesheet pollution
+        svgEl.style.cursor = 'pointer';
+        svgEl.style.transition = 'transform 0.25s ease';
+        svgEl.style.transformOrigin = 'center';
+        svgEl.style.transformBox = 'fill-box';
+
+        // Hover: subtle scale-up for readability
+        svgEl.addEventListener('mouseenter', () => {
+            svgEl.style.transform = 'scale(1.15)';
+            svgEl.style.zIndex = '10';
+        });
+        svgEl.addEventListener('mouseleave', () => {
+            // Only reset if not pinned by click
+            if (svgEl.getAttribute('data-pinned') !== 'true') {
+                svgEl.style.transform = '';
+                svgEl.style.zIndex = '';
+            }
+        });
+
+        // Click: toggle pin at larger zoom for reading details
+        svgEl.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isPinned = svgEl.getAttribute('data-pinned') === 'true';
+            if (isPinned) {
+                svgEl.setAttribute('data-pinned', 'false');
+                svgEl.style.transform = '';
+                svgEl.style.zIndex = '';
+            } else {
+                // Unpin all siblings first
+                elements.forEach((sib) => {
+                    const s = sib as SVGGraphicsElement;
+                    s.setAttribute('data-pinned', 'false');
+                    s.style.transform = '';
+                    s.style.zIndex = '';
+                });
+                svgEl.setAttribute('data-pinned', 'true');
+                svgEl.style.transform = 'scale(1.45)';
+                svgEl.style.zIndex = '20';
+            }
+        });
+    });
+
+    // Click on SVG background to unpin all
+    svg.addEventListener('click', (e) => {
+        if (e.target === svg || (e.target instanceof Element && e.target.tagName === 'rect' && e.target.classList.contains('er'))) {
+            elements.forEach((el) => {
+                const s = el as SVGGraphicsElement;
+                s.setAttribute('data-pinned', 'false');
+                s.style.transform = '';
+                s.style.zIndex = '';
+            });
+        }
+    });
+}
 
 /**
  * Renders a single mermaid block with smooth expansion and headless calculation.
@@ -163,6 +167,9 @@ export const renderSingleMermaidBlock = async (block: HTMLElement, index: number
                 block.classList.remove('opacity-0', 'scale-95', 'blur-sm');
                 block.classList.add('opacity-100', 'scale-100', 'blur-0');
             }, 50);
+
+            // 🔍 STEP 5: Attach interactive zoom AFTER render is complete
+            setTimeout(() => attachInteractiveZoom(block), 100);
 
             const cleanup = () => {
                 block.style.height = 'auto'; 
