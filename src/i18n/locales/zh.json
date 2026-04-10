@@ -41,7 +41,7 @@
         "status_pending": "进行中",
         "status": "状态",
         "executed": "执行时间",
-        "desktop_engine_not_detected": "未检测到桌面引擎：仅在将 MikuCentral 作为桌面应用程序运行时，才能将设置保存到 config.json。",
+        "desktop_engine_not_detected": "未检测到桌面引擎：仅在将 mikuCentral 作为桌面应用程序运行时，才能将设置保存到 config.json。",
         "config_save_success": "配置已成功保存到 config.json",
         "config_reset_success": "配置重置成功。",
         "clean_install": "全新安装",
@@ -247,7 +247,7 @@
     "settings": {
         "title": "系统设置",
         "language_select": "界面语言",
-        "language_desc": "为 MikuBot 选择全局语言",
+        "language_desc": "为 mikuBot 选择全局语言",
         "tabs": {
             "core": "Core System",
             "core_desc": "平台配置与运行密钥",
@@ -523,7 +523,7 @@
         "standby_title": "Neural Standby",
         "standby_desc": "选择一个文件开始编辑",
         "confirm": {
-            "delete_warning": "⚠️ 警告：从 Cortex 或 Command 路径删除文件是一项高风险操作。删除重要的系统文件或自定义指令可能会破坏 MikuCentral 的功能，或导致无法撤销的数据丢失。",
+            "delete_warning": "⚠️ 警告：从 Cortex 或 Command 路径删除文件是一项高风险操作。删除重要的系统文件或自定义指令可能会破坏 mikuCentral 的功能，或导致无法撤销的数据丢失。",
             "delete_last": "您确定要永久删除 \"{{filename}}\" 吗？此操作不可逆。"
         }
     },
@@ -646,7 +646,7 @@
         },
         "alerts": {
             "telegram_incomplete_title": "⚠️ [Telegram 未完成]",
-            "telegram_incomplete_desc": "要将 Telegram 用作计划任务的交付渠道，您必须在 MikuCentral 设置的 Core System 选项卡中配置您的 'Bot Token' 和 'Chat ID'。"
+            "telegram_incomplete_desc": "要将 Telegram 用作计划任务的交付渠道，您必须在 mikuCentral 设置的 Core System 选项卡中配置您的 'Bot Token' 和 'Chat ID'。"
         }
     },
     "titlebar": {
@@ -674,7 +674,7 @@
             "sync_models": "同步模型",
             "reset_config": "重置全局配置",
             "documentation": "文档",
-            "about": "关于 MikuBot"
+            "about": "关于 mikuBot"
         }
     },
     "about": {

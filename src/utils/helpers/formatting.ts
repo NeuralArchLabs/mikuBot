@@ -175,7 +175,10 @@ export const toHtml = (md: string): string => {
             </div>`;
 
         // Minimal Action: Icon-only Copy Button
-        const copyButton = `<button class="absolute top-3 right-5 text-slate-500/50 hover:text-cyan-400 p-1 opacity-0 group-hover:opacity-100 transition hover:scale-110 active:scale-90 cursor-pointer z-20" title="Copiar Código" onclick="const btn=this; const icon=btn.querySelector(\'i\'); const code=decodeURIComponent(\'${encodedCode.replace(/'/g, "\\'")}\'); navigator.clipboard.writeText(code).then(() => { icon.className=\'fas fa-check text-emerald-400\'; setTimeout(() => { icon.className=\'fas fa-clone\'; }, 2000); })"><i class="fas fa-clone text-[13px]"></i></button>`;
+        // NOTE: encoded content lives in data-code to avoid breaking onclick attribute parsing
+        // on large or quote-heavy blocks (e.g. SOUL.md). encodeURIComponent guarantees
+        // no ", <, >, or & in the value, making data-code="..." structurally safe.
+        const copyButton = `<button class="absolute top-3 right-5 text-slate-500/50 hover:text-cyan-400 p-1 opacity-0 group-hover:opacity-100 transition hover:scale-110 active:scale-90 cursor-pointer z-20" title="Copiar Código" data-code="${encodedCode}" onclick="var btn=this,icon=btn.querySelector('i'),code=decodeURIComponent(btn.dataset.code);navigator.clipboard.writeText(code).then(function(){icon.className='fas fa-check text-emerald-400';setTimeout(function(){icon.className='fas fa-clone'},2000)})"><i class="fas fa-clone text-[13px]"></i></button>`;
         
         if (isDiagram) {
             pieces.push(`<div class="${containerClass} isolate overflow-visible">${studioHeader}${copyButton}<div class="overflow-x-auto w-full px-2 pb-6"><div class="mermaid opacity-0 scale-95 blur-sm transition duration-1000 min-h-[100px] flex items-center justify-center transform-gpu" data-mermaid-src="${encodedCode}"><code class="text-sm shadow-none font-mono leading-relaxed">${highlighted}</code></div></div></div>`);
@@ -321,7 +324,7 @@ export const toHtml = (md: string): string => {
     });
 
     // 1c. Universal Admonition Parser — Phase 1
-    html = html.replace(/^(?:>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|DANGER|INFO|SUCCESS|FAILURE|BUG|EXAMPLE|QUOTE|QUESTION|FAQ)\]([\-\+])?(?:\s+(.*))?\s*?\n?)((?:(?!(?:>\s*\[!)).*\n?)*)/gim, (match, type, collapseSign, title, body) => {
+    html = html.replace(/^(?:>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|DANGER|INFO|SUCCESS|FAILURE|BUG|EXAMPLE|QUOTE|QUESTION|FAQ)\]([\-\+])?(?:[ \t]+(.*))?\s*?\n?)((?:(?!(?:>\s*\[!)).*\n?)*)/gim, (match, type, collapseSign, title, body) => {
         const id = `__BLOCK_${pieces.length}__`;
         const typeUp = type.toUpperCase();
         

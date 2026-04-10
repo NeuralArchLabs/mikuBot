@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="./public/mikuBotICON.png" width="120" style="border-radius: 24px" alt="MikuBot Icon" />
+<img src="./public/mikuBotICON.png" width="120" style="border-radius: 24px" alt="mikuBot Icon" />
 
-# 🌟 MikuBot v2.3.0 — The Sovereign Persistence Update
+# 🌟 mikuBot v2.3.0 — The Sovereign Persistence Update
 
 ![Status](https://img.shields.io/badge/Status-Stable-green.svg?style=for-the-badge)
 ![Platform](https://img.shields.io/badge/Platform-Windows_10%2F11-0078D4.svg?style=for-the-badge&logo=windows)
@@ -18,7 +18,7 @@
 
 <br/>
 
-<a href="https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.3.0/MikuBot-Setup-2.3.0.exe">
+<a href="https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.3.0/mikuBot-Setup-2.3.0.exe">
   <img src="https://img.shields.io/badge/DOWNLOAD_LATEST_VERSION-v2.3.0-60A5FA?style=for-the-badge&logo=windows&logoColor=white" height="40" />
 </a>
 
@@ -28,7 +28,7 @@ An AI agent and assistant directed at the general public. Designed as a friendly
 
 <br/>
 
-<img src="./public/preview.gif" width="100%" style="border-radius: 12px; border: 1px solid #30363d" alt="MikuBot Preview" />
+<img src="./public/preview.gif" width="100%" style="border-radius: 12px; border: 1px solid #30363d" alt="mikuBot Preview" />
 
 </div>
 
@@ -40,15 +40,15 @@ An AI agent and assistant directed at the general public. Designed as a friendly
 *   **Autonomy and Operation Modes:** Features a Chat Mode and an Agent Mode focused on different types of assistance, both with native tool execution. Choose between a *fully autonomous* mode, a *safe mode* (requires prior authorization), and the creation of **scheduled tasks** for total autonomy.
 *   **Persistent & Multi-session Execution (Studio Elite):** Miku no longer stops when switching neural branches. Agents can complete complex tasks autonomously in the background while you interact with other sessions, maintaining a persistent and visually reactive link that notifies you of process status in other branches.
 *   **Context Library:** A module that allows you to create, store, and reference protocols and documents to review, improve, or apply with the assistant at any time.
-*   **MikuBot Markdown Engine (Studio Elite):** MikuBot integrates a professional-grade rendering engine designed for technological sovereignty and technical precision. This "Studio Elite" suite redefines visual interaction:
+*   **mikuBot Markdown Engine (Studio Elite):** mikuBot integrates a professional-grade rendering engine designed for technological sovereignty and technical precision. This "Studio Elite" suite redefines visual interaction:
     *   **Professional-Grade Scientific Rendering (LaTeX):** High-precision engine for complex mathematics ($$ and $), integrals, matrices, and physical constants. Empowers researchers and students with publication-quality technical reporting.
     *   **Architecture & Data Logic (Mermaid):** Native visualization for flowcharts, GitGraphs, and mindmaps. Eliminates the need for external tools by rendering architecture and logic directly within the chat thread.
     *   **Structured Knowledge Management (Callouts):** Universal Obsidian-style support (`> [!TYPE]`) for organizing instructions, logs, and protocols with 14+ reactive styles and synchronized typing animations.
     *   **Kinetic & Progressive Canvas:** Organic animation system and dynamic typography that synchronizes information reveal with the assistant's real-time reasoning, providing a "living" UI.
     *   **Documentation Integrity (Protection Pipeline):** 3-phase pipeline ensuring that images, links, and nested code blocks maintain perfect structural integrity, regardless of AI data flow complexity.
-*   **Neural Editing (Cortex & Command Editors):** MikuBot includes specialized editors to directly modify the assistant's instructions and base knowledge. While you can adjust these files at any time for technical customization, **it is recommended to follow the Onboarding Wizard process** for optimal results. Critical files like `MODES.md` dictate the agent's operating protocols, and manual changes require caution to maintain system stability.
+*   **Neural Editing (Cortex & Command Editors):** mikuBot includes specialized editors to directly modify the assistant's instructions and base knowledge. While you can adjust these files at any time for technical customization, **it is recommended to follow the Onboarding Wizard process** for optimal results. Critical files like `MODES.md` dictate the agent's operating protocols, and manual changes require caution to maintain system stability.
 *   **Voice and 24/7 Connectivity:** Includes native voice recognition out-of-the-box (via Vosk) in English and Spanish. Additionally, it allows easy linking with Telegram (via BotFather) to operate 24/7.
-*   **100% Multilingual Support (EN/ES/ZH):** Unlike other alternatives on the market that are usually limited to a single language, MikuBot is **fully translated and optimized** to function perfectly in **English, Spanish, and Chinese**. From the interface to the agent's reasoning, the system offers a native and fluid experience in all three languages, providing technical superiority and global usability.
+*   **100% Multilingual Support (EN/ES/ZH):** Unlike other alternatives on the market that are usually limited to a single language, mikuBot is **fully translated and optimized** to function perfectly in **English, Spanish, and Chinese**. From the interface to the agent's reasoning, the system offers a native and fluid experience in all three languages, providing technical superiority and global usability.
 *   **Portability and Backup:** Allows a full memory dump into a compressed file to backup everything, including sessions, personalizations, memory, *skills*, and access keys.
 *   **Windows-First Focus:** Programmed in Electron for scalability, but 100% focused on Windows for perfect native integration with **searXena**, with no short-term plans to be ported to other systems.
 
@@ -56,16 +56,16 @@ An AI agent and assistant directed at the general public. Designed as a friendly
 
 ## 🤓 Under the Hood (For Developers and Power Users)
 
-Beneath its friendly interface, MikuBot is a professional-grade autonomous agent execution environment designed for technological sovereignty.
+Beneath its friendly interface, mikuBot is a professional-grade autonomous agent execution environment designed for technological sovereignty.
 
 ### 🏛️ Origin and Project Integrity
-MikuBot is a 100% independent project started in early **February 2026** (see evidence image below) as an effort to optimize Small Language Models (SLMs) for tool execution and agentic tasks. Its development was planned and executed under agile methodologies, based strictly on research, trial, and error until reaching its current state. 
+mikuBot is a 100% independent project started in early **February 2026** (see evidence image below) as an effort to optimize Small Language Models (SLMs) for tool execution and agentic tasks. Its development was planned and executed under agile methodologies, based strictly on research, trial, and error until reaching its current state. 
 
 It is **not a fork of OpenClaw** nor does it reuse any logic from the **Claude Code** (March 31, 2026) leaks. We believe in transparency and proprietary architecture as the foundation of a secure, sovereign system.
 
 <div align="center">
   <img src="./public/startDateEvidence.png" width="600" style="border-radius: 8px; border: 1px solid #30363d" alt="Project Start Evidence" />
-  <p><i>Snapshot of the very first logical core commits of MikuBot (February 2026).</i></p>
+  <p><i>Snapshot of the very first logical core commits of mikuBot (February 2026).</i></p>
 </div>
 
 > [!NOTE]
@@ -87,13 +87,13 @@ It is **not a fork of OpenClaw** nor does it reuse any logic from the **Claude C
 
 The system includes native tools injected into the LLM such as `read_file`, `smart_patch`, `search_files`, and shell injection protection (`run_console` whitelist).
 
-### 🏆 Why MikuBot? (Competitive Analysis)
+### 🏆 Why mikuBot? (Competitive Analysis)
 
-MikuBot is not just another AI client; it is an agentic execution environment designed for data sovereignty and technical precision. Below, we compare our approach against other local agents and the most popular web-based clients.
+mikuBot is not just another AI client; it is an agentic execution environment designed for data sovereignty and technical precision. Below, we compare our approach against other local agents and the most popular web-based clients.
 
 #### 🏛️ Tier 1: Local Autonomous Agents
 
-| Feature / Approach | 🌐 **MikuBot (Our Focus)** | 🦞 **OpenClaw** | 🧠 **memUBot (NevaMind-AI)** |
+| Feature / Approach | 🌐 **mikuBot (Our Focus)** | 🦞 **OpenClaw** | 🧠 **memUBot (NevaMind-AI)** |
 | :--- | :--- | :--- | :--- |
 | **Paradigm & Interface** | **Desktop App (Premium GUI).** Full visual control over reasoning and file management. | **Headless Daemon / Messaging.** Controlled via WhatsApp, Telegram, or CLI (TUI). | **Enterprise Team Bot.** Primarily integrated into Slack, Discord, or Feishu. |
 | **Windows Execution** | **100% Native (`.exe`).** Optimized to run directly on the Windows kernel. | **Requires WSL2 (Ubuntu).** Depends on a Linux subsystem and manual bash scripts. | Native / Cross-platform, but heavy server-side architecture. |
@@ -104,7 +104,7 @@ MikuBot is not just another AI client; it is an agentic execution environment de
 
 #### ☁️ Tier 2: Web-Based AI Clients
 
-| Feature | 🌐 **MikuBot (Local Gateway)** | 🤖 **ChatGPT / Gemini / Perplexity** |
+| Feature | 🌐 **mikuBot (Local Gateway)** | 🤖 **ChatGPT / Gemini / Perplexity** |
 | :--- | :--- | :--- |
 | **Data Access** | **Deep Context.** Direct access to your file system (@WORKSPACE) and local assets. | **Web Sandbox.** Limited to manually uploaded files or generic web search. |
 | **Tool Execution** | **Total Sovereignty.** Native execution of Python, SearXena, and scripts with no middlemen. | **Restricted Cloud.** Code execution in isolated, remote servers with limited permissions. |
@@ -112,7 +112,7 @@ MikuBot is not just another AI client; it is an agentic execution environment de
 | **Privacy & Control** | **You are the Owner.** Data stays yours; you choose the provider and what to share. | **Closed Ecosystem.** Your data is often used to train the provider's future models. |
 | **Visualization** | **Studio Elite.** Scientific-grade high-fidelity rendering of LaTeX, Mermaid, and Callouts. | **Basic Markdown.** Standard browser visualization with low technical flexibility. |
 
-#### 🚀 The MikuBot Edge: The 4 Pillars of Excellence
+#### 🚀 The mikuBot Edge: The 4 Pillars of Excellence
 
 1.  **Native Performance:** No translation layers or virtualization; Miku speaks your PC’s language for minimum latency.
 2.  **Precision and Personalization (Powered by [searXena](https://github.com/NeuralArchLabs/searXena)):** No guessing. Miku consults your files and leverages the **searXena** sovereign metasearch engine (developed natively by us) before responding, ensuring exact, updated results.
@@ -147,32 +147,32 @@ npm run electron:dev
 This project is distributed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**. If you modify this program and offer it as a network service, you must make the source code available to your users.
 
 **Third-Party Acknowledgments:**
-MikuBot is made possible thanks to open-source technologies like React (MIT), Vite (MIT), Electron (MIT), Mermaid.js (MIT), Font Awesome Free (CC BY 4.0 / MIT / SIL OFL 1.1), **Outfit Font (SIL OFL 1.1)**, **Vosk Engine (Apache 2.0)**, Tailwind CSS (MIT), Zustand (MIT), i18next (MIT), unzipper (MIT), FastAPI (MIT), and AI SDKs like Ollama and Google GenAI (Apache 2.0). Refer to the [`LICENSE`](./LICENSE) file for more details.
+mikuBot is made possible thanks to open-source technologies like React (MIT), Vite (MIT), Electron (MIT), Mermaid.js (MIT), Font Awesome Free (CC BY 4.0 / MIT / SIL OFL 1.1), **Outfit Font (SIL OFL 1.1)**, **Vosk Engine (Apache 2.0)**, Tailwind CSS (MIT), Zustand (MIT), i18next (MIT), unzipper (MIT), FastAPI (MIT), and AI SDKs like Ollama and Google GenAI (Apache 2.0). Refer to the [`LICENSE`](./LICENSE) file for more details.
 
 **Embedded Python Engine:**
-MikuCentral includes Python 3.11.9 embedded as a general engine for all Python-based functionalities (SearXena, voice recognition, skill execution). Python is distributed under the **Python Software Foundation License Version 2**, a permissive license that allows its use in proprietary software without an open-source obligation. The package also includes components under MIT (libffi), BSD (bzip2, Tcl/Tk), and Microsoft Distributable Code for Windows licenses. Refer to [`engine/python/LICENSE.txt`](./engine/python/LICENSE.txt) for the complete Python distribution terms.
+mikuCentral includes Python 3.11.9 embedded as a general engine for all Python-based functionalities (SearXena, voice recognition, skill execution). Python is distributed under the **Python Software Foundation License Version 2**, a permissive license that allows its use in proprietary software without an open-source obligation. The package also includes components under MIT (libffi), BSD (bzip2, Tcl/Tk), and Microsoft Distributable Code for Windows licenses. Refer to [`engine/python/LICENSE.txt`](./engine/python/LICENSE.txt) for the complete Python distribution terms.
 
 ---
 
 ## 🏛️ Credits and Legal Disclaimer
-MikuBot is an initiative developed and maintained by [**Neural Arch Labs**](https://github.com/NeuralArchLabs).
+mikuBot is an initiative developed and maintained by [**Neural Arch Labs**](https://github.com/NeuralArchLabs).
 
-**Trademark Notice:** This software uses names, logos, and trademarks of Artificial Intelligence inference providers (such as Google Gemini, Groq, Ollama, Z.AI, among others) strictly for referential and informational purposes oriented toward end-user navigation. **[Neural Arch Labs](https://github.com/NeuralArchLabs) does not own the rights to these logos or tradenames**, has no official affiliation or sponsorship from said entities, and does not obtain any gain, profit, or economic benefit derived from their use or inclusion in the interface. MikuBot acts solely as a neutral client (tool) for the user to consume services via their own configurations.
+**Trademark Notice:** This software uses names, logos, and trademarks of Artificial Intelligence inference providers (such as Google Gemini, Groq, Ollama, Z.AI, among others) strictly for referential and informational purposes oriented toward end-user navigation. **[Neural Arch Labs](https://github.com/NeuralArchLabs) does not own the rights to these logos or tradenames**, has no official affiliation or sponsorship from said entities, and does not obtain any gain, profit, or economic benefit derived from their use or inclusion in the interface. mikuBot acts solely as a neutral client (tool) for the user to consume services via their own configurations.
 
-🤝 **Collaborations and Sponsorships:** We are an independent laboratory committed to open-source technology and digital sovereignty. We are fully open to corporate collaborations, official integrations, and external sponsorships. If you represent an AI provider or wish to financially support the continuous development of MikuBot, feel free to contact us!
+🤝 **Collaborations and Sponsorships:** We are an independent laboratory committed to open-source technology and digital sovereignty. We are fully open to corporate collaborations, official integrations, and external sponsorships. If you represent an AI provider or wish to financially support the continuous development of mikuBot, feel free to contact us!
 
 ---
 
 ## 🐾 The Origin of Our Name
 
-It's common to think that **MikuBot** takes its name from the well-known virtual idol *Hatsune Miku*. However, the origin is personal. "Miku" is a word that means "sky", which is why I named the kitten in the photo (the middle one) this way. I rescued her along with her two siblings, and since then she has been with me and always stays by my side while I am programming.
+It's common to think that **mikuBot** takes its name from the well-known virtual idol *Hatsune Miku*. However, the origin is personal. "Miku" is a word that means "sky", which is why I named the kitten in the photo (the middle one) this way. I rescued her along with her two siblings, and since then she has been with me and always stays by my side while I am programming.
 
 <div align="center">
   <img src="./public/Zanahorio_Miku_Freya.png" alt="Zanahorio, Miku and Freya" width="100%" style="max-width: 500px; border-radius: 12px; margin: 15px 0;" />
   <p><i>From left to right: Zanahorio, Miku, and Freya.</i></p>
 </div>
 
-MikuBot is simply an acknowledgment of her unconditional company in the lab.
+mikuBot is simply an acknowledgment of her unconditional company in the lab.
 
 ---
 *Developed with precision by [Neural Arch Labs](https://github.com/NeuralArchLabs).*

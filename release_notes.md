@@ -1,8 +1,8 @@
-# 🚀 MikuBot v2.3.0 — The Sovereign Persistence Update
+# 🚀 mikuBot v2.3.0 — The Sovereign Persistence Update
 
 ![Version](https://img.shields.io/badge/version-2.3.0-blue.svg?style=for-the-badge&logo=github) ![Platform](https://img.shields.io/badge/Windows-10%2F11-0078D4.svg?style=for-the-badge&logo=windows) ![Setup](https://img.shields.io/badge/Native_.exe-Setup-brightgreen.svg?style=for-the-badge) ![Status](https://img.shields.io/badge/Status-Stable-orange.svg?style=for-the-badge)
 
-MikuBot takes a massive leap in autonomy. **v2.3.0** introduces a persistent multi-session agent execution architecture and dynamic system prompts, fundamentally transforming how you interact with your digital assistant.
+mikuBot takes a massive leap in autonomy. **v2.3.0** introduces a persistent multi-session agent execution architecture and dynamic system prompts, fundamentally transforming how you interact with your digital assistant.
 
 ---
 
@@ -17,7 +17,7 @@ MikuBot takes a massive leap in autonomy. **v2.3.0** introduces a persistent mul
 
 ### 📦 How to Update Safely
 
-Simply download the new installer **MikuBot-Setup-2.3.0.exe** from the **Assets** section below and run it. 
+Simply download the new installer **mikuBot-Setup-2.3.0.exe** from the **Assets** section below and run it. 
 
 > [!IMPORTANT]
 > **Safety First:** The wizard will handle the transition of your workspace folders. However, as with any major architectural update, we strongly recommend: **Run the Backup function** in the Settings Panel first. This preserves your **Sessions, Configuration, Context Library, and Neural Skills** — the unique personality and knowledge you've built.
@@ -27,7 +27,7 @@ Simply download the new installer **MikuBot-Setup-2.3.0.exe** from the **Assets*
 > Because this version completely overhauls the internal System Prompt instruction architecture, your existing `MODES.md` file will NOT work properly, resulting in degraded agent operations.
 > 
 > To prevent wiping your customizations with a Factory Reset, **please update your [`MODES.md`](https://raw.githubusercontent.com/NeuralArchLabs/mikuBot/main/public/core/MODES.md) manually:**
-> 1. Open MikuCentral.
+> 1. Open mikuCentral.
 > 2. Go to the **Commands Editor** (lightning bolt icon in the sidebar).
 > 3. Navigate and click on `MODES.md`.
 > 4. Go to this URL in your browser: [https://raw.githubusercontent.com/NeuralArchLabs/mikuBot/main/public/core/MODES.md](https://raw.githubusercontent.com/NeuralArchLabs/mikuBot/main/public/core/MODES.md)

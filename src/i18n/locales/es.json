@@ -41,7 +41,7 @@
         "status_pending": "PENDIENTE",
         "status": "Estado",
         "executed": "Ejecutado",
-        "desktop_engine_not_detected": "Motor de Escritorio no detectado: La configuración solo se puede guardar en config.json cuando se ejecuta MikuCentral como una aplicación de escritorio.",
+        "desktop_engine_not_detected": "Motor de Escritorio no detectado: La configuración solo se puede guardar en config.json cuando se ejecuta mikuCentral como una aplicación de escritorio.",
         "config_save_success": "Configuración guardada correctamente en config.json",
         "config_reset_success": "Configuración restablecida correctamente.",
         "clean_install": "Instalación Limpia",
@@ -251,7 +251,7 @@
     "settings": {
         "title": "Configuración del Sistema",
         "language_select": "Idioma de la Interfaz",
-        "language_desc": "Selecciona el idioma global de MikuBot",
+        "language_desc": "Selecciona el idioma global de mikuBot",
         "tabs": {
             "core": "Core System",
             "core_desc": "Configuración de Plataforma y Claves",
@@ -542,7 +542,7 @@
         "standby_title": "Neural Standby",
         "standby_desc": "Selecciona un archivo para comenzar a editar",
         "confirm": {
-            "delete_warning": "⚠️ ADVERTENCIA: Eliminar archivos de las rutas Cortex o Command es una operación de alto riesgo. Eliminar archivos esenciales del sistema o comandos personalizados podría romper la funcionalidad de MikuCentral o resultar en la pérdida de datos que no se pueden deshacer.",
+            "delete_warning": "⚠️ ADVERTENCIA: Eliminar archivos de las rutas Cortex o Command es una operación de alto riesgo. Eliminar archivos esenciales del sistema o comandos personalizados podría romper la funcionalidad de mikuCentral o resultar en la pérdida de datos que no se pueden deshacer.",
             "delete_last": "¿Estás absolutamente seguro de que quieres eliminar permanentemente \"{{filename}}\"? Esta acción es irreversible."
         }
     },
@@ -666,7 +666,7 @@
         },
         "alerts": {
             "telegram_incomplete_title": "⚠️ [Telegram Incompleto]",
-            "telegram_incomplete_desc": "Para usar Telegram como canal de entrega en tus tareas programadas, debes configurar tu 'Bot Token' y 'Chat ID' en la pestaña Core System de los ajustes de MikuCentral."
+            "telegram_incomplete_desc": "Para usar Telegram como canal de entrega en tus tareas programadas, debes configurar tu 'Bot Token' y 'Chat ID' en la pestaña Core System de los ajustes de mikuCentral."
         }
     },
     "titlebar": {
@@ -694,7 +694,7 @@
             "sync_models": "Sincronizar Modelos",
             "reset_config": "Restablecer Configuración Global",
             "documentation": "Documentación",
-            "about": "Acerca de MikuBot"
+            "about": "Acerca de mikuBot"
         }
     },
     "about": {

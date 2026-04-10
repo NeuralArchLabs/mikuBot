@@ -41,7 +41,7 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({ isOpen, onClose }) => 
                 {/* Header pattern & Logo */}
                 <div className="relative h-28 bg-[#0f172a] overflow-hidden flex items-center justify-center border-b border-cyan-900/30">
                     <div className="absolute inset-0 opacity-20 about-pattern" />
-                    <img src="./mikuBotICON.png" alt="Miku Logo" className="w-16 h-16 object-contain relative z-10 drop-shadow-[0_0_15px_rgba(34,211,238,0.8)] filter brightness-110 rounded-xl" />
+                    <img src="./mikuBotICON.png" alt="mikuBot Logo" className="w-16 h-16 object-contain relative z-10 drop-shadow-[0_0_15px_rgba(34,211,238,0.8)] filter brightness-110 rounded-xl" />
                 </div>
 
                 {/* Body Content */}
