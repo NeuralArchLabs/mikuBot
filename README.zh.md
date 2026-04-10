@@ -106,8 +106,6 @@ npm install
 # 3. 在开发模式下运行 (带 Electron HMR)
 npm run electron:dev
 
-# 4. 构建生产版本 (生成 .exe 安装程序)
-npm run electron:build
 ```
 
 ### ⚖️ 许可证和开源归属

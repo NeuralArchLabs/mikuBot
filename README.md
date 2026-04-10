@@ -107,8 +107,6 @@ npm install
 # 3. Ejecutar en modo Desarrollo (con Electron HMR)
 npm run electron:dev
 
-# 4. Compilar para Producción (Generar instalador .exe)
-npm run electron:build
 ```
 
 ### ⚖️ Licencia y Atribuciones Open Source
