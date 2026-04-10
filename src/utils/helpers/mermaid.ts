@@ -1,32 +1,103 @@
 import mermaid from 'mermaid';
 
 /**
+ * 🎨 Interactive Hover CSS — injected into the SVG via themeCSS.
+ * This is the ONLY reliable way to style SVG internals since external CSS
+ * cannot penetrate SVG element boundaries.
+ */
+const MERMAID_INTERACTIVE_CSS = `
+    /* ── Base Transitions ─────────────────────────────────────── */
+    .node rect, .node circle, .node ellipse, .node polygon, .node path,
+    .actor, .note, .labelBox, .loopLine,
+    .state, .entityBox, .pieCircle,
+    .cluster rect, .cluster path {
+        transition: filter 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                    stroke-width 0.3s ease,
+                    stroke 0.3s ease !important;
+        cursor: pointer;
+    }
+
+    /* ── Node Hover: Glow + Brighten ──────────────────────────── */
+    .node:hover rect, .node:hover circle, .node:hover ellipse,
+    .node:hover polygon, .node:hover path {
+        filter: brightness(1.25) drop-shadow(0 0 10px rgba(6, 182, 212, 0.5)) !important;
+        stroke: #22d3ee !important;
+        stroke-width: 2.5px !important;
+    }
+
+    /* ── Actor / Note / State Hover ───────────────────────────── */
+    .actor:hover, .note:hover, .state:hover, .entityBox:hover {
+        filter: brightness(1.2) drop-shadow(0 0 8px rgba(6, 182, 212, 0.4)) !important;
+        stroke: #22d3ee !important;
+        stroke-width: 2px !important;
+    }
+
+    /* ── Cluster Hover ────────────────────────────────────────── */
+    .cluster:hover rect, .cluster:hover path {
+        filter: brightness(1.15) drop-shadow(0 0 6px rgba(99, 102, 241, 0.4)) !important;
+        stroke: #818cf8 !important;
+    }
+
+    /* ── Text Sharpening on Node Hover ────────────────────────── */
+    .node:hover .nodeLabel, .node:hover text,
+    .actor:hover text, .label:hover text {
+        fill: #fff !important;
+        filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.3)) !important;
+    }
+
+    /* ── Edge / Link Interaction ──────────────────────────────── */
+    .edgePath path {
+        transition: stroke 0.3s ease, stroke-width 0.3s ease, filter 0.3s ease !important;
+    }
+    .edgePath:hover path {
+        stroke: #22d3ee !important;
+        stroke-width: 3px !important;
+        filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.6)) !important;
+    }
+
+    /* ── Edge Labels ──────────────────────────────────────────── */
+    .edgeLabel:hover {
+        filter: brightness(1.3) drop-shadow(0 0 4px rgba(255, 255, 255, 0.2)) !important;
+    }
+
+    /* ── Pie Slice Hover ──────────────────────────────────────── */
+    .pieCircle:hover {
+        filter: brightness(1.3) drop-shadow(0 0 12px rgba(255, 255, 255, 0.3)) !important;
+        cursor: pointer;
+    }
+`;
+
+/** Shared Mermaid config object */
+const MERMAID_CONFIG = {
+    startOnLoad: false,
+    theme: 'dark' as const,
+    securityLevel: 'loose' as const,
+    suppressErrorRendering: true,
+    fontFamily: 'JetBrains Mono, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+    themeCSS: MERMAID_INTERACTIVE_CSS,
+    themeVariables: {
+        primaryColor: '#06b6d4',
+        primaryTextColor: '#fff',
+        primaryBorderColor: '#0891b2',
+        lineColor: '#22d3ee',
+        secondaryColor: '#6366f1',
+        tertiaryColor: '#10b981',
+        mainBkg: 'rgba(0, 0, 0, 0.45)',
+        nodeBorder: '#06b6d4',
+        clusterBkg: 'rgba(30, 41, 59, 0.5)',
+        titleColor: '#06b6d4',
+        edgeLabelBackground: '#000',
+        defaultLinkColor: '#06b6d4',
+    }
+};
+
+/**
  * Initializes and renders Mermaid diagrams in the DOM.
  * This is designed to be called after the MarkdownRenderer has injected HTML.
  */
 export const initMermaid = async () => {
     try {
-        mermaid.initialize({
-            startOnLoad: false,
-            theme: 'dark',
-            securityLevel: 'loose',
-            suppressErrorRendering: true,
-            fontFamily: 'JetBrains Mono, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-            themeVariables: {
-                primaryColor: '#06b6d4', // cyan-500
-                primaryTextColor: '#fff',
-                primaryBorderColor: '#0891b2', // cyan-600
-                lineColor: '#22d3ee', // cyan-400
-                secondaryColor: '#6366f1', // indigo-500
-                tertiaryColor: '#10b981', // emerald-500
-                mainBkg: 'rgba(0, 0, 0, 0.45)',
-                nodeBorder: '#06b6d4',
-                clusterBkg: 'rgba(30, 41, 59, 0.5)',
-                titleColor: '#06b6d4',
-                edgeLabelBackground: '#000',
-                defaultLinkColor: '#06b6d4',
-            }
-        });
+        mermaid.initialize(MERMAID_CONFIG);
         await mermaid.run();
     } catch (err) {
         console.error('[Mermaid] Initialization failed:', err);
@@ -61,7 +132,7 @@ export const renderSingleMermaidBlock = async (block: HTMLElement, index: number
          */
         await new Promise(resolve => setTimeout(resolve, 0));
 
-        mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'loose', suppressErrorRendering: true });
+        mermaid.initialize(MERMAID_CONFIG);
         
         // 📡 STEP 1: Headless calculation
         const { svg } = await mermaid.render(id, content.trim());
