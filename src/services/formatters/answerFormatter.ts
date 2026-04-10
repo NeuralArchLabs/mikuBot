@@ -28,7 +28,7 @@ export function formatFinalResponse(rawText: any): string {
     const pieces: string[] = [];
     
     // 2a. Fenced Code Blocks
-    formatted = formatted.replace(/^(`{3,}|~{3,})([\w./+#-]*)[\t ]*\n([\s\S]*?)\n\s*\1/gm, (match) => {
+    formatted = formatted.replace(/^[ \t]*(`{3,}|~{3,})([\w./+#-]*)[\t ]*\n([\s\S]*?)\n[ \t]*\1/gm, (match) => {
         const id = `___PROTECTED_BLOCK_${pieces.length}___`;
         pieces.push(match);
         return `\n${id}\n`;
@@ -62,7 +62,8 @@ export function formatFinalResponse(rawText: any): string {
 
     // --- PHASE 3: RE-INJECTION ---
     for (let i = 0; i < pieces.length; i++) {
-        formatted = formatted.replace(`___PROTECTED_BLOCK_${i}___`, pieces[i]);
+        // Fix: Use replacer function to prevent String.prototype.replace from eating $ signs
+        formatted = formatted.replace(`___PROTECTED_BLOCK_${i}___`, () => pieces[i]);
     }
 
     // 4. Trim trailing whitespace

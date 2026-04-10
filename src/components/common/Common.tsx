@@ -327,8 +327,8 @@ const InteractiveMarkdownRendererBase = ({ content, isStreaming }: InteractiveMa
         const plainLines: string[] = [];
 
         lines.forEach((line, index) => {
-            const uncheckedMatch = line.match(/^(\s*)- \[ \] (.*)$/);
-            const checkedMatch = line.match(/^(\s*)- \[x\] (.*)$/);
+            const uncheckedMatch = line.match(/^(\s*)(?:-|\*)\s+\[ \]\s+(.*)$/i);
+            const checkedMatch = line.match(/^(\s*)(?:-|\*)\s+\[(x|X|\/)\]\s+(.*)$/i);
 
             if (uncheckedMatch) {
                 const id = `checkbox-${index}`;

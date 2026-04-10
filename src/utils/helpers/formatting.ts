@@ -139,7 +139,8 @@ export const toHtml = (md: string): string => {
     
     // 0. PRE-EXTRACTION: Protect inline and fenced code blocks
     // Multi-fence support (3+ backticks or tildes) for nested code blocks
-    html = html.replace(/^(`{3,}|~{3,})([\w./+#-]*)[\t ]*\n([\s\S]*?)\n\s*\1/gm, (match, fence, lang, code) => {
+    // Updated: relax ^ to ^[ \t]* to handle indented code blocks
+    html = html.replace(/^[ \t]*(`{3,}|~{3,})([\w./+#-]*)[\t ]*\n([\s\S]*?)\n[ \t]*\1/gm, (match, fence, lang, code) => {
         const id = `__BLOCK_${pieces.length}__`;
         const langClean = lang.toLowerCase().trim();
         const codeTrimmed = code; // Preserve exact content for nested blocks
@@ -324,7 +325,7 @@ export const toHtml = (md: string): string => {
     });
 
     // 1c. Universal Admonition Parser — Phase 1
-    html = html.replace(/^(?:>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|DANGER|INFO|SUCCESS|FAILURE|BUG|EXAMPLE|QUOTE|QUESTION|FAQ)\]([\-\+])?(?:[ \t]+(.*))?\s*?\n?)((?:(?!(?:>\s*\[!)).*\n?)*)/gim, (match, type, collapseSign, title, body) => {
+    html = html.replace(/^[ \t]*(?:>\s*)?\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|DANGER|INFO|SUCCESS|FAILURE|BUG|EXAMPLE|QUOTE|QUESTION|FAQ)\]([\-\+])?(?:[ \t]+(.*))?\s*?\n?((?:(?!(?:[ \t]*>\s*\[!)).*\n?)*)/gim, (match, type, collapseSign, title, body) => {
         const id = `__BLOCK_${pieces.length}__`;
         const typeUp = type.toUpperCase();
         
@@ -377,7 +378,7 @@ export const toHtml = (md: string): string => {
     });
 
     // 1d. Standard Blockquote Parser (Phase 1) — Nesting-aware line-by-line
-    html = html.replace(/^((?:>.*\n?)+)/gm, (match) => {
+    html = html.replace(/^([ \t]*((?:>.*\n?)+))/gm, (match) => {
         if (match.includes('__BLOCK_')) return match;
         const id = `__BLOCK_${pieces.length}__`;
         pieces.push(convertBlockquotesToHtml(match));
@@ -852,12 +853,12 @@ function convertListsToHtml(html: string): string {
         const line = contentLines[i];
         const trimmed = line.trim();
 
-        // Task list: - [x], - [ ], or - [/]
-        const taskMatch = line.match(/^(\s*)([\*\-\u2022\u00B7]) \[(x| |\/)\] (.*)$/i);
+        // Task list: - [x], - [ ], or - [/] — \s+ to tolerate variable spacing from LLMs
+        const taskMatch = line.match(/^(\s*)([\*\-\u2022\u00B7])\s+\[(x| |\/)\]\s+(.*)$/i);
         // Standard unordered list
-        const ulMatch = !taskMatch ? line.match(/^(\s*)([\*\-\u2022\u00B7]) (.*)$/) : null;
+        const ulMatch = !taskMatch ? line.match(/^(\s*)([\*\-\u2022\u00B7])\s+(.*)$/) : null;
         // Ordered list
-        const olMatch = !taskMatch && !ulMatch ? line.match(/^(\s*)(\d+)\. (.*)$/) : null;
+        const olMatch = !taskMatch && !ulMatch ? line.match(/^(\s*)(\d+)\.\s+(.*)$/) : null;
 
         const isDivider = trimmed === '---DIVIDER---';
 
