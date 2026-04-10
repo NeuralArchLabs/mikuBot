@@ -59,7 +59,9 @@ Un agente y asistente de IA dirigido al público general. Diseñado como una alt
 Debajo de su interfaz amigable, MikuBot es un entorno de ejecución de agentes autónomos de grado profesional diseñado para la soberanía tecnológica.
 
 ### 🏛️ Origen e Integridad del Proyecto
-MikuBot **no es un fork de OpenClaw** ni reutiliza ninguna lógica de las filtraciones de **Claude Code** (31 de marzo 2026). Este proyecto es 100% independiente, iniciado a principios de **febrero de 2026** (ver imagen de evidencia abajo) como un esfuerzo por optimizar modelos locales de pocos parámetros (SLMs) para ejecutar herramientas y tareas agénticas de forma eficiente.
+MikuBot es un proyecto 100% independiente, iniciado a principios de **febrero de 2026** (ver imagen de evidencia abajo) como un esfuerzo por optimizar modelos locales de pocos parámetros (SLMs) para ejecutar herramientas y tareas agénticas de forma eficiente. Su desarrollo ha sido planeado y ejecutado bajo metodologías ágiles, basándose estrictamente en investigación, prueba y error hasta alcanzar su estado actual.
+
+No es un fork de OpenClaw ni reutiliza ninguna lógica de las filtraciones de **Claude Code** (31 de marzo 2026). Apostamos por la transparencia y la arquitectura propia como base de un sistema seguro y soberano.
 
 <div align="center">
   <img src="./public/startDateEvidence.png" width="600" style="border-radius: 8px; border: 1px solid #30363d" alt="Evidencia de Inicio del Proyecto" />
@@ -68,8 +70,6 @@ MikuBot **no es un fork de OpenClaw** ni reutiliza ninguna lógica de las filtra
 
 > [!NOTE]
 > Por motivos de seguridad del historial del repositorio (prevención de fugas accidentales de claves de desarrollo u otros datos sensibles del entorno temprano), el código se publicó en GitHub de forma "limpia" en una fecha posterior a su inicio real.
-
-Su desarrollo ha sido planeado y ejecutado bajo metodologías ágiles, basándose estrictamente en investigación, prueba y error hasta alcanzar su estado actual. Apostamos por la transparencia y la arquitectura propia como base de un sistema seguro y soberano.
 
 ### 🧠 Inteligencia Neural Multimodelo
 - **Ollama:** Inferencia 100% local y privada y acceso a modelos cloud con free Tier muy generoso.

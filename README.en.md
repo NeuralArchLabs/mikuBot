@@ -59,7 +59,9 @@ An AI agent and assistant directed at the general public. Designed as a friendly
 Beneath its friendly interface, MikuBot is a professional-grade autonomous agent execution environment designed for technological sovereignty.
 
 ### 🏛️ Origin and Project Integrity
-MikuBot is **not a fork of OpenClaw** nor does it reuse any logic from the **Claude Code** (March 31, 2026) leaks. This project is 100% independent, having started in early **February 2026** (see evidence image below) as an effort to optimize Small Language Models (SLMs) for tool execution and agentic tasks.
+MikuBot is a 100% independent project started in early **February 2026** (see evidence image below) as an effort to optimize Small Language Models (SLMs) for tool execution and agentic tasks. Its development was planned and executed under agile methodologies, based strictly on research, trial, and error until reaching its current state. 
+
+It is **not a fork of OpenClaw** nor does it reuse any logic from the **Claude Code** (March 31, 2026) leaks. We believe in transparency and proprietary architecture as the foundation of a secure, sovereign system.
 
 <div align="center">
   <img src="./public/startDateEvidence.png" width="600" style="border-radius: 8px; border: 1px solid #30363d" alt="Project Start Evidence" />
@@ -68,8 +70,6 @@ MikuBot is **not a fork of OpenClaw** nor does it reuse any logic from the **Cla
 
 > [!NOTE]
 > For repository history security reasons (preventing accidental leaks of development keys or other sensitive data from the early environment), the code was published to GitHub as a "clean" release at a later date than its actual inception.
-
-Its development was planned and executed under agile methodologies, based strictly on research, trial, and error until reaching its current state. We believe in transparency and proprietary architecture as the foundation of a secure, sovereign system.
 
 ### 🧠 Multi-Model Neural Intelligence
 - **Ollama:** 100% local and private inference and access to cloud models with a very generous free tier.
