@@ -58,7 +58,15 @@ Un agente y asistente de IA dirigido al público general. Diseñado como una alt
 Debajo de su interfaz amigable, MikuBot es un entorno de ejecución de agentes autónomos de grado profesional diseñado para la soberanía tecnológica.
 
 ### 🏛️ Origen e Integridad del Proyecto
-MikuBot **no es un fork de OpenClaw** ni reutiliza ninguna lógica de las filtraciones de **Claude Code** (31 de marzo 2026). Este proyecto es 100% independiente, iniciado a principios de **febrero de 2026** como un esfuerzo por optimizar modelos locales de pocos parámetros (SLMs) para ejecutar herramientas y tareas agénticas de forma eficiente. 
+MikuBot **no es un fork de OpenClaw** ni reutiliza ninguna lógica de las filtraciones de **Claude Code** (31 de marzo 2026). Este proyecto es 100% independiente, iniciado a principios de **febrero de 2026** (ver imagen de evidencia abajo) como un esfuerzo por optimizar modelos locales de pocos parámetros (SLMs) para ejecutar herramientas y tareas agénticas de forma eficiente.
+
+<div align="center">
+  <img src="./public/startDateEvidence.png" width="600" style="border-radius: 8px; border: 1px solid #30363d" alt="Evidencia de Inicio del Proyecto" />
+  <p><i>Captura de los primeros commits del núcleo lógico de MikuBot (Febrero 2026).</i></p>
+</div>
+
+> [!NOTE]
+> Por motivos de seguridad del historial del repositorio (prevención de fugas accidentales de claves de desarrollo u otros datos sensibles del entorno temprano), el código se publicó en GitHub de forma "limpia" en una fecha posterior a su inicio real.
 
 Su desarrollo ha sido planeado y ejecutado bajo metodologías ágiles, basándose estrictamente en investigación, prueba y error hasta alcanzar su estado actual. Apostamos por la transparencia y la arquitectura propia como base de un sistema seguro y soberano.
 
@@ -113,7 +121,7 @@ npm run electron:dev
 Este proyecto se distribuye bajo la licencia **GNU Affero General Public License v3.0 (AGPL-3.0)**. Si modificas este programa y lo ofreces como servicio en red, debes poner el código fuente a disposición de tus usuarios.
 
 **Reconocimientos a Terceros:**
-MikuBot es posible gracias a tecnologías de código abierto como React (MIT), Vite (MIT), Electron (MIT), Mermaid.js (MIT), Font Awesome Free (CC BY 4.0 / MIT), Tailwind CSS (MIT), Zustand (MIT), FastAPI (MIT), y SDKs de IA como Ollama y Google GenAI (Apache 2.0). Consulta el archivo [`LICENSE`](./LICENSE) para más detalles.
+MikuBot es posible gracias a tecnologías de código abierto como React (MIT), Vite (MIT), Electron (MIT), Mermaid.js (MIT), Font Awesome Free (CC BY 4.0 / MIT / SIL OFL 1.1), **Outfit Font (SIL OFL 1.1)**, **Vosk Engine (Apache 2.0)**, Tailwind CSS (MIT), Zustand (MIT), i18next (MIT), unzipper (MIT), FastAPI (MIT), y SDKs de IA como Ollama y Google GenAI (Apache 2.0). Consulta el archivo [`LICENSE`](./LICENSE) para más detalles.
 
 **Motor Python Embebido:**
 MikuCentral incluye Python 3.11.9 embebido como motor general para todas las funcionalidades basadas en Python (SearXena, reconocimiento de voz, ejecución de skills). Python se distribuye bajo la **Python Software Foundation License Version 2**, una licencia permissiva que permite su uso en software propietario sin obligación de opensource. El paquete también incluye componentes bajo licencias MIT (libffi), BSD (bzip2, Tcl/Tk), y Microsoft Distributable Code para Windows. Consulta [`engine/python/LICENSE.txt`](./engine/python/LICENSE.txt) para los términos completos de distribución de Python.

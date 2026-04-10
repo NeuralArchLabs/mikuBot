@@ -57,7 +57,15 @@
 在其友好的界面之下，MikuBot 是一个专业级的自主代理执行环境，专为技术主权而设计。
 
 ### 🏛️ 项目起源与完整性
-MikuBot **不是 OpenClaw 的分支**，也没有使用任何来自 **Claude Code** (2026年3月31日泄露) 的逻辑。本项目是 100% 独立的，于 **2026 年 2 月**初启动，旨在优化小参数模型 (SLMs) 以高效执行工具和代理任务。
+MikuBot **不是 OpenClaw 的分支**，也没有使用任何来自 **Claude Code** (2026年3月31日泄露) 的逻辑。本项目是 100% 独立的，于 **2026 年 2 月**初启动（见下方证据图像），旨在优化小参数模型 (SLMs) 以高效执行工具和代理任务。
+
+<div align="center">
+  <img src="./public/startDateEvidence.png" width="600" style="border-radius: 8px; border: 1px solid #30363d" alt="项目启动证据" />
+  <p><i>MikuBot 逻辑核心第一个提交的快照（2026年2月）。</i></p>
+</div>
+
+> [!NOTE]
+> 出于存储库历史安全原因（防止开发密钥或其他来自早期环境的敏感数据意外泄露），代码是在其实际启动日期之后以“干净”版本发布到 GitHub 的。
 
 其开发过程采用敏捷方法，严格基于研究、试验和错误，直至达到目前的阶段。我们坚持以透明度和专有架构作为安全、主权系统的基石。
 
@@ -112,7 +120,7 @@ npm run electron:dev
 本项目在 **GNU Affero General Public License v3.0 (AGPL-3.0)** 下分发。如果您修改此程序并将其作为网络服务提供，您必须向您的用户提供源代码。
 
 **第三方致谢:**
-MikuBot 的实现归功于 React (MIT)、Vite (MIT)、Electron (MIT)、Mermaid.js (MIT)、Font Awesome Free (CC BY 4.0 / MIT)、Tailwind CSS (MIT)、Zustand (MIT)、FastAPI (MIT) 以及 Ollama 和 Google GenAI (Apache 2.0) 等 AI SDKs。有关更多详细信息，请参阅 [`LICENSE`](./LICENSE) 文件。
+MikuBot 的实现归功于 React (MIT)、Vite (MIT)、Electron (MIT)、Mermaid.js (MIT)、Font Awesome Free (CC BY 4.0 / MIT / SIL OFL 1.1)、**Outfit 字体 (SIL OFL 1.1)**、**Vosk 引擎 (Apache 2.0)**、Tailwind CSS (MIT)、Zustand (MIT)、i18next (MIT)、unzipper (MIT)、FastAPI (MIT) 以及 Ollama 和 Google GenAI (Apache 2.0) 等 AI SDKs。有关更多详细信息，请参阅 [`LICENSE`](./LICENSE) 文件。
 
 **嵌入式 Python 引擎:**
 MikuCentral 包括嵌入式 Python 3.11.9，作为所有基于 Python 的功能 (SearXena、语音识别、技能执行) 的通用引擎。Python 在 **Python Software Foundation License Version 2** 下分发，这是一种允许在专有软件中使用而无需开源义务的许可证。该软件包还包括 MIT (libffi)、BSD (bzip2、Tcl/Tk) 和 Microsoft Distributable Code for Windows 许可证下的组件。有关完整的 Python 分发条款，请参阅 [`engine/python/LICENSE.txt`](./engine/python/LICENSE.txt)。
