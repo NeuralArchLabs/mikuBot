@@ -236,7 +236,7 @@ export const toHtml = (md: string): string => {
 
         // 🛡️ Strong signals: LaTeX commands, common operators, or typical math symbols
         const signals = isDollar 
-            ? /[\^\\=+<>∑∫∏√{}[\]]/.test(f) // Removed | from default dollar signals
+            ? /[\^\\_=+<>∑∫∏√{}[\]]/.test(f) // Added _ for subscript patterns like k_B
             : /[\^\\_=+*\/<>|∑∫∏√]/.test(f);
 
         if (signals) {
@@ -342,6 +342,13 @@ export const toHtml = (md: string): string => {
         return `\n${id}\n`;
     });
 
+    // Protect HTML <code> tags with attributes (styled code blocks) from being split by line processor
+    html = html.replace(/<code\s+([^>]*?)>([\s\S]*?)<\/code>/gi, (match, attrs, content) => {
+        const id = `__BLOCK_${pieces.length}__`;
+        pieces.push(`<code ${attrs}>${content.trim()}</code>`);
+        return id;
+    });
+
     // 1c. Universal Admonition Parser — Phase 1
     html = html.replace(/^[ \t]*(?:>\s*)?\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|DANGER|INFO|SUCCESS|FAILURE|BUG|EXAMPLE|QUOTE|QUESTION|FAQ)\]([\-\+])?(?:[ \t]+(.*))?\s*?\n?((?:(?!(?:[ \t]*>\s*\[!)).*\n?)*)/gim, (match, type, collapseSign, title, body) => {
         const id = `__BLOCK_${pieces.length}__`;
@@ -395,9 +402,11 @@ export const toHtml = (md: string): string => {
         return `\n${id}\n${remainder}`;
     });
 
-    // 1d. Standard Blockquote Parser (Phase 1) — Nesting-aware line-by-line
-    html = html.replace(/^([ \t]*((?:>.*\n?)+))/gm, (match) => {
-        if (match.includes('__BLOCK_')) return match;
+    // 1d. Standard Blockquote Parser (Phase 1) — Nesting-aware with recursive rendering
+    // Captures consecutive lines starting with > (including blank > lines for paragraph breaks)
+    html = html.replace(/(^[ \t]*>.*(?:\n(?:[ \t]*>.*|[ \t]*))*)/gm, (match) => {
+        // Verify at least one real > line exists (not just whitespace)
+        if (!/^[ \t]*>/m.test(match)) return match;
         const id = `__BLOCK_${pieces.length}__`;
         pieces.push(convertBlockquotesToHtml(match));
         return `\n${id}\n`;
@@ -784,63 +793,89 @@ function processInlineMarkdown(text: string): string {
 /**
  * Converts blockquotes including nested levels (>> nested, >>> deep)
  * Operates on RAW `>` prefixes (not HTML-escaped &gt;).
- * Produces depth-aware premium styled blockquotes.
+ * Produces depth-aware premium styled blockquotes with RECURSIVE inner rendering.
  */
 function convertBlockquotesToHtml(block: string): string {
     const lines = block.split('\n');
-    const output: string[] = [];
-    let openLevels = 0;
 
     // Depth-based styling: each nesting level gets progressively dimmer border
     const depthStyles = [
         // Level 1 — Primary
-        'border-l-4 border-cyan-500/30 pl-6 pr-4 py-3 my-4 bg-black/40 backdrop-blur-md rounded-r-xl italic text-slate-300 leading-snug shadow-xl text-md font-medium',
+        'border-l-4 border-cyan-500/30 pl-6 pr-4 py-3 my-4 bg-black/40 backdrop-blur-md rounded-r-xl text-slate-300 leading-snug shadow-xl text-md font-medium',
         // Level 2 — Secondary
-        'border-l-[3px] border-indigo-400/25 pl-5 pr-3 py-2 my-2 bg-indigo-500/5 rounded-r-lg italic text-slate-400 leading-snug text-sm',
+        'border-l-[3px] border-indigo-400/25 pl-5 pr-3 py-2 my-2 bg-indigo-500/5 rounded-r-lg text-slate-400 leading-snug text-sm',
         // Level 3+ — Tertiary
-        'border-l-2 border-slate-500/20 pl-4 pr-2 py-1.5 my-1 bg-white/[0.02] rounded-r-md italic text-slate-500 leading-snug text-sm',
+        'border-l-2 border-slate-500/20 pl-4 pr-2 py-1.5 my-1 bg-white/[0.02] rounded-r-md text-slate-500 leading-snug text-sm',
     ];
 
-    for (const line of lines) {
-        // Count how many > prefixes this line has (supports `>`, `> >`, `> > >` and `>>`, `>>>`)
-        const match = line.match(/^((?:>\s*)+)(.*)$/);
-        if (match) {
-            const prefix = match[1];
-            const content = match[2].trim();
-            const level = (prefix.match(/>/g) || []).length;
+    // Group consecutive lines by their minimum shared depth
+    // Then recursively render inner content through toHtml
+    const processAtDepth = (inputLines: string[], targetDepth: number): string => {
+        const output: string[] = [];
+        let i = 0;
 
-            // Open any new levels
-            while (openLevels < level) {
-                const styleIdx = Math.min(openLevels, depthStyles.length - 1);
-                output.push(`<blockquote class="${depthStyles[styleIdx]}" data-type="blockquote">`);
-                openLevels++;
+        while (i < inputLines.length) {
+            const line = inputLines[i];
+            const match = line.match(/^((?:>\s*)+)(.*)$/);
+
+            if (!match) {
+                // Non-quote line at this depth — just push it
+                if (line.trim()) output.push(line);
+                i++;
+                continue;
             }
-            // Close excess levels
-            while (openLevels > level) {
-                output.push('</blockquote>');
-                openLevels--;
+
+            const level = (match[1].match(/>/g) || []).length;
+
+            if (level < targetDepth) {
+                // This line belongs to a parent level — stop processing
+                break;
             }
-            // Add content (process inline markdown)
-            if (content) {
-                output.push(processInlineMarkdown(content));
+
+            if (level === targetDepth) {
+                // Content at exactly this depth — strip one level of `>` prefix
+                output.push(match[2]);
+                i++;
+            } else {
+                // Deeper nesting — collect all consecutive deeper lines and recurse
+                const nestedLines: string[] = [];
+                while (i < inputLines.length) {
+                    const nestedMatch = inputLines[i].match(/^((?:>\s*)+)(.*)$/);
+                    if (!nestedMatch) break;
+                    const nestedLevel = (nestedMatch[1].match(/>/g) || []).length;
+                    if (nestedLevel < level) break;
+                    nestedLines.push(inputLines[i]);
+                    i++;
+                }
+                const nestedHtml = processAtDepth(nestedLines, level);
+                const styleIdx = Math.min(level - 1, depthStyles.length - 1);
+                output.push(`<blockquote class="${depthStyles[styleIdx]}" data-type="blockquote">${nestedHtml}</blockquote>`);
             }
-        } else {
-            // Non-quote line — close all open blockquotes
-            while (openLevels > 0) {
-                output.push('</blockquote>');
-                openLevels--;
-            }
-            const trimmed = line.trim();
-            if (trimmed) output.push(line);
         }
-    }
-    // Close remaining
-    while (openLevels > 0) {
-        output.push('</blockquote>');
-        openLevels--;
-    }
 
-    return output.join('\n');
+        // Join the stripped lines and render them through the main pipeline
+        // This enables full support for code blocks, tables, lists, etc. inside blockquotes
+        const innerContent = output.join('\n');
+
+        // Check if output already contains rendered HTML (from nested blockquotes)
+        // If so, we need to be careful not to double-process it
+        if (innerContent.includes('<blockquote')) {
+            // Split into segments: rendered blockquotes vs raw markdown
+            const segments = innerContent.split(/(<blockquote[\s\S]*?<\/blockquote>)/g);
+            return segments.map(seg => {
+                if (seg.startsWith('<blockquote')) return seg;
+                if (!seg.trim()) return '';
+                return toHtml(seg);
+            }).join('');
+        }
+
+        return toHtml(innerContent);
+    };
+
+    // Start processing from depth 1
+    const styleIdx = 0;
+    const innerHtml = processAtDepth(lines, 1);
+    return `<blockquote class="${depthStyles[styleIdx]}" data-type="blockquote">${innerHtml}</blockquote>`;
 }
 
 /**
@@ -1321,24 +1356,63 @@ function convertMathToHtml(math: string): string {
         html = html.replace(`\x00T${i}\x00`, tag);
     });
 
+    // 3e. Delimiters: \left and \right — convert to styled brackets
+    html = html.replace(/\\left\\{/g, '{');
+    html = html.replace(/\\right\\}/g, '}');
+    html = html.replace(/\\left([([|])/g, '$1');
+    html = html.replace(/\\right([)\]|])/g, '$1');
+    html = html.replace(/\\left\./g, '');
+    html = html.replace(/\\right\./g, '');
+
+    // 3f. Grouping commas {,} → , (used for number formatting like 299{,}792)
+    html = html.replace(/\{,\}/g, ',');
+
+    // 3g. \text{} and formatting commands (must run before operator substitution)
+    html = html.replace(/\\text\{([^}]*)\}/g, '<span class="font-sans not-italic opacity-80">$1</span>');
+    html = html.replace(/\\mathcal\{([^}]*)\}/g, '<span class="font-serif" style="font-family: cursive">$1</span>');
+    html = html.replace(/\\mathbb\{([^}]*)\}/g, '<span class="font-bold font-serif">$1</span>');
+    html = html.replace(/\\mathrm\{([^}]*)\}/g, '<span class="not-italic">$1</span>');
+    html = html.replace(/\\operatorname\{([^}]*)\}/g, '<span class="not-italic">$1</span>');
+
     // 4. Common Operators & Large Symbols
+    // IMPORTANT: Sorted by key length (longest first) to prevent substring collisions (e.g. \cdot eating \cdots)
     const ops: Record<string, string> = {
-        '\\int': '∫', '\\sum': 'Σ', '\\lim': 'lim', '\\prod': 'Π', '\\sqrt': '√', '\\partial': '∂', '\\nabla': '∇',
-        '\\infty': '∞', '\\approx': '≈', '\\neq': '≠', '\\leq': '≤', '\\geq': '≥', '\\pm': '±', '\\mp': '∓',
-        '\\propto': '∝', '\\sim': '∼', '\\equiv': '≡', '\\hbar': 'ℏ', '\\varepsilon_0': 'ε₀', '\\varepsilon': 'ε', 
-        '\\mathbf': '', '\\cdot': '·', '\\times': '×', '\\div': '÷',
-        '\\exists': '∃', '\\forall': '∀', '\\in': '∈', '\\notin': '∉', '\\subset': '⊂', '\\supset': '⊃', 
-        '\\cup': '∪', '\\cap': '∩', '\\setminus': '∖', '\\emptyset': '∅', '\\oint': '∮',
-        '\\rightarrow': '→', '\\leftarrow': '←', '\\leftrightarrow': '↔', '\\Rightarrow': '⇒', '\\Leftarrow': '⇐', '\\Leftrightarrow': '⇔',
-        '\\cdots': '⋯', '\\vdots': '⋮', '\\ddots': '⋱', '\\quad': '&nbsp;&nbsp;&nbsp;&nbsp;'
+        '\\Leftrightarrow': '⇔', '\\leftrightarrow': '↔',
+        '\\Rightarrow': '⇒', '\\Leftarrow': '⇐',
+        '\\rightarrow': '→', '\\leftarrow': '←',
+        '\\varepsilon_0': 'ε₀', '\\varepsilon': 'ε',
+        '\\setminus': '∖', '\\emptyset': '∅',
+        '\\partial': '∂', '\\approx': '≈',
+        '\\propto': '∝', '\\equiv': '≡',
+        '\\infty': '∞', '\\nabla': '∇',
+        '\\notin': '∉', '\\subset': '⊂', '\\supset': '⊃',
+        '\\times': '×', '\\cdots': '⋯', '\\vdots': '⋮', '\\ddots': '⋱',
+        '\\cdot': '·',
+        '\\sqrt': '√', '\\hbar': 'ℏ',
+        '\\prod': 'Π', '\\oint': '∮',
+        '\\neq': '≠', '\\leq': '≤', '\\geq': '≥',
+        '\\cup': '∪', '\\cap': '∩',
+        '\\sum': 'Σ', '\\int': '∫',
+        '\\lim': 'lim', '\\det': 'det', '\\max': 'max', '\\min': 'min',
+        '\\sup': 'sup', '\\inf': 'inf', '\\dim': 'dim', '\\ker': 'ker',
+        '\\div': '÷', '\\pm': '±', '\\mp': '∓',
+        '\\sim': '∼', '\\in': '∈',
+        '\\exists': '∃', '\\forall': '∀',
+        '\\mathbf': '',
+        '\\quad': '&nbsp;&nbsp;&nbsp;&nbsp;', '\\qquad': '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;',
+        '\\,': '&thinsp;', '\\;': '&nbsp;', '\\!': '',
     };
-    Object.entries(ops).forEach(([latex, uni]) => {
-        const escaped = latex.replace(/\\/g, '\\\\');
-        html = html.replace(new RegExp(escaped, 'g'), uni);
-    });
+    // Process in key-length order (longest first) to prevent prefix collisions
+    Object.entries(ops)
+        .sort((a, b) => b[0].length - a[0].length)
+        .forEach(([latex, uni]) => {
+            const escaped = latex.replace(/\\/g, '\\\\');
+            html = html.replace(new RegExp(escaped, 'g'), uni);
+        });
 
     // 5. Greek Letters
     const greek: Record<string, string> = {
+        '\\varphi': 'φ', '\\vartheta': 'ϑ', '\\varrho': 'ϱ', '\\varsigma': 'ς',
         '\\alpha': 'α', '\\beta': 'β', '\\gamma': 'γ', '\\delta': 'δ', '\\epsilon': 'ε', '\\zeta': 'ζ', '\\eta': 'η', 
         '\\theta': 'θ', '\\iota': 'ι', '\\kappa': 'κ', '\\lambda': 'λ', '\\mu': 'μ', '\\nu': 'ν', '\\xi': 'ξ', 
         '\\pi': 'π', '\\rho': 'ρ', '\\sigma': 'σ', '\\tau': 'τ', '\\upsilon': 'υ', '\\phi': 'φ', '\\chi': 'χ', 
@@ -1365,7 +1439,11 @@ function convertMathToHtml(math: string): string {
     html = html.replace(/\\hat\{([^}]*)\}/g, '<span class="inline-flex flex-col items-center"><span>^</span><span class="mt-[-1em]">$1</span></span>');
     html = html.replace(/\\vec\{([^}]*)\}/g, '<span class="inline-flex flex-col items-center"><span>→</span><span class="mt-[-1em]">$1</span></span>');
     html = html.replace(/\\mathbf\{([^}]*)\}/g, '<span class="font-bold">$1</span>');
-    html = html.replace(/\\text\{([^}]*)\}/g, '<span class="font-sans italic opacity-80">$1</span>');
+    // Catch any remaining \text{} that weren't handled in 3g (e.g. nested contexts)
+    html = html.replace(/\\text\{([^}]*)\}/g, '<span class="font-sans not-italic opacity-80">$1</span>');
+
+    // 8. Final cleanup: remove stray braces that were used for LaTeX grouping
+    html = html.replace(/(?<!\\)[{}]/g, '');
 
     return html;
 }
