@@ -26,11 +26,11 @@ Simply download the new installer **MikuBot-Setup-2.3.0.exe** from the **Assets*
 > **CRITICAL MANUAL TWEAK EXPECTED (MODES.MD UPGRADE)**
 > Because this version completely overhauls the internal System Prompt instruction architecture, your existing `MODES.md` file will NOT work properly, resulting in degraded agent operations.
 > 
-> To prevent wiping your customizations with a Factory Reset, **please update your `MODES.md` manually:**
+> To prevent wiping your customizations with a Factory Reset, **please update your [`MODES.md`](https://raw.githubusercontent.com/NeuralArchLabs/mikuBot/main/public/core/MODES.md) manually:**
 > 1. Open MikuCentral.
 > 2. Go to the **Commands Editor** (lightning bolt icon in the sidebar).
 > 3. Navigate and click on `MODES.md`.
-> 4. Go to this URL in your browser: `https://raw.githubusercontent.com/NeuralArchLabs/mikuBot/main/public/core/MODES.md`
+> 4. Go to this URL in your browser: [https://raw.githubusercontent.com/NeuralArchLabs/mikuBot/main/public/core/MODES.md](https://raw.githubusercontent.com/NeuralArchLabs/mikuBot/main/public/core/MODES.md)
 > 5. **Copy ALL the text** from that website.
 > 6. Replace everything in your `MODES.md` editor window with the copied text and save it.
 
