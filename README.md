@@ -115,7 +115,7 @@ MikuBot no es solo otro cliente de IA; es un entorno de ejecución agéntica dis
 #### 🚀 La Ventaja MikuBot: Los 4 Pilares de Excelencia
 
 1.  **Rendimiento Nativo:** Sin capas de traducción ni virtualización; Miku habla el lenguaje de tu PC para una latencia mínima.
-2.  **Precisión y Personalización:** Nada de suposiciones. Miku consulta tus archivos y herramientas antes de responder, garantizando resultados exactos y personalizados.
+2.  **Precisión y Personalización (Powered by [searXena](https://github.com/NeuralArchLabs/searXena)):** Nada de suposiciones. Miku consulta tus archivos y utiliza el motor de metabúsqueda soberano **searXena** (desarrollado nativamente por nosotros) antes de responder, garantizando resultados exactos y actualizados.
 3.  **Transparencia Absoluta (Anti-Black Box):** Tú tienes el control total. Cada decisión del modelo, cada prompt y cada dato enviado es auditable en tiempo real.
 4.  **Libertad de Proveedor:** Cambia de cerebro (Ollama, Gemini, Groq, Z.AI) en segundos sin perder tu flujo de trabajo. Miku es tu interfaz soberana universal.
 

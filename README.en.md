@@ -115,7 +115,7 @@ MikuBot is not just another AI client; it is an agentic execution environment de
 #### 🚀 The MikuBot Edge: The 4 Pillars of Excellence
 
 1.  **Native Performance:** No translation layers or virtualization; Miku speaks your PC’s language for minimum latency.
-2.  **Precision and Personalization:** No guessing. Miku consults your files and tools before responding, ensuring exact, personalized results.
+2.  **Precision and Personalization (Powered by [searXena](https://github.com/NeuralArchLabs/searXena)):** No guessing. Miku consults your files and leverages the **searXena** sovereign metasearch engine (developed natively by us) before responding, ensuring exact, updated results.
 3.  **Absolute Transparency (Anti-Black Box):** You have full control. Every model decision, prompt, and data byte is auditable in real-time.
 4.  **Provider Freedom:** Switch brains (Ollama, Gemini, Groq, Z.AI) in seconds without losing your workflow. Miku is your universal sovereign interface.
 
