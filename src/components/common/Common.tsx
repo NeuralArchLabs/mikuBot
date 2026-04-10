@@ -71,7 +71,7 @@ class AnimationQueueManager {
                     }
                     el.setAttribute('data-animated', 'true');
                     el.removeAttribute('data-enqueued');
-                    console.warn('[AnimationQueue] Task timed out, element snapped to final state:', el.tagName, el.className.substring(0, 40));
+                    console.debug('[AnimationQueue] Task timed out, element snapped to final state.');
                 }
             }
         }
@@ -171,13 +171,12 @@ const MarkdownRendererBase = ({ content, isStreaming }: { content: string, isStr
                                         
                                         let cursor = idleTitleHtml.length;
                                         let currentHtml = idleTitleHtml;
-                                        let inTag = false;
                                         
                                         // ⚡ ADAPTIVE SPEED: Type multiple chars per tick for large content
-                                        // Target: complete within ~15s max (leaves 5s buffer before 20s timeout)
+                                        // Target: complete within ~6s max (well within 20s timeout)
                                         const contentLength = fullHtml.length - cursor;
                                         const TICK_MS = 8;
-                                        const MAX_DURATION_MS = 15000;
+                                        const MAX_DURATION_MS = 6000;
                                         const totalTicks = MAX_DURATION_MS / TICK_MS;
                                         const charsPerTick = Math.max(1, Math.ceil(contentLength / totalTicks));
 
@@ -194,21 +193,29 @@ const MarkdownRendererBase = ({ content, isStreaming }: { content: string, isStr
 
                                             // Process multiple characters per tick
                                             for (let i = 0; i < charsPerTick && cursor < fullHtml.length; i++) {
-                                                const nextSegment = fullHtml.substring(cursor);
-                                                const nonTypingMatch = nextSegment.match(/^<div class="[^"]*non-typing[^"]*">.*?<\/div>/);
-                                                
-                                                if (nonTypingMatch) {
-                                                    currentHtml += nonTypingMatch[0];
-                                                    cursor += nonTypingMatch[0].length;
-                                                } else {
-                                                    currentHtml += fullHtml[cursor];
-                                                    if (fullHtml[cursor] === '<') inTag = true;
-                                                    if (fullHtml[cursor] === '>') inTag = false;
-                                                    cursor++;
+                                                // Skip non-typing divs in one jump
+                                                if (fullHtml[cursor] === '<') {
+                                                    const remaining = fullHtml.substring(cursor);
+                                                    const nonTypingMatch = remaining.match(/^<div class="[^"]*non-typing[^"]*">.*?<\/div>/);
+                                                    if (nonTypingMatch) {
+                                                        currentHtml += nonTypingMatch[0];
+                                                        cursor += nonTypingMatch[0].length;
+                                                        continue;
+                                                    }
+                                                    // Skip entire HTML tags as one unit
+                                                    const tagMatch = remaining.match(/^<[^>]+>/);
+                                                    if (tagMatch) {
+                                                        currentHtml += tagMatch[0];
+                                                        cursor += tagMatch[0].length;
+                                                        continue;
+                                                    }
                                                 }
+                                                currentHtml += fullHtml[cursor];
+                                                cursor++;
                                             }
 
-                                            if (!inTag && typingEl) {
+                                            // Update DOM after processing this tick's batch
+                                            if (typingEl) {
                                                 const isTypingFinished = fullHtml.substring(cursor).replace(/<[^>]+>/g, '').trim() === '';
                                                 if (cursor < fullHtml.length && !isTypingFinished) {
                                                     typingEl.innerHTML = currentHtml + '<span class="inline-block w-[4px] h-[13px] ml-0.5 bg-cyan-400/80 animate-pulse rounded-sm shadow-[0_0_8px_rgba(34,211,238,0.6)] translate-y-[1px]"></span>';
