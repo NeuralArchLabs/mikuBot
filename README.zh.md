@@ -154,11 +154,11 @@ MikuCentral 包括嵌入式 Python 3.11.9，作为所有基于 Python 的功能 
 ---
 
 ## 🏛️ 致谢和免责声明
-MikuBot 是由 **Neural Arch Labs** 开发和维护的一项倡议。
+MikuBot 是由 [**Neural Arch Labs**](https://github.com/NeuralArchLabs) 开发和维护的一项倡议。
 
-**商标声明:** 本软件使用人工智能推理提供商（如 Google Gemini、Groq、Ollama、Z.AI 等）的名称、徽标和商标，仅出于面向最终用户导航的参考和信息目的。**Neural Arch Labs 不拥有这些徽标或商品名称的权利**，与上述实体没有官方隶属关系或赞助关系，也不从其使用或包含在界面中获得任何收益、利润或经济利益。MikuBot 仅作为中立客户端（工具）供用户通过自己的配置消费服务。
+**商标声明:** 本软件使用人工智能推理提供商（如 Google Gemini、Groq、Ollama、Z.AI 等）的名称、徽标和商标，仅出于面向最终用户导航的参考和信息目的。**[Neural Arch Labs](https://github.com/NeuralArchLabs) 不拥有这些徽标或商品名称的权利**，与上述实体没有官方隶属关系或赞助关系，也不从其使用或包含在界面中获得任何收益、利润或经济利益。MikuBot 仅作为中立客户端（工具）供用户通过自己的配置消费服务。
 
 🤝 **协作与赞助:** 我们是一个致力于开源技术和数字主权的独立实验室。我们完全开放企业合作、官方集成和外部赞助。如果您代表 AI 提供商或希望在财务上支持 MikuBot 的持续开发，请随时与我们联系！
 
 ---
-*由 Neural Arch Labs 精确开发。*
+*由 [Neural Arch Labs](https://github.com/NeuralArchLabs) 精确开发。*

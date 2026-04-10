@@ -156,11 +156,11 @@ MikuCentral incluye Python 3.11.9 embebido como motor general para todas las fun
 
 ## 🏛️ Créditos y Aviso Legal (Disclaimer)
 
-MikuBot es una iniciativa desarrollada y mantenida por **Neural Arch Labs**.
+MikuBot es una iniciativa desarrollada y mantenida por [**Neural Arch Labs**](https://github.com/NeuralArchLabs).
 
-**Aviso sobre Marcas Registradas:** Este software utiliza nombres, logotipos y marcas comerciales de proveedores de inferencia de Inteligencia Artificial (tales como Google Gemini, Groq, Ollama, Z.AI, entre otros) con fines estrictamente referenciales e informativos orientados a la navegación del usuario final. **Neural Arch Labs no posee los derechos sobre estos logotipos ni nombres comerciales**, no tiene afiliación oficial ni patrocinio por parte de dichas entidades, y no obtiene ninguna ganancia, lucro o beneficio económico derivado de su uso o inclusión en la interfaz. MikuBot actúa únicamente como un cliente neutral (herramienta) para que el usuario consuma los servicios mediante sus propias configuraciones.
+**Aviso sobre Marcas Registradas:** Este software utiliza nombres, logotipos y marcas comerciales de proveedores de inferencia de Inteligencia Artificial (tales como Google Gemini, Groq, Ollama, Z.AI, entre otros) con fines estrictamente referenciales e informativos orientados a la navegación del usuario final. **[Neural Arch Labs](https://github.com/NeuralArchLabs) no posee los derechos sobre estos logotipos ni nombres comerciales**, no tiene afiliación oficial ni patrocinio por parte de dichas entidades, y no obtiene ninguna ganancia, lucro o beneficio económico derivado de su uso o inclusión en la interfaz. MikuBot actúa únicamente como un cliente neutral (herramienta) para que el usuario consuma los servicios mediante sus propias configuraciones.
 
 🤝 **Colaboraciones y Patrocinios:** Somos un laboratorio independiente comprometido con la tecnología de código abierto y la soberanía digital. Estamos completamente abiertos a colaboraciones corporativas, integraciones oficiales y patrocinios externos. Si representas a un proveedor de IA o deseas apoyar financieramente el desarrollo continuo de MikuBot, ¡no dudes en contactarnos!
 
 ---
-*Desarrollado con precisión por Neural Arch Labs.*
+*Desarrollado con precisión por [Neural Arch Labs](https://github.com/NeuralArchLabs).*

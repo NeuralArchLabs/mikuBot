@@ -155,11 +155,11 @@ MikuCentral includes Python 3.11.9 embedded as a general engine for all Python-b
 ---
 
 ## 🏛️ Credits and Legal Disclaimer
-MikuBot is an initiative developed and maintained by **Neural Arch Labs**.
+MikuBot is an initiative developed and maintained by [**Neural Arch Labs**](https://github.com/NeuralArchLabs).
 
-**Trademark Notice:** This software uses names, logos, and trademarks of Artificial Intelligence inference providers (such as Google Gemini, Groq, Ollama, Z.AI, among others) strictly for referential and informational purposes oriented toward end-user navigation. **Neural Arch Labs does not own the rights to these logos or tradenames**, has no official affiliation or sponsorship from said entities, and does not obtain any gain, profit, or economic benefit derived from their use or inclusion in the interface. MikuBot acts solely as a neutral client (tool) for the user to consume services via their own configurations.
+**Trademark Notice:** This software uses names, logos, and trademarks of Artificial Intelligence inference providers (such as Google Gemini, Groq, Ollama, Z.AI, among others) strictly for referential and informational purposes oriented toward end-user navigation. **[Neural Arch Labs](https://github.com/NeuralArchLabs) does not own the rights to these logos or tradenames**, has no official affiliation or sponsorship from said entities, and does not obtain any gain, profit, or economic benefit derived from their use or inclusion in the interface. MikuBot acts solely as a neutral client (tool) for the user to consume services via their own configurations.
 
 🤝 **Collaborations and Sponsorships:** We are an independent laboratory committed to open-source technology and digital sovereignty. We are fully open to corporate collaborations, official integrations, and external sponsorships. If you represent an AI provider or wish to financially support the continuous development of MikuBot, feel free to contact us!
 
 ---
-*Developed with precision by Neural Arch Labs.*
+*Developed with precision by [Neural Arch Labs](https://github.com/NeuralArchLabs).*
