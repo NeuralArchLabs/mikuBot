@@ -10,6 +10,7 @@ export interface CommandContext {
     onNewSession: () => Promise<void>;
     updateConfig: (key: string, value: any) => void;
     resolveApproval?: (approved: boolean) => void;
+    t: (key: string, options?: any) => string;
 }
 
 export const executeCommand = async (command: string, context: CommandContext): Promise<string | null> => {
@@ -20,7 +21,7 @@ export const executeCommand = async (command: string, context: CommandContext): 
     switch (cmd) {
         case '/new':
             await context.onNewSession();
-            return 'New session created.';
+            return context.t('commands_exec.new_session_created');
 
         case '/models':
         case '/modelos':
@@ -28,7 +29,7 @@ export const executeCommand = async (command: string, context: CommandContext): 
 
         case '/debug':
             context.setState(prev => ({ ...prev, debugMode: !prev.debugMode }));
-            return `Debug mode ${!context.state.debugMode ? 'enabled' : 'disabled'}.`;
+            return context.state.debugMode ? context.t('commands_exec.debug_disabled') : context.t('commands_exec.debug_enabled');
 
         case '/mode':
         case '/modo':
@@ -37,29 +38,29 @@ export const executeCommand = async (command: string, context: CommandContext): 
         case '/agent':
         case '/agente':
             context.setState(prev => ({ ...prev, agentMode: 'agent', safeMode: true }));
-            return 'Mode switched to 🤖 <b>Agent</b> (Safe Mode: ON)';
+            return context.t('commands_exec.mode_agent');
 
         case '/chat':
             context.setState(prev => ({ ...prev, agentMode: 'chat' }));
-            return 'Mode switched to 💬 <b>Chat</b>';
+            return context.t('commands_exec.mode_chat');
 
         case '/approve':
         case '/ok':
         case '/yes':
             if (context.resolveApproval) {
                 context.resolveApproval(true);
-                return 'Tool call APPROVED remotely.';
+                return context.t('commands_exec.tool_approved');
             }
-            return 'No pending tool approval found.';
+            return context.t('commands_exec.no_pending_tool');
 
         case '/decline':
         case '/reject':
         case '/no':
             if (context.resolveApproval) {
                 context.resolveApproval(false);
-                return 'Tool call REJECTED remotely.';
+                return context.t('commands_exec.tool_rejected');
             }
-            return 'No pending tool approval found.';
+            return context.t('commands_exec.no_pending_tool');
 
         case '/status':
         case '/estado':

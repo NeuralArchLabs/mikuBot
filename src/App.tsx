@@ -1335,16 +1335,17 @@ To see all your additional enabled skills and their full technical parameters, y
                         pendingToolApprovalRef.current = null;
                         setPendingToolApprovalStore(null);
                     }
-                }
+                },
+                t
             });
 
             if (result) {
                 if (result === 'TRIGGER_MODE_SELECTION') {
                     if (isRemote) {
-                        telegramService.sendMessageWithButtons(state.config.telegramBotToken!, state.config.telegramChatId!, '🎯 <b>Selección de Modo</b>\n\nElige el nivel de autonomía para esta sesión:', [
+                        telegramService.sendMessageWithButtons(state.config.telegramBotToken!, state.config.telegramChatId!, t('commands_exec.telegram_mode_title'), [
                             [
-                                { text: '🤖 Agent Mode', data: 'set_mode_agent' },
-                                { text: '💬 Chat Mode', data: 'set_mode_chat' }
+                                { text: t('commands_exec.telegram_mode_agent'), data: 'set_mode_agent' },
+                                { text: t('commands_exec.telegram_mode_chat'), data: 'set_mode_chat' }
                             ]
                         ]);
                     }
@@ -1354,11 +1355,11 @@ To see all your additional enabled skills and their full technical parameters, y
 
                 if (result === 'TRIGGER_MODEL_FLOW') {
                     if (isRemote) {
-                        telegramService.sendMessageWithButtons(state.config.telegramBotToken!, state.config.telegramChatId!, '🎯 <b>Model Stack Configuration</b>\n\nChoose which model purpose you want to update:', [
+                        telegramService.sendMessageWithButtons(state.config.telegramBotToken!, state.config.telegramChatId!, t('commands_exec.telegram_model_title'), [
                             [
-                                { text: '👤 Chat Model', data: 'selmod:target:chat' },
-                                { text: '🤖 Agent Model', data: 'selmod:target:agent' },
-                                { text: '🛠️ Fallback Model', data: 'selmod:target:primary' }
+                                { text: t('commands_exec.telegram_model_chat'), data: 'selmod:target:chat' },
+                                { text: t('commands_exec.telegram_model_agent'), data: 'selmod:target:agent' },
+                                { text: t('commands_exec.telegram_model_fallback'), data: 'selmod:target:primary' }
                             ]
                         ]);
                     }
@@ -1377,28 +1378,28 @@ To see all your additional enabled skills and their full technical parameters, y
                                 const metricsRes = await (window as any).electron.getSystemMetrics();
                                 if (metricsRes.ok) {
                                     const m = metricsRes.metrics;
-                                    metricsLines = `🖥️ <b>Hardware Metrics</b>\n` +
-                                                 `• Platform: <code>${m.platform}</code>\n` +
-                                                 `• CPU: <code>${m.cpu.usage}</code>\n` +
-                                                 `• RAM: <code>${m.memory.total} (${m.memory.usage})</code>\n` +
-                                                 `• Uptime: <code>${m.uptime}</code>\n\n`;
+                                    metricsLines = `${t('commands_exec.telegram_status_hardware')}\n` +
+                                                 `${t('commands_exec.telegram_status_platform')} <code>${m.platform}</code>\n` +
+                                                 `${t('commands_exec.telegram_status_cpu')} <code>${m.cpu.usage}</code>\n` +
+                                                 `${t('commands_exec.telegram_status_ram')} <code>${m.memory.total} (${m.memory.usage})</code>\n` +
+                                                 `${t('commands_exec.telegram_status_uptime')} <code>${m.uptime}</code>\n\n`;
                                 }
                             } catch (e) {
                                 console.error('Failed to fetch metrics for /status:', e);
                             }
                         }
 
-                        const statusMsg = `📊 <b>mikuBot STATUS DASHBOARD</b>\n\n` +
-                                        `⚙️ <b>Orchestration</b>\n` +
-                                        `• Mode: <b>${state.agentMode.toUpperCase()}</b>\n` +
-                                        `• Safety: <b>${state.safeMode ? 'SAFE ON 🛡️' : 'SAFE OFF 🔓'}</b>\n` +
-                                        `• Approval: <code>${state.approvalMode}</code>\n\n` +
-                                        `🧠 <b>Model Stack</b>\n` +
-                                        `• Chat: <code>${cfg.chatProvider}</code> / <code>${cfg.chatModel || 'default'}</code>\n` +
-                                        `• Agent: <code>${cfg.agentProvider}</code> / <code>${cfg.agentModel || 'default'}</code>\n` +
-                                        `• Primary: <code>${cfg.provider}</code> / <code>${cfg.model}</code>\n\n` +
+                        const statusMsg = `${t('commands_exec.telegram_status_title')}\n\n` +
+                                        `${t('commands_exec.telegram_status_orchestration')}\n` +
+                                        `${t('commands_exec.telegram_status_mode')} <b>${state.agentMode.toUpperCase()}</b>\n` +
+                                        `${t('commands_exec.telegram_status_security')} <b>${state.safeMode ? t('commands_exec.telegram_status_safe_on') : t('commands_exec.telegram_status_safe_off')}</b>\n` +
+                                        `${t('commands_exec.telegram_status_approval')} <code>${state.approvalMode}</code>\n\n` +
+                                        `${t('commands_exec.telegram_status_stack')}\n` +
+                                        `${t('commands_exec.telegram_status_chat')} <code>${cfg.chatProvider}</code> / <code>${cfg.chatModel || 'default'}</code>\n` +
+                                        `${t('commands_exec.telegram_status_agent')} <code>${cfg.agentProvider}</code> / <code>${cfg.agentModel || 'default'}</code>\n` +
+                                        `${t('commands_exec.telegram_status_primary')} <code>${cfg.provider}</code> / <code>${cfg.model}</code>\n\n` +
                                         metricsLines +
-                                        `✨ <i>mikuBot is standing by.</i>`;
+                                        t('commands_exec.telegram_status_footer');
 
                         telegramService.sendMessage(state.config.telegramBotToken!, state.config.telegramChatId!, statusMsg);
                     }
