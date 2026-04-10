@@ -8,7 +8,7 @@ import { ToolBlock } from '../common/ToolBlock';
 import { CollapsibleMessage } from '../common/CollapsibleMessage';
 import { CollapsibleTextBlock } from '../common/CollapsibleTextBlock';
 import { TypewriterIdle } from '../common/TypewriterIdle';
-import { useAgentStore, selectInput, selectMessages, selectAgentStatus, selectIsLoading, selectPendingToolApproval } from '../../stores/useAgentStore';
+import { useAgentStore, selectInput, selectMessages, selectAgentStatus, selectIsLoading, selectPendingToolApproval, selectExecutingSessionId } from '../../stores/useAgentStore';
 import { persistence } from '../../services';
 
 interface ChatAreaProps {
@@ -41,7 +41,7 @@ interface ChatAreaProps {
 }
 
 const ChatInputControls = React.memo(({
-    isRecording, partialText, agentMode, isLoading, agentIteration, agentPhase, agentIsInstructionMode, attachments, t,
+    isRecording, partialText, agentMode, isLoading, executingSessionId, currentSessionId, agentIteration, agentPhase, agentIsInstructionMode, attachments, t,
     inputRef, fileInputRef,
     toggleRecording, onAbort, handleSend, handleSendAsInstruction, onReprompt, handleFileChange, handleRemoveAttachment, boltGlow, isSent, safeMode, approvalMode, debugMode, onDebugModeChange
 }: any) => {
@@ -176,8 +176,8 @@ const ChatInputControls = React.memo(({
                     </button>
                 </div>
 
-                {/* Abort Group (Active when Loading) */}
-                <div className={`mode-transition-wrap mx-1 ${isLoading ? 'visible-mode action-enter' : 'hidden-mode action-exit'}`}>
+                {/* Abort Group (Active when Loading in THIS session) */}
+                <div className={`mode-transition-wrap mx-1 ${isLoading && currentSessionId === executingSessionId ? 'visible-mode action-enter' : 'hidden-mode action-exit'}`}>
                     <button
                         onClick={onAbort}
                         className={`h-[50px] px-4 btn-abort-premium text-white rounded-xl flex items-center justify-center min-w-[50px] shadow-lg shadow-red-900/20 ${agentIsInstructionMode ? 'btn-halo-abort' : ''}`}
@@ -279,6 +279,9 @@ export const ChatArea = ({
     const agentStatus = useAgentStore(selectAgentStatus);
     const isLoading = useAgentStore(selectIsLoading);
     const pendingApproval = useAgentStore(selectPendingToolApproval);
+    const executingSessionId = useAgentStore(selectExecutingSessionId);
+
+    const isExecutingThisSession = !executingSessionId || executingSessionId === sessionId;
 
     // [Performance Fix] Scroll Logic moved here from App.tsx to keep App from re-rendering on every streaming letter.
     useEffect(() => {
@@ -552,7 +555,7 @@ export const ChatArea = ({
         askAlert(t('chat.alerts.logs_copied'), 'right');
     };
 
-    const isAgentActive = !['idle'].includes(agentStatus.phase) && isLoading;
+    const isAgentActive = !['idle'].includes(agentStatus.phase) && isLoading && isExecutingThisSession;
     const lastMessageIdRef = React.useRef<string | null>(null);
     const [isAnchoring, setIsAnchoring] = React.useState(false);
     const lockedScrollTopRef = React.useRef<number | null>(null);
@@ -1092,22 +1095,49 @@ export const ChatArea = ({
                 </div>
             </div>
 
-            {pendingApproval && (
-                <ToolApprovalPanel
-                    key={pendingApproval.toolCall.id}
-                    pending={pendingApproval}
-                    onApprove={onApproveToolCall}
-                    onReject={onRejectToolCall}
-                />
-            )}
+            {/* Sticky Overlay Area for Active Task / Background Status - Only visible while Miku is doing something */}
+            {isLoading && (
+                <div className="z-20 w-full bg-slate-950/40 backdrop-blur-md border-t border-slate-800/20 animate-in slide-in-from-bottom-4 duration-500">
+                    {isExecutingThisSession ? (
+                        <div className="w-full">
+                            <AgentStatusPanel
+                                status={agentStatus}
+                                onAbort={onAbort}
+                                onReprompt={onReprompt}
+                            />
 
-            <div className={`agent-status-container ${isAgentActive ? 'active' : ''}`}>
-                <AgentStatusPanel
-                    status={agentStatus}
-                    onAbort={onAbort}
-                    onReprompt={onReprompt}
-                />
-            </div>
+                            {pendingApproval && (
+                                <div className="p-4 pt-1">
+                                    <ToolApprovalPanel
+                                        pending={pendingApproval}
+                                        onApprove={onApproveToolCall}
+                                        onReject={onRejectToolCall}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        executingSessionId && (
+                            <div className="flex justify-center p-4">
+                                <div className="bg-indigo-500/10 backdrop-blur-md px-6 py-2.5 rounded-2xl border border-indigo-500/20 shadow-xl flex items-center gap-4 group animate-pulse">
+                                    <div className="relative">
+                                        <Icon name="brain" className="text-xl text-indigo-400 animate-pulse" />
+                                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-indigo-500 rounded-full shadow-[0_0_8px_rgba(99,102,241,0.8)]" />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-0.5">
+                                            {t('chat.labels.agent_busy')}
+                                        </span>
+                                        <span className="text-[9px] text-indigo-400/60 font-mono truncate max-w-[200px]">
+                                            {t('chat.labels.processing_branch')} {sessions?.find(s => s.id === executingSessionId)?.title || t('chat.labels.another_branch')}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    )}
+                </div>
+            )}
 
             <div className="p-4 bg-slate-900/40 border-t border-slate-800/50">
                 <div className="max-w-5xl mx-auto flex items-center gap-2 mb-2 flex-wrap">
@@ -1197,8 +1227,9 @@ export const ChatArea = ({
                 <ChatInputControls
                     isRecording={isRecording}
                     partialText={partialText}
-                    agentMode={agentMode}
                     isLoading={isLoading}
+                    executingSessionId={executingSessionId}
+                    currentSessionId={sessionId}
                     agentIteration={agentStatus.iteration}
                     agentPhase={agentStatus.phase}
                     agentIsInstructionMode={agentStatus.isInstructionMode}

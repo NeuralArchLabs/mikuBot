@@ -459,7 +459,10 @@
             "role_user": "用户",
             "role_tool": "工具",
             "reasoning": "推理",
-            "active_reasoning": "活跃推理"
+            "active_reasoning": "活跃推理",
+            "agent_busy": "代理忙碌",
+            "processing_branch": "正在处理分支:",
+            "another_branch": "其他分支"
         },
         "approval": {
             "sync_success": "系统已同步",

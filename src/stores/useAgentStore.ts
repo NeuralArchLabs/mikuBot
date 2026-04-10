@@ -17,6 +17,7 @@ interface AgentStore {
     isLoading: boolean;
     input: string;
     pendingToolApproval: PendingToolApproval | null;
+    executingSessionId: string | null;
 
     // Actions para mensajes
     setMessages: (messages: Message[] | ((prev: Message[]) => Message[])) => void;
@@ -36,6 +37,7 @@ interface AgentStore {
     setIsLoading: (loading: boolean) => void;
     setInput: (input: string) => void;
     setPendingToolApproval: (approval: PendingToolApproval | null) => void;
+    setExecutingSessionId: (id: string | null) => void;
 }
 
 export const useAgentStore = create<AgentStore>((set) => ({
@@ -45,6 +47,7 @@ export const useAgentStore = create<AgentStore>((set) => ({
     isLoading: false,
     input: '',
     pendingToolApproval: null,
+    executingSessionId: null,
 
     // Messages actions
     setMessages: (messages) => set((state) => ({
@@ -106,6 +109,7 @@ export const useAgentStore = create<AgentStore>((set) => ({
     setIsLoading: (isLoading) => set({ isLoading }),
     setInput: (input) => set({ input }),
     setPendingToolApproval: (pendingToolApproval) => set({ pendingToolApproval }),
+    setExecutingSessionId: (executingSessionId) => set({ executingSessionId })
 }));
 
 // Selectores granulares para suscripciones optimizadas
@@ -122,3 +126,4 @@ export const selectAgentLog = (state: AgentStore) => state.agentStatus.log;
 export const selectIsLoading = (state: AgentStore) => state.isLoading;
 export const selectInput = (state: AgentStore) => state.input;
 export const selectPendingToolApproval = (state: AgentStore) => state.pendingToolApproval;
+export const selectExecutingSessionId = (state: AgentStore) => state.executingSessionId;

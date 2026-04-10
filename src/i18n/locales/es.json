@@ -476,7 +476,10 @@
             "role_user": "Usuario",
             "role_tool": "Herramienta",
             "reasoning": "Razonamiento",
-            "active_reasoning": "Razonamiento Activo"
+            "active_reasoning": "Razonamiento Activo",
+            "agent_busy": "AGENTE OCUPADO",
+            "processing_branch": "Procesando Rama:",
+            "another_branch": "otra rama"
         },
         "approval": {
             "sync_success": "Sistema Sincronizado",

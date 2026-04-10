@@ -461,7 +461,10 @@
             "role_user": "User",
             "role_tool": "Tool",
             "reasoning": "Reasoning",
-            "active_reasoning": "Active Reasoning"
+            "active_reasoning": "Active Reasoning",
+            "agent_busy": "AGENT BUSY",
+            "processing_branch": "Processing Branch:",
+            "another_branch": "another branch"
         },
         "approval": {
             "sync_success": "System Synchronized",

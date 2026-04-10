@@ -83,7 +83,8 @@ export const App = () => {
         resetAgentStatus,
         setIsLoading: setIsLoadingStore,
         setInput: setInputStore,
-        setPendingToolApproval: setPendingToolApprovalStore
+        setPendingToolApproval: setPendingToolApprovalStore,
+        setExecutingSessionId
     } = useAgentStore();
 
     const [models, setModels] = useState<Record<Provider, ModelInfo[]>>(() => {
@@ -252,25 +253,27 @@ export const App = () => {
     }, [t, clearMessages, setInputStore, resetAgentStatus, setPendingToolApprovalStore]);
 
     const onSelectSession = useCallback(async (id: string) => {
-        // Prepare UI state regardless of if session is the same
-        resetAgentStatus();
-        setPendingToolApprovalStore(null);
-        if (abortControllerRef.current) {
-            abortControllerRef.current.abort();
-            abortControllerRef.current = null;
-        }
+        // ⚡ BACKGROUND PERSISTENCE: 
+        // We no longer wipe agentStatus or pendingToolApproval on switch.
+        // This allows the background session to continue updating its live state
+        // even if the user is looking at a different session.
+        // The UI in ChatArea will handle showing/hiding panels based on executingSessionId.
 
         const session = await persistence.loadSession(id);
         if (session) {
             setMessagesStore(session.messages || []);
             setInputStore(session.draft || '');
+            
+            // Mode Isolation: If switching to chat, always apply safe defaults.
+            const isChatMode = (session.agentMode || 'chat') === 'chat';
+            
             setState(prev => ({
                 ...prev,
                 sessionId: id,
                 activeTab: 'chat',
                 agentMode: session.agentMode || 'chat',
-                safeMode: session.safeMode !== undefined ? session.safeMode : true,
-                approvalMode: session.approvalMode || 'auto',
+                safeMode: isChatMode ? true : (session.safeMode !== undefined ? session.safeMode : true),
+                approvalMode: isChatMode ? 'auto' : (session.approvalMode || 'auto'),
                 debugMode: false // Always close debug mode on selection
             }));
         } else {
@@ -281,10 +284,12 @@ export const App = () => {
                 sessionId: id,
                 activeTab: 'chat',
                 agentMode: 'chat',
+                safeMode: true,
+                approvalMode: 'auto',
                 debugMode: false
             }));
         }
-    }, []);
+    }, [clearMessages, resetAgentStatus, setPendingToolApprovalStore, setInputStore, setMessagesStore]);
 
     const onDeleteSession = useCallback(async (id: string) => {
         const remainingSessions = sessions.filter(s => s.id !== id);
@@ -1232,6 +1237,7 @@ To see all your additional enabled skills and their full technical parameters, y
         updateAgentPhase('aborted');
         setPendingToolApprovalStore(null);
         pendingToolApprovalRef.current = null;
+        setExecutingSessionId(null);
     }, []);
 
     const handleApproveToolCall = useCallback((feedback?: string) => {
@@ -1300,10 +1306,14 @@ To see all your additional enabled skills and their full technical parameters, y
 
     const processMessage = useCallback(async (text: string, forceToolMode: boolean = false, isRemote: boolean = false, isScheduled: boolean = false, userAttachments: Attachment[] = []): Promise<string | undefined> => {
         const currentState = stateRef.current;
+        const ctxSessionId = currentState.sessionId || 'empty';
         const ctx = new InteractionContext({ forceToolMode, isRemote, isScheduled });
 
         // Allow scheduled background tasks to bypass the isLoading guard
         if ((!text.trim() && userAttachments.length === 0) || (useAgentStore.getState().isLoading && !ctx.isScheduled)) return;
+
+        // Register this session as the executing one
+        setExecutingSessionId(ctxSessionId);
 
         // [COMMAND INTERCEPTOR]
         console.log(`[ProcessMessage] Text: "${text}", isRemote: ${isRemote}, isScheduled: ${isScheduled}`);
@@ -1564,6 +1574,10 @@ To see all your additional enabled skills and their full technical parameters, y
         };
         setMessagesStore(prev => [...prev, modelMsg]);
 
+        // ⚡ BACKGROUND TRACKER: Keep a local copy of messages for this execution 
+        // to support persistence when the user switches sessions.
+        let localMessages = [...useAgentStore.getState().messages, modelMsg];
+
         const ac = new AbortController();
         abortControllerRef.current = ac;
 
@@ -1719,12 +1733,37 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                     saveFile,
                     deleteFile,
                     (chunk, replace, blocks) => {
+                        const isOriginalSession = stateRef.current.sessionId === ctxSessionId;
                         finalAssistantText = replace ? chunk : finalAssistantText + chunk;
-                        updateMessageContent(modelMsgId, finalAssistantText, blocks);
+
+                        // 1. Always update store IF this session is still the active view
+                        if (isOriginalSession) {
+                            updateMessageContent(modelMsgId, finalAssistantText, blocks);
+                        }
+
+                        // 2. Throttle saving to persistence for background sessions
+                        if (replace || finalAssistantText.length % 50 === 0) {
+                             // Update local tracker
+                             localMessages = localMessages.map(m => m.id === modelMsgId ? { ...m, text: finalAssistantText, blocks: blocks || m.blocks } : m);
+                             
+                             persistence.saveSession({
+                                 id: ctxSessionId,
+                                 title: sessions.find(s => s.id === ctxSessionId)?.title || t('common.active_session'),
+                                 messages: localMessages,
+                                 timestamp: Date.now()
+                             });
+                        }
                     },
                     (p) => {
                         if (p.rawMessages) finalHistory = p.rawMessages;
+                        const isOriginalSession = stateRef.current.sessionId === ctxSessionId;
+                        
+                        // 1. Global store always holds the "Live Agent Status"
                         setAgentStatusStore(p);
+
+                        // 2. If it's the active session, the UI already re-renders.
+                        // 3. For background sessions, we might want to save the status to DB too 
+                        // so it survives a hard reload, but for now global store is enough for background "link".
                     },
                     (toolCall) => new Promise(resolve => {
                         const abortHandler = () => {
@@ -1750,6 +1789,14 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
 
                         setPendingToolApprovalStore({ toolCall, resolve: wrappedResolve });
                         pendingToolApprovalRef.current = wrappedResolve;
+
+                        // ⚡ Persist the session with the new tool call before waiting
+                        persistence.saveSession({
+                            id: ctxSessionId,
+                            title: sessions.find(s => s.id === ctxSessionId)?.title || t('common.active_session'),
+                            messages: localMessages,
+                            timestamp: Date.now()
+                        });
                         
                         // If remote, send interactive buttons to Telegram
                         if (ctx.isRemote && state.config.telegramBotToken && state.config.telegramChatId) {
@@ -1891,25 +1938,28 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                         console.log("[AutoName] Candidate:", cleanTitle);
 
                         if (cleanTitle && cleanTitle.length > 2) {
-                            setSessions(prev => prev.map(s => s.id === sid ? { ...s, title: cleanTitle } : s));
+                            setSessions(prev => prev.map(s => s.id === ctxSessionId ? { ...s, title: cleanTitle } : s));
                             // Save to persistence
                             const latestMsgs = useAgentStore.getState().messages;
                             persistence.saveSession({
-                                id: sid,
+                                id: ctxSessionId,
                                 title: cleanTitle,
                                 messages: latestMsgs,
                                 timestamp: Date.now()
                             });
                         } else {
                             // If output was empty, revert turn count to allow retry
-                            namedSessionsTurnsRef.current.set(sid, lastNamedTurnCount);
+                            namedSessionsTurnsRef.current.set(ctxSessionId, lastNamedTurnCount);
                         }
                     } catch (e) {
                         console.error("[AutoName] Failed:", e);
-                        namedSessionsTurnsRef.current.set(sid, lastNamedTurnCount);
+                        namedSessionsTurnsRef.current.set(ctxSessionId, lastNamedTurnCount);
                     }
                 }
             }, 1000);
+
+            // Task complete - release execution lock
+            setExecutingSessionId(null);
 
             return finalAssistantText;
         }
@@ -2122,9 +2172,55 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                             onAbort={handleAbortAgent} onReprompt={handleReprompt} onRewind={onRewind} scrollRef={scrollRef}
                             sessions={sessions} onSessionsUpdate={setSessions}
                             onApproveToolCall={handleApproveToolCall} onRejectToolCall={handleRejectToolCall}
-                            agentMode={state.agentMode} onAgentModeChange={(m) => setState(p => ({ ...p, agentMode: m, safeMode: m === 'agent' ? true : p.safeMode }))}
-                            safeMode={state.safeMode} onSafeModeChange={(s) => setState(p => ({ ...p, safeMode: s }))}
-                            approvalMode={state.approvalMode} onApprovalModeChange={(a) => setState(p => ({ ...p, approvalMode: a }))}
+                            agentMode={state.agentMode} 
+                            onAgentModeChange={(m) => {
+                                const isAgent = m === 'agent';
+                                setState(p => ({ ...p, agentMode: m, safeMode: isAgent ? true : p.safeMode }));
+                                // ⚡ Immediate Persistence
+                                if (state.sessionId) {
+                                    persistence.saveSession({
+                                        id: state.sessionId,
+                                        title: sessions.find(s => s.id === state.sessionId)?.title || t('common.active_session'),
+                                        messages: useAgentStore.getState().messages,
+                                        agentMode: m,
+                                        safeMode: isAgent ? true : state.safeMode,
+                                        approvalMode: state.approvalMode,
+                                        timestamp: Date.now()
+                                    });
+                                }
+                            }}
+                            safeMode={state.safeMode} 
+                            onSafeModeChange={(s) => {
+                                setState(p => ({ ...p, safeMode: s }));
+                                // ⚡ Immediate Persistence
+                                if (state.sessionId) {
+                                    persistence.saveSession({
+                                        id: state.sessionId,
+                                        title: sessions.find(s => s.id === state.sessionId)?.title || t('common.active_session'),
+                                        messages: useAgentStore.getState().messages,
+                                        agentMode: state.agentMode,
+                                        safeMode: s,
+                                        approvalMode: state.approvalMode,
+                                        timestamp: Date.now()
+                                    });
+                                }
+                            }}
+                            approvalMode={state.approvalMode} 
+                            onApprovalModeChange={(a) => {
+                                setState(p => ({ ...p, approvalMode: a }));
+                                // ⚡ Immediate Persistence
+                                if (state.sessionId) {
+                                    persistence.saveSession({
+                                        id: state.sessionId,
+                                        title: sessions.find(s => s.id === state.sessionId)?.title || t('common.active_session'),
+                                        messages: useAgentStore.getState().messages,
+                                        agentMode: state.agentMode,
+                                        safeMode: state.safeMode,
+                                        approvalMode: a,
+                                        timestamp: Date.now()
+                                    });
+                                }
+                            }}
                             debugMode={state.debugMode} onDebugModeChange={(d) => setState(p => ({ ...p, debugMode: d }))}
                             folderPermissions={state.folderPermissions}
                             onRequestPermission={requestFolderPermission}

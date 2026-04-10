@@ -503,10 +503,19 @@ export async function sendAgentMessage(
                 // 1. DANGEROUS OPERATIONS: ALWAYS REQUIRE MANUAL APPROVAL
                 if (tn === 'run_console' || tn === 'request_agent_mode') return false;
                 if (tn === 'batch_operation' && args.operation === 'delete') return false;
-                if (tn === 'delete_file') {
-                    const { cleanFilename: cf } = resolvePathAndSource(args.filename || '', args.source);
+                
+                // Sensitive Files Protection (SOUL, USER, IDENTITY)
+                if (['update_file', 'patch_file', 'delete_file'].includes(tn)) {
+                    const { target, cleanFilename: cf } = resolvePathAndSource(args.filename || '', args.source);
                     const lowCf = (cf || '').toLowerCase();
-                    if (lowCf !== 'tasks.md' && lowCf !== 'active_context.md') return false;
+                    const isSensitive = target === 'core' && ['soul.md', 'user.md', 'identity.md'].includes(lowCf);
+                    
+                    if (isSensitive) return false; // Always manual for identity/core files
+                    
+                    if (tn === 'delete_file') {
+                        // Allow auto-deletion of internal agent temp files ONLY
+                        if (lowCf !== 'tasks.md' && lowCf !== 'active_context.md') return false;
+                    }
                 }
 
                 // 2. CONTEXTUAL OVERRIDE (Remote/Scheduled usually auto-approve non-dangerous things)
@@ -531,9 +540,15 @@ export async function sendAgentMessage(
             // 1. APPROVAL PHASE (Always Sequential to prevent UI collisions)
             for (const tc of uniqueToolCalls) {
                 const approval = approvalMode === 'manual' || !isAuto(tc);
-                const approvalResult = await onToolApproval(tc);
-                const isApproved = typeof approvalResult === 'boolean' ? approvalResult : (approvalResult?.approved ?? true);
-                const feedback = typeof approvalResult === 'object' ? approvalResult?.feedback : undefined;
+                
+                let isApproved = true;
+                let feedback = undefined;
+
+                if (approval) {
+                    const approvalResult = await onToolApproval(tc);
+                    isApproved = typeof approvalResult === 'boolean' ? approvalResult : (approvalResult?.approved ?? true);
+                    feedback = typeof approvalResult === 'object' ? approvalResult?.feedback : undefined;
+                }
 
                 if (feedback) toolFeedbackMap.set(tc.id!, feedback);
 
