@@ -1,3 +1,13 @@
+## [2.3.0] - 2026-04-10
+### Added
+- **Persistent Background Agents**: Enabled true multi-session execution. Miku now runs complex agent tasks autonomously in the background natively. Switching to another neural branch preserves the task state, showing real-time background status indicators.
+- **Dynamic Neural Prompt Injection**: Engineered a zero-duplication injection pipeline for system instructions and reinforcements, maximizing context window alignment on models like Gemini 1.5 and Groq.
+- **Deep System Protection**: Implemented hardcoded execution barriers. Attempts to modify `SOUL.md`, `USER.md`, or `IDENTITY.md` will universally trigger a manual user confirmation prompt, overriding automatic agent approvals.
+- **Unified Translation Core (Slash Commands)**: Fully localized the internal Command Editor (`/mode`, `/status`, `/new`, etc.) and native Telegram interactive dashboards to EN, ES, and ZH.
+
+### Changed
+- **Breaking Change (`MODES.md` Structure)**: Dramatically overhauled the main logic directives inside `MODES.md`. Users upgrading to v2.3.0 MUST copy the new baseline configuration from the official repository and replace their local file to maintain agent accuracy. Legacy Factory resets are NOT required.
+
 ## [2.2.1] - 2026-04-07
 ### Added
 - **Studio Elite Markdown Engine**: A complete overhaul of the rendering pipeline.

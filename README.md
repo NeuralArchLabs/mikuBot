@@ -2,7 +2,7 @@
 
 <img src="./public/mikuBotICON.png" width="120" style="border-radius: 24px" alt="MikuBot Icon" />
 
-# 🌟 MikuBot v2.2.1 — Tu Asistente de IA Personal para Windows
+# 🌟 MikuBot v2.3.0 — The Sovereign Persistence Update
 
 ![Estado](https://img.shields.io/badge/Estado-Estable-green.svg?style=for-the-badge)
 ![Plataforma](https://img.shields.io/badge/Plataforma-Windows_10%2F11-0078D4.svg?style=for-the-badge&logo=windows)
@@ -18,8 +18,8 @@
 
 <br/>
 
-<a href="https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.2.1/MikuBot-Setup-2.2.1.exe">
-  <img src="https://img.shields.io/badge/DESCARGAR_ÚLTIMA_VERSIÓN-v2.2.1-60A5FA?style=for-the-badge&logo=windows&logoColor=white" height="40" />
+<a href="https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.3.0/MikuBot-Setup-2.3.0.exe">
+  <img src="https://img.shields.io/badge/DESCARGAR_ÚLTIMA_VERSIÓN-v2.3.0-60A5FA?style=for-the-badge&logo=windows&logoColor=white" height="40" />
 </a>
 
 <br/>
