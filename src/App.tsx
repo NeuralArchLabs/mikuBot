@@ -1589,7 +1589,7 @@ To see all your additional enabled skills and their full technical parameters, y
         try {
             const currentMessages = useAgentStore.getState().messages;
             chatHistoryLocal = currentMessages
-                .filter(m => !m.excludeFromContext)
+                .filter(m => !m.excludeFromContext && m.id !== userMsgId && m.id !== modelMsgId)
                 .map(m => ({ role: m.role, content: m.text, timestamp: m.timestamp, attachments: m.attachments }));
 
             const isAgentLoop = useAgentEngine;
