@@ -114,7 +114,7 @@ npm run electron:build
 本项目在 **GNU Affero General Public License v3.0 (AGPL-3.0)** 下分发。如果您修改此程序并将其作为网络服务提供，您必须向您的用户提供源代码。
 
 **第三方致谢:**
-MikuBot 的实现归功于 React (MIT)、Vite (MIT)、Electron (MIT)、Tailwind CSS (MIT)、Zustand (MIT)、FastAPI (MIT) 以及 Ollama 和 Google GenAI (Apache 2.0) 等 AI SDKs。有关更多详细信息，请参阅 [`LICENSE`](./LICENSE) 文件。
+MikuBot 的实现归功于 React (MIT)、Vite (MIT)、Electron (MIT)、Mermaid.js (MIT)、Tailwind CSS (MIT)、Zustand (MIT)、FastAPI (MIT) 以及 Ollama 和 Google GenAI (Apache 2.0) 等 AI SDKs。有关更多详细信息，请参阅 [`LICENSE`](./LICENSE) 文件。
 
 **嵌入式 Python 引擎:**
 MikuCentral 包括嵌入式 Python 3.11.9，作为所有基于 Python 的功能 (SearXena、语音识别、技能执行) 的通用引擎。Python 在 **Python Software Foundation License Version 2** 下分发，这是一种允许在专有软件中使用而无需开源义务的许可证。该软件包还包括 MIT (libffi)、BSD (bzip2、Tcl/Tk) 和 Microsoft Distributable Code for Windows 许可证下的组件。有关完整的 Python 分发条款，请参阅 [`engine/python/LICENSE.txt`](./engine/python/LICENSE.txt)。

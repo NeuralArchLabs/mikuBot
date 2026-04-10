@@ -115,7 +115,7 @@ npm run electron:build
 Este proyecto se distribuye bajo la licencia **GNU Affero General Public License v3.0 (AGPL-3.0)**. Si modificas este programa y lo ofreces como servicio en red, debes poner el código fuente a disposición de tus usuarios.
 
 **Reconocimientos a Terceros:**
-MikuBot es posible gracias a tecnologías de código abierto como React (MIT), Vite (MIT), Electron (MIT), Tailwind CSS (MIT), Zustand (MIT), FastAPI (MIT), y SDKs de IA como Ollama y Google GenAI (Apache 2.0). Consulta el archivo [`LICENSE`](./LICENSE) para más detalles.
+MikuBot es posible gracias a tecnologías de código abierto como React (MIT), Vite (MIT), Electron (MIT), Mermaid.js (MIT), Tailwind CSS (MIT), Zustand (MIT), FastAPI (MIT), y SDKs de IA como Ollama y Google GenAI (Apache 2.0). Consulta el archivo [`LICENSE`](./LICENSE) para más detalles.
 
 **Motor Python Embebido:**
 MikuCentral incluye Python 3.11.9 embebido como motor general para todas las funcionalidades basadas en Python (SearXena, reconocimiento de voz, ejecución de skills). Python se distribuye bajo la **Python Software Foundation License Version 2**, una licencia permissiva que permite su uso en software propietario sin obligación de opensource. El paquete también incluye componentes bajo licencias MIT (libffi), BSD (bzip2, Tcl/Tk), y Microsoft Distributable Code para Windows. Consulta [`engine/python/LICENSE.txt`](./engine/python/LICENSE.txt) para los términos completos de distribución de Python.
