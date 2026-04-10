@@ -163,4 +163,17 @@ MikuBot es una iniciativa desarrollada y mantenida por [**Neural Arch Labs**](ht
 🤝 **Colaboraciones y Patrocinios:** Somos un laboratorio independiente comprometido con la tecnología de código abierto y la soberanía digital. Estamos completamente abiertos a colaboraciones corporativas, integraciones oficiales y patrocinios externos. Si representas a un proveedor de IA o deseas apoyar financieramente el desarrollo continuo de MikuBot, ¡no dudes en contactarnos!
 
 ---
+
+## 🐾 El Origen de Nuestro Nombre
+
+Es muy común pensar que **MikuBot** toma su nombre de la famosa idol virtual *Hatsune Miku*. Sin embargo, el origen es mucho más personal. Este proyecto fue bautizado en honor a **Miku**, una pequeña y valiente gatita (la del medio en la foto) que llenó de luz y compañía las madrugadas interminables de programación en los inicios de este laboratorio.
+
+<div align="center">
+  <img src="./public/Zanahorio_Miku_Freya.png" alt="Zanahorio, Miku y Freya" width="100%" style="max-width: 500px; border-radius: 12px; margin: 15px 0;" />
+  <p><i>De izquierda a derecha: Zanahorio, Miku y Freya.</i></p>
+</div>
+
+MikuBot es, en esencia, nuestro agradecimiento profundo a su lealtad. Una forma técnica de hacer que su nombre y legado sigan existiendo y ayudando a los demás a través de las redes soberanas. 🤍
+
+---
 *Desarrollado con precisión por [Neural Arch Labs](https://github.com/NeuralArchLabs).*
