@@ -88,11 +88,36 @@ Su desarrollo ha sido planeado y ejecutado bajo metodologías ágiles, basándos
 El sistema incluye herramientas nativas inyectadas al LLM como `read_file`, `smart_patch`, `search_files`, y protección contra inyecciones de shell (`run_console` whitelist).
 
 ### 🏆 ¿Por qué MikuBot? (Análisis Competitivo)
+
+MikuBot no es solo otro cliente de IA; es un entorno de ejecución agéntica diseñado para la soberanía de datos y la precisión técnica. A continuación, comparamos nuestro enfoque frente a otros agentes locales y los clientes web más populares.
+
+#### 🏛️ Nivel 1: Agentes Autónomos Locales
+
 | Característica / Enfoque | 🌐 **MikuBot (Nuestro Enfoque)** | 🦞 **OpenClaw** | 🧠 **memUBot (NevaMind-AI)** |
 | :--- | :--- | :--- | :--- |
 | **Paradigma e Interfaz** | **App de Escritorio (GUI Premium).** Control visual total del razonamiento y gestión de archivos. | **Daemon Headless / Mensajería.** Se controla a través de WhatsApp, Telegram o la terminal (TUI). | **Bot Empresarial para Equipos.** Integrado principalmente en Slack, Discord o Feishu. |
 | **Ejecución en Windows** | **100% Nativo (`.exe`).** Optimizado para correr directamente sobre el kernel de Windows. | **Requiere WSL2 (Ubuntu).** Depende de un subsistema Linux y scripts bash manuales. | Nativo / Multiplataforma, pero arquitectura pesada de servidores. |
-| **Seguridad del Sistema** | **SafePathResolver.** Acceso restringido y lista blanca de comandos. *Zero-leak.* | **Riesgo Crítico.** Historial reciente de vulnerabilidades severas (ClawHub exploits). | **Seguridad Empresarial (SOC2).** Requiere configuraciones de permisos complejas. |
+| **Curva de Aprendizaje** | **Instantánea (Wizard-led).** Instalación y configuración guiada paso a paso para cualquier usuario. | **Alta.** Requiere profundos conocimientos de terminal y entornos Linux. | **Moderada.** Configuración orientada a departamentos de IT y flujos empresariales. |
+| **Razonamiento Visual** | **Neural Flow.** Streaming visual de pensamientos, herramientas y estados en tiempo real. | **Logs de Texto.** Salida cruda de terminal sin representación visual del estado interno. | **Historial Estándar.** Interfaz de chat convencional sin desglose técnico visual. |
+| **Transparencia** | **Anti-Black Box.** Capacidad de inspeccionar prompts y payloads en tiempo real. | **Caja Negra Parcial.** Lógica interna de prompts oculta tras el CLI. | **Propiedad Cerrada.** Lógica de decisión privada del servidor. |
+| **Idiomas (Soberanía)** | **Universal (ES/EN/ZH).** Paridad absoluta de funciones y razonamiento en los 3 idiomas. | **EN-Centric.** Soporte optimizado casi exclusivamente para el inglés. | **EN-Centric.** Soporte multilingüe limitado. |
+
+#### ☁️ Nivel 2: Clientes Web de IA
+
+| Característica | 🌐 **MikuBot (Local Gateway)** | 🤖 **ChatGPT / Gemini / Perplexity** |
+| :--- | :--- | :--- |
+| **Acceso a Datos** | **Contexto Profundo.** Acceso directo a tu sistema de archivos (@WORKSPACE) y activos locales. | **Sandbox Web.** Limitado a archivos subidos manualmente o búsqueda web genérica. |
+| **Ejecución de Herramientas**| **Soberanía Total.** Ejecución nativa de Python, SearXena y scripts sin intermediarios. | **Nube Restringida.** Ejecución de código en servidores remotos aislados y limitados. |
+| **Precisión e Información** | **Atención Personalizada.** Prioriza tus archivos y herramientas para evitar suposiciones. | **Propensión al Alucinamiento.** Pueden suponer datos si la búsqueda web es insuficiente. |
+| **Privacidad y Control** | **Tú Eres el Dueño.** Los datos son tuyos; tú eliges el proveedor y qué información compartes. | **Ecosistema Cerrado.** Tus datos suelen usarse para entrenar modelos futuros del proveedor. |
+| **Visualización** | **Studio Elite.** Renderizado científico de LaTeX, Mermaid y Callouts de alta fidelidad. | **Markdown Básico.** Visualización estándar de navegador con poca flexibilidad técnica. |
+
+#### 🚀 La Ventaja MikuBot: Los 4 Pilares de Excelencia
+
+1.  **Rendimiento Nativo:** Sin capas de traducción ni virtualización; Miku habla el lenguaje de tu PC para una latencia mínima.
+2.  **Precisión y Personalización:** Nada de suposiciones. Miku consulta tus archivos y herramientas antes de responder, garantizando resultados exactos y personalizados.
+3.  **Transparencia Absoluta (Anti-Black Box):** Tú tienes el control total. Cada decisión del modelo, cada prompt y cada dato enviado es auditable en tiempo real.
+4.  **Libertad de Proveedor:** Cambia de cerebro (Ollama, Gemini, Groq, Z.AI) en segundos sin perder tu flujo de trabajo. Miku es tu interfaz soberana universal.
 
 ### 💻 Stack Tecnológico
 | Componente | Tecnología |

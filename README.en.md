@@ -88,11 +88,36 @@ Its development was planned and executed under agile methodologies, based strict
 The system includes native tools injected into the LLM such as `read_file`, `smart_patch`, `search_files`, and shell injection protection (`run_console` whitelist).
 
 ### 🏆 Why MikuBot? (Competitive Analysis)
-| Feature / Focus | 🌐 **MikuBot (Our Approach)** | 🦞 **OpenClaw** | 🧠 **memUBot (NevaMind-AI)** |
+
+MikuBot is not just another AI client; it is an agentic execution environment designed for data sovereignty and technical precision. Below, we compare our approach against other local agents and the most popular web-based clients.
+
+#### 🏛️ Tier 1: Local Autonomous Agents
+
+| Feature / Approach | 🌐 **MikuBot (Our Focus)** | 🦞 **OpenClaw** | 🧠 **memUBot (NevaMind-AI)** |
 | :--- | :--- | :--- | :--- |
-| **Paradigm and Interface** | **Desktop App (Premium GUI).** Full visual control of reasoning and file management. | **Headless Daemon / Messaging.** Controlled via WhatsApp, Telegram, or terminal (TUI). | **Enterprise Bot for Teams.** Primarily integrated into Slack, Discord, or Feishu. |
-| **Windows Execution** | **100% Native (`.exe`).** Optimized to run directly on the Windows kernel. | **Requires WSL2 (Ubuntu).** Depends on a Linux subsystem and manual bash scripts. | Native / Cross-platform, but heavy server architecture. |
-| **System Security** | **SafePathResolver.** Restricted access and command whitelist. *Zero-leak.* | **Critical Risk.** Recent history of severe vulnerabilities (ClawHub exploits). | **Enterprise Security (SOC2).** Requires complex permission configurations. |
+| **Paradigm & Interface** | **Desktop App (Premium GUI).** Full visual control over reasoning and file management. | **Headless Daemon / Messaging.** Controlled via WhatsApp, Telegram, or CLI (TUI). | **Enterprise Team Bot.** Primarily integrated into Slack, Discord, or Feishu. |
+| **Windows Execution** | **100% Native (`.exe`).** Optimized to run directly on the Windows kernel. | **Requires WSL2 (Ubuntu).** Depends on a Linux subsystem and manual bash scripts. | Native / Cross-platform, but heavy server-side architecture. |
+| **Learning Curve** | **Instant (Wizard-led).** Step-by-step installation and guided setup for any user. | **High.** Requires deep CLI knowledge and Linux environment configuration. | **Moderate.** Setup geared toward IT departments and enterprise workflows. |
+| **Visual Reasoning** | **Neural Flow.** Real-time visual stream of thoughts, tool usage, and states. | **Text Logs.** Raw terminal output without visual internal state representation. | **Standard History.** Conventional chat interface without visual technical breakdown. |
+| **Transparency** | **Anti-Black Box.** Ability to inspect system prompts and payloads in real-time. | **Partial Black Box.** Internal prompt logic hidden behind the CLI. | **Closed Proprietary.** Decision logic remains server-private. |
+| **Languages (Sovereignty)** | **Universal (ES/EN/ZH).** Absolute feature and reasoning parity in 3 languages. | **EN-Centric.** Optimized support almost exclusively for the English language. | **EN-Centric.** Limited multilingual support. |
+
+#### ☁️ Tier 2: Web-Based AI Clients
+
+| Feature | 🌐 **MikuBot (Local Gateway)** | 🤖 **ChatGPT / Gemini / Perplexity** |
+| :--- | :--- | :--- |
+| **Data Access** | **Deep Context.** Direct access to your file system (@WORKSPACE) and local assets. | **Web Sandbox.** Limited to manually uploaded files or generic web search. |
+| **Tool Execution** | **Total Sovereignty.** Native execution of Python, SearXena, and scripts with no middlemen. | **Restricted Cloud.** Code execution in isolated, remote servers with limited permissions. |
+| **Precision & Info** | **Personalized Attention.** Prioritizes your files and tools to avoid suppositions. | **Hallucination Prone.** May guess data if the web search is insufficient. |
+| **Privacy & Control** | **You are the Owner.** Data stays yours; you choose the provider and what to share. | **Closed Ecosystem.** Your data is often used to train the provider's future models. |
+| **Visualization** | **Studio Elite.** Scientific-grade high-fidelity rendering of LaTeX, Mermaid, and Callouts. | **Basic Markdown.** Standard browser visualization with low technical flexibility. |
+
+#### 🚀 The MikuBot Edge: The 4 Pillars of Excellence
+
+1.  **Native Performance:** No translation layers or virtualization; Miku speaks your PC’s language for minimum latency.
+2.  **Precision and Personalization:** No guessing. Miku consults your files and tools before responding, ensuring exact, personalized results.
+3.  **Absolute Transparency (Anti-Black Box):** You have full control. Every model decision, prompt, and data byte is auditable in real-time.
+4.  **Provider Freedom:** Switch brains (Ollama, Gemini, Groq, Z.AI) in seconds without losing your workflow. Miku is your universal sovereign interface.
 
 ### 💻 Tech Stack
 | Component | Technology |
