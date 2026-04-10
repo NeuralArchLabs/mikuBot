@@ -14,7 +14,7 @@ export const Icon = ({ name, className = "" }: { name: string; className?: strin
 class AnimationQueueManager {
     private queue: { el: HTMLElement; task: () => Promise<void> }[] = [];
     private isProcessing = false;
-    private readonly TASK_TIMEOUT = 12000; // 12s failsafe timeout per task
+    private readonly TASK_TIMEOUT = 20000; // 20s failsafe timeout per task
 
     enqueue(el: HTMLElement, task: () => Promise<void>) {
         // Prevent duplicate entries for the same element
@@ -50,7 +50,28 @@ class AnimationQueueManager {
                         )
                     ]);
                 } catch (e) {
-                    console.error('Animation Queue System:', e);
+                    // 🩹 GRACEFUL RECOVERY: Snap timed-out elements to their final state
+                    // so they don't remain invisible/broken
+                    const el = item.el;
+                    if ((el as any)._typeInterval) {
+                        clearInterval((el as any)._typeInterval);
+                        delete (el as any)._typeInterval;
+                    }
+                    if (el.tagName === 'BLOCKQUOTE') {
+                        const original = el.getAttribute('data-original-html');
+                        if (original) el.innerHTML = original;
+                        el.classList.add('is-visible');
+                        el.classList.remove('is-typing');
+                        el.removeAttribute('data-queued-ui');
+                    } else if (el.classList.contains('mermaid')) {
+                        // Mermaid may still be rendering; leave it alone
+                    } else {
+                        el.classList.remove('opacity-0', 'scale-95', 'blur-sm');
+                        el.classList.add('opacity-100', 'scale-100', 'blur-0', 'is-visible');
+                    }
+                    el.setAttribute('data-animated', 'true');
+                    el.removeAttribute('data-enqueued');
+                    console.warn('[AnimationQueue] Task timed out, element snapped to final state:', el.tagName, el.className.substring(0, 40));
                 }
             }
         }
