@@ -173,6 +173,14 @@ const MarkdownRendererBase = ({ content, isStreaming }: { content: string, isStr
                                         let currentHtml = idleTitleHtml;
                                         let inTag = false;
                                         
+                                        // ⚡ ADAPTIVE SPEED: Type multiple chars per tick for large content
+                                        // Target: complete within ~15s max (leaves 5s buffer before 20s timeout)
+                                        const contentLength = fullHtml.length - cursor;
+                                        const TICK_MS = 8;
+                                        const MAX_DURATION_MS = 15000;
+                                        const totalTicks = MAX_DURATION_MS / TICK_MS;
+                                        const charsPerTick = Math.max(1, Math.ceil(contentLength / totalTicks));
+
                                         (el as any)._typeInterval = setInterval(() => {
                                             if (cursor >= fullHtml.length) {
                                                 el.innerHTML = fullHtml;
@@ -184,17 +192,20 @@ const MarkdownRendererBase = ({ content, isStreaming }: { content: string, isStr
                                                 return;
                                             }
 
-                                            const nextSegment = fullHtml.substring(cursor);
-                                            const nonTypingMatch = nextSegment.match(/^<div class="[^"]*non-typing[^"]*">.*?<\/div>/);
-                                            
-                                            if (nonTypingMatch) {
-                                                currentHtml += nonTypingMatch[0];
-                                                cursor += nonTypingMatch[0].length;
-                                            } else {
-                                                currentHtml += fullHtml[cursor];
-                                                if (fullHtml[cursor] === '<') inTag = true;
-                                                if (fullHtml[cursor] === '>') inTag = false;
-                                                cursor++;
+                                            // Process multiple characters per tick
+                                            for (let i = 0; i < charsPerTick && cursor < fullHtml.length; i++) {
+                                                const nextSegment = fullHtml.substring(cursor);
+                                                const nonTypingMatch = nextSegment.match(/^<div class="[^"]*non-typing[^"]*">.*?<\/div>/);
+                                                
+                                                if (nonTypingMatch) {
+                                                    currentHtml += nonTypingMatch[0];
+                                                    cursor += nonTypingMatch[0].length;
+                                                } else {
+                                                    currentHtml += fullHtml[cursor];
+                                                    if (fullHtml[cursor] === '<') inTag = true;
+                                                    if (fullHtml[cursor] === '>') inTag = false;
+                                                    cursor++;
+                                                }
                                             }
 
                                             if (!inTag && typingEl) {

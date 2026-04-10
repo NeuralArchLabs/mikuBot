@@ -337,6 +337,11 @@ export const toHtml = (md: string): string => {
         // 2. Cleanup 'allow' attribute (remove unrecognized features that cause console noise)
         enhancedAttrs = enhancedAttrs.replace(/web-share[;]?\s*/g, '');
 
+        // 3. Anti-focus-stealing: prevent iframes from auto-scrolling the page on load
+        if (!enhancedAttrs.includes('tabindex')) {
+            enhancedAttrs += ' tabindex="-1"';
+        }
+
         const id = `__BLOCK_${pieces.length}__`;
         pieces.push(`<iframe ${enhancedAttrs}>${content}</iframe>`);
         return `\n${id}\n`;
