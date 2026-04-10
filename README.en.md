@@ -165,14 +165,14 @@ MikuBot is an initiative developed and maintained by [**Neural Arch Labs**](http
 
 ## 🐾 The Origin of Our Name
 
-It's very common to think that **MikuBot** takes its name from the famous virtual idol *Hatsune Miku*. However, the origin is much more personal. This project was named in honor of **Miku**, a brave little kitten (the one in the middle of the photo) who filled the endless late-night programming sessions with light and company during the early days of this lab.
+It's common to think that **MikuBot** takes its name from the well-known virtual idol *Hatsune Miku*. However, the origin is personal. This project was named after **Miku** (the kitten in the middle of the photo), who I rescued along with her two siblings. Since then she has been with me and always stays by my side while I am programming.
 
 <div align="center">
   <img src="./public/Zanahorio_Miku_Freya.png" alt="Zanahorio, Miku and Freya" width="100%" style="max-width: 500px; border-radius: 12px; margin: 15px 0;" />
   <p><i>From left to right: Zanahorio, Miku, and Freya.</i></p>
 </div>
 
-MikuBot is, in essence, our deepest gratitude for her loyalty. A technical way to ensure her name and legacy continue to exist and help others across sovereign networks. 🤍
+MikuBot is simply an acknowledgment of her unconditional company in the lab.
 
 ---
 *Developed with precision by [Neural Arch Labs](https://github.com/NeuralArchLabs).*
