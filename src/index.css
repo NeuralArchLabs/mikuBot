@@ -277,6 +277,11 @@
 
 /* Math Containers — Premium Carved Obsidian / Slate Effect */
 .markdown-body .math-container {
+  /* Control layer for the watercolor reveal */
+  position: relative;
+  z-index: 1;
+  overflow: hidden; /* Ensures watercolor doesn't bleed out of rounded corners */
+
   /* Rich, deep Slate gradient to give physical volume instead of flat color */
   background: linear-gradient(145deg, #131c2d, #1e293b) !important;
   /* Very subtle fractal noise for a premium matte physical texture */
@@ -284,9 +289,9 @@
   
   /* Advanced shadowing for a realistic, borderless sculpted recess */
   box-shadow: 
-    inset 4px 6px 16px rgba(0, 0, 0, 0.6),          /* Deep top/left internal shadow */
-    inset -4px -4px 12px rgba(255, 255, 255, 0.03), /* Soft bottom/right internal light catch */
-    0 1px 0 rgba(255, 255, 255, 0.04) !important;   /* Extremely thin outer light catch at the very bottom */
+    inset 2px 3px 10px rgba(0, 0, 0, 0.35),          /* Subtler top/left internal shadow */
+    inset -2px -2px 8px rgba(255, 255, 255, 0.02),   /* Soft bottom/right internal light catch */
+    0 1px 0 rgba(255, 255, 255, 0.03) !important;    /* Extremely thin outer light catch at the very bottom */
     
   border: none !important;
   
@@ -296,6 +301,28 @@
     -1px -1px 2px rgba(0, 0, 0, 0.8),               /* Inner engraved darkness */
     1px 1px 1px rgba(255, 255, 255, 0.1),           /* Highlight edge of the engraving */
     0 0 12px rgba(129, 140, 248, 0.4) !important;   /* Subtle Miku/tech glow bleeding from the cut */
+}
+
+/* Watercolor Stain Reveal Effect */
+.markdown-body .math-container::before {
+  content: '';
+  position: absolute;
+  top: -50%; left: -50%; width: 200%; height: 200%;
+  z-index: -1;
+  pointer-events: none;
+  background: 
+    radial-gradient(circle at 30% 40%, rgba(56, 189, 248, 0.15) 0%, transparent 40%),  /* Sky glow */
+    radial-gradient(circle at 70% 60%, rgba(139, 92, 246, 0.12) 0%, transparent 45%),  /* Violet glow */
+    radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.1) 0%, transparent 50%);   /* Indigo base */
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 1.2s cubic-bezier(0.2, 0.8, 0.2, 1), transform 1.5s ease-out;
+  mix-blend-mode: color-dodge; /* Makes the watercolor glow brightly against the stone */
+}
+
+.markdown-body .math-container:hover::before {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .markdown-body .math-container * {
