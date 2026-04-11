@@ -291,8 +291,9 @@
 }
 
 /* Generic rich divs (HTML widgets injected via markdown) — gentle shadow */
-.markdown-body div[style]:not([class]),
-.markdown-body div[align="center"]:not([class]) {
+/* Only applies to divs that explicitly declare a background or border to prevent weird shadows on transparent layout wrappers */
+.markdown-body div[style*="background"]:not([class]),
+.markdown-body div[style*="border"]:not([class]) {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 1px 4px rgba(0, 0, 0, 0.15);
   border-radius: 8px;
 }
