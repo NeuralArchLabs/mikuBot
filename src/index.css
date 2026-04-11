@@ -275,19 +275,27 @@
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
-/* Math Containers — "Carved in stone" bas-relief effect */
+/* Math Containers — Premium Carved Obsidian / Slate Effect */
 .markdown-body .math-container {
-  background: #334155 !important; /* Tailwind Slate-700 — visibly lighter stone */
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E") !important;
+  /* Rich, deep Slate gradient to give physical volume instead of flat color */
+  background: linear-gradient(145deg, #131c2d, #1e293b) !important;
+  /* Very subtle fractal noise for a premium matte physical texture */
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"), linear-gradient(145deg, #131c2d, #1e293b) !important;
+  
+  /* Advanced shadowing for a realistic, borderless sculpted recess */
   box-shadow: 
-    inset 0 6px 15px rgba(0, 0, 0, 0.35), 
-    inset 0 1px 3px rgba(0, 0, 0, 0.2), 
-    0 1px 1px rgba(255, 255, 255, 0.08) !important;
+    inset 4px 6px 16px rgba(0, 0, 0, 0.6),          /* Deep top/left internal shadow */
+    inset -4px -4px 12px rgba(255, 255, 255, 0.03), /* Soft bottom/right internal light catch */
+    0 1px 0 rgba(255, 255, 255, 0.04) !important;   /* Extremely thin outer light catch at the very bottom */
+    
   border: none !important;
-  color: #f8fafc !important; /* Slate-50 — maximum contrast */
+  
+  /* Text styling: Engraved with a high-tech ethereal feel */
+  color: #e0e7ff !important; /* Luminous Indigo-100 for high readability and premium feel */
   text-shadow: 
-    0 1px 0 rgba(255, 255, 255, 0.15), 
-    0 -1px 0 rgba(0, 0, 0, 0.5) !important;
+    -1px -1px 2px rgba(0, 0, 0, 0.8),               /* Inner engraved darkness */
+    1px 1px 1px rgba(255, 255, 255, 0.1),           /* Highlight edge of the engraving */
+    0 0 12px rgba(129, 140, 248, 0.4) !important;   /* Subtle Miku/tech glow bleeding from the cut */
 }
 
 .markdown-body .math-container * {
