@@ -1702,11 +1702,11 @@ ipcMain.handle('run-console', async (event, input) => {
     });
 });
 
-ipcMain.handle('run-search', async (event, { query }) => {
+ipcMain.handle('run-search', async (event, { query, category }) => {
     return new Promise((resolve) => {
-        console.log(`[Main Process] Native Search (API): "${query}"`);
+        console.log(`[Main Process] Native Search (API): "${query}" [Category: ${category || 'general'}]`);
         const http = require('http');
-        const data = JSON.stringify({ query: query, limit: 10 });
+        const data = JSON.stringify({ query: query, category: category || 'general', limit: 10 });
         
         const options = {
             hostname: '127.0.0.1',

@@ -320,6 +320,7 @@ export async function executeToolCall(
                 if (!args.query) {
                     return { success: false, error: 'The "query" parameter is required for web_search. Please provide a search query.' };
                 }
+                let nativeError = '';
                 // Prioritize Native Internal Search (Python bridge) if in Electron
                 if (typeof window !== 'undefined' && (window as any).electron?.runSearch) {
                     try {
@@ -330,6 +331,7 @@ export async function executeToolCall(
                         if (response.ok) {
                             return { success: true, data: response.data };
                         }
+                        nativeError = response.error || 'Unknown error';
                         console.warn("Native Search failed, falling back to APIs...", response.error);
                         if (response.error?.includes('Engine not installed') || response.error?.includes('ECONNREFUSED') || response.error?.includes('no responde') || response.error?.includes('Timeout')) {
                             return {
@@ -338,6 +340,7 @@ export async function executeToolCall(
                             };
                         }
                     } catch (e) {
+                        nativeError = e instanceof Error ? e.message : String(e);
                         console.error("Native Search error, falling back...", e);
                     }
                 }
@@ -374,7 +377,8 @@ export async function executeToolCall(
                     }
                 }
 
-                return { success: false, error: 'No Search method available. Ensure the internal Python engine is ready or add an API Key (Tavily/Brave) in Settings.' };
+                const fallbackMsg = nativeError ? ` Native Search Error: ${nativeError}.` : '';
+                return { success: false, error: `No Search method available.${fallbackMsg} Ensure the internal Python engine is ready or add an API Key (Tavily/Brave) in Settings.` };
             }
 
             case 'read_url': {
