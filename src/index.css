@@ -223,6 +223,38 @@
   color: #93c5fd;
 }
 
+/* Responsive Iframe Wrapper — prevents embeds from overflowing chat bubbles */
+.markdown-body .responsive-iframe-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  margin: 0.75em 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.markdown-body .responsive-iframe-wrap iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100% !important;
+  height: 100% !important;
+  border: none;
+  border-radius: 8px;
+}
+
+/* Fallback: any raw iframe that escaped the wrapper */
+.markdown-body > iframe,
+.markdown-body div[align] > iframe,
+.markdown-body p > iframe {
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+}
+
 /* Think Block */
 .think-block {
   margin: 0.5em 0;

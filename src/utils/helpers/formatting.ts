@@ -325,7 +325,7 @@ export const toHtml = (md: string): string => {
     });
 
     // Protect <iframe> to prevent it from being wrapped in <p> or having its attributes mangled
-    // IMPROVED: Global Iframe Hardener for Production Compatibility
+    // IMPROVED: Global Iframe Hardener for Production Compatibility + Responsive Wrapper
     html = html.replace(/<iframe\s+([^>]*?)>([\s\S]*?)<\/iframe>/gi, (match, attrs, content) => {
         let enhancedAttrs = attrs;
         
@@ -342,8 +342,13 @@ export const toHtml = (md: string): string => {
             enhancedAttrs += ' tabindex="-1"';
         }
 
+        // 4. Strip hardcoded width/height so the responsive CSS wrapper takes over
+        enhancedAttrs = enhancedAttrs.replace(/\s*width\s*=\s*["']\d+["']/gi, '');
+        enhancedAttrs = enhancedAttrs.replace(/\s*height\s*=\s*["']\d+["']/gi, '');
+
         const id = `__BLOCK_${pieces.length}__`;
-        pieces.push(`<iframe ${enhancedAttrs}>${content}</iframe>`);
+        // 5. Wrap in responsive container to prevent overflow on small screens
+        pieces.push(`<div class="responsive-iframe-wrap"><iframe ${enhancedAttrs.trim()}>${content}</iframe></div>`);
         return `\n${id}\n`;
     });
 
