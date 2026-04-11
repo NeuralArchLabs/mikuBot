@@ -104,7 +104,9 @@ if __name__ == "__main__":
         max_sites = args.get('max_sites', 3)
         categories = args.get('categories', ['general'])
         if not query:
-            sys.exit(1)
+            output = {"success": False, "error": "Missing required parameter: query. Debes proveer una cadena para buscar."}
+            sys.stdout.write(json.dumps(output, ensure_ascii=False) + "\n")
+            sys.exit(0)
         output = web_research(query, max_sites, categories)
         sys.stdout.write(json.dumps(output, ensure_ascii=False) + "\n")
     except Exception as e:

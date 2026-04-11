@@ -317,6 +317,9 @@ export async function executeToolCall(
             }
 
             case 'web_search': {
+                if (!args.query) {
+                    return { success: false, error: 'The "query" parameter is required for web_search. Please provide a search query.' };
+                }
                 // Prioritize Native Internal Search (Python bridge) if in Electron
                 if (typeof window !== 'undefined' && (window as any).electron?.runSearch) {
                     try {
@@ -375,6 +378,9 @@ export async function executeToolCall(
             }
 
             case 'read_url': {
+                if (!args.url) {
+                    return { success: false, error: 'The "url" parameter is required for read_url.' };
+                }
                 // Prioritize Native Internal Extraction (SearXena O-ZEN Engine extract API)
                 if (typeof window !== 'undefined' && (window as any).electron?.runExtract) {
                     try {
