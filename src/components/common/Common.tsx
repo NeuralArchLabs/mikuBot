@@ -88,8 +88,8 @@ const MarkdownRendererBase = ({ content, isStreaming }: { content: string, isStr
 
     const html = useMemo(() => {
         const normalized = formatFinalResponse(content);
-        return toHtml(normalized);
-    }, [content]);
+        return toHtml(normalized, isStreaming);
+    }, [content, isStreaming]);
 
     // ⚡ DEFER ANIMATIONS: Prevent intersection observer initialization during streaming
     // to avoid typewriter effects restarting on every incremental chunk.

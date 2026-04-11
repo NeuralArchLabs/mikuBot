@@ -1206,17 +1206,24 @@
 
 .btn-instruction-premium {
   position: relative;
-  transition: all 300ms;
-  background: linear-gradient(135deg, rgba(147, 51, 234, 0.8) 0%, rgba(126, 34, 206, 0.9) 100%);
-  border: 1px solid transparent;
+  transition: all 400ms cubic-bezier(0.23, 1, 0.32, 1);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.9) 0%, rgba(99, 102, 241, 0.95) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   background-clip: padding-box;
-  box-shadow: 0 4px 15px -3px rgba(147, 51, 234, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 4px 15px -3px rgba(139, 92, 246, 0.5), 
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.25),
+    0 0 12px rgba(139, 92, 246, 0.15);
+  overflow: visible !important;
 }
 
 .btn-instruction-premium:hover:not(:disabled) {
-  transform: translateY(-0.125rem);
-  background: linear-gradient(135deg, rgba(168, 85, 247, 0.9) 0%, rgba(147, 51, 234, 1) 100%);
-  box-shadow: 0 12px 25px -5px rgba(147, 51, 234, 0.5), 0 0 20px rgba(168, 85, 247, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  transform: translateY(-0.15rem) scale(1.05);
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.98) 0%, rgba(139, 92, 246, 1) 100%);
+  box-shadow: 
+    0 18px 35px -5px rgba(139, 92, 246, 0.7), 
+    0 0 30px rgba(167, 139, 250, 0.4), 
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
   z-index: 10;
 }
 
@@ -1421,6 +1428,66 @@
 
 .icon-spin-reverse {
   animation: icon-spin-reverse-kf 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Agent Status Bar Docking & Transitions */
+@keyframes status-bar-in {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+    filter: blur(4px);
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+.agent-status-animate-in {
+  animation: status-bar-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.agent-status-docked {
+  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+}
+
+.agent-status-docked.active {
+  max-height: 400px;
+  opacity: 1;
+}
+
+/* Streaming Text & Growth Animations */
+.smooth-grow-container {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stream-text-container {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes text-reveal-kf {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.text-reveal-chunk {
+  display: inline-block;
+  animation: text-reveal-kf 0.25s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  white-space: pre-wrap;
 }
 
 /* Continuous smooth spin for the stop button with gradual acceleration/braking */
@@ -1663,27 +1730,39 @@
 
 /* Base borders and shadows on the container itself */
 .btn-send-morph.is-chat {
-  border: 1px solid transparent;
-  box-shadow: 0 4px 15px -3px rgba(37, 99, 235, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 
+    0 4px 15px -3px rgba(29, 78, 216, 0.4), 
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  overflow: visible !important; /* Recover aura visibility */
 }
 
 .btn-send-morph.is-chat:hover:not(:disabled) {
-  transform: translateY(-2px);
+  transform: translateY(-2px) scale(1.03);
   z-index: 10;
-  border-color: rgba(59, 130, 246, 0.4);
-  box-shadow: 0 12px 25px -5px rgba(37, 99, 235, 0.5), 0 0 20px rgba(59, 130, 246, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  border-color: rgba(96, 165, 250, 0.5);
+  box-shadow: 
+    0 15px 35px -5px rgba(29, 78, 216, 0.7), 
+    0 0 25px rgba(59, 130, 246, 0.4), 
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
 .btn-send-morph.is-agent {
-  border: 1px solid transparent;
-  box-shadow: 0 4px 15px -3px rgba(37, 99, 235, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 
+    0 4px 15px -3px rgba(126, 34, 206, 0.5), 
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  overflow: visible !important; /* Recover aura visibility */
 }
 
 .btn-send-morph.is-agent:hover:not(:disabled) {
-  transform: translateY(-2px);
+  transform: translateY(-2px) scale(1.03);
   z-index: 10;
-  border-color: rgba(168, 85, 247, 0.5);
-  box-shadow: 0 12px 25px -5px rgba(37, 99, 235, 0.6), 0 0 20px rgba(59, 130, 246, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  border-color: rgba(192, 38, 211, 0.6);
+  box-shadow: 
+    0 18px 40px -5px rgba(126, 34, 206, 0.8), 
+    0 0 30px rgba(168, 85, 247, 0.5), 
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
 /* Background isolation layer */
@@ -1709,23 +1788,23 @@
 }
 
 .btn-send-morph-blue {
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.8) 0%, rgba(29, 78, 216, 0.9) 100%);
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.9) 0%, rgba(29, 78, 216, 0.95) 100%);
   z-index: 1;
 }
 
 .btn-send-morph:hover:not(:disabled) .btn-send-morph-blue {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.9) 0%, rgba(37, 99, 235, 1) 100%);
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.95) 0%, rgba(37, 99, 235, 1) 100%);
 }
 
 .btn-send-morph-purple {
-  background: linear-gradient(135deg, rgba(147, 51, 234, 0.8) 0%, rgba(126, 34, 206, 0.9) 100%);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.9) 0%, rgba(124, 58, 237, 0.95) 100%);
   z-index: 2;
   opacity: 0;
   animation-fill-mode: forwards;
 }
 
 .btn-send-morph:hover:not(:disabled) .btn-send-morph-purple {
-  background: linear-gradient(135deg, rgba(168, 85, 247, 0.9) 0%, rgba(147, 51, 234, 1) 100%);
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.95) 0%, rgba(139, 92, 246, 1) 100%);
 }
 
 @keyframes rainbow-aura-wave-kf {
@@ -1777,10 +1856,11 @@
   border-radius: 50%;
   z-index: -3;
   pointer-events: none;
-  filter: blur(25px);
+  filter: blur(20px); /* Slightly sharper for better definition */
   /* Highly diffuse as requested */
   animation: rainbow-aura-wave-kf 2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   will-change: transform, opacity;
+  opacity: 0;
 }
 
 .btn-morph-aura.reverse {

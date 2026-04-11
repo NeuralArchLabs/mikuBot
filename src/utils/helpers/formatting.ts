@@ -27,7 +27,7 @@ const EMOJI_MAP: Record<string, string> = {
  * IMPORTANT: This expects text to be already normalized by formatFinalResponse().
  * The DIVIDER marker should already be in place.
  */
-export const toHtml = (md: string): string => {
+export const toHtml = (md: string, isStreaming: boolean = false): string => {
     if (!md) return '';
 
     let html = md;
@@ -182,9 +182,13 @@ export const toHtml = (md: string): string => {
         const copyButton = `<button class="absolute top-3 right-5 text-slate-500/50 hover:text-cyan-400 p-1 opacity-0 group-hover:opacity-100 transition hover:scale-110 active:scale-90 cursor-pointer z-20" title="Copiar Código" data-code="${encodedCode}" onclick="var btn=this,icon=btn.querySelector('i'),code=decodeURIComponent(btn.dataset.code);navigator.clipboard.writeText(code).then(function(){icon.className='fas fa-check text-emerald-400';setTimeout(function(){icon.className='fas fa-clone'},2000)})"><i class="fas fa-clone text-[13px]"></i></button>`;
         
         if (isDiagram) {
-            pieces.push(`<div class="${containerClass} isolate overflow-visible">${studioHeader}${copyButton}<div class="overflow-x-auto w-full px-2 pb-6"><div class="mermaid opacity-0 scale-95 blur-sm transition duration-1000 min-h-[100px] flex items-center justify-center transform-gpu" data-mermaid-src="${encodedCode}"><code class="text-sm shadow-none font-mono leading-relaxed">${highlighted}</code></div></div></div>`);
+            const finalClass = isStreaming ? `${containerClass} isolate overflow-visible is-visible` : `${containerClass} isolate overflow-visible`;
+            const extraAttrs = isStreaming ? 'data-animated="true"' : '';
+            pieces.push(`<div class="${finalClass}" ${extraAttrs}>${studioHeader}${copyButton}<div class="overflow-x-auto w-full px-2 pb-6"><div class="mermaid opacity-0 scale-95 blur-sm transition duration-1000 min-h-[100px] flex items-center justify-center transform-gpu" data-mermaid-src="${encodedCode}"><code class="text-sm shadow-none font-mono leading-relaxed">${highlighted}</code></div></div></div>`);
         } else {
-            pieces.push(`<div class="${containerClass} isolate overflow-visible code-block-anim opacity-0 scale-95 blur-sm transition duration-1000 transform-gpu">${studioHeader}${copyButton}<div class="overflow-x-auto w-full bg-black/90 rounded-xl p-5 pb-10 border border-transparent"><pre class="bg-transparent border-none p-0 m-0"><code class="text-sm shadow-none font-mono leading-relaxed block">${highlighted}</code></pre></div></div>`);
+            const finalClass = isStreaming ? `${containerClass} isolate overflow-visible is-visible` : `${containerClass} isolate overflow-visible code-block-anim opacity-0 scale-95 blur-sm transition duration-1000 transform-gpu`;
+            const extraAttrs = isStreaming ? 'data-animated="true"' : '';
+            pieces.push(`<div class="${finalClass}" ${extraAttrs}>${studioHeader}${copyButton}<div class="overflow-x-auto w-full bg-black/90 rounded-xl p-5 pb-10 border border-transparent"><pre class="bg-transparent border-none p-0 m-0"><code class="text-sm shadow-none font-mono leading-relaxed block">${highlighted}</code></pre></div></div>`);
         }
         return `\n${id}\n`;
     });
@@ -313,14 +317,14 @@ export const toHtml = (md: string): string => {
         pieces.push(`<details ${isOpen ? 'open' : ''} class="bg-black/10 border border-white/5 rounded-xl my-6 overflow-hidden group/details shadow-2xl transition cursor-pointer">` +
             `<summary class="px-8 py-5 font-black text-cyan-400/90 uppercase tracking-widest text-[11px] hover:bg-white/5 transition outline-none list-none select-none flex items-center gap-3">` +
             `<span class="group-open/details:rotate-90 transition-transform">▶</span>${summaryText}</summary>` +
-            `<div class="details-content-body px-12 py-8 text-slate-300 leading-loose bg-black/10 select-text border-t border-white/5">${toHtml(bodyRaw.trim())}</div></details>`);
+            `<div class="details-content-body px-12 py-8 text-slate-300 leading-loose bg-black/10 select-text border-t border-white/5">${toHtml(bodyRaw.trim(), isStreaming)}</div></details>`);
         return `\n${id}\n`;
     });
 
     // Protect <div> with full content
     html = html.replace(/<div\s+([^>]*?)>([\s\S]*?)<\/div>/gi, (match, attrs, content) => {
         const id = `__BLOCK_${pieces.length}__`;
-        pieces.push(`<div ${attrs}>${toHtml(content)}</div>`);
+        pieces.push(`<div ${attrs}>${toHtml(content, isStreaming)}</div>`);
         return `\n${id}\n`;
     });
 
@@ -397,14 +401,16 @@ export const toHtml = (md: string): string => {
         const isCollapsible = !!collapseSign;
         const isOpen = collapseSign === '+';
 
-        const bodyHtml = content ? `<div class="text-md font-medium text-slate-300 ${isCollapsible ? 'mt-3 pt-3 border-t border-white/5' : 'leading-relaxed'} child-content typing-content">${toHtml(content)}</div>` : '';
+        const bodyHtml = content ? `<div class="text-md font-medium text-slate-300 ${isCollapsible ? 'mt-3 pt-3 border-t border-white/5' : 'leading-relaxed'} child-content typing-content">${toHtml(content, isStreaming)}</div>` : '';
         
         if (isCollapsible) {
-            pieces.push(`<details class="group/callout border-l-[3px] ${s.border} bg-black/40 backdrop-blur-md ${s.glow || ''} shadow-xl pl-6 pr-4 py-3.5 my-5 rounded-r-xl overflow-hidden transition duration-300 select-none cursor-pointer border-y border-y-transparent border-r border-r-transparent hover:border-y-white/10 hover:border-r-white/10" ${isOpen ? 'open' : ''}>`
+            const extra = isStreaming ? 'data-animated="true"' : '';
+            pieces.push(`<details ${extra} class="group/callout border-l-[3px] ${s.border} bg-black/40 backdrop-blur-md ${s.glow || ''} shadow-xl pl-6 pr-4 py-3.5 my-5 rounded-r-xl overflow-hidden transition duration-300 select-none cursor-pointer border-y border-y-transparent border-r border-r-transparent hover:border-y-white/10 hover:border-r-white/10" ${isOpen ? 'open' : ''}>`
                 + `<summary class="flex items-center gap-3 font-black text-[13px] uppercase tracking-[0.2em] ${s.color} non-typing outline-none list-none text-left">`
                 + `<span class="group-open/callout:rotate-90 transition-transform duration-300">▶</span> <span class="text-lg">${s.icon}</span> ${displayTitle}</summary>${bodyHtml}</details>`);
         } else {
-            pieces.push(`<blockquote class="border-l-[3px] ${s.border} bg-black/40 backdrop-blur-md ${s.glow || ''} shadow-xl pl-6 pr-4 py-3.5 my-5 rounded-r-xl overflow-hidden border-y border-y-transparent border-r border-r-transparent" data-type="admonition">`
+            const extra = isStreaming ? 'data-animated="true"' : '';
+            pieces.push(`<blockquote ${extra} class="border-l-[3px] ${s.border} bg-black/40 backdrop-blur-md ${s.glow || ''} shadow-xl pl-6 pr-4 py-3.5 my-5 rounded-r-xl overflow-hidden border-y border-y-transparent border-r border-r-transparent" data-type="admonition">`
                 + `<div class="flex items-center gap-3 mb-3 font-black text-[13px] uppercase tracking-[0.2em] ${s.color} non-typing"><span class="text-lg">${s.icon}</span> ${displayTitle}</div>${bodyHtml}</blockquote>`);
         }
         
@@ -418,7 +424,7 @@ export const toHtml = (md: string): string => {
         // Verify at least one real > line exists (not just whitespace)
         if (!/^[ \t]*>/m.test(match)) return match;
         const id = `__BLOCK_${pieces.length}__`;
-        pieces.push(convertBlockquotesToHtml(match));
+        pieces.push(convertBlockquotesToHtml(match, isStreaming));
         return `\n${id}\n`;
     });
 
@@ -446,7 +452,8 @@ export const toHtml = (md: string): string => {
             }
         }
 
-        pieces.push(`<div class="image-container flex flex-col items-center justify-center my-6 group/img">` +
+        const extra = isStreaming ? 'data-animated="true" is-visible' : '';
+        pieces.push(`<div ${extra} class="image-container flex flex-col items-center justify-center my-6 group/img">` +
             `<img src="${url}" alt="${cleanAlt}" ${width} ${height} class="max-w-full h-auto rounded-2xl border border-white/10 shadow-2xl transition group-hover/img:scale-[1.01] hover:shadow-cyan-500/10" />` +
             (cleanAlt ? `<span class="mt-2 text-[10px] text-slate-500 font-mono tracking-tight opacity-0 group-hover/img:opacity-100 transition-opacity italic">${cleanAlt}</span>` : '') +
             `</div>`);
@@ -555,7 +562,8 @@ export const toHtml = (md: string): string => {
     html = html.replace(/^## (.+)$/gm, '<h2 class="text-md font-bold text-cyan-400 drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-5 mb-1">$1</h2><div class="h-px w-full" style="background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.15) 2%, rgba(255,255,255,0.15) 98%, transparent 100%); margin-bottom: 1rem;"></div>');
     html = html.replace(/^# (.+)$/gm, '<h1 class="text-lg font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-indigo-300 drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-6 mb-1">$1</h1><div class="h-px w-full" style="background: linear-gradient(to right, transparent 0%, rgba(34,211,238,0.3) 2%, rgba(34,211,238,0.3) 98%, transparent 100%); margin-bottom: 1.5rem;"></div>');
 
-    html = html.replace(/^(?:\s*[\*\-_]){3,}\s*$/gm, '<div class="divider-container"><div class="divider-line bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent h-px my-8"></div></div>');
+    const divExtra = isStreaming ? 'data-animated="true" is-visible' : '';
+    html = html.replace(/^(?:\s*[\*\-_]){3,}\s*$/gm, `<div ${divExtra} class="divider-container"><div class="divider-line bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent h-px my-8"></div></div>`);
 
     html = html.replace(/\*\*\*(?!\s)(.+?)\*\*\*/g, '<strong class="text-indigo-400 drop-shadow-[1px_1.5px_0px_rgba(0,0,0,1)]"><em>$1</em></strong>');
     html = html.replace(/\*\*(?!\s)(.+?)\*\*/g, '<strong class="text-indigo-300 drop-shadow-[1px_1.5px_0px_rgba(0,0,0,1)]">$1</strong>');
@@ -641,10 +649,58 @@ export const toHtml = (md: string): string => {
         .replace(/‹esc-(\d+)›/g, (match, code) => String.fromCharCode(parseInt(code)));
 
     // 15. Final DIVIDER marker replacement
-    html = html.replace(/---DIVIDER---/g, '<div class="divider-container"><div class="divider-line bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent h-px my-8"></div></div>');
+    const finalDivExtra = isStreaming ? 'data-animated="true" is-visible' : '';
+    html = html.replace(/---DIVIDER---/g, `<div ${finalDivExtra} class="divider-container"><div class="divider-line bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent h-px my-8"></div></div>`);
+
+    if (isStreaming) {
+        html = applyStreamingAnimations(html);
+    }
 
     return html.trim();
 };
+
+/**
+ * Wraps text nodes in animated spans for word-by-word reveal.
+ * Carefully avoids splitting HTML tags and preserves non-typing blocks.
+ */
+function applyStreamingAnimations(html: string): string {
+    // 🛡️ NO-REVEAL PROTECTION: Don't wrap words inside specific tags that have their own animations
+    // or need to remain as raw blocks (pre, code, iframe, canvas, etc.)
+    
+    // We first split the HTML into tags and text chunks
+    const parts = html.split(/(<[^>]+>)/g);
+    
+    // We count total words to identify the "leading edge" (last ~25 words)
+    let totalWords = 0;
+    parts.forEach(p => {
+        if (p && !p.startsWith('<')) {
+            totalWords += p.split(/\s+/).filter(w => w.length > 0).length;
+        }
+    });
+
+    const ANIMATION_THRESHOLD = 25; // Only animate the last 25 words
+    let currentWordIndex = 0;
+
+    return parts.map(part => {
+        if (!part) return '';
+        if (part.startsWith('<')) return part;
+        
+        // It's a text node
+        const words = part.split(/(\s+)/);
+        return words.map(word => {
+            if (word.trim() === '') return word;
+            
+            currentWordIndex++;
+            // Only apply the animation class to words near the end of the current stream
+            const isLeadingEdge = currentWordIndex > (totalWords - ANIMATION_THRESHOLD);
+            
+            if (isLeadingEdge) {
+                return `<span class="text-reveal-chunk">${word}</span>`;
+            }
+            return word;
+        }).join('');
+    }).join('');
+}
 
 
 /**
@@ -805,7 +861,7 @@ function processInlineMarkdown(text: string): string {
  * Operates on RAW `>` prefixes (not HTML-escaped &gt;).
  * Produces depth-aware premium styled blockquotes with RECURSIVE inner rendering.
  */
-function convertBlockquotesToHtml(block: string): string {
+function convertBlockquotesToHtml(block: string, isStreaming: boolean = false): string {
     const lines = block.split('\n');
 
     // Depth-based styling: each nesting level gets progressively dimmer border
@@ -875,17 +931,18 @@ function convertBlockquotesToHtml(block: string): string {
             return segments.map(seg => {
                 if (seg.startsWith('<blockquote')) return seg;
                 if (!seg.trim()) return '';
-                return toHtml(seg);
+                return toHtml(seg, isStreaming);
             }).join('');
         }
 
-        return toHtml(innerContent);
+        return toHtml(innerContent, isStreaming);
     };
 
     // Start processing from depth 1
     const styleIdx = 0;
     const innerHtml = processAtDepth(lines, 1);
-    return `<blockquote class="${depthStyles[styleIdx]}" data-type="blockquote">${innerHtml}</blockquote>`;
+    const extra = isStreaming ? 'data-animated="true" is-visible' : '';
+    return `<blockquote ${extra} class="${depthStyles[styleIdx]}" data-type="blockquote">${innerHtml}</blockquote>`;
 }
 
 /**

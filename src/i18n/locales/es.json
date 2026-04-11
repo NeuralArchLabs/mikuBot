@@ -479,7 +479,11 @@
             "active_reasoning": "Razonamiento Activo",
             "agent_busy": "AGENTE OCUPADO",
             "processing_branch": "Procesando Rama:",
-            "another_branch": "otra rama"
+            "another_branch": "otra rama",
+            "status_manual": "Supervisado",
+            "status_auto": "Autónomo",
+            "status_safe": "Protegido",
+            "status_batch": "Directo"
         },
         "approval": {
             "sync_success": "Sistema Sincronizado",

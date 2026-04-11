@@ -65,6 +65,20 @@ const ChatInputControls = React.memo(({
         return () => clearTimeout(timer);
     }, [localInput, globalInput, setGlobalInput]);
 
+    // ✨ DYNAMIC HEIGHT ENGINE v1.0 - Premium Auto-Expansion
+    useEffect(() => {
+        const textarea = inputRef.current;
+        if (textarea) {
+            // Reset height to calculate correctly
+            textarea.style.height = 'auto';
+            const newHeight = Math.min(textarea.scrollHeight, 200);
+            textarea.style.height = `${newHeight}px`;
+            
+            // Toggle scrollbar only when reaching max height
+            textarea.style.overflowY = textarea.scrollHeight > 200 ? 'auto' : 'hidden';
+        }
+    }, [localInput, inputRef]);
+
     const handleSendWithSync = () => {
         setGlobalInput(localInput); // Ensure store is up to date before sending
         setTimeout(handleSend, 0);
@@ -98,8 +112,11 @@ const ChatInputControls = React.memo(({
     };
 
     return (
-        <div className="relative max-w-5xl mx-auto flex flex-col gap-2">
-            <div className="flex items-center">
+        <div className="relative max-w-5xl mx-auto h-[50px]">
+            {/* Absolute positioning wrapper to grow UPWARDS without pushing history */}
+            <div className="absolute bottom-0 left-0 right-0 flex flex-col pointer-events-none">
+                {/* Attachments Preview (Left) - Non-interactive area should allow click-through if needed, but buttons inside should work */}
+                <div className="flex items-end pointer-events-auto">
                 {/* Attachments Preview (Left) */}
                 {attachments.length > 0 && (
                     <div className="flex gap-2 pb-1">
@@ -136,23 +153,23 @@ const ChatInputControls = React.memo(({
                     />
                     <button
                         onClick={() => fileInputRef.current?.click()}
-                        className="h-[50px] w-[50px] bg-slate-800/40 border border-transparent hover:text-slate-200 hover:bg-slate-700/60 hover:border-slate-700/50 rounded-xl flex items-center justify-center transition-all duration-300 shadow-lg shadow-black/20 text-slate-400"
+                        className="h-[50px] w-[50px] bg-slate-800/40 backdrop-blur-md border border-slate-700/50 hover:text-slate-200 hover:bg-slate-700/60 hover:border-slate-600 rounded-xl flex items-center justify-center transition-all duration-300 shadow-lg shadow-black/20 text-slate-400 group-hover:border-slate-500/30"
                         title={t('chat.actions.attach')}
                     >
                         <Icon name="plus" className="text-lg" />
                     </button>
                 </div>
 
-                <div className="relative flex-1 group/input flex items-center mx-1">
+                <div className="relative flex-1 group/input flex items-end mx-1 pointer-events-auto">
                     <textarea
                         ref={inputRef}
                         value={localInput}
                         onChange={(e) => setLocalInput(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder={isRecording ? (partialText || t('chat.placeholders.recording')) : (agentMode === 'agent' ? t('chat.placeholders.agent') : t('chat.placeholders.idle'))}
-                        className={`w-full bg-slate-900/60 backdrop-blur-sm border rounded-xl py-3.5 px-4 text-slate-200 font-mono text-sm placeholder-slate-600 focus:ring-1 outline-none resize-none min-h-[50px] transition-all duration-300 ${isRecording
+                        className={`w-full bg-slate-900/80 backdrop-blur-xl border rounded-xl py-3.5 px-4 text-slate-200 font-mono text-sm placeholder-slate-600 focus:ring-1 outline-none resize-none min-h-[50px] transition-[border-color,box-shadow] duration-300 custom-scrollbar ${isRecording
                             ? 'border-emerald-500/50 ring-1 ring-emerald-500/20 pr-32'
-                            : 'border-slate-800/60 focus:ring-cyan-500/30 focus:border-cyan-500/40 pr-16'
+                            : 'border-slate-800/60 focus:ring-cyan-500/30 focus:border-cyan-500/40 pr-16 shadow-[0_10px_30px_-5px_rgba(0,0,0,0.5)]'
                             }`}
                         rows={1}
                     />
@@ -164,9 +181,9 @@ const ChatInputControls = React.memo(({
                     )}
 
                     {/* Voice Button Overlay (Right side of textarea) */}
-                    <button
+                     <button
                         onClick={toggleRecording}
-                        className={`absolute right-2 w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300 ${isRecording
+                        className={`absolute bottom-2.5 right-2 w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300 ${isRecording
                             ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/40'
                             : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
                             }`}
@@ -177,7 +194,7 @@ const ChatInputControls = React.memo(({
                 </div>
 
                 {/* Abort Group (Active when Loading in THIS session) */}
-                <div className={`mode-transition-wrap mx-1 ${isLoading && currentSessionId === executingSessionId ? 'visible-mode action-enter' : 'hidden-mode action-exit'}`}>
+                <div className={`mode-transition-wrap mx-1 ${isLoading && currentSessionId === executingSessionId ? 'visible-mode action-enter' : 'hidden-mode action-exit'} pointer-events-auto`}>
                     <button
                         onClick={onAbort}
                         className={`h-[50px] px-4 btn-abort-premium text-white rounded-xl flex items-center justify-center min-w-[50px] shadow-lg shadow-red-900/20 ${agentIsInstructionMode ? 'btn-halo-abort' : ''}`}
@@ -190,7 +207,7 @@ const ChatInputControls = React.memo(({
                 </div>
 
                 {/* Send/Instruction Group (Active when Idle) */}
-                <div className={`flex items-center ${agentMode !== 'agent' ? 'gap-2' : ''} mode-transition-wrap mx-1 ${!isLoading ? 'visible-mode action-enter' : 'hidden-mode action-exit'}`}>
+                <div className={`flex items-end ${agentMode !== 'agent' ? 'gap-2' : ''} mode-transition-wrap mx-1 ${!isLoading ? 'visible-mode action-enter' : 'hidden-mode action-exit'} pointer-events-auto`}>
                     <button
                         onClick={handleSendWithSync}
                         disabled={!localInput.trim() && attachments.length === 0}
@@ -215,10 +232,12 @@ const ChatInputControls = React.memo(({
                             className={`btn-morph-aura ${agentMode !== 'agent' ? 'reverse' : ''}`}
                         />
 
-                        <Icon name="arrow-right" className={`text-lg ${isSent ? 'send-icon-fly' : ''} ${agentMode === 'agent' ? 'rainbow-icon' : ''}`} />
+                        <div className={isSent ? 'send-icon-fly' : ''}>
+                            <Icon name="paper-plane" className={`text-lg transition-transform duration-300 ${agentMode === 'agent' ? 'rainbow-icon' : ''} rotate-45 -ml-1`} />
+                        </div>
                     </button>
 
-                    <div className={`transition-all duration-500 ${agentMode !== 'agent' ? 'w-[50px] opacity-100' : 'w-0 opacity-0 overflow-hidden'} mode-transition-wrap ${agentMode !== 'agent' ? 'visible-mode instruction-enter' : 'hidden-mode instruction-exit'}`}>
+                    <div className={`transition-all duration-500 ${agentMode !== 'agent' ? 'w-[50px] opacity-100' : 'w-0 opacity-0 overflow-hidden'} mode-transition-wrap ${agentMode !== 'agent' ? 'visible-mode instruction-enter' : 'hidden-mode instruction-exit'} pointer-events-auto`}>
                         <button
                             onClick={handleSendAsInstructionWithSync}
                             disabled={!localInput.trim() && attachments.length === 0}
@@ -233,12 +252,13 @@ const ChatInputControls = React.memo(({
                 {!isLoading && agentIteration > 0 && agentPhase !== 'idle' && (
                     <button
                         onClick={onReprompt}
-                        className="h-[50px] px-4 btn-continue-premium text-white rounded-xl flex items-center justify-center min-w-[50px] shadow-lg shadow-orange-900/20 mx-1"
+                        className="h-[50px] px-4 btn-continue-premium text-white rounded-xl flex items-center justify-center min-w-[50px] shadow-lg shadow-orange-900/20 mx-1 pointer-events-auto"
                         title={t('chat.actions.resume_task')}
                     >
                         <Icon name="redo" className="icon-spin-once text-lg" />
                     </button>
                 )}
+                </div>
             </div>
         </div>
     );
@@ -1096,8 +1116,8 @@ export const ChatArea = ({
             </div>
 
             {/* Sticky Overlay Area for Active Task / Background Status - Only visible while Miku is doing something */}
-            {isLoading && (
-                <div className="z-20 w-full bg-slate-950/40 backdrop-blur-md border-t border-slate-800/20 animate-in slide-in-from-bottom-4 duration-500">
+            <div className={`z-20 w-full agent-status-docked ${isLoading ? 'active' : ''}`}>
+                <div className="w-full bg-slate-950/40 backdrop-blur-md border-t border-slate-800/20 agent-status-animate-in">
                     {isExecutingThisSession ? (
                         <div className="w-full">
                             <AgentStatusPanel
@@ -1137,17 +1157,17 @@ export const ChatArea = ({
                         )
                     )}
                 </div>
-            )}
+            </div>
 
-            <div className="p-4 bg-slate-900/40 border-t border-slate-800/50">
+            <div className={`px-4 pb-4 ${isLoading ? 'pt-0' : 'pt-4'} bg-slate-900/40 border-t ${isLoading ? 'border-transparent' : 'border-slate-800/50'} transition-all duration-500`}>
                 <div className="max-w-5xl mx-auto flex items-center gap-2 mb-2 flex-wrap">
                     <button
                         onClick={() => onAgentModeChange(agentMode === 'chat' ? 'agent' : 'chat')}
-                        className="flex items-center justify-center gap-1.5 px-2 h-6 min-w-[70px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-200 bg-slate-800/50 border-transparent hover:text-slate-300 hover:border-slate-600 active:scale-95 text-slate-500"
+                        className="flex items-center justify-center gap-1.5 px-2 h-6 min-w-[70px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-200 bg-slate-800/50 border-transparent hover:text-slate-300 hover:border-slate-600 active:scale-95 text-slate-500 leading-normal"
                         title={t('chat.actions.toggle_mode')}
                     >
                         <Icon name="sliders-h" />
-                        {t('chat.labels.mode')}
+                        <span className="-mb-[1px]">{t('chat.labels.mode')}</span>
                     </button>
                     <div className="relative">
                         <select
@@ -1172,7 +1192,7 @@ export const ChatArea = ({
                             {/* Approval Mode Toggle */}
                             <button
                                 onClick={() => onApprovalModeChange(approvalMode === 'auto' ? 'manual' : 'auto')}
-                                className={`flex items-center justify-center gap-1.5 px-2 h-6 min-w-[75px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-200 ${approvalMode === 'manual'
+                                className={`flex items-center justify-center gap-1.5 px-2 h-6 min-w-[75px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-200 leading-normal ${approvalMode === 'manual'
                                     ? 'bg-blue-500/15 border-transparent hover:border-blue-500/30 text-blue-400 shadow-sm shadow-blue-500/10'
                                     : 'bg-amber-500/15 border-transparent hover:border-amber-500/30 text-amber-400 shadow-sm shadow-amber-500/10'
                                     }`}
@@ -1182,13 +1202,13 @@ export const ChatArea = ({
                                 }
                             >
                                 <Icon name={approvalMode === 'manual' ? 'lock' : 'unlock'} className="icon-pulse" />
-                                {approvalMode === 'manual' ? t('chat.actions.manual') : t('chat.actions.auto')}
+                                <span className="-mb-[1px]">{approvalMode === 'manual' ? t('chat.actions.manual') : t('chat.actions.auto')}</span>
                             </button>
 
                             {/* Safe Mode Toggle */}
                             <button
                                 onClick={() => onSafeModeChange(!safeMode)}
-                                className={`flex items-center justify-center gap-1.5 px-2 h-6 min-w-[75px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-200 ${safeMode
+                                className={`flex items-center justify-center gap-1.5 px-2 h-6 min-w-[75px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-200 leading-normal ${safeMode
                                     ? 'bg-blue-500/15 border-transparent hover:border-blue-500/30 text-blue-400 shadow-sm shadow-blue-500/10'
                                     : 'bg-amber-500/15 border-transparent hover:border-amber-500/30 text-amber-400 shadow-sm shadow-amber-500/10'
                                     }`}
@@ -1198,7 +1218,7 @@ export const ChatArea = ({
                                 }
                             >
                                 {safeMode ? <Icon name="shield-alt" className="icon-pulse" /> : <span className="font-black tracking-tighter mr-0.5 animate-pulse">{'>>>'}</span>}
-                                {safeMode ? t('chat.actions.safe') : t('chat.actions.batch')}
+                                <span className="-mb-[1px]">{safeMode ? t('chat.actions.safe') : t('chat.actions.batch')}</span>
                             </button>
                         </div>
                     </div>
@@ -1206,27 +1226,28 @@ export const ChatArea = ({
                     <span className="text-[10px] text-slate-600 font-mono hidden sm:inline-block ml-2">
                         {agentMode === 'chat'
                             ? t('chat.labels.free_conversation')
-                            : `${approvalMode === 'manual' ? '🔒 ' + t('chat.actions.manual') : '⚡ ' + t('chat.actions.auto')} · ${safeMode ? '💠 ' + t('chat.actions.safe') : '📦 ' + t('chat.actions.batch')}`
+                            : `${approvalMode === 'manual' ? '🔒 ' + t('chat.labels.status_manual') : '⚡ ' + t('chat.labels.status_auto')} · ${safeMode ? '💠 ' + t('chat.labels.status_safe') : '📦 ' + t('chat.labels.status_batch')}`
                         }
                     </span>
 
                     <div className="ml-auto">
                         <button
                             onClick={() => onDebugModeChange(!debugMode)}
-                            className={`flex items-center justify-center gap-1.5 px-2 h-6 min-w-[75px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-200 ${debugMode
+                            className={`flex items-center justify-center gap-1.5 px-2 h-6 min-w-[75px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-200 leading-normal ${debugMode
                                 ? 'bg-purple-500/15 border-transparent hover:border-purple-500/30 text-purple-400 shadow-sm shadow-purple-500/10'
                                 : 'bg-slate-800/50 border-transparent hover:text-slate-400 hover:border-slate-600 text-slate-500'
                                 }`}
                             title={debugMode ? t('chat.actions.disable_debug') : t('chat.actions.enable_debug')}
                         >
                             <Icon name="terminal" />
-                            {t('chat.actions.debug')}
+                            <span className="-mb-[1px]">{t('chat.actions.debug')}</span>
                         </button>
                     </div>
                 </div>
                 <ChatInputControls
                     isRecording={isRecording}
                     partialText={partialText}
+                    agentMode={agentMode}
                     isLoading={isLoading}
                     executingSessionId={executingSessionId}
                     currentSessionId={sessionId}

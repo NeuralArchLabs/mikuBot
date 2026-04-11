@@ -30,6 +30,24 @@ function formatElapsed(ms: number): string {
     return `${hours}h ${mins.toString().padStart(2, '0')}m`;
 }
 
+// Helper to render streamed text as keyed animated spans
+const StreamedChunks = ({ text, className }: { text: string; className?: string }) => {
+    // Split by spaces but preserve them
+    const words = text.split(/(\s+)/);
+    return (
+        <div className={className}>
+            {words.map((word, i) => (
+                <span 
+                    key={`${i}-${word.length}`} 
+                    className="text-reveal-chunk"
+                >
+                    {word}
+                </span>
+            ))}
+        </div>
+    );
+};
+
 export const AgentStatusPanel = React.memo(({
     status,
     onAbort,
@@ -86,7 +104,7 @@ export const AgentStatusPanel = React.memo(({
     const canReprompt = ['idle', 'error', 'aborted'].includes(status.phase) && status.iteration > 0;
 
     return (
-        <div className="border-t border-slate-700 bg-slate-800/60 font-mono text-[11px]">
+        <div className="bg-slate-800/60 font-mono text-[11px]">
             <div className="flex items-center justify-between px-3 py-1.5 border-b border-slate-700/50">
                 <div className="flex items-center gap-3">
                     <div className={`flex items-center gap-1.5 ${phaseColors[status.phase]}`}>
@@ -151,7 +169,8 @@ export const AgentStatusPanel = React.memo(({
                 </div>
             )}
 
-            <div ref={logContainerRef} className="max-h-32 overflow-y-auto custom-scrollbar p-2 space-y-1 bg-slate-900/40">
+            {status.log.length > 0 && (
+                <div ref={logContainerRef} className="max-h-32 overflow-y-auto custom-scrollbar p-2 space-y-1 bg-slate-900/40 border-t border-white/5">
                 {status.log.map((entry, i) => {
                     const isOptimization = entry.message.includes('optimizado para el llamado');
 
@@ -195,20 +214,21 @@ export const AgentStatusPanel = React.memo(({
                         </div>
                     );
                 })}
-            </div>
+                </div>
+            )}
 
             {(status.streamedText || status.streamedReasoning) && (
-                <div className="p-2 border-t border-slate-700/50 bg-slate-900/20 text-slate-400 italic">
-                    {status.streamedReasoning && (
-                        <div className="mb-1 text-cyan-500/80 border-l-2 border-cyan-500/20 pl-2 text-[10px]">
-                            [{t('status.phases.thinking')}] {status.streamedReasoning}
-                        </div>
-                    )}
-                    {status.streamedText && (
-                        <div className="line-clamp-2">
-                            {status.streamedText}
-                        </div>
-                    )}
+                <div className="smooth-grow-container border-t border-slate-700/50">
+                    <div className="overflow-hidden p-2 bg-slate-900/20 text-slate-400 italic">
+                        {status.streamedReasoning && (
+                            <div className="mb-1 text-cyan-500/80 border-l-2 border-cyan-500/20 pl-2 text-[10px] animate-in fade-in slide-in-from-left-2 duration-500">
+                                [{t('status.phases.thinking')}] <StreamedChunks text={status.streamedReasoning} className="inline" />
+                            </div>
+                        )}
+                        {status.streamedText && (
+                            <StreamedChunks text={status.streamedText} className="line-clamp-2" />
+                        )}
+                    </div>
                 </div>
             )}
         </div>

@@ -460,9 +460,13 @@
             "role_tool": "工具",
             "reasoning": "推理",
             "active_reasoning": "活跃推理",
-            "agent_busy": "代理忙碌",
+            "agent_busy": "智能体忙碌",
             "processing_branch": "正在处理分支:",
-            "another_branch": "其他分支"
+            "another_branch": "另一个分支",
+            "status_manual": "受控",
+            "status_auto": "自主",
+            "status_safe": "受保护",
+            "status_batch": "直接"
         },
         "approval": {
             "sync_success": "系统已同步",

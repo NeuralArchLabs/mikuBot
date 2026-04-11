@@ -464,7 +464,11 @@
             "active_reasoning": "Active Reasoning",
             "agent_busy": "AGENT BUSY",
             "processing_branch": "Processing Branch:",
-            "another_branch": "another branch"
+            "another_branch": "another branch",
+            "status_manual": "Supervised",
+            "status_auto": "Autonomous",
+            "status_safe": "Protected",
+            "status_batch": "Direct"
         },
         "approval": {
             "sync_success": "System Synchronized",
