@@ -29,12 +29,9 @@ interface SettingsPanelProps {
     workSpacePathName: string;
     toolsPathName: string;
     rootPathName: string;
-    rootPathName: string;
     syncing: boolean;
     askAlert: (message: string, position?: 'left' | 'right' | 'center') => Promise<void>;
     askConfirm: (message: string) => Promise<boolean>;
-    models: Record<Provider, ModelInfo[]>;
-    loadingModels: Record<Provider, boolean>;
     toolsFiles: Record<string, string>;
     onSaveTools: (name: string, content: string) => Promise<boolean>;
     onUpdatePartialConfig: (updates: Partial<AppConfig>) => void;
@@ -263,6 +260,7 @@ export const SettingsPanel = ({
                             </button>
                             <button
                                 onClick={onResetGlobal}
+                                title={t('settings.actions.default')}
                                 className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-slate-800/40 hover:bg-red-500/10 text-slate-400 hover:text-red-400 rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-transparent hover:border-red-500/40 shadow-lg whitespace-nowrap"
                             >
                                 <Icon name="history" className="text-sm xl:text-base flex-shrink-0" /> <span className="inline lg:hidden min-[1150px]:inline">{t('settings.actions.default')}</span>
@@ -538,7 +536,7 @@ export const SettingsPanel = ({
                                     <div className="flex items-center justify-between mb-6">
                                         <div className="flex items-center gap-3">
                                             <div className="bg-blue-500/20 p-2 rounded-xl text-blue-400 border border-transparent group-hover:border-blue-500/40 premium-transition">
-                                                <Icon name="comments" className="text-xl mx-0.5" />
+                                                <Icon name="brain" className="text-xl mx-0.5" />
                                             </div>
                                             <span className="font-black text-white tracking-tight text-lg">{t('settings.orchestration.chat_runtime')}</span>
                                         </div>
@@ -751,6 +749,7 @@ export const SettingsPanel = ({
                                             <button
                                                 onClick={() => onTestConnection(config.visionProvider)}
                                                 disabled={loadingModels[config.visionProvider || 'gemini'] || connectionStatus === 'testing'}
+                                                title={t('settings.orchestration.sync')}
                                                 className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all shadow-md border premium-emphasis bg-slate-800/80 text-slate-400 border-white/5 hover:bg-slate-700 hover:text-white active:scale-95 group/v-sync overflow-hidden`}
                                             >
                                                 <Icon
@@ -946,7 +945,11 @@ export const SettingsPanel = ({
                                                             updateConfig('ollamaUrl', val);
                                                         } else {
                                                             setLocalApiKey(val);
-                                                            handleSaveKey(editingProvider, val);
+                                                        }
+                                                    }}
+                                                    onBlur={() => {
+                                                        if (editingProvider !== 'ollama') {
+                                                            handleSaveKey(editingProvider, localApiKey);
                                                         }
                                                     }}
                                                     placeholder={editingProvider === 'ollama' ? "http://localhost:11434" : t('settings.security.key_placeholder', { provider: PROVIDERS[editingProvider].name })}
@@ -1141,7 +1144,7 @@ export const SettingsPanel = ({
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative z-10">
                                         <div className="space-y-6 relative h-full flex flex-col">
                                             <div className="space-y-5">
-                                                <div className="flex items-center oy-2">
+                                                <div className="flex items-center py-2">
                                                     <h3 
                                                         className="text-5xl font-bold tracking-tighter transition-all duration-700 opacity-70 group-hover:opacity-100 searxena-title"
                                                     >
