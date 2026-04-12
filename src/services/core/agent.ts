@@ -64,10 +64,16 @@ export async function sendAgentMessage(
     approvalMode: ApprovalMode = 'auto',
     isInstructionMode: boolean = false,
     isScheduled: boolean = false,
-    isRemote: boolean = false
+    isRemote: boolean = false,
+    onRefreshContext?: () => Promise<{
+        tools: ToolDefinition[];
+        isAgentMode: boolean;
+        isInstructionMode: boolean;
+        systemPrompt: string;
+    }>
 ): Promise<void> {
 
-    console.log(`[Agent] sendAgentMessage called: isScheduled=${isScheduled}, isAgentMode=${isAgentMode}, safeMode=${safeMode}, approvalMode=${approvalMode}, isInstructionMode=${isInstructionMode}`);
+    // Start of turn
 
     const log = (type: AgentLogEntry['type'], message: string, details?: any) => {
         onStatus({ log: [{ timestamp: Date.now(), type, message, details }] });
@@ -295,6 +301,33 @@ export async function sendAgentMessage(
     // --- Main Loop ---
     try {
         while (!abortSignal.aborted) {
+            // ⚡ ON-THE-FLY MODE REFRESH: Support mid-execution mode switching (Chat <-> Agent)
+            if (onRefreshContext) {
+                try {
+                    const fresh = await onRefreshContext();
+                    const oldAgentMode = isAgentMode;
+                    const oldInstructionMode = isInstructionMode;
+                    
+                    isAgentMode = fresh.isAgentMode;
+                    isInstructionMode = fresh.isInstructionMode;
+                    tools = fresh.tools;
+                    
+                    // Update system instruction in-place to reflect new identity/protocol
+                    if (agentMessages[0] && agentMessages[0].role === 'system') {
+                        if (agentMessages[0].content !== fresh.systemPrompt) {
+                            agentMessages[0].content = fresh.systemPrompt;
+                        }
+                    }
+
+                    if (oldAgentMode !== isAgentMode || oldInstructionMode !== isInstructionMode) {
+                        console.log(`[Agent] Mode switched on the fly: Agent=${isAgentMode}, Instruction=${isInstructionMode}`);
+                        localOnStatus({ isInstructionMode: fresh.isInstructionMode });
+                    }
+                } catch (e) {
+                    console.error('[Agent] Refresh context failed:', e);
+                }
+            }
+
             if (retries >= MAX_RETRIES) {
                 log('warn', `Max retries reached (${MAX_RETRIES}). Stopping.`);
                 localOnStatus({ phase: 'error', retries, maxRetries: MAX_RETRIES, errorCount: retries, elapsedMs: Date.now() - startTime, rawMessages: [...agentMessages] });

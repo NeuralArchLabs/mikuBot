@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { AppConfig, ScheduledTask, TaskExecutionLog, TaskScheduleType, TaskChannel, TaskMode } from '../../types';
 import { useTranslation } from 'react-i18next';
 import { neuralScheduler } from '../../services';
 import { Icon } from '../common/Common';
+import { useTaskPresets } from './SchedulerPresets';
 
 // Helpers moved inside component or passed t
 
@@ -15,6 +16,158 @@ const CHANNEL_ICONS: Record<TaskChannel, string> = {
 const MODE_ICONS: Record<TaskMode, string> = {
     chat: 'comments',
     agent: 'bolt',
+};
+
+// ── Cron Builder Components ──────────────────────────────────────────
+
+const SelectField = ({ label, value, options, onChange }: { label: string, value: string, options: {val:string, label:string}[], onChange: (val: string) => void }) => {
+    let finalOptions = [...options];
+    if (!finalOptions.find(o => o.val === value)) {
+        finalOptions = [{val: value, label: value}, ...finalOptions];
+    }
+    
+    const selectedLabel = finalOptions.find(o => o.val === value)?.label || value;
+    const [isOpen, setIsOpen] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(e.target as Node)) setIsOpen(false);
+        };
+        if (isOpen) document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [isOpen]);
+
+    return (
+        <div className="flex flex-col gap-1.5 relative" ref={containerRef}>
+            <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider text-center">{label}</span>
+            <div 
+                className={`w-full bg-black/40 border ${isOpen ? 'border-cyan-500/50 shadow-[0_0_10px_rgba(6,182,212,0.15)] ring-1 ring-cyan-500/30' : 'border-white/5'} rounded-lg py-3 px-2 text-[11px] text-slate-300 font-mono flex items-center justify-center cursor-pointer hover:bg-black/60 transition-all select-none group h-[40px]`}
+                onClick={() => setIsOpen(!isOpen)}
+            >
+                <div className="flex items-center gap-2 w-full justify-center">
+                    <span className="text-center truncate font-medium group-hover:text-white transition-colors leading-none mt-0.5">{selectedLabel}</span>
+                    <Icon name={isOpen ? 'chevron-up' : 'chevron-down'} className={`text-[9px] transition-transform duration-200 ${isOpen ? 'text-cyan-400' : 'text-slate-500 opacity-60 group-hover:opacity-100 group-hover:text-slate-400'}`} />
+                </div>
+            </div>
+            
+            {isOpen && (
+                <div className="absolute top-[calc(100%+6px)] left-0 right-0 max-h-48 overflow-y-auto bg-slate-900/95 backdrop-blur-xl border border-cyan-800/40 rounded-lg shadow-2xl shadow-cyan-900/20 z-[100] flex flex-col py-1 custom-scrollbar ring-1 ring-white/5">
+                    {finalOptions.map(o => (
+                        <div 
+                            key={o.val} 
+                            onClick={() => { onChange(o.val); setIsOpen(false); }}
+                            className={`px-3 py-2.5 text-[11px] font-mono text-center cursor-pointer transition-all border-l-2 ${value === o.val ? 'bg-cyan-500/10 text-cyan-300 font-bold border-cyan-500 shadow-[inset_2px_0_0_rgba(6,182,212,0.8)]' : 'text-slate-400 hover:bg-white/5 hover:text-white border-transparent hover:border-slate-500'}`}
+                        >
+                            {o.label}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+const CronBuilder = ({ value, onChange, t }: { value: string, onChange: (v: string) => void, t: any }) => {
+    const [mode, setMode] = useState<'visual' | 'raw'>('visual');
+    const p = (value || '0 8 * * *').trim().split(/\s+/);
+    const parts = p.length === 5 ? p : ['0', '8', '*', '*', '*'];
+
+    const updatePart = (index: number, val: string) => {
+        const newParts = [...parts];
+        newParts[index] = val;
+        onChange(newParts.join(' '));
+    };
+
+    return (
+        <div className="flex flex-col h-full space-y-2">
+            <div className="flex justify-between items-center mb-1 shrink-0">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block ml-1">
+                    {t('scheduler.fields.cron_label')}
+                </label>
+                <button 
+                    onClick={() => setMode(m => m === 'visual' ? 'raw' : 'visual')} 
+                    className="text-[9px] text-cyan-500 hover:text-cyan-400 transition-colors uppercase tracking-wider font-bold"
+                >
+                    {mode === 'visual' ? t('scheduler.cron.advanced', 'Modo Avanzado (Raw)') : t('scheduler.cron.visual', 'Modo Visual')}
+                </button>
+            </div>
+            
+            {mode === 'raw' ? (
+                <div className="grow flex flex-col">
+                    <input
+                        type="text"
+                        value={value}
+                        onChange={e => onChange(e.target.value)}
+                        placeholder="0 8 * * *"
+                        className="w-full h-full min-h-[50px] bg-slate-900/80 border border-white/10 rounded-xl px-4 py-3 text-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                    />
+                </div>
+            ) : (
+                <div className="bg-slate-900/80 border border-white/10 rounded-xl p-5 flex flex-col justify-center gap-5 grow min-h-[100px]">
+                    <div className="grid grid-cols-2 gap-4">
+                        <SelectField
+                            label="Minuto"
+                            value={parts[0]}
+                            onChange={v => updatePart(0, v)}
+                            options={[
+                                { val: '*', label: '*' },
+                                { val: '*/5', label: '*/5' },
+                                { val: '*/10', label: '*/10' },
+                                { val: '*/15', label: '*/15' },
+                                { val: '*/30', label: '*/30' },
+                                ...Array.from({length:60}, (_, i) => ({ val: i.toString(), label: i.toString() }))
+                            ]}
+                        />
+                        <SelectField
+                            label="Hora"
+                            value={parts[1]}
+                            onChange={v => updatePart(1, v)}
+                            options={[
+                                { val: '*', label: '*' },
+                                { val: '*/2', label: '*/2' },
+                                { val: '*/4', label: '*/4' },
+                                { val: '*/6', label: '*/6' },
+                                { val: '*/12', label: '*/12' },
+                                ...Array.from({length:24}, (_, i) => ({ val: i.toString(), label: i.toString() }))
+                            ]}
+                        />
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                        <SelectField
+                            label="Día (Mes)"
+                            value={parts[2]}
+                            onChange={v => updatePart(2, v)}
+                            options={[
+                                { val: '*', label: '*' },
+                                ...Array.from({length:31}, (_, i) => ({ val: (i+1).toString(), label: (i+1).toString() }))
+                            ]}
+                        />
+                        <SelectField
+                            label="Mes"
+                            value={parts[3]}
+                            onChange={v => updatePart(3, v)}
+                            options={[
+                                { val: '*', label: '*' },
+                                ...['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'].map((m, i) => ({ val: (i+1).toString(), label: (i+1).toString() + ` (${m})` }))
+                            ]}
+                        />
+                        <SelectField
+                            label="Día (Sem)"
+                            value={parts[4]}
+                            onChange={v => updatePart(4, v)}
+                            options={[
+                                { val: '*', label: '*' },
+                                { val: '1-5', label: 'Lun-Vie' },
+                                { val: '0,6', label: 'Sab-Dom' },
+                                ...['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'].map((m, i) => ({ val: i.toString(), label: i.toString() + ` (${m})` }))
+                            ]}
+                        />
+                    </div>
+                </div>
+            )}
+        </div>
+    );
 };
 
 // ── Create/Edit Form ─────────────────────────────────────────────────
@@ -84,23 +237,7 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
         }
     }, [t]);
 
-    const PRESET_TASKS = useMemo(() => [
-        {
-            label: t('scheduler.presets_data.morning'),
-            icon: 'sun',
-            data: { name: t('scheduler.presets_data.morning'), prompt: t('scheduler.presets_data.morning_prompt'), scheduleType: 'cron', schedule: '0 8 * * *', channel: 'telegram', mode: 'chat' }
-        },
-        {
-            label: t('scheduler.presets_data.checkin'),
-            icon: 'heartbeat',
-            data: { name: t('scheduler.presets_data.checkin'), prompt: t('scheduler.presets_data.checkin_prompt'), scheduleType: 'interval', schedule: '60', channel: 'telegram', mode: 'chat' }
-        },
-        {
-            label: t('scheduler.presets_data.journal'),
-            icon: 'moon',
-            data: { name: t('scheduler.presets_data.journal'), prompt: t('scheduler.presets_data.journal_prompt'), scheduleType: 'cron', schedule: '0 21 * * *', channel: 'telegram', mode: 'chat' }
-        },
-    ], [t]);
+    const PRESET_TASKS = useTaskPresets();
 
     // Auto-refresh every 30s to update relative times
     useEffect(() => {
@@ -362,7 +499,7 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
                         {!editingTask && (
                             <div>
                                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block ml-1">{t('scheduler.fields.presets')}</label>
-                                <div className="flex flex-wrap gap-2">
+                                <div className="flex flex-wrap justify-center gap-2">
                                     {PRESET_TASKS.map(preset => (
                                         <button
                                             key={preset.label}
@@ -401,13 +538,13 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
                         </div>
 
                         {/* Schedule Type + Value */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div className="flex flex-col">
                                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block ml-1">{t('scheduler.fields.schedule_type')}</label>
-                                <div className="flex gap-2 bg-black/20 p-1.5 rounded-xl border border-white/5">
+                                <div className="flex gap-2 bg-black/20 p-1.5 rounded-xl border border-white/5 shrink-0">
                                     {([
                                         { id: 'interval' as const, label: t('scheduler.fields.interval'), icon: 'redo' },
-                                        { id: 'cron' as const, label: t('scheduler.fields.command'), icon: 'terminal' }, // Wait, Command is wrong here. It should be Cron.
+                                        { id: 'cron' as const, label: 'Cron', icon: 'terminal' },
                                         { id: 'once' as const, label: t('common.custom'), icon: 'clock' },
                                     ]).map(opt => (
                                         <button
@@ -425,30 +562,92 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
                                         </button>
                                     ))}
                                 </div>
+                                <div className="mt-4 px-4 py-3.5 bg-black/20 border border-white/5 rounded-xl grow flex items-center">
+                                    {form.scheduleType === 'interval' && (
+                                        <p className="text-[10.5px] text-slate-400 font-medium leading-relaxed">
+                                            <strong className="text-cyan-400 font-bold uppercase tracking-widest block mb-1">{t('scheduler.type_desc.interval_title', 'Intervalo')}:</strong> 
+                                            {t('scheduler.type_desc.interval_desc', 'Configura la tarea para que se repita continuamente cada cierto número de minutos. Ideal para comprobaciones y monitoreo recurrente.')}
+                                        </p>
+                                    )}
+                                    {form.scheduleType === 'cron' && (
+                                        <div className="flex flex-col justify-center gap-1.5 w-full">
+                                            <p className="text-[10px] text-slate-400 font-medium leading-tight mb-0.5">
+                                                <strong className="text-cyan-400 font-bold uppercase tracking-widest text-[10.5px] mr-1.5">{t('scheduler.type_desc.cron_title', 'Programación Cron')}:</strong> 
+                                                {t('scheduler.type_desc.cron_desc', 'Formato de 5 parámetros de tiempo:')}
+                                            </p>
+                                            <div className="grid grid-cols-1 sm:grid-cols-[1.5fr_1fr] gap-x-2 gap-y-1.5 text-[10px] text-slate-500 font-mono leading-tight pl-1 mt-1 max-w-full">
+                                                <div className="truncate pr-1"><span className="text-cyan-500 mr-1">•</span><strong className="text-slate-300 uppercase tracking-widest">{t('scheduler.cron_builder.min_label', 'Minuto')}:</strong> <span className="opacity-80 ml-1">{t('scheduler.cron_builder.min_desc', '¿En qué minuto?')}</span></div>
+                                                <div className="truncate pr-1"><span className="text-cyan-500 mr-1">•</span><strong className="text-slate-300 uppercase tracking-widest">{t('scheduler.cron_builder.hor_label', 'Hora')}:</strong> <span className="opacity-80 ml-1">{t('scheduler.cron_builder.hor_desc', '¿hora del día?')}</span></div>
+                                                <div className="truncate pr-1"><span className="text-cyan-500 mr-1">•</span><strong className="text-slate-300 uppercase tracking-widest">{t('scheduler.cron_builder.day_label', 'Día (Mes)')}:</strong> <span className="opacity-80 ml-1">{t('scheduler.cron_builder.day_desc', '¿Qué día del mes?')}</span></div>
+                                                <div className="truncate pr-1"><span className="text-cyan-500 mr-1">•</span><strong className="text-slate-300 uppercase tracking-widest">{t('scheduler.cron_builder.month_label', 'Mes')}:</strong> <span className="opacity-80 ml-1">{t('scheduler.cron_builder.month_desc', '¿En qué mes?')}</span></div>
+                                                <div className="col-span-1 sm:col-span-2 truncate"><span className="text-cyan-500 mr-1">•</span><strong className="text-slate-300 uppercase tracking-widest">{t('scheduler.cron_builder.weekday_label', 'Día (Sem)')}:</strong> <span className="opacity-80 ml-1">{t('scheduler.cron_builder.weekday_desc', '¿En qué día de la semana?')}</span></div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {form.scheduleType === 'once' && (
+                                        <p className="text-[10.5px] text-slate-400 font-medium leading-relaxed">
+                                            <strong className="text-cyan-400 font-bold uppercase tracking-widest block mb-1">{t('scheduler.type_desc.once_title', 'Una Sola Vez')}:</strong> 
+                                            {t('scheduler.type_desc.once_desc', 'Configura la tarea para que se ejecute una única vez en un instante temporal exacto (Fecha/Hora particular). No se repetirá posteriormente.')}
+                                        </p>
+                                    )}
+                                </div>
                             </div>
-                            <div>
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block ml-1">
-                                    {form.scheduleType === 'interval' ? t('scheduler.fields.interval_label') : form.scheduleType === 'cron' ? t('scheduler.fields.cron_label') : t('scheduler.fields.run_at_label')}
-                                </label>
-                                {form.scheduleType === 'once' ? (
-                                    <input
-                                        type="datetime-local"
-                                        value={form.schedule}
-                                        onChange={e => setForm({ ...form, schedule: e.target.value })}
-                                        title="Select date and time for one-time execution"
-                                        className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-4 py-3 text-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
-                                    />
+                            <div className="flex flex-col h-full">
+                                {form.scheduleType === 'cron' ? (
+                                    <CronBuilder value={form.schedule} onChange={v => setForm({ ...form, schedule: v })} t={t} />
                                 ) : (
-                                    <input
-                                        type="text"
-                                        value={form.schedule}
-                                        onChange={e => setForm({ ...form, schedule: e.target.value })}
-                                        placeholder={form.scheduleType === 'interval' ? '30' : '0 8 * * *'}
-                                        className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-4 py-3 text-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
-                                    />
-                                )}
-                                {form.scheduleType === 'cron' && (
-                                    <p className="text-[9px] text-slate-600 font-medium mt-1.5 ml-1">{t('scheduler.fields.cron_hint')}</p>
+                                    <>
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block ml-1">
+                                            {form.scheduleType === 'interval' ? t('scheduler.fields.interval_label') : t('scheduler.fields.run_at_label')}
+                                        </label>
+                                        {form.scheduleType === 'once' ? (
+                                            <div className="relative w-full group">
+                                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                                    <Icon name="calendar-alt" className="text-cyan-500/50 group-focus-within:text-cyan-400 transition-colors text-sm" />
+                                                </div>
+                                                <input
+                                                    type="datetime-local"
+                                                    value={form.schedule}
+                                                    onChange={e => setForm({ ...form, schedule: e.target.value })}
+                                                    title="Select date and time for one-time execution"
+                                                    style={{ colorScheme: 'dark' }}
+                                                    className="w-full bg-black/40 border border-white/5 rounded-lg py-3.5 pl-11 pr-4 text-slate-200 text-[13px] font-mono focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30 focus:shadow-[0_0_10px_rgba(6,182,212,0.15)] hover:bg-black/60 transition-all cursor-pointer [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-50 hover:[&::-webkit-calendar-picker-indicator]:opacity-100"
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center w-full bg-black/40 border border-white/5 rounded-lg hover:bg-black/60 focus-within:border-cyan-500/50 focus-within:ring-1 focus-within:ring-cyan-500/30 focus-within:shadow-[0_0_10px_rgba(6,182,212,0.15)] transition-all">
+                                                <button 
+                                                    onClick={(e) => { e.preventDefault(); setForm(f => ({ ...f, schedule: Math.max(1, parseInt(f.schedule || '30') - 1).toString() })) }}
+                                                    className="h-[50px] w-14 flex items-center justify-center text-slate-500 hover:text-cyan-400 hover:bg-white/5 rounded-l-lg transition-colors border-r border-white/5 shrink-0"
+                                                    title={t('common.decrease', 'Disminuir')}
+                                                    aria-label="Disminuir intervalo"
+                                                >
+                                                    <Icon name="minus" className="text-xs" />
+                                                </button>
+                                                <div className="flex-1 flex flex-col items-center justify-center relative py-1">
+                                                    <input
+                                                        type="number"
+                                                        min={1}
+                                                        value={form.schedule}
+                                                        placeholder="30"
+                                                        aria-label="Intervalo de tiempo en minutos"
+                                                        title="Intervalo en minutos"
+                                                        onChange={e => setForm({ ...form, schedule: e.target.value })}
+                                                        className="w-full bg-transparent text-center text-[16px] font-black text-cyan-300 font-mono focus:outline-none placeholder-slate-600/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pt-0.5"
+                                                    />
+                                                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-500 mt-1">{t('scheduler.type_desc.minutes', 'Minutos')}</span>
+                                                </div>
+                                                <button 
+                                                    onClick={(e) => { e.preventDefault(); setForm(f => ({ ...f, schedule: (parseInt(f.schedule || '30') + 1).toString() })) }}
+                                                    className="h-[50px] w-14 flex items-center justify-center text-slate-500 hover:text-cyan-400 hover:bg-white/5 rounded-r-lg transition-colors border-l border-white/5 shrink-0"
+                                                    title={t('common.increase', 'Aumentar')}
+                                                    aria-label="Aumentar intervalo"
+                                                >
+                                                    <Icon name="plus" className="text-xs" />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </>
                                 )}
                             </div>
                         </div>

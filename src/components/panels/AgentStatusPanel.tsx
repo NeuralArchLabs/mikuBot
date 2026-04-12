@@ -55,11 +55,21 @@ export const AgentStatusPanel = React.memo(({
 }: AgentStatusPanelProps) => {
     const { t } = useTranslation();
     const logContainerRef = useRef<HTMLDivElement>(null);
+    const streamContainerRef = useRef<HTMLDivElement>(null);
+
+    // Auto-scroll logs
     useEffect(() => {
         if (logContainerRef.current) {
             logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
         }
     }, [status.log]);
+
+    // Auto-scroll streaming preview
+    useEffect(() => {
+        if (streamContainerRef.current) {
+            streamContainerRef.current.scrollTop = streamContainerRef.current.scrollHeight;
+        }
+    }, [status.streamedText, status.streamedReasoning]);
 
     // Live timer — ticks every second while agent is active
     const [liveElapsed, setLiveElapsed] = useState(typeof status.elapsedMs === 'number' ? status.elapsedMs : 0);
@@ -169,7 +179,7 @@ export const AgentStatusPanel = React.memo(({
                 </div>
             )}
 
-            {status.log.length > 0 && (
+            {status.log?.length > 0 && (
                 <div ref={logContainerRef} className="max-h-32 overflow-y-auto custom-scrollbar p-2 space-y-1 bg-slate-900/40 border-t border-white/5">
                 {status.log.map((entry, i) => {
                     const isOptimization = entry.message.includes('optimizado para el llamado');
@@ -218,15 +228,15 @@ export const AgentStatusPanel = React.memo(({
             )}
 
             {(status.streamedText || status.streamedReasoning) && (
-                <div className="smooth-grow-container border-t border-slate-700/50">
-                    <div className="overflow-hidden p-2 bg-slate-900/20 text-slate-400 italic">
+                <div className="border-t border-slate-700/50">
+                    <div ref={streamContainerRef} className="max-h-60 overflow-y-auto custom-scrollbar p-2 bg-slate-900/20 text-slate-400 italic">
                         {status.streamedReasoning && (
                             <div className="mb-1 text-cyan-500/80 border-l-2 border-cyan-500/20 pl-2 text-[10px] animate-in fade-in slide-in-from-left-2 duration-500">
                                 [{t('status.phases.thinking')}] <StreamedChunks text={status.streamedReasoning} className="inline" />
                             </div>
                         )}
                         {status.streamedText && (
-                            <StreamedChunks text={status.streamedText} className="line-clamp-2" />
+                            <StreamedChunks text={status.streamedText} className="whitespace-pre-wrap break-words" />
                         )}
                     </div>
                 </div>

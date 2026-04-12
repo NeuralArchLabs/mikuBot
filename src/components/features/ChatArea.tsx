@@ -126,14 +126,16 @@ const ChatInputControls = React.memo(({
                             <div key={att.id} className="relative group bg-slate-800 border border-slate-700 rounded-lg p-1 flex items-center justify-center w-10 h-10 shadow-sm">
                                 {att.type.startsWith('image/') ? (
                                     <>
-                                        <img src={att.data} alt={att.name} className={`w-full h-full object-cover rounded-md transition-all duration-500 ${att.isAnalyzing ? 'blur-[1px] brightness-50' : ''}`} />
-                                        {att.isAnalyzing && (
-                                            <div className="absolute inset-0 flex items-center justify-center">
-                                                <div className="absolute inset-0 bg-emerald-500/20 animate-pulse rounded-md" />
-                                                <Icon name="eye" className="text-emerald-400 text-xs animate-bounce" />
-                                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500 shadow-[0_0_10px_#10b981] animate-scan-fast" />
-                                            </div>
-                                        )}
+                                        <div className="relative w-full h-full rounded-md overflow-hidden">
+                                            <img src={att.data} alt={att.name} className={`w-full h-full object-cover transition-all duration-500 ${att.isAnalyzing ? 'blur-[1px] brightness-50' : ''}`} />
+                                            {att.isAnalyzing && (
+                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                    <div className="absolute inset-0 bg-emerald-500/20 animate-pulse" />
+                                                    <Icon name="eye" className="text-emerald-400 text-xs animate-bounce" />
+                                                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500 shadow-[0_0_10px_#10b981] animate-scan-fast" />
+                                                </div>
+                                            )}
+                                        </div>
                                     </>
                                 ) : (
                                     <div className="flex flex-col items-center justify-center gap-0.5">
@@ -388,6 +390,10 @@ export const ChatArea = ({
     const inputRef = React.useRef<HTMLTextAreaElement>(null);
     const [isSent, setIsSent] = React.useState(false);
 
+    // ⚡ STREAM BUFFER: Logic to prevent high-frequency re-renders (prevents whole app lag)
+    const chunkBufferRef = useRef<string>('');
+    const lastUpdateMsRef = useRef<number>(0);
+
     // ✨ SELECTIVE EXPANSION ENGINE v1.1
     // Prioritizes interaction focus by auto-collapsing legacy context.
     // Keeps only the last 2 interactions per role expanded by default.
@@ -611,6 +617,45 @@ export const ChatArea = ({
     React.useEffect(() => {
         if (!(window as any).electron) return;
 
+        const offStream = (window as any).electron.onApiStreamChunk((data: any) => {
+            const { streamId, chunk, done } = data;
+            const { messages, updateMessageContent, updateMessageStreaming } = useAgentStore.getState();
+            
+            // Check if this stream update belongs to the current session context
+            if (streamId !== sessionId) return;
+
+            const lastMsg = messages[messages.length - 1];
+            if (!lastMsg || lastMsg.role !== 'assistant' || !lastMsg.isStreaming) return;
+
+            if (done) {
+                // ⚡ FINAL FLUSH: Commit remaining buffer before ending stream
+                if (chunkBufferRef.current) {
+                    updateMessageContent(lastMsg.id, lastMsg.text + chunkBufferRef.current);
+                    chunkBufferRef.current = '';
+                }
+                updateMessageStreaming(lastMsg.id, false);
+                lastUpdateMsRef.current = 0;
+                return;
+            }
+
+            if (chunk) {
+                // Accumulate in high-performance buffer
+                chunkBufferRef.current += chunk;
+                
+                const now = Date.now();
+                // REVEAL LOGIC: Update UI every 800ms OR if we complete a word/block
+                const isWordComplete = /[\s\.\!\?\n\>\}\]:]/.test(chunk);
+                const hasTimePassed = (now - lastUpdateMsRef.current) > 800;
+
+                if (isWordComplete || hasTimePassed) {
+                    const latestContent = lastMsg.text + chunkBufferRef.current;
+                    updateMessageContent(lastMsg.id, latestContent);
+                    chunkBufferRef.current = '';
+                    lastUpdateMsRef.current = now;
+                }
+            }
+        });
+
         const cleanupResult = (window as any).electron.onVoiceRecognitionResult((data: any) => {
             if (data.final) {
                 const currentInput = useAgentStore.getState().input || "";
@@ -635,12 +680,13 @@ export const ChatArea = ({
         });
 
         return () => {
+            offStream();
             cleanupResult();
             cleanupError();
             cleanupReady();
             stopCapture();
         };
-    }, []);
+    }, [sessionId, t, voskModelPath]);
 
     const stopCapture = () => {
         if (processorRef.current) {
@@ -1109,7 +1155,7 @@ export const ChatArea = ({
                         const isPriority = index >= messages.length - 4 || priorityIndices.includes(index) || msg.isStreaming || isLast;
 
                         const MessageContent = (
-                            <div key={msg.id} id={`msg-${msg.id}`} className={`flex group relative w-full ${msg.role === 'user' ? 'justify-end'
+                            <div id={`msg-${msg.id}`} className={`flex group relative w-full ${msg.role === 'user' ? 'justify-end'
                                 : msg.role === 'system' ? 'justify-center'
                                     : 'justify-start'
                                 }`}>
@@ -1272,7 +1318,7 @@ export const ChatArea = ({
                         if (msg.role !== 'system' || msg.isScheduler) {
                             return (
                                 <CollapsibleMessage
-                                    key={msg.id}
+                                    key={`msg-collapsible-${msg.id}-${index}`}
                                     message={msg}
                                     initiallyCollapsed={msg.isInitiallyCollapsed === true || !isPriority}
                                 >
@@ -1281,7 +1327,11 @@ export const ChatArea = ({
                             );
                         }
 
-                        return MessageContent;
+                        return (
+                            <React.Fragment key={`msg-system-${msg.id}-${index}`}>
+                                {MessageContent}
+                            </React.Fragment>
+                        );
                     })}
 
                     {/* 👁️ VISION RUNTIME: Viewing Bubble — Shows while Vortex Visual is processing */}

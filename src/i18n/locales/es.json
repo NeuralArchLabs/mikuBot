@@ -196,6 +196,8 @@
             "chat_desc": "Modelo principal para conversación rápida.",
             "agent_title": "Agente Autónomo",
             "agent_desc": "Modelo potente para ejecución de tareas.",
+            "vision_title": "Vortex Visual",
+            "vision_desc": "Motor de Visión Avanzado.",
             "fallback_title": "Master Fallback",
             "fallback_desc": "Enrutamiento de emergencia si falla el principal.",
             "select_provider": "Proveedor",
@@ -677,13 +679,48 @@
             "morning": "Resumen Matutino",
             "morning_prompt": "Dame un resumen conciso de mis tareas pendientes y cualquier cosa importante que deba saber hoy.",
             "checkin": "Control Periódico",
-            "checkin_prompt": "Revisa ACTIVE_CONTEXT.md y notifícame sobre plazos próximos o actualizaciones importantes.",
+            "checkin_prompt": "Salúdame y pregúntame abiertamente cómo va mi progreso actual del día. Ofréceme asistencia directa para continuar mis tareas pendientes o simplemente darme un respiro motivacional.",
             "journal": "Diario Nocturno",
-            "journal_prompt": "Pregúntame cómo fue mi día y ayúdame a reflexionar sobre logros y prioridades para mañana."
+            "journal_prompt": "Pregúntame cómo fue mi día y ayúdame a reflexionar sobre logros y prioridades para mañana.",
+            "heartbeat": "Heartbeat (Latido)",
+            "heartbeat_prompt": "Responde con un mensaje corto y optimista para confirmar que estás en línea y tus sistemas operativos funcionan.",
+            "radar": "Radar de Noticias",
+            "radar_prompt": "Busca brevemente en la web las últimas noticias sobre IA o tecnología y entrégame un resumen de los titulares principales.",
+            "system_report": "Reporte de Sistema",
+            "system_report_prompt": "Usa comandos de terminal locales para listar discos y leer uso de CPU/RAM, y confírmame si hay alguna alerta de rendimiento.",
+            "weather": "Reporte Climatológico",
+            "weather_prompt": "Busca en la web el pronóstico del clima para hoy en mi área y dame una sugerencia práctica sobre la ropa adecuada o utilerías como paraguas.",
+            "weekly_plan": "Planificación Semanal",
+            "weekly_plan_prompt": "Hazme un par de preguntas clave para reflexionar sobre mi progreso laboral/académico de la semana y ayudarme a establecer objetivos para el lunes.",
+            "curiosity": "Dosis de Curiosidad",
+            "curiosity_prompt": "Enséñame un dato curioso, útil y poco conocido sobre ciencia, cultura general o una palabra interesante en otro idioma.",
+            "health_ping": "Pausa de Bienestar",
+            "health_ping_prompt": "Envíame un recordatorio breve y amigable para beber agua, corregir mi postura y descansar la vista de la pantalla."
+        },
+        "type_desc": {
+            "interval_title": "Intervalo",
+            "interval_desc": "Configura la tarea para que se repita continuamente cada cierto número de minutos. Ideal para comprobaciones y monitoreo recurrente (ej. cada 30 mins).",
+            "cron_title": "Programación Cron",
+            "cron_desc": "Formato de 5 parámetros de tiempo:",
+            "once_title": "Una Sola Vez",
+            "once_desc": "Configura la tarea para que se ejecute una única vez en un instante temporal exacto (Fecha/Hora particular). No se repetirá posteriormente.",
+            "minutes": "Minutos"
         },
         "alerts": {
             "telegram_incomplete_title": "⚠️ [Telegram Incompleto]",
             "telegram_incomplete_desc": "Para usar Telegram como canal de entrega en tus tareas programadas, debes configurar tu 'Bot Token' y 'Chat ID' en la pestaña Core System de los ajustes de mikuCentral."
+        },
+        "cron_builder": {
+            "min_label": "Minuto",
+            "min_desc": "¿En qué minuto?",
+            "hor_label": "Hora",
+            "hor_desc": "¿hora del día?",
+            "day_label": "Día (Mes)",
+            "day_desc": "¿Qué día del mes?",
+            "month_label": "Mes",
+            "month_desc": "¿En qué mes?",
+            "weekday_label": "Día (Sem)",
+            "weekday_desc": "¿En qué día de la semana?"
         }
     },
     "titlebar": {

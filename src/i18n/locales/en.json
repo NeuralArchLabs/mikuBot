@@ -194,6 +194,8 @@
             "chat_desc": "Main model for rapid conversation.",
             "agent_title": "Autonomous Agent",
             "agent_desc": "Powerful model for task execution.",
+            "vision_title": "Visual Vortex",
+            "vision_desc": "Advanced Vision Engine.",
             "fallback_title": "Master Fallback",
             "fallback_desc": "Emergency routing if primary fails.",
             "select_provider": "Provider",
@@ -661,13 +663,48 @@
             "morning": "Morning Briefing",
             "morning_prompt": "Give me a concise briefing of my pending tasks and anything important I should know today.",
             "checkin": "Periodic Check-in",
-            "checkin_prompt": "Review ACTIVE_CONTEXT.md and notify me of any upcoming deadlines or important updates.",
+            "checkin_prompt": "Say hello and ask me how my current progress is going today. Offer direct assistance to continue with whatever I am working on or simply give me a motivational boost.",
             "journal": "Evening Journal",
-            "journal_prompt": "Ask me how my day went and help me reflect on accomplishments and tomorrow's priorities."
+            "journal_prompt": "Ask me how my day went and help me reflect on accomplishments and tomorrow's priorities.",
+            "heartbeat": "Heartbeat",
+            "heartbeat_prompt": "Reply with a short, optimistic message to confirm you are online and operational.",
+            "radar": "News Radar",
+            "radar_prompt": "Briefly search the web for the latest AI or tech news and provide a curated summary of main headlines.",
+            "system_report": "System Report",
+            "system_report_prompt": "Use local terminal commands to list drives and read CPU/RAM usage, and confirm if there are any performance alerts.",
+            "weather": "Weather Advisor",
+            "weather_prompt": "Search the local weather forecast for today and give me practical advice on whether to take an umbrella, coat, or light clothing.",
+            "weekly_plan": "Weekly Review",
+            "weekly_plan_prompt": "Ask me a few questions to reflect on my week's progress and help me set key work/school goals for next Monday.",
+            "curiosity": "Daily Curiosity",
+            "curiosity_prompt": "Teach me a curious, useful and little-known fact about science, history, or an advanced word in another language.",
+            "health_ping": "Wellness Break",
+            "health_ping_prompt": "Send me a brief, friendly reminder to drink a glass of water, fix my posture, and rest my eyes from the screen."
+        },
+        "type_desc": {
+            "interval_title": "Interval",
+            "interval_desc": "Configure the task to repeat continuously every certain number of minutes. Ideal for recurrent checks and monitoring (e.g. every 30 mins).",
+            "cron_title": "Cron Schedule",
+            "cron_desc": "5-parameter time format:",
+            "once_title": "Once",
+            "once_desc": "Configure the task to execute uniquely at an exact temporal instance (specific Date/Time). It will not repeat afterwards.",
+            "minutes": "Minutes"
         },
         "alerts": {
             "telegram_incomplete_title": "⚠️ [Telegram Incomplete]",
             "telegram_incomplete_desc": "To use Telegram as a delivery channel for your scheduled tasks, you must configure your 'Bot Token' and 'Chat ID' in the Core System tab of the mikuCentral settings."
+        },
+        "cron_builder": {
+            "min_label": "Minute",
+            "min_desc": "At what minute?",
+            "hor_label": "Hour",
+            "hor_desc": "Hour of the day?",
+            "day_label": "Day (Month)",
+            "day_desc": "What day of the month?",
+            "month_label": "Month",
+            "month_desc": "In which month?",
+            "weekday_label": "Day (Week)",
+            "weekday_desc": "Which day of the week?"
         }
     },
     "titlebar": {

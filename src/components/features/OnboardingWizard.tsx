@@ -195,9 +195,9 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
             };
             
             if ((window as any).electron) {
-                const folderRes = await (window as any).electron.readFolder(nextConfig.folderPaths.tools);
-                if (folderRes.ok && folderRes.files) {
-                    const templateContent = extractTemplatesFromFolderContent(folderRes.files);
+                const internalRes = await (window as any).electron.getInternalTemplates();
+                if (internalRes.ok && internalRes.files) {
+                    const templateContent = internalRes.files;
                     const variables: PromptVariables = {
                         LANGUAGE: i18n.language === 'es' ? 'Español' : i18n.language === 'zh' ? '中文' : 'English',
                         TONE: userTone, VERBOSITY: verbosity, HUMOR_LEVEL: humorLevel,
@@ -739,10 +739,11 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                                 <h1 className="text-2xl font-black text-white uppercase tracking-widest leading-none">{t('onboarding.engines.title')}</h1>
                                 <p className="text-slate-500 text-[9px] font-black uppercase tracking-[0.4em] opacity-60 text-center">{t('onboarding.engines.subtitle')}</p>
                             </div>
-                            <div className="grid grid-cols-3 gap-6 overflow-visible">
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 overflow-visible">
                                 {[
                                     { id: 'chat', t: t('onboarding.engines.chat_title'), d: t('onboarding.engines.chat_desc'), c: 'cyan', p: config.chatProvider || 'gemini', m: config.chatModel || '', pf: 'chatProvider', mf: 'chatModel' },
                                     { id: 'agent', t: t('onboarding.engines.agent_title'), d: t('onboarding.engines.agent_desc'), c: 'indigo', p: config.agentProvider || 'groq', m: config.agentModel || '', pf: 'agentProvider', mf: 'agentModel' },
+                                    { id: 'vision', t: t('onboarding.engines.vision_title'), d: t('onboarding.engines.vision_desc'), c: 'emerald', p: config.visionProvider || 'gemini', m: config.visionModel || '', pf: 'visionProvider', mf: 'visionModel' },
                                     { id: 'fallback', t: t('onboarding.engines.fallback_title'), d: t('onboarding.engines.fallback_desc'), c: 'rose', p: config.provider || 'gemini', m: config.model || '', pf: 'provider', mf: 'model' },
                                 ].map(engine => {
                                     const PROVIDER_LIST = [

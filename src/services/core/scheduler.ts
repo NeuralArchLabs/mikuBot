@@ -162,7 +162,7 @@ class NeuralScheduler {
         }
 
         this.startTickLoop();
-        console.log(`[NeuralScheduler] Initialized with ${this.tasks.length} tasks.`);
+        // Scheduler initialized
     }
 
     destroy(): void {
@@ -170,7 +170,7 @@ class NeuralScheduler {
         this.executor = null;
         this.telegramNotifier = null;
         this.onUiMessage = null;
-        console.log('[NeuralScheduler] Destroyed.');
+        // Scheduler destroyed
     }
 
     // ── Tick Loop ────────────────────────────────────────────────────

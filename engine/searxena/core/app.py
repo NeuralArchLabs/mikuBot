@@ -267,6 +267,11 @@ async def search(request: Request):
 
 # --- API endpoints para IA / LLMs ---
 
+@app.get("/api/v1/status")
+async def api_status():
+    """Endpoint de salud del motor."""
+    return {"status": "online", "version": "1.4.0"}
+
 class ToolSearchRequest(BaseModel):
     query: str = Field(..., description="Término de búsqueda.")
     category: Optional[str] = Field("general", description="Categoría: general, images, videos, news, maps, shopping, it, social.")

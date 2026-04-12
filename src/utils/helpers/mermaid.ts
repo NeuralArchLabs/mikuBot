@@ -1,27 +1,245 @@
 import mermaid from 'mermaid';
 
-/** Shared Mermaid config object — pristine, no CSS injection */
+/**
+ * 🎨 AUTO-CONTRAST ENGINE (Live DOM)
+ * Scans a rendered Mermaid SVG in the live DOM for nodes with light fill
+ * colors and flips their text to dark for legibility.
+ * Operates on live elements — NO DOMParser/XMLSerializer roundtrip.
+ */
+function fixMermaidTextContrastDOM(container: HTMLElement): void {
+    const svgEl = container.querySelector('svg');
+    if (!svgEl) return;
+
+    const parseColor = (c: string): [number, number, number] | null => {
+        if (!c) return null;
+        c = c.trim().toLowerCase();
+        const hex = c.match(/^#([0-9a-f]{3,8})$/);
+        if (hex) {
+            let h = hex[1];
+            if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+            return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+        }
+        const rgb = c.match(/rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/);
+        if (rgb) return [+rgb[1], +rgb[2], +rgb[3]];
+        const named: Record<string,[number,number,number]> = {
+            white:[255,255,255], lightyellow:[255,255,224], lightgreen:[144,238,144],
+            lightgray:[211,211,211], lightgrey:[211,211,211], lightcyan:[224,255,255],
+            lightpink:[255,182,193], ivory:[255,255,240], honeydew:[240,255,240],
+            lavender:[230,230,250], aliceblue:[240,248,255], beige:[245,245,220],
+            yellow:[255,255,0], gold:[255,215,0], orange:[255,165,0],
+            khaki:[240,230,140], wheat:[245,222,179], bisque:[255,228,196],
+        };
+        return named[c] || null;
+    };
+
+    const luminance = ([r,g,b]: [number,number,number]) => {
+        const f = (v: number) => { const s = v/255; return s <= 0.03928 ? s/12.92 : Math.pow((s+0.055)/1.055, 2.4); };
+        return 0.2126*f(r) + 0.7152*f(g) + 0.0722*f(b);
+    };
+
+    const isLight = (color: string) => {
+        const rgb = parseColor(color);
+        return rgb ? luminance(rgb) > 0.45 : false;
+    };
+
+    const DARK = '#1a1a2e';
+
+    // Fix node text
+    svgEl.querySelectorAll('g.node rect, g.node polygon, g.node circle, g.node ellipse, g.node path').forEach(shape => {
+        const fill = shape.getAttribute('fill') || (shape as SVGElement).style?.fill;
+        if (fill && isLight(fill)) {
+            const group = shape.closest('g.node') || shape.closest('g');
+            group?.querySelectorAll('text, tspan, .nodeLabel, foreignObject span, foreignObject div, foreignObject p').forEach(t => {
+                (t as SVGElement).setAttribute('fill', DARK);
+                if ((t as HTMLElement).style) (t as HTMLElement).style.color = DARK;
+            });
+        }
+    });
+
+    // Fix cluster/subgraph labels
+    svgEl.querySelectorAll('g.cluster rect').forEach(rect => {
+        const fill = rect.getAttribute('fill') || (rect as SVGElement).style?.fill;
+        if (fill && isLight(fill)) {
+            const cluster = rect.closest('g.cluster') || rect.closest('g');
+            cluster?.querySelectorAll('text, tspan').forEach(t => {
+                (t as SVGElement).setAttribute('fill', DARK);
+            });
+        }
+    });
+}
+
+
+/** Shared Mermaid config object — `base` theme with darkMode for full control */
+
 const MERMAID_CONFIG = {
     startOnLoad: false,
-    theme: 'dark' as const,
+    theme: 'base' as const,
     securityLevel: 'loose' as const,
     suppressErrorRendering: true,
+    darkMode: true,
     fontFamily: 'JetBrains Mono, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
     themeVariables: {
+        // ── Core palette ──
+        darkMode: true,
+        background: '#0f172a',
         primaryColor: '#06b6d4',
-        primaryTextColor: '#fff',
+        primaryTextColor: '#e2e8f0',
         primaryBorderColor: '#0891b2',
-        lineColor: '#22d3ee',
         secondaryColor: '#6366f1',
+        secondaryTextColor: '#e2e8f0',
+        secondaryBorderColor: '#4f46e5',
         tertiaryColor: '#10b981',
-        mainBkg: 'rgba(0, 0, 0, 0.45)',
+        tertiaryTextColor: '#e2e8f0',
+        tertiaryBorderColor: '#059669',
+        lineColor: '#22d3ee',
+        textColor: '#e2e8f0',
+        mainBkg: '#1e293b',
         nodeBorder: '#06b6d4',
-        clusterBkg: 'rgba(30, 41, 59, 0.5)',
+        nodeTextColor: '#e2e8f0',
+
+        // ── Flowchart ──
+        clusterBkg: 'rgba(30, 41, 59, 0.7)',
+        clusterBorder: '#334155',
         titleColor: '#06b6d4',
-        edgeLabelBackground: '#000',
-        defaultLinkColor: '#06b6d4',
-    }
+        edgeLabelBackground: '#0f172a',
+        defaultLinkColor: '#22d3ee',
+
+        // ── Sequence ──
+        actorBkg: '#1e293b',
+        actorBorder: '#06b6d4',
+        actorTextColor: '#e2e8f0',
+        actorLineColor: '#334155',
+        signalColor: '#22d3ee',
+        signalTextColor: '#e2e8f0',
+        labelBoxBkgColor: '#1e293b',
+        labelBoxBorderColor: '#334155',
+        labelTextColor: '#e2e8f0',
+        loopTextColor: '#e2e8f0',
+        noteBkgColor: '#1e293b',
+        noteTextColor: '#e2e8f0',
+        noteBorderColor: '#06b6d4',
+        activationBkgColor: '#334155',
+        activationBorderColor: '#06b6d4',
+
+        // ── Class ──
+        classText: '#e2e8f0',
+
+        // ── State ──
+        labelColor: '#e2e8f0',
+        altBackground: '#1e293b',
+
+        // ── ER ──
+        attributeBackgroundColorOdd: '#1e293b',
+        attributeBackgroundColorEven: '#0f172a',
+
+        // ── Gantt ──
+        gridColor: '#334155',
+        doneTaskBkgColor: '#10b981',
+        doneTaskBorderColor: '#059669',
+        activeTaskBkgColor: '#06b6d4',
+        activeTaskBorderColor: '#0891b2',
+        critBkgColor: '#ef4444',
+        critBorderColor: '#dc2626',
+        taskTextColor: '#e2e8f0',
+        taskTextDarkColor: '#1e293b',
+        taskTextOutsideColor: '#e2e8f0',
+        sectionBkgColor: '#1e293b',
+        sectionBkgColor2: '#0f172a',
+        todayLineColor: '#f97316',
+
+        // ── Journey ──
+        fillType0: '#06b6d4',
+        fillType1: '#6366f1',
+        fillType2: '#8b5cf6',
+        fillType3: '#ec4899',
+        fillType4: '#10b981',
+        fillType5: '#f97316',
+        fillType6: '#ef4444',
+        fillType7: '#eab308',
+
+        // ── Pie ──
+        pie1: '#06b6d4',
+        pie2: '#6366f1',
+        pie3: '#10b981',
+        pie4: '#f97316',
+        pie5: '#ec4899',
+        pie6: '#eab308',
+        pie7: '#ef4444',
+        pie8: '#8b5cf6',
+        pie9: '#14b8a6',
+        pie10: '#f43f5e',
+        pie11: '#a855f7',
+        pie12: '#22d3ee',
+        pieTitleTextSize: '14px',
+        pieTitleTextColor: '#e2e8f0',
+        pieSectionTextSize: '12px',
+        pieSectionTextColor: '#fff',
+        pieLegendTextSize: '12px',
+        pieLegendTextColor: '#e2e8f0',
+        pieStrokeColor: '#0f172a',
+        pieStrokeWidth: '2px',
+        pieOuterStrokeWidth: '2px',
+        pieOuterStrokeColor: '#0f172a',
+        pieOpacity: '1',
+
+        // ── Git ──
+        git0: '#06b6d4',
+        git1: '#6366f1',
+        git2: '#10b981',
+        git3: '#f97316',
+        git4: '#ec4899',
+        git5: '#eab308',
+        git6: '#ef4444',
+        git7: '#8b5cf6',
+        gitBranchLabel0: '#e2e8f0',
+        gitBranchLabel1: '#e2e8f0',
+        gitBranchLabel2: '#e2e8f0',
+        gitBranchLabel3: '#e2e8f0',
+        gitInv0: '#0f172a',
+        commitLabelColor: '#e2e8f0',
+        commitLabelBackground: '#1e293b',
+        tagLabelColor: '#e2e8f0',
+        tagLabelBackground: '#6366f1',
+        tagLabelBorder: '#4f46e5',
+    },
+    // Injected CSS for auto-contrast: any node/element with a light inline fill gets dark text
+    themeCSS: `
+        .node .label, .node .nodeLabel { color: #e2e8f0; fill: #e2e8f0; }
+        .cluster-label .nodeLabel { fill: #e2e8f0; }
+        .label text, .label tspan { fill: #e2e8f0 !important; }
+    `,
 };
+
+/**
+ * 🎨 PRE-PROCESS: Auto-inject `color` into Mermaid `style` directives
+ * When a light fill is detected without an explicit color, adds dark text color.
+ */
+function autoContrastMermaidCode(code: string): string {
+    const parseHex = (h: string): [number,number,number] | null => {
+        h = h.replace('#', '');
+        if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+        if (h.length < 6) return null;
+        return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+    };
+    const lum = ([r,g,b]: [number,number,number]) => {
+        const f = (v: number) => { const s = v/255; return s <= 0.03928 ? s/12.92 : Math.pow((s+0.055)/1.055, 2.4); };
+        return 0.2126*f(r) + 0.7152*f(g) + 0.0722*f(b);
+    };
+
+    return code.replace(
+        /^(\s*style\s+\S+\s+.*?fill\s*:\s*)(#[0-9a-fA-F]{3,6})(.*?)$/gm,
+        (match, prefix, fillColor, suffix) => {
+            // Don't add color if already specified
+            if (/color\s*:/i.test(suffix) || /color\s*:/i.test(prefix)) return match;
+            const rgb = parseHex(fillColor);
+            if (rgb && lum(rgb) > 0.4) {
+                return `${prefix}${fillColor}${suffix},color:#1a1a2e`;
+            }
+            return match;
+        }
+    );
+}
+
 
 /**
  * Initializes and renders Mermaid diagrams in the DOM.
@@ -294,8 +512,12 @@ export const renderSingleMermaidBlock = async (block: HTMLElement, index: number
 
         mermaid.initialize(MERMAID_CONFIG);
         
+        // 🎨 PRE-PROCESS: Auto-inject dark text color for light-filled nodes
+        const processedContent = autoContrastMermaidCode(content.trim());
+        
         // 📡 STEP 1: Headless calculation
-        const { svg } = await mermaid.render(id, content.trim());
+        const { svg } = await mermaid.render(id, processedContent);
+
         
         requestAnimationFrame(() => {
             // 🧪 STEP 2: MEASURE Target Height
@@ -317,6 +539,9 @@ export const renderSingleMermaidBlock = async (block: HTMLElement, index: number
             // 🚀 STEP 4: EXECUTE SMOOTH EXPANSION
             block.innerHTML = svg;
             block.style.height = targetHeight + 'px';
+
+            // 🎨 STEP 4.5: AUTO-CONTRAST on live DOM (safe, no serialization)
+            fixMermaidTextContrastDOM(block);
             block.setAttribute('data-processed', 'true');
 
             setTimeout(() => {

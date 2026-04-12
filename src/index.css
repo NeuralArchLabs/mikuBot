@@ -214,12 +214,12 @@
   border-bottom: none;
 }
 
-.markdown-body tr:hover td {
+.markdown-body tr:hover td:not([style]) {
   background: rgba(96, 165, 250, 0.03);
   color: #fff;
 }
 
-.markdown-body td strong {
+.markdown-body td:not([style]) strong:not([style]) {
   color: #93c5fd;
 }
 
@@ -345,6 +345,56 @@
 .markdown-body div[style*="border"]:not([class]) {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 1px 4px rgba(0, 0, 0, 0.15);
   border-radius: 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   RAW HTML COLOR RESET — Ensures model-generated HTML renders faithfully
+   in the dark-themed chat. Elements with inline backgrounds get dark text
+   by default; inline style="color:..." always wins (higher specificity).
+   ═══════════════════════════════════════════════════════════════════ */
+.markdown-body [style*="background"] {
+  color: #212529;
+}
+/* Ensure children of styled containers inherit correctly */
+.markdown-body [style*="background"] th,
+.markdown-body [style*="background"] td,
+.markdown-body [style*="background"] strong,
+.markdown-body [style*="background"] em,
+.markdown-body [style*="background"] span,
+.markdown-body [style*="background"] p,
+.markdown-body [style*="background"] h1,
+.markdown-body [style*="background"] h2,
+.markdown-body [style*="background"] h3,
+.markdown-body [style*="background"] h4,
+.markdown-body [style*="background"] li,
+.markdown-body [style*="background"] small,
+.markdown-body [style*="background"] div:not([style*="background"]) {
+  color: inherit;
+}
+/* Respect inline text-align on parent containers (prevents justify override) */
+.markdown-body [style*="text-align"] p,
+.markdown-body [style*="text-align"] h1,
+.markdown-body [style*="text-align"] h2,
+.markdown-body [style*="text-align"] h3,
+.markdown-body [style*="text-align"] h4,
+.markdown-body [style*="text-align"] h5,
+.markdown-body [style*="text-align"] h6,
+.markdown-body [style*="text-align"] div:not([style*="text-align"]) {
+  text-align: inherit;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MERMAID DIAGRAM SIZING — Constrains SVG height, allows scroll
+   for very tall diagrams (Journey, Gantt, etc.)
+   ═══════════════════════════════════════════════════════════════════ */
+.mermaid svg {
+  max-width: 100%;
+  height: auto !important;
+}
+.mermaid[data-processed="true"] {
+  max-height: 600px;
+  overflow-y: auto;
+  overflow-x: auto;
 }
 
 /* Think Block */
@@ -718,6 +768,7 @@
 
 .chat-area-scroll {
   padding-bottom: 2rem;
+  scrollbar-gutter: stable;
 }
 
 .agent-status-container.active {
@@ -1489,20 +1540,18 @@
 @keyframes text-reveal-kf {
   from {
     opacity: 0;
-    transform: translateY(3px);
-    filter: blur(3px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
-    filter: blur(0);
   }
 }
 
 .text-reveal-chunk {
-  display: inline-block;
-  animation: text-reveal-kf 0.25s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  display: inline;
+  animation: text-reveal-kf 0.1s cubic-bezier(0.23, 1, 0.32, 1) forwards;
   white-space: pre-wrap;
+  vertical-align: baseline;
+  will-change: opacity;
 }
 
 /* Continuous smooth spin for the stop button with gradual acceleration/braking */

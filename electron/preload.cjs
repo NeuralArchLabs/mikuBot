@@ -33,6 +33,7 @@ contextBridge.exposeInMainWorld('electron', {
     deleteFile: (data) => ipcRenderer.invoke('fs-delete-file', data),
     getDefaultPath: () => ipcRenderer.invoke('get-default-path'),
     setupOnboarding: (data) => ipcRenderer.invoke('setup-onboarding', data),
+    getInternalTemplates: () => ipcRenderer.invoke('get-internal-templates'),
     fsCheckExisting: (targetPath) => ipcRenderer.invoke('fs-check-existing', targetPath),
     exportBackup: () => ipcRenderer.invoke('export-backup'),
     importBackup: () => ipcRenderer.invoke('import-backup'),

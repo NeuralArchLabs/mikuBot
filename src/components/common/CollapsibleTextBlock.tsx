@@ -63,19 +63,40 @@ const StreamingRenderer: React.FC<ContentRendererProps> = ({ content, isStreamin
     }, [onHeightChange]);
 
     useEffect(() => {
-        const interval = setInterval(() => {
-            if (typedLengthRef.current < content.length) {
-                // If the new content is significantly ahead, we jump forward but keep typing
-                typedLengthRef.current++;
-                setVisibleContent(content.substring(0, typedLengthRef.current));
-                setIsFinished(false);
-            } else {
-                setIsFinished(true);
-                clearInterval(interval);
-            }
-        }, 12);
+        // 🎯 ADAPTIVE CHUNK SIZING: Scales chars-per-tick based on content length
+        //   - Short (<200): 1 char/tick → classic typewriter feel
+        //   - Medium (<800): ~3 chars/tick → smooth flow
+        //   - Long (800+): batch to finish in ~3.5s max → no flicker
+        const remaining = content.length - typedLengthRef.current;
+        if (remaining <= 0) { setIsFinished(true); return; }
+        const TICK_MS = 16; // ~60fps aligned
+        const MAX_DURATION_MS = 3500;
+        const totalTicks = MAX_DURATION_MS / TICK_MS;
+        const charsPerTick = remaining < 200 ? 1
+            : remaining < 800 ? Math.max(2, Math.ceil(remaining / totalTicks))
+            : Math.max(4, Math.ceil(remaining / totalTicks));
 
-        return () => clearInterval(interval);
+        let rafId: number;
+        let lastTime = 0;
+
+        const tick = (now: number) => {
+            if (!lastTime) lastTime = now;
+            if (now - lastTime >= TICK_MS) {
+                lastTime = now;
+                if (typedLengthRef.current < content.length) {
+                    typedLengthRef.current = Math.min(typedLengthRef.current + charsPerTick, content.length);
+                    setVisibleContent(content.substring(0, typedLengthRef.current));
+                    setIsFinished(false);
+                } else {
+                    setIsFinished(true);
+                    return; // Stop loop
+                }
+            }
+            rafId = requestAnimationFrame(tick);
+        };
+        rafId = requestAnimationFrame(tick);
+
+        return () => cancelAnimationFrame(rafId);
     }, [content]);
 
     return (

@@ -314,7 +314,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                              </div>
                             <div className="h-px bg-gradient-to-r from-transparent via-slate-700/50 via-[5%] to-transparent flex-none" />
  
-                            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1 pt-3 pb-3 min-h-0">
+                            <div className="flex-1 overflow-y-auto overflow-x-visible custom-scrollbar space-y-1 px-4 -mx-4 pt-3 pb-3 min-h-0">
                                     {Object.keys(state.additionalFiles || {}).length === 0 ? (
                                         <div className="text-center py-6 px-2 border border-dashed border-slate-800/50 rounded-xl bg-slate-800/10">
                                             <p className="text-[9px] text-slate-600 italic">{t('sidebar.footer.no_cortex')}</p>

@@ -95,7 +95,7 @@ class TelegramService {
         this.typingInterval = setInterval(() => {
             this.sendChatAction(token, chatId, 'typing');
         }, 4000);
-        console.log('[TelegramService] Typing indicator started.');
+        // Typing indicator started.
     }
 
     /**
@@ -105,7 +105,7 @@ class TelegramService {
         if (this.typingInterval) {
             clearInterval(this.typingInterval);
             this.typingInterval = null;
-            console.log('[TelegramService] Typing indicator stopped.');
+            // Typing indicator stopped.
         }
     }
 
@@ -185,21 +185,21 @@ class TelegramService {
                 const initData = await initResp.json();
                 if (initData.ok && initData.result.length > 0) {
                     TelegramService.lastUpdateId = initData.result[0].update_id;
-                    console.log(`[TelegramService] Skipping old messages. Starting from update_id: ${TelegramService.lastUpdateId}`);
+                    // Skipping old messages. Starting from update_id: ${TelegramService.lastUpdateId}
                 }
             } catch (e) {
                 console.warn('[TelegramService] Could not fetch initial offset:', e);
             }
         }
 
-        console.log('[TelegramService] Starting poll loop...');
+        // Starting poll loop...
 
         while (TelegramService.polling && TelegramService.currentPollingId === localLoopId) {
             const updates = await this.getUpdates(config);
             
             // Check again after long poll returns
             if (!TelegramService.polling || TelegramService.currentPollingId !== localLoopId) {
-                console.log(`[TelegramService] Loop ${localLoopId} invalidated or stopped. Exiting.`);
+                // Loop invalidated or stopped.
                 break;
             }
 
@@ -274,7 +274,7 @@ class TelegramService {
             this.abortController.abort();
             this.abortController = null;
         }
-        console.log('[TelegramService] Polling stopped.');
+        // Polling stopped.
     }
 }
 

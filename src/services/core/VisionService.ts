@@ -4,7 +4,7 @@
  */
 
 import { AppConfig, Provider, ModelInfo } from '../../types';
-import { ProviderFactory, ProviderOptions } from './ModelProviders';
+import type { ProviderOptions } from './ModelProviders';
 
 export class VisionService {
     /**
@@ -39,6 +39,7 @@ export class VisionService {
         };
 
         try {
+            const { ProviderFactory } = await import('./ModelProviders');
             const provider = ProviderFactory.create(config.visionProvider, options);
             
             // Construct the specific vision message

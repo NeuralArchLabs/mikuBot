@@ -1,3 +1,4 @@
+process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
 const { app, BrowserWindow, ipcMain, dialog, Menu, shell, Tray, nativeImage, safeStorage, nativeTheme } = require('electron');
 const { spawn, exec } = require('child_process');
 const path = require('path');
@@ -978,7 +979,7 @@ ipcMain.handle('load-settings', async () => {
     try {
         const paths = getEffectivePaths();
         const configPath = paths.config;
-        console.log('Loading settings from:', configPath);
+        // Loading settings from disk
         
         let settings = { config: {} };
         
@@ -1609,7 +1610,15 @@ ipcMain.handle('setup-onboarding', async (event, { targetPath, cleanInstall }) =
             console.log('[Setup] Seeding static engine files to @TOOLS from:', coreBasePath);
             
             // Seed @TOOLS in workspace (Common skills, blueprints, MODES.md, etc.)
-            fs.cpSync(coreBasePath, workspaceCommandsPath, { recursive: true, overwrite: cleanInstall });
+            // We skip 'blueprints/templates' because they are system resources used only during onboarding.
+            fs.cpSync(coreBasePath, workspaceCommandsPath, { 
+                recursive: true, 
+                overwrite: cleanInstall,
+                filter: (src) => {
+                    const normalizedSrc = src.replace(/\\/g, '/');
+                    return !normalizedSrc.includes('blueprints/templates');
+                }
+            });
             
             console.log('[Setup] Static engine files (@TOOLS) seeded successfully.');
         } else {
@@ -1617,6 +1626,24 @@ ipcMain.handle('setup-onboarding', async (event, { targetPath, cleanInstall }) =
         }
 
         return { ok: true };
+    } catch (e) {
+        return { ok: false, error: e.message };
+    }
+});
+
+ipcMain.handle('get-internal-templates', async () => {
+    try {
+        const templatesPath = path.join(resourcesPath, 'core', 'base', 'blueprints', 'templates');
+        if (!fs.existsSync(templatesPath)) return { ok: false, error: 'Internal templates not found' };
+
+        const files = {};
+        const list = fs.readdirSync(templatesPath);
+        for (const item of list) {
+            if (item.endsWith('.md')) {
+                files[item] = fs.readFileSync(path.join(templatesPath, item), 'utf8');
+            }
+        }
+        return { ok: true, files };
     } catch (e) {
         return { ok: false, error: e.message };
     }

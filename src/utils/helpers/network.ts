@@ -8,7 +8,7 @@
  */
 export async function safeFetch(url: string, options: any = {}) {
     const isElectron = !!(window as any).electron?.fetchProxy;
-    console.log(`[mikuBot] safeFetch: ${url} (Mode: ${isElectron ? 'Electron Proxy' : 'Browser Direct'})`);
+    // safeFetch: ${url}
 
     if (isElectron) {
         const result = await (window as any).electron.fetchProxy({ url, options });

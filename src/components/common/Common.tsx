@@ -172,21 +172,30 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
                                         let cursor = idleTitleHtml.length;
                                         let currentHtml = idleTitleHtml;
                                         
-                                        // ⚡ ADAPTIVE SPEED: Type multiple chars per tick for large content
-                                        // Target: complete within ~6s max (well within 20s timeout)
+                                        // ⚡ ADAPTIVE SPEED: Dynamic chars per tick based on content length
+                                        // Short quotes (~1 char/tick), long content batches to finish in ~4s
                                         const contentLength = fullHtml.length - cursor;
-                                        const TICK_MS = 8;
-                                        const MAX_DURATION_MS = 6000;
+                                        const TICK_MS = 16; // ~60fps aligned
+                                        const MAX_DURATION_MS = 4000;
                                         const totalTicks = MAX_DURATION_MS / TICK_MS;
-                                        const charsPerTick = Math.max(1, Math.ceil(contentLength / totalTicks));
+                                        const charsPerTick = contentLength < 200 ? 1
+                                            : contentLength < 600 ? Math.max(2, Math.ceil(contentLength / totalTicks))
+                                            : Math.max(4, Math.ceil(contentLength / totalTicks));
+                                        
+                                        let lastTime = 0;
+                                        const tickLoop = (now: number) => {
+                                            if (!lastTime) lastTime = now;
+                                            if (now - lastTime < TICK_MS) {
+                                                (el as any)._typeRaf = requestAnimationFrame(tickLoop);
+                                                return;
+                                            }
+                                            lastTime = now;
 
-                                        (el as any)._typeInterval = setInterval(() => {
                                             if (cursor >= fullHtml.length) {
                                                 el.innerHTML = fullHtml;
                                                 el.classList.remove('is-typing');
                                                 el.setAttribute('data-animated', 'true');
                                                 el.removeAttribute('data-enqueued');
-                                                clearInterval((el as any)._typeInterval);
                                                 resolve();
                                                 return;
                                             }
@@ -223,7 +232,9 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
                                                     typingEl.innerHTML = currentHtml;
                                                 }
                                             }
-                                        }, 8);
+                                            (el as any)._typeRaf = requestAnimationFrame(tickLoop);
+                                        };
+                                        (el as any)._typeRaf = requestAnimationFrame(tickLoop);
                                     } else {
                                         resolve(); // Failsafe
                                     }

@@ -18,7 +18,7 @@ export const persistence = {
             try {
                 const result = await electron.saveSettings(payload);
                 if (result.ok) {
-                    console.log('[Persistence] Settings saved to config.json');
+                    // Settings saved
                     return true;
                 }
             } catch (e) {
@@ -42,7 +42,7 @@ export const persistence = {
             try {
                 const result = await electron.loadSettings();
                 if (result.ok && result.settings) {
-                    console.log('[Persistence] Settings loaded from Electron (config.json)');
+                    // Settings loaded
                     return result.settings;
                 }
             } catch (e) {

@@ -42,6 +42,37 @@ interface AgentStore {
     setExecutingSessionId: (id: string | null) => void;
 }
 
+/**
+ * Message Sanitizer & Uniqueness Guard (High Performance)
+ * Ensures each message has a unique ID and upgrades legacy numerical IDs.
+ * Optimized for referential stability: Only clones message objects if an ID
+ * actually needs fixing, preserving React memoization performance.
+ */
+const sanitizeMessages = (messages: Message[]): Message[] => {
+    const seen = new Set<string>();
+    let hasChanged = false;
+
+    const result = messages.map((m, index) => {
+        let newId = m.id;
+        // Forced upgrade: legacy numerical IDs or duplicates
+        let needsFix = typeof newId !== 'string' || !newId.startsWith('msg-') || seen.has(newId);
+
+        if (needsFix) {
+            const base = (typeof newId === 'string' && newId.startsWith('msg-')) ? newId.split('-')[1] : newId;
+            // Use timestamp + counter + index for absolute uniqueness guarantee
+            newId = `msg-${base || Date.now()}-${index}-${Math.random().toString(36).substr(2, 4)}`;
+            hasChanged = true;
+            seen.add(newId);
+            return { ...m, id: newId };
+        }
+
+        seen.add(newId);
+        return m;
+    });
+
+    return hasChanged ? result : messages;
+};
+
 export const useAgentStore = create<AgentStore>((set) => ({
     // Estado inicial
     messages: [],
@@ -54,23 +85,23 @@ export const useAgentStore = create<AgentStore>((set) => ({
 
     // Messages actions
     setMessages: (messages) => set((state) => ({
-        messages: typeof messages === 'function' ? messages(state.messages) : messages
+        messages: sanitizeMessages(typeof messages === 'function' ? messages(state.messages) : messages)
     })),
 
     addMessage: (message) => set((state) => ({
-        messages: [...state.messages, message]
+        messages: sanitizeMessages([...state.messages, message])
     })),
 
     updateMessage: (id, updates) => set((state) => ({
-        messages: state.messages.map(m => m.id === id ? { ...m, ...updates } : m)
+        messages: sanitizeMessages(state.messages.map(m => m.id === id ? { ...m, ...updates } : m))
     })),
 
     updateMessageContent: (id, content, blocks) => set((state) => ({
-        messages: state.messages.map(m => m.id === id ? { ...m, text: content, blocks: blocks || m.blocks } : m)
+        messages: sanitizeMessages(state.messages.map(m => m.id === id ? { ...m, text: content, blocks: blocks || m.blocks } : m))
     })),
 
     updateMessageStreaming: (id, isStreaming) => set((state) => ({
-        messages: state.messages.map(m => m.id === id ? { ...m, isStreaming } : m)
+        messages: sanitizeMessages(state.messages.map(m => m.id === id ? { ...m, isStreaming } : m))
     })),
 
     clearMessages: () => set({ messages: [] }),
@@ -82,14 +113,9 @@ export const useAgentStore = create<AgentStore>((set) => ({
         ): AgentStatus => {
             if (typeof s === 'function') {
                 const result = s(state.agentStatus);
-                if (typeof result === 'function') return resolveStatus(result);
-                return typeof (result as any).phase === 'string'
-                    ? { ...state.agentStatus, ...result as Partial<AgentStatus> }
-                    : result as AgentStatus;
+                return { ...state.agentStatus, ...result };
             }
-            return typeof (s as any).phase === 'string'
-                ? { ...state.agentStatus, ...s as Partial<AgentStatus> }
-                : s as AgentStatus;
+            return { ...state.agentStatus, ...s };
         };
         return { agentStatus: resolveStatus(status) };
     }),

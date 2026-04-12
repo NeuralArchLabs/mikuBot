@@ -35,6 +35,13 @@ import {
 const electron = (window as any).electron;
 
 /**
+ * Robust Neural ID Generator
+ * Combines timestamp with high-entropy random string to ensure 100% uniqueness
+ * across the message pool, even during high-frequency parallel streaming.
+ */
+const generateMsgId = () => `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+/**
  * Performance Optimization: Strips heavy binary and extracted text data from 
  * attachments before persisting session to disk.
  */
@@ -557,7 +564,7 @@ export const App = () => {
     useEffect(() => {
         if (electron?.onSearXenaStatusUpdate) {
             const cleanup = electron.onSearXenaStatusUpdate((data: { type: string; installing?: boolean; ready?: boolean; message?: string; error?: string; running?: boolean }) => {
-                console.log('[App] SearXena status update:', data);
+                // Silenced noisy background status updates
 
                 if (data.type === 'installation') {
                     if (data.installing) {
@@ -651,7 +658,7 @@ export const App = () => {
             const results: Record<FileTarget, PermissionStatus> = { core: 'granted', extra: 'granted', workSpace: 'granted', tools: 'granted', root: 'granted' };
 
             if (isElectron && staticPaths) {
-                console.log("[Restore] Electron Mode: syncing via static paths");
+                // Reduced noise for static sync
                 const targets: FileTarget[] = ['core', 'extra', 'workSpace', 'tools', 'root'];
                 for (const t of targets) {
                     const path = staticPaths[t];
@@ -1175,18 +1182,6 @@ To see all your additional enabled skills and their full technical parameters, y
             getFileDeep('AGENTS_MODES.md') || getFileDeep('AGENTS_MODES.MD') ||
             getFileDeep('AGENT_MODES.md') || getFileDeep('AGENT_MODES.MD') || '';
 
-        // ═══════ DIAGNOSTIC: Trace MODES.md resolution ═══════
-        const allKeys = Object.keys(allFiles);
-        const modesKeys = allKeys.filter(k => k.toLowerCase().includes('mode'));
-        console.log('[DIAG] MODES.md lookup:', {
-            found: !!modesContent,
-            contentLength: modesContent.length,
-            allFileCount: allKeys.length,
-            modesRelatedKeys: modesKeys,
-            first100: modesContent.substring(0, 100) || '<<NOT FOUND>>'
-        });
-        // ═══════ END DIAGNOSTIC ═══════
-
         const getModeBlock = (content: string, tag: string) => {
             if (!content) return '';
             const pattern = `\\[${tag}\\]\\s*\\r?\\n([\\s\\S]*?)(?=\\n\\s*\\[\\/${tag}\\]|$)`;
@@ -1342,9 +1337,7 @@ To see all your additional enabled skills and their full technical parameters, y
         setExecutingSessionId(ctxSessionId);
 
         // [COMMAND INTERCEPTOR]
-        console.log(`[ProcessMessage] Text: "${text}", isRemote: ${isRemote}, isScheduled: ${isScheduled}`);
         if (text.startsWith('/')) {
-            console.log("[ProcessMessage] Command detected:", text);
             const result = await executeCommand(text, {
                 state: currentState,
                 setState,
@@ -1441,7 +1434,7 @@ To see all your additional enabled skills and their full technical parameters, y
                 // because onNewSession cleared it and we want it clean.
 
                 const sysMsg: Message = {
-                    id: (Date.now() + 1).toString(),
+                    id: generateMsgId(),
                     role: 'system',
                     text: `⚡ Command Executed: ${result}`,
                     timestamp: Date.now(),
@@ -1455,7 +1448,7 @@ To see all your additional enabled skills and their full technical parameters, y
                     setMessagesStore([sysMsg]);
                 } else {
                     const cmdMsg: Message = {
-                        id: Date.now().toString(),
+                        id: generateMsgId(),
                         role: 'user',
                         text,
                         timestamp: Date.now(),
@@ -1556,7 +1549,7 @@ To see all your additional enabled skills and their full technical parameters, y
         // Optimization: Removed redundant [Attached files: ...] label from visible text
         // as we already have dedicated UI blocks for attachments.
 
-        const userMsgId = Date.now().toString();
+        const userMsgId = generateMsgId();
         const userMsg: Message = {
             id: userMsgId,
             role: isScheduled ? 'system' : 'user',
@@ -1575,7 +1568,7 @@ To see all your additional enabled skills and their full technical parameters, y
         setIsLoadingStore(true);
         setAgentStatusStore({ ...createDefaultAgentStatus(), isInstructionMode: effectiveMode === 'agent' });
 
-        const modelMsgId = (Date.now() + 1).toString();
+        const modelMsgId = generateMsgId();
 
         // Use Agent Engine if we are in Agent mode OR if the Bolt/Task forced it.
         // Independent resolution via Context (OOP)
@@ -1724,31 +1717,12 @@ To see all your additional enabled skills and their full technical parameters, y
                 const headerLabel = t(headerKey, { defaultValue: isAgent ? 'PROTOCOL REINFORCEMENT' : 'USEFUL REMINDERS' });
                 
                 finalUserText = `[${headerLabel}]\n${combinedReinforcement.join('\n\n')}\n\n[${t('chat.labels.prompt.user_message', { defaultValue: 'USER MESSAGE' })}]\n${userMsgText}${attachmentsBlock}`;
-                
-                // DEBUG: Log reinforcement injection for verification
-                console.log('[DEBUG] Universal Prompt Constructed:', {
-                    tagType: headerLabel,
-                    hasScheduledReinforcement: !!instructionData.scheduledReinforcement,
-                    hasModeReinforcement: !!instructionData.reinforcement,
-                    hasAttachments: extractedFiles.length > 0,
-                    userMessageLength: text.length,
-                    totalLength: finalUserText.length,
-                    preview: finalUserText.substring(0, 200) + '...'
-                });
             } else if (attachmentsBlock || userAttachments?.length > 0) {
                 finalUserText = `[${t('chat.labels.prompt.user_message', { defaultValue: 'USER MESSAGE' })}]\n${userMsgText}${attachmentsBlock}`;
             }
 
             // Append the final user message to the history, now that we have the reinforcement string
             chatHistoryLocal.push({ role: 'user', content: finalUserText, timestamp: Date.now(), attachments: processedAttachments });
-            
-            // DEBUG: Verify final message structure
-            console.log('[DEBUG] Final User Message in History:', {
-                role: 'user',
-                contentStartsWith: finalUserText.substring(0, 50),
-                timestamp: Date.now(),
-                tagsPresent: finalUserText.match(/\[SISTEMA:|\[AGENT_|\[CHAT_|\[MENSAJE DEL USUARIO\]/g) || []
-            });
 
             if (ctx.isRemote) {
                 const wsPath = currentState.config.folderPaths?.workSpace || 'No configurado';
@@ -1796,6 +1770,36 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                         : m
                     ));
                 }
+
+                const onRefreshContext = async () => {
+                    const latestState = stateRef.current;
+                    const latestCtx = new InteractionContext({ forceToolMode, isRemote, isScheduled });
+                    const latestMode = latestCtx.getEffectiveMode(latestState.agentMode);
+                    const isAgent = latestMode === 'agent';
+                    
+                    // Re-construct the system instruction with the latest mode
+                    // We use the same freshState/dynamicSkills/processedAttachments captured at start of message
+                    const refreshData = constructSystemInstruction(latestCtx, freshState, dynamicSkills, processedAttachments);
+                    
+                    const toolsForMode = (latestMode === 'chat')
+                        ? [
+                            ...AGENT_TOOLS.filter(t => [
+                                'read_file', 'list_files', 'search_files', 'web_search', 'read_url', 
+                                'update_file', 'patch_file', 'delete_file', 'add_scheduled_task',
+                                'get_file_outline', 'get_system_metrics', 'send_telegram_message',
+                                'request_agent_mode'
+                            ].includes(t.function.name)),
+                            ...dynamicSkills
+                        ]
+                        : [...AGENT_TOOLS, ...dynamicSkills];
+
+                    return {
+                        tools: toolsForMode,
+                        isAgentMode: isAgent,
+                        isInstructionMode: isAgent,
+                        systemPrompt: refreshData.systemInstruction
+                    };
+                };
 
                 await sendAgentMessage(
                     inferenceConfig, systemInstruction, chatHistoryLocal, toolsForSession,
@@ -1850,6 +1854,8 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                             if (result.approved && toolCall.function.name === 'request_agent_mode') {
                                 console.log('[App] Auto-switching to AGENT mode via tool approval');
                                 setState(prev => ({ ...prev, agentMode: 'agent', safeMode: true }));
+                                // ⚡ IMMEDIATE REFRESH: Update ref directly so the async loop sees it now
+                                stateRef.current = { ...stateRef.current, agentMode: 'agent', safeMode: true };
                                 if (stateRef.current.config) {
                                     persistence.saveSettings(stateRef.current.config, 'agent', true, stateRef.current.approvalMode);
                                 }
@@ -1900,7 +1906,8 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                     currentState.approvalMode,
                     ctx.getEffectiveMode(currentState.agentMode) === 'agent',
                     ctx.isScheduled,
-                    ctx.isRemote
+                    ctx.isRemote,
+                    onRefreshContext
                 );
             };
 
@@ -1983,7 +1990,6 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                     namedSessionsTurnsRef.current.set(sid, msgCount);
 
                     try {
-                        console.log(`[AutoName] Triggering ${shouldRefreshName ? 'refresh' : 'initial'} generation (Turn: ${msgCount / 2})...`);
                         const namingSystemPrompt = `Eres un experto en taxonomía de conversaciones.
 Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
 - Español.
@@ -2005,7 +2011,6 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                         );
 
                         const cleanTitle = generatedTitle.trim().replace(/[".]$/g, '').replace(/^["']|["']$/g, '');
-                        console.log("[AutoName] Candidate:", cleanTitle);
 
                         if (cleanTitle && cleanTitle.length > 2) {
                             setSessions(prev => prev.map(s => s.id === ctxSessionId ? { ...s, title: cleanTitle } : s));
