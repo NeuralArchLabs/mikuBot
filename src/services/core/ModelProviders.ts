@@ -197,7 +197,7 @@ export class OpenAICompatibleProvider extends ModelProvider {
                 return res;
             }
 
-            const imageAttachments = m.attachments?.filter((a: any) => a.type.startsWith('image/')) || [];
+            const imageAttachments = m.attachments?.filter((a: any) => a.type.startsWith('image/') && a.data) || [];
             if (imageAttachments.length > 0) {
                 const contentBlocks: any[] = [{ type: 'text', text: m.content || '' }];
                 imageAttachments.forEach((img: any) => {
@@ -285,7 +285,7 @@ export class ZAIProvider extends ModelProvider {
                 res.content = m.content || '{}';
                 return res;
             }
-            const imageAttachments = m.attachments?.filter((a: any) => a.type.startsWith('image/')) || [];
+            const imageAttachments = m.attachments?.filter((a: any) => a.type.startsWith('image/') && a.data) || [];
             if (imageAttachments.length > 0) {
                 const contentBlocks: any[] = [{ type: 'text', text: m.content || '' }];
                 imageAttachments.forEach((img: any) => contentBlocks.push({ type: 'image_url', image_url: { url: img.data } }));
@@ -343,7 +343,7 @@ export class OllamaProvider extends ModelProvider {
 
     protected serializeMessages(messages: any[]): any[] {
         return messages.filter(m => m.content || (m.tool_calls && m.tool_calls.length > 0)).map(m => {
-            const imageAttachments = m.attachments?.filter((a: any) => a.type.startsWith('image/')) || [];
+            const imageAttachments = m.attachments?.filter((a: any) => a.type.startsWith('image/') && a.data) || [];
             return {
                 role: m.role,
                 content: m.content,
@@ -447,7 +447,7 @@ export class GeminiProvider extends ModelProvider {
                 if (text) parts.push({ text });
                 if (m.reasoning) parts.push({ thought: m.reasoning });
 
-                const imageAttachments = m.attachments?.filter((a: any) => a.type.startsWith('image/')) || [];
+                const imageAttachments = m.attachments?.filter((a: any) => a.type.startsWith('image/') && a.data) || [];
                 imageAttachments.forEach((img: any) => {
                     parts.push({
                         inlineData: { mimeType: img.type, data: img.data.split(',')[1] }

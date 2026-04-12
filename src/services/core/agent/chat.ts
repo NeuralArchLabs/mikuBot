@@ -216,16 +216,24 @@ export async function applyBatchTaskTicking(
             const lowerTool = toolName.toLowerCase();
             const cleanLine = normalizeForMatch(line.replace('- [ ]', ''));
             
-            // Rule 1: Direct name match (e.g., "- [ ] @web_search")
+            // FUZZY MATCHING POLICY:
+            // 1. Direct name match (e.g., "- [ ] @web_search")
             const directMatch = lowerLine.includes(lowerTool) || lowerLine.includes(`@${lowerTool}`);
             
-            // Rule 2: Synonym match
+            // 2. Synonym match
             const hasSynonym = (toolSynonyms[lowerTool] || []).some(s => lowerLine.includes(s.toLowerCase()));
             const toolMatch = directMatch || hasSynonym;
             
-            // Rule 3: Argument match (Improved: removed length > 2 restriction, added normalization)
-            // If mainArgClean is empty, we only care about toolMatch
-            const argMatch = mainArgClean.length > 0 && (cleanLine.includes(mainArgClean) || mainArgClean.includes(cleanLine));
+            // 3. Keyword Overlap Match (Improved logic)
+            // We split both the task line and the tool argument into tokens to find significant shared concepts
+            const getKeywords = (str: string) => str.toLowerCase().split(/[^a-zA-Z0-9áéíóúñ]+/i).filter(w => w.length >= 4);
+            const lineKeywords = getKeywords(cleanLine);
+            const argKeywords = getKeywords(mainArgClean);
+            
+            const hasSignificantOverlap = argKeywords.some(kw => lineKeywords.includes(kw));
+            const subStringMatch = mainArgClean.length > 3 && (cleanLine.includes(mainArgClean) || mainArgClean.includes(cleanLine));
+            
+            const argMatch = mainArgClean === "" || hasSignificantOverlap || subStringMatch;
             
             // Exclude meta-updates to tasks.md itself
             if (lowerTool === 'update_file' || lowerTool === 'patch_file') {
@@ -233,7 +241,7 @@ export async function applyBatchTaskTicking(
             }
 
             // COHERENCE POLICY: Match if tool concept matches target concept
-            if (toolMatch && (argMatch || mainArgClean === "")) {
+            if (toolMatch && argMatch) {
                 modified = true;
                 markedInThisPass = true;
                 const taskName = line.replace('- [ ]', '').trim();

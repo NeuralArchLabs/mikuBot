@@ -27,10 +27,32 @@ const EMOJI_MAP: Record<string, string> = {
  * IMPORTANT: This expects text to be already normalized by formatFinalResponse().
  * The DIVIDER marker should already be in place.
  */
-export const toHtml = (md: string, isStreaming: boolean = false): string => {
+export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 'minimal' | 'none' = 'full'): string => {
     if (!md) return '';
 
+    // Standard HTML Escaping for security
+    const escape = (text: string) => text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+
+    // MODE: NONE - Absolute raw text protection for user messages
+    if (mode === 'none') {
+        return escape(md).replace(/\n/g, '<br/>');
+    }
+
     let html = md;
+    
+    // MODE: MINIMAL - Restricted formatting for thoughts (lists only)
+    if (mode === 'minimal') {
+        html = escape(html);
+        html = convertListsToHtml(html);
+        return html.replace(/\n/g, '<br/>');
+    }
+
+    // MODE: FULL - Premium experience
     const pieces: string[] = [];
 
     // 0. SIGNATURE SHIELD: Protect the assistant's visual signature
@@ -882,7 +904,7 @@ function convertBlockquotesToHtml(block: string, isStreaming: boolean = false): 
 
         while (i < inputLines.length) {
             const line = inputLines[i];
-            const match = line.match(/^((?:>\s*)+)(.*)$/);
+            const match = line.match(/^[ \t]*((?:>\s*)+)(.*)$/);
 
             if (!match) {
                 // Non-quote line at this depth — just push it

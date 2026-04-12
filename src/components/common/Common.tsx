@@ -83,13 +83,13 @@ const globalAnimationQueue = new AnimationQueueManager();
 // ⚡ ABSOLUTE PROTECTION: CORE MARKDOWN RENDERER ENGINE
 // This component manages the final sanitization and HTML injection.
 // DO NOT ALTER recursion logic or sanitizer settings.
-const MarkdownRendererBase = ({ content, isStreaming }: { content: string, isStreaming?: boolean }) => {
+const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content: string, isStreaming?: boolean, mode?: 'full' | 'minimal' | 'none' }) => {
     const containerRef = useRef<HTMLDivElement>(null);
 
     const html = useMemo(() => {
         const normalized = formatFinalResponse(content);
-        return toHtml(normalized, isStreaming);
-    }, [content, isStreaming]);
+        return toHtml(normalized, isStreaming, mode);
+    }, [content, isStreaming, mode]);
 
     // ⚡ DEFER ANIMATIONS: Prevent intersection observer initialization during streaming
     // to avoid typewriter effects restarting on every incremental chunk.

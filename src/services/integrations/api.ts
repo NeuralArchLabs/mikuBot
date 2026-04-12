@@ -3,6 +3,17 @@ import { safeFetch, streamViaProxy } from '../../utils';
 
 export async function fetchModels(provider: Provider, config: AppConfig): Promise<ModelInfo[]> {
     try {
+        // Guard: Skip providers that require an API key when none is configured
+        const keyMap: Partial<Record<Provider, string>> = {
+            groq: config.apiKeys?.groq,
+            gemini: config.apiKeys?.gemini,
+            zai: config.apiKeys?.zai,
+        };
+        // Ollama is local and doesn't need a key, so it's excluded from this check
+        if (provider in keyMap && !keyMap[provider as keyof typeof keyMap]?.trim()) {
+            return [];
+        }
+
         switch (provider) {
             case 'groq': {
                 const data = await safeFetch('https://api.groq.com/openai/v1/models', {

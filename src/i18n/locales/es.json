@@ -282,6 +282,9 @@
             "title": "Enrutamiento de Modelos",
             "chat_runtime": "Ejecución para Chat",
             "agent_runtime": "Ejecución del Agente",
+            "vision_runtime": "Vortex Visual (Visión)",
+            "vision_desc": "No configurar para usar capacidades nativas del modelo en ejecución",
+            "disable_vision": "Desactivar Vortex",
             "provider": "Proveedor Activo",
             "model": "Modelo Activo",
             "sync": "Sincronizar Arquitecturas",
@@ -413,7 +416,7 @@
             "agent": "Instrucción para el agente...",
             "recording": "Escuchando...",
             "analyzing": "Analizando Parámetros...",
-            "live_rec": "GRABANDO"
+            "live_rec": "ESCUCHANDO..."
         },
         "actions": {
             "rewind": "Editar y Rebobinar",
@@ -483,7 +486,17 @@
             "status_manual": "Supervisado",
             "status_auto": "Autónomo",
             "status_safe": "Protegido",
-            "status_batch": "Directo"
+            "status_batch": "Directo",
+            "no_user_message": "sin mensaje de usuario",
+            "user_sent_attachment": "usuario envió un archivo adjunto",
+            "prompt": {
+                "protocol_reinforcement": "REFUERZO DE PROTOCOLO",
+                "useful_reminders": "RECORDATORIOS ÚTILES",
+                "user_message": "MENSAJE DEL USUARIO",
+                "contained_files": "CONTEXTO DE ARCHIVOS ADJUNTOS",
+                "file": "ARCHIVO",
+                "content": "CONTENIDO"
+            }
         },
         "approval": {
             "sync_success": "Sistema Sincronizado",

@@ -34,6 +34,24 @@ import {
 
 const electron = (window as any).electron;
 
+/**
+ * Performance Optimization: Strips heavy binary and extracted text data from 
+ * attachments before persisting session to disk.
+ */
+const stripHeavyAttachments = (messages: Message[]): Message[] => {
+    return messages.map(msg => {
+        if (!msg.attachments || msg.attachments.length === 0) return msg;
+        return {
+            ...msg,
+            attachments: msg.attachments.map(att => ({
+                ...att,
+                data: undefined,            // Remove binary/base64
+                extractedContent: undefined // Remove massive text blocks from disk persistence
+            }))
+        };
+    });
+};
+
 export const App = () => {
     const { i18n, t } = useTranslation();
     const [state, setState] = useState<AppState>({
@@ -1086,9 +1104,17 @@ export const App = () => {
         syncOnLoad();
     }, [state.config.chatProvider, state.config.agentProvider, state.config.provider, handleTestConnection]);
 
-    const constructSystemInstruction = (ctx: InteractionContext, overrideState?: { core?: Record<string, string>, additional?: Record<string, string>, workSpace?: Record<string, string>, tools?: Record<string, string> }, dynamicSkills: any[] = []) => {
+    const constructSystemInstruction = (
+        ctx: InteractionContext, 
+        overrideState?: { core?: Record<string, string>, additional?: Record<string, string>, workSpace?: Record<string, string>, tools?: Record<string, string> }, 
+        dynamicSkills: any[] = [],
+        attachments: Attachment[] = []
+    ) => {
         const currentState = stateRef.current;
         const isAgentOrInstruction = ctx.getEffectiveMode(currentState.agentMode) === 'agent';
+
+        // --- ATTACHMENT INJECTION ENGINE ---
+        // DEPRECATED: Files are now injected at the message level for better contextual history mapping.
 
         const allFiles = {
             ...(currentState.files || {}),
@@ -1226,7 +1252,7 @@ To see all your additional enabled skills and their full technical parameters, y
 
         return {
             systemInstruction: `[SYSTEM TIME]\n${timeStr}\n\n${finalResult}`,
-            reinforcement,
+            reinforcement: reinforcement,
             scheduledReinforcement
         };
     };
@@ -1523,11 +1549,18 @@ To see all your additional enabled skills and their full technical parameters, y
 
         lastUserTextRef.current = text;
         lastForceToolModeRef.current = forceToolMode;
+
+        // --- BACKGROUND INJECTION ENGINE ---
+        // We keep the visible text clean for the UI (icon + filename)
+        let visibleUserText = text;
+        // Optimization: Removed redundant [Attached files: ...] label from visible text
+        // as we already have dedicated UI blocks for attachments.
+
         const userMsgId = Date.now().toString();
         const userMsg: Message = {
             id: userMsgId,
             role: isScheduled ? 'system' : 'user',
-            text: isScheduled ? `**[Scheduled Task]**\n\n${text}` : text,
+            text: isScheduled ? `**[Scheduled Task]**\n\n${visibleUserText}` : visibleUserText,
             timestamp: Date.now(),
             source: isRemote ? 'telegram' : 'ui',
             attachments: userAttachments,
@@ -1587,10 +1620,29 @@ To see all your additional enabled skills and their full technical parameters, y
         let chatHistoryLocal: { role: string; content: string; timestamp: number; attachments?: Attachment[] }[] = [];
 
         try {
-            const currentMessages = useAgentStore.getState().messages;
-            chatHistoryLocal = currentMessages
-                .filter(m => !m.excludeFromContext && m.id !== userMsgId && m.id !== modelMsgId)
-                .map(m => ({ role: m.role, content: m.text, timestamp: m.timestamp, attachments: m.attachments }));
+            chatHistoryLocal = useAgentStore.getState().messages
+                .filter(m => !m.excludeFromContext && m.id !== modelMsgId && m.id !== userMsgId)
+                .map(m => {
+                    let content = m.text.trim() ? m.text : `(${t('chat.labels.no_user_message', { defaultValue: 'no user message' })})`;
+
+                    if (m.attachments && m.attachments.length > 0) {
+                        // The attachment notification tag always goes at the end of the text block
+                        content += `\n\n(${t('chat.labels.user_sent_attachment', { defaultValue: 'user sent an attachment' })})`;
+                        
+                        // Inject contents only if it's NOT the current message (avoiding duplication with reinforcement engine)
+                        if (m.id !== userMsgId) {
+                            const extracted = m.attachments.filter(a => !!a.extractedContent);
+                            if (extracted.length > 0) {
+                                content += `\n\n[${t('chat.labels.prompt.contained_files', { defaultValue: 'CONTAINED_FILES_CONTEXT' })}]\n`;
+                                for (const file of extracted) {
+                                    content += `--- ${t('chat.labels.prompt.file', { defaultValue: 'FILE' })}: ${file.name} ---\n[${t('chat.labels.prompt.content', { defaultValue: 'CONTENT' })}]\n${file.extractedContent}\n[/${t('chat.labels.prompt.content', { defaultValue: 'CONTENT' })}]\n\n`;
+                                }
+                                content += `[/${t('chat.labels.prompt.contained_files', { defaultValue: 'CONTAINED_FILES_CONTEXT' })}]`;
+                            }
+                        }
+                    }
+                    return { role: m.role, content, timestamp: m.timestamp };
+                });
 
             const isAgentLoop = useAgentEngine;
             const isChatTools = effectiveMode === 'chat';
@@ -1628,19 +1680,17 @@ To see all your additional enabled skills and their full technical parameters, y
                 }
             }
 
-            const instructionData = constructSystemInstruction(ctx, freshState, dynamicSkills);
-            let systemInstruction = instructionData.systemInstruction;
-
-            // ═══════ DIAGNOSTIC: Remove after confirming injection works ═══════
-            console.log('[DIAG] constructSystemInstruction returned:', {
-                hasSystemInstruction: !!instructionData.systemInstruction,
-                systemInstructionLength: instructionData.systemInstruction?.length || 0,
-                reinforcement: instructionData.reinforcement ? instructionData.reinforcement.substring(0, 120) : '<<EMPTY>>',
-                scheduledReinforcement: instructionData.scheduledReinforcement ? 'YES' : '<<EMPTY>>',
-                effectiveMode: ctx.getEffectiveMode(currentState.agentMode),
-                isScheduled: ctx.isScheduled
+            const processedAttachments = userAttachments.map(a => {
+                // If it has extracted content (e.g., Vision Runtime description) OR it's not an image,
+                // we strip the binary data to save context/bandwidth and prevent double-processing.
+                if ((a.extractedContent || !a.type?.startsWith('image/')) && a.data) {
+                    return { ...a, data: undefined };
+                }
+                return a;
             });
-            // ═══════ END DIAGNOSTIC ═══════
+
+            const instructionData = constructSystemInstruction(ctx, freshState, dynamicSkills, processedAttachments);
+            let systemInstruction = instructionData.systemInstruction;
             
             let combinedReinforcement = [];
             if (ctx.isScheduled && instructionData.scheduledReinforcement) {
@@ -1650,28 +1700,47 @@ To see all your additional enabled skills and their full technical parameters, y
                 combinedReinforcement.push(instructionData.reinforcement);
             }
 
-            let finalUserText = text;
+            let attachmentsBlock = '';
+            const extractedFiles = userAttachments?.filter(a => a.extractedContent);
+            if (extractedFiles && extractedFiles.length > 0) {
+                attachmentsBlock = `\n\n[${t('chat.labels.prompt.contained_files', { defaultValue: 'CONTAINED_FILES_CONTEXT' })}]\n`;
+                for (const file of extractedFiles) {
+                    attachmentsBlock += `--- ${t('chat.labels.prompt.file', { defaultValue: 'FILE' })}: ${file.name} ---\n[${t('chat.labels.prompt.content', { defaultValue: 'CONTENT' })}]\n${file.extractedContent}\n[/${t('chat.labels.prompt.content', { defaultValue: 'CONTENT' })}]\n\n`;
+                }
+                attachmentsBlock += `[/${t('chat.labels.prompt.contained_files', { defaultValue: 'CONTAINED_FILES_CONTEXT' })}]`;
+            }
+
+            // Build base message + defensive signals
+            let userMsgText = text.trim() ? text : `(${t('chat.labels.no_user_message', { defaultValue: 'no user message' })})`;
+            if (userAttachments && userAttachments.length > 0) {
+                // Ensuring the attachment tag is at the very end of the text block
+                userMsgText += `\n\n(${t('chat.labels.user_sent_attachment', { defaultValue: 'user sent an attachment' })})`;
+            }
+
+            let finalUserText = userMsgText;
             if (combinedReinforcement.length > 0) {
                 const isAgent = ctx.getEffectiveMode(currentState.agentMode) !== 'chat';
-                const header = isAgent ? 'PROTOCOL REINFORCEMENT' : 'USEFUL REMINDERS';
-                finalUserText = `[${header}]\n${combinedReinforcement.join('\n\n')}\n\n[USER MESSAGE]\n${text}`;
+                const headerKey = isAgent ? 'chat.labels.prompt.protocol_reinforcement' : 'chat.labels.prompt.useful_reminders';
+                const headerLabel = t(headerKey, { defaultValue: isAgent ? 'PROTOCOL REINFORCEMENT' : 'USEFUL REMINDERS' });
+                
+                finalUserText = `[${headerLabel}]\n${combinedReinforcement.join('\n\n')}\n\n[${t('chat.labels.prompt.user_message', { defaultValue: 'USER MESSAGE' })}]\n${userMsgText}${attachmentsBlock}`;
                 
                 // DEBUG: Log reinforcement injection for verification
-                console.log('[DEBUG] Reinforcement Injected:', {
-                    tagType: header,
+                console.log('[DEBUG] Universal Prompt Constructed:', {
+                    tagType: headerLabel,
                     hasScheduledReinforcement: !!instructionData.scheduledReinforcement,
                     hasModeReinforcement: !!instructionData.reinforcement,
-                    reinforcementSections: combinedReinforcement.length,
+                    hasAttachments: extractedFiles.length > 0,
                     userMessageLength: text.length,
                     totalLength: finalUserText.length,
-                    agentMode: ctx.getEffectiveMode(currentState.agentMode),
-                    timestamp: new Date().toISOString(),
-                    preview: finalUserText.substring(0, 150) + '...'
+                    preview: finalUserText.substring(0, 200) + '...'
                 });
+            } else if (attachmentsBlock || userAttachments?.length > 0) {
+                finalUserText = `[${t('chat.labels.prompt.user_message', { defaultValue: 'USER MESSAGE' })}]\n${userMsgText}${attachmentsBlock}`;
             }
 
             // Append the final user message to the history, now that we have the reinforcement string
-            chatHistoryLocal.push({ role: 'user', content: finalUserText, timestamp: Date.now(), attachments: userAttachments });
+            chatHistoryLocal.push({ role: 'user', content: finalUserText, timestamp: Date.now(), attachments: processedAttachments });
             
             // DEBUG: Verify final message structure
             console.log('[DEBUG] Final User Message in History:', {
@@ -1945,7 +2014,7 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                             persistence.saveSession({
                                 id: ctxSessionId,
                                 title: cleanTitle,
-                                messages: latestMsgs,
+                                messages: stripHeavyAttachments(latestMsgs),
                                 timestamp: Date.now()
                             });
                         } else {
@@ -1958,6 +2027,28 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                     }
                 }
             }, 1000);
+
+            // 🧹 RAM GARBAGE COLLECTION: Clear heavy extractedContent from older attachments
+            // to prevent the state from becoming massive during long dev sessions.
+            // We keep only the last 5 attachments with content to maintain context windows.
+            setMessagesStore(prev => {
+                let attachmentCount = 0;
+                return [...prev].reverse().map(msg => {
+                    if (!msg.attachments || msg.attachments.length === 0) return msg;
+                    return {
+                        ...msg,
+                        attachments: msg.attachments.map(att => {
+                            if (!att.extractedContent) return att;
+                            attachmentCount++;
+                            if (attachmentCount > 5) {
+                                // Purge old content from RAM
+                                return { ...att, extractedContent: undefined };
+                            }
+                            return att;
+                        })
+                    };
+                }).reverse();
+            });
 
             // Task complete - release execution lock
             setExecutingSessionId(null);
@@ -2164,167 +2255,161 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
 
             {/* Persistent UI Shell Container to prevent flashes on tab swap */}
             <div className="flex-1 flex flex-col h-full bg-slate-950/40 overflow-hidden relative contain-layout">
-                {state.activeTab === 'chat' && (
-                    <div className="flex-1 flex flex-col h-full">
-                        <ChatArea
-                            sessionId={state.sessionId || 'empty'}
-                            onSend={(atts) => processMessage(useAgentStore.getState().input, false, false, false, atts)} 
-                            onSendAsInstruction={(atts) => processMessage(useAgentStore.getState().input, true, false, false, atts)}
-                            onAbort={handleAbortAgent} onReprompt={handleReprompt} onRewind={onRewind} scrollRef={scrollRef}
-                            sessions={sessions} onSessionsUpdate={setSessions}
-                            onApproveToolCall={handleApproveToolCall} onRejectToolCall={handleRejectToolCall}
-                            agentMode={state.agentMode} 
-                            onAgentModeChange={(m) => {
-                                const isAgent = m === 'agent';
-                                setState(p => ({ ...p, agentMode: m, safeMode: isAgent ? true : p.safeMode }));
-                                // ⚡ Immediate Persistence
-                                if (state.sessionId) {
-                                    persistence.saveSession({
-                                        id: state.sessionId,
-                                        title: sessions.find(s => s.id === state.sessionId)?.title || t('common.active_session'),
-                                        messages: useAgentStore.getState().messages,
-                                        agentMode: m,
-                                        safeMode: isAgent ? true : state.safeMode,
-                                        approvalMode: state.approvalMode,
-                                        timestamp: Date.now()
-                                    });
-                                }
-                            }}
-                            safeMode={state.safeMode} 
-                            onSafeModeChange={(s) => {
-                                setState(p => ({ ...p, safeMode: s }));
-                                // ⚡ Immediate Persistence
-                                if (state.sessionId) {
-                                    persistence.saveSession({
-                                        id: state.sessionId,
-                                        title: sessions.find(s => s.id === state.sessionId)?.title || t('common.active_session'),
-                                        messages: useAgentStore.getState().messages,
-                                        agentMode: state.agentMode,
-                                        safeMode: s,
-                                        approvalMode: state.approvalMode,
-                                        timestamp: Date.now()
-                                    });
-                                }
-                            }}
-                            approvalMode={state.approvalMode} 
-                            onApprovalModeChange={(a) => {
-                                setState(p => ({ ...p, approvalMode: a }));
-                                // ⚡ Immediate Persistence
-                                if (state.sessionId) {
-                                    persistence.saveSession({
-                                        id: state.sessionId,
-                                        title: sessions.find(s => s.id === state.sessionId)?.title || t('common.active_session'),
-                                        messages: useAgentStore.getState().messages,
-                                        agentMode: state.agentMode,
-                                        safeMode: state.safeMode,
-                                        approvalMode: a,
-                                        timestamp: Date.now()
-                                    });
-                                }
-                            }}
-                            debugMode={state.debugMode} onDebugModeChange={(d) => setState(p => ({ ...p, debugMode: d }))}
-                            folderPermissions={state.folderPermissions}
-                            onRequestPermission={requestFolderPermission}
-                            onWakeUpAll={wakeUpAllFolders}
-                            askAlert={askAlert}
-                            voskModelPath={state.config.voskModelPath}
-                            userName={state.config.userName}
-                            assistantAlias={state.config.assistantAlias}
-                        />
-                    </div>
-                )}
+                {/* Persistent View Stack: Each view stays mounted to preserve state and scroll position */}
+                <div className={`flex-1 flex flex-col h-full ${state.activeTab !== 'chat' ? 'hidden' : ''}`}>
+                    <ChatArea
+                        sessionId={state.sessionId || 'empty'}
+                        onSend={(atts) => processMessage(useAgentStore.getState().input, false, false, false, atts)} 
+                        onSendAsInstruction={(atts) => processMessage(useAgentStore.getState().input, true, false, false, atts)}
+                        onAbort={handleAbortAgent} onReprompt={handleReprompt} onRewind={onRewind} scrollRef={scrollRef}
+                        sessions={sessions} onSessionsUpdate={setSessions}
+                        onApproveToolCall={handleApproveToolCall} onRejectToolCall={handleRejectToolCall}
+                        agentMode={state.agentMode} 
+                        config={state.config}
+                        models={models}
+                        onAgentModeChange={(m) => {
+                            const isAgent = m === 'agent';
+                            setState(p => ({ ...p, agentMode: m, safeMode: isAgent ? true : p.safeMode }));
+                            // ⚡ Immediate Persistence
+                            if (state.sessionId) {
+                                persistence.saveSession({
+                                    id: state.sessionId,
+                                    title: sessions.find(s => s.id === state.sessionId)?.title || t('common.active_session'),
+                                    messages: stripHeavyAttachments(useAgentStore.getState().messages),
+                                    agentMode: m,
+                                    safeMode: isAgent ? true : state.safeMode,
+                                    approvalMode: state.approvalMode,
+                                    timestamp: Date.now()
+                                });
+                            }
+                        }}
+                        safeMode={state.safeMode} 
+                        onSafeModeChange={(s) => {
+                            setState(p => ({ ...p, safeMode: s }));
+                            // ⚡ Immediate Persistence
+                            if (state.sessionId) {
+                                persistence.saveSession({
+                                    id: state.sessionId,
+                                    title: sessions.find(s => s.id === state.sessionId)?.title || t('common.active_session'),
+                                    messages: stripHeavyAttachments(useAgentStore.getState().messages),
+                                    agentMode: state.agentMode,
+                                    safeMode: s,
+                                    approvalMode: state.approvalMode,
+                                    timestamp: Date.now()
+                                });
+                            }
+                        }}
+                        approvalMode={state.approvalMode} 
+                        onApprovalModeChange={(a) => {
+                            setState(p => ({ ...p, approvalMode: a }));
+                            // ⚡ Immediate Persistence
+                            if (state.sessionId) {
+                                persistence.saveSession({
+                                    id: state.sessionId,
+                                    title: sessions.find(s => s.id === state.sessionId)?.title || t('common.active_session'),
+                                    messages: stripHeavyAttachments(useAgentStore.getState().messages),
+                                    agentMode: state.agentMode,
+                                    safeMode: state.safeMode,
+                                    approvalMode: a,
+                                    timestamp: Date.now()
+                                });
+                            }
+                        }}
+                        debugMode={state.debugMode} onDebugModeChange={(d) => setState(p => ({ ...p, debugMode: d }))}
+                        folderPermissions={state.folderPermissions}
+                        onRequestPermission={requestFolderPermission}
+                        onWakeUpAll={wakeUpAllFolders}
+                        askAlert={askAlert}
+                        voskModelPath={state.config.voskModelPath}
+                        userName={state.config.userName}
+                        assistantAlias={state.config.assistantAlias}
 
-                {state.activeTab === 'cortex' && (
-                    <div className="flex-1 flex flex-col h-full animate-slide-left-right">
-                        <FileEditor
-                            files={Object.fromEntries(Object.entries(state.files).filter(([n]) => !n.includes('/'))) as Record<string, string>} selectedFile={state.selectedFile}
-                            setSelectedFile={(f) => setState(p => ({ ...p, selectedFile: f }))}
-                            onSave={(n, c) => saveFile(n, c, 'core')} unsavedChanges={state.unsavedChanges}
-                            setUnsavedChanges={(u) => setState(p => ({ ...p, unsavedChanges: typeof u === 'function' ? u(p.unsavedChanges) : u }))}
-                            onAddFile={() => createFile(`New_Core_${Date.now()}`, 'core')}
-                            onDelete={(n) => deleteFile(n, 'core')}
-                            askConfirm={askConfirm}
-                        />
-                    </div>
-                )}
+                    />
+                </div>
 
-                {state.activeTab === 'commands' && (
-                    <div className="flex-1 flex flex-col h-full animate-slide-left-right">
-                        <FileEditor
-                            files={Object.fromEntries(Object.entries(state.toolsFiles).filter(([n]) => !n.includes('/'))) as Record<string, string>}
-                            selectedFile={state.selectedFile}
-                            setSelectedFile={(f) => setState(p => ({ ...p, selectedFile: f }))}
-                            onSave={(n, c) => saveFile(n, c, 'tools')} unsavedChanges={state.unsavedChanges}
-                            setUnsavedChanges={(u) => setState(p => ({ ...p, unsavedChanges: typeof u === 'function' ? u(p.unsavedChanges) : u }))}
-                            onAddFile={() => createFile(`Cmd_${Date.now()}`, 'tools')}
-                            onDelete={(n) => deleteFile(n, 'tools')}
-                            askConfirm={askConfirm}
-                        />
-                    </div>
-                )}
+                <div className={`flex-1 flex flex-col h-full animate-slide-left-right ${state.activeTab !== 'cortex' ? 'hidden' : ''}`}>
+                    <FileEditor
+                        files={Object.fromEntries(Object.entries(state.files).filter(([n]) => !n.includes('/'))) as Record<string, string>} selectedFile={state.selectedFile}
+                        setSelectedFile={(f) => setState(p => ({ ...p, selectedFile: f }))}
+                        onSave={(n, c) => saveFile(n, c, 'core')} unsavedChanges={state.unsavedChanges}
+                        setUnsavedChanges={(u) => setState(p => ({ ...p, unsavedChanges: typeof u === 'function' ? u(p.unsavedChanges) : u }))}
+                        onAddFile={() => createFile(`New_Core_${Date.now()}`, 'core')}
+                        onDelete={(n) => deleteFile(n, 'core')}
+                        askConfirm={askConfirm}
+                    />
+                </div>
 
-                {state.activeTab === 'settings' && (
-                    <div className="flex-1 flex flex-col h-full animate-control-room">
-                        <SettingsPanel
-                            config={state.config} updateConfig={updateConfig} models={models} loadingModels={loadingModels}
-                            connectionStatus={connectionStatus} onTestConnection={handleTestConnection}
-                            onCoreSelect={() => handleSelectFolder('core')} onExtraSelect={() => handleSelectFolder('extra')} onWorkSpaceSelect={() => handleSelectFolder('workSpace')} onToolsSelect={() => handleSelectFolder('tools')} onRootSelect={() => handleSelectFolder('root')}
-                            onSaveGlobal={onSaveGlobal} onResetGlobal={onResetGlobal}
-                            onLoadConfig={onLoadConfig} onExportConfig={onExportConfig}
-                            corePathName={coreHandle?.name || state.config.folderPaths?.core || ''}
-                            extraPathName={extraHandle?.name || state.config.folderPaths?.extra || ''}
-                            workSpacePathName={workSpaceHandle?.name || state.config.folderPaths?.workSpace || ''}
-                            toolsPathName={toolsHandle?.name || state.config.folderPaths?.tools || ''}
-                            rootPathName={rootHandle?.name || state.config.folderPaths?.root || ''}
-                            syncing={syncing}
-                            askAlert={askAlert}
-                            askConfirm={askConfirm}
-                            toolsFiles={state.toolsFiles}
-                            onSaveTools={(n, c) => saveFile(n, c, 'tools')}
-                            onUpdatePartialConfig={(updates) => setState(p => ({ ...p, config: { ...p.config, ...updates } }))}
-                        />
-                    </div>
-                )}
+                <div className={`flex-1 flex flex-col h-full animate-slide-left-right ${state.activeTab !== 'commands' ? 'hidden' : ''}`}>
+                    <FileEditor
+                        files={Object.fromEntries(Object.entries(state.toolsFiles).filter(([n]) => !n.includes('/'))) as Record<string, string>}
+                        selectedFile={state.selectedFile}
+                        setSelectedFile={(f) => setState(p => ({ ...p, selectedFile: f }))}
+                        onSave={(n, c) => saveFile(n, c, 'tools')} unsavedChanges={state.unsavedChanges}
+                        setUnsavedChanges={(u) => setState(p => ({ ...p, unsavedChanges: typeof u === 'function' ? u(p.unsavedChanges) : u }))}
+                        onAddFile={() => createFile(`Cmd_${Date.now()}`, 'tools')}
+                        onDelete={(n) => deleteFile(n, 'tools')}
+                        askConfirm={askConfirm}
+                    />
+                </div>
 
-                {state.activeTab === 'scheduler' && (
-                    <div className="flex-1 flex flex-col h-full animate-control-room">
-                        <div className="flex-1 overflow-y-auto custom-scrollbar">
-                            <div className="max-w-4xl mx-auto p-6 md:p-10">
-                                <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-800/50">
-                                    <div className="flex items-center gap-4">
-                                        <div className="bg-cyan-500/20 p-3 rounded-2xl text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.2)]">
-                                            <Icon name="clock" className="text-3xl animate-clock-neural" />
-                                        </div>
-                                        <div>
-                                            <h2 className="text-3xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-teal-400 text-shadow-premium">
-                                                Scheduler
-                                            </h2>
-                                            <p className="text-cyan-500/60 text-xs font-bold tracking-widest uppercase">Autonomous Task Management</p>
-                                        </div>
+                <div className={`flex-1 flex flex-col h-full animate-control-room ${state.activeTab !== 'settings' ? 'hidden' : ''}`}>
+                    <SettingsPanel
+                        config={state.config} updateConfig={updateConfig} models={models} loadingModels={loadingModels}
+                        connectionStatus={connectionStatus} onTestConnection={handleTestConnection}
+                        onCoreSelect={() => handleSelectFolder('core')} onExtraSelect={() => handleSelectFolder('extra')} onWorkSpaceSelect={() => handleSelectFolder('workSpace')} onToolsSelect={() => handleSelectFolder('tools')} onRootSelect={() => handleSelectFolder('root')}
+                        onSaveGlobal={onSaveGlobal} onResetGlobal={onResetGlobal}
+                        onLoadConfig={onLoadConfig} onExportConfig={onExportConfig}
+                        corePathName={coreHandle?.name || state.config.folderPaths?.core || ''}
+                        extraPathName={extraHandle?.name || state.config.folderPaths?.extra || ''}
+                        workSpacePathName={workSpaceHandle?.name || state.config.folderPaths?.workSpace || ''}
+                        toolsPathName={toolsHandle?.name || state.config.folderPaths?.tools || ''}
+                        rootPathName={rootHandle?.name || state.config.folderPaths?.root || ''}
+                        syncing={syncing}
+                        askAlert={askAlert}
+                        askConfirm={askConfirm}
+                        toolsFiles={state.toolsFiles}
+                        onSaveTools={(n, c) => saveFile(n, c, 'tools')}
+                        onUpdatePartialConfig={(updates) => setState(p => ({ ...p, config: { ...p.config, ...updates } }))}
+                    />
+                </div>
+
+                <div className={`flex-1 flex flex-col h-full animate-control-room ${state.activeTab !== 'scheduler' ? 'hidden' : ''}`}>
+                    <div className="flex-1 overflow-y-auto custom-scrollbar">
+                        <div className="max-w-4xl mx-auto p-6 md:p-10">
+                            <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-800/50">
+                                <div className="flex items-center gap-4">
+                                    <div className="bg-cyan-500/20 p-3 rounded-2xl text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.2)]">
+                                        <Icon name="clock" className="text-3xl animate-clock-neural" />
                                     </div>
-                                    <div className="flex gap-3">
-                                        <button
-                                            onClick={async () => {
-                                                const res = await neuralScheduler.importTasks();
-                                                if (res) window.dispatchEvent(new CustomEvent('scheduler-data-updated'));
-                                            }}
-                                            className="px-4 py-2.5 bg-slate-900/60 hover:bg-slate-800 text-slate-300 rounded-xl font-bold uppercase tracking-widest flex items-center gap-2 transition-all border border-transparent hover:border-slate-700/50 text-xs"
-                                        >
-                                            <Icon name="download" /> Import
-                                        </button>
-                                        <button
-                                            onClick={() => neuralScheduler.exportTasks()}
-                                            className="px-4 py-2.5 bg-slate-900/60 hover:bg-slate-800 text-slate-300 rounded-xl font-bold uppercase tracking-widest flex items-center gap-2 transition-all border border-transparent hover:border-slate-700/50 text-xs"
-                                        >
-                                            <Icon name="file-export" /> Export
-                                        </button>
+                                    <div>
+                                        <h2 className="text-3xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-teal-400 text-shadow-premium">
+                                            Scheduler
+                                        </h2>
+                                        <p className="text-cyan-500/60 text-xs font-bold tracking-widest uppercase">Autonomous Task Management</p>
                                     </div>
                                 </div>
-                                <SchedulerTab config={state.config} askAlert={askAlert} />
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={async () => {
+                                            const res = await neuralScheduler.importTasks();
+                                            if (res) window.dispatchEvent(new CustomEvent('scheduler-data-updated'));
+                                        }}
+                                        className="px-4 py-2.5 bg-slate-900/60 hover:bg-slate-800 text-slate-300 rounded-xl font-bold uppercase tracking-widest flex items-center gap-2 transition-all border border-transparent hover:border-slate-700/50 text-xs"
+                                    >
+                                        <Icon name="download" /> Import
+                                    </button>
+                                    <button
+                                        onClick={() => neuralScheduler.exportTasks()}
+                                        className="px-4 py-2.5 bg-slate-900/60 hover:bg-slate-800 text-slate-300 rounded-xl font-bold uppercase tracking-widest flex items-center gap-2 transition-all border border-transparent hover:border-slate-700/50 text-xs"
+                                    >
+                                        <Icon name="file-export" /> Export
+                                    </button>
+                                </div>
                             </div>
+                            <SchedulerTab config={state.config} askAlert={askAlert} />
                         </div>
                     </div>
-                )}
+                </div>
                 </div>
 
             {/* SearXena Installation Progress Overlay */}

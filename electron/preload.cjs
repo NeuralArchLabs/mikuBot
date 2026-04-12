@@ -41,12 +41,16 @@ contextBridge.exposeInMainWorld('electron', {
     runConsole: (data) => ipcRenderer.invoke('run-console', data),
     runSearch: (data) => ipcRenderer.invoke('run-search', data),
     runExtract: (data) => ipcRenderer.invoke('run-extract', data),
+    extractFileContent: (data) => ipcRenderer.invoke('extract-file-content', data),
+    selectFiles: () => ipcRenderer.invoke('select-files'),
+    readFileData: (path) => ipcRenderer.invoke('read-file-data', path),
 
     // Network proxy (keys stay in main process)
     fetchProxy: (data) => ipcRenderer.invoke('fetch-proxy', data),
 
     // API proxied calls (keys injected by main process, never sent from renderer)
     apiStream: (data) => ipcRenderer.invoke('api-stream', data),
+    abortApiStream: (streamId) => ipcRenderer.send('api-stream-abort', streamId),
 
     // Skills
     listSkills: (data) => ipcRenderer.invoke('list-skills', data),

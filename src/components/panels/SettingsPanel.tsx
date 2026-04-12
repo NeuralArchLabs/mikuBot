@@ -29,9 +29,12 @@ interface SettingsPanelProps {
     workSpacePathName: string;
     toolsPathName: string;
     rootPathName: string;
+    rootPathName: string;
     syncing: boolean;
     askAlert: (message: string, position?: 'left' | 'right' | 'center') => Promise<void>;
     askConfirm: (message: string) => Promise<boolean>;
+    models: Record<Provider, ModelInfo[]>;
+    loadingModels: Record<Provider, boolean>;
     toolsFiles: Record<string, string>;
     onSaveTools: (name: string, content: string) => Promise<boolean>;
     onUpdatePartialConfig: (updates: Partial<AppConfig>) => void;
@@ -705,6 +708,133 @@ export const SettingsPanel = ({
                                                     onChange={(val) => updateConfig('agentModel', val)}
                                                     placeholder={t('settings.orchestration.select_model')}
                                                     options={(models[config.agentProvider || 'groq'] || []).map(m => ({ value: m.id, label: m.name }))}
+                                                    title={t('settings.orchestration.model')}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Vision Runtime (Vortex Visual) - Full Width Banner */}
+                                <div className="md:col-span-2 premium-card premium-emerald rounded-[2rem] p-6 shadow-2xl relative overflow-hidden transform-gpu group">
+                                    <div className="absolute top-0 right-0 w-full h-1 bg-gradient-to-r from-emerald-600 to-cyan-400 opacity-0 group-hover:opacity-50 transition-all duration-700" />
+                                    <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-emerald-500/5 blur-3xl rounded-full pointer-events-none transform-gpu" />
+
+                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                        {/* Left: Icon and Title */}
+                                        <div className="flex items-center gap-3 shrink-0">
+                                            <div className="bg-emerald-500/20 p-2 rounded-xl text-emerald-400 border border-transparent group-hover:border-emerald-500/40 premium-transition">
+                                                <Icon name="eye" className="text-xl mx-0.5" />
+                                            </div>
+                                            <span className="font-black text-white tracking-tight text-lg whitespace-nowrap">{t('settings.orchestration.vision_runtime')}</span>
+                                        </div>
+
+                                        {/* Middle: Distributed Warning Text */}
+                                        <div className="hidden md:flex flex-1 items-center px-4 space-x-4 border-l border-emerald-500/20">
+                                            <span className="text-[10px] text-emerald-500/80 font-bold uppercase tracking-[0.15em] leading-tight">
+                                                {t('settings.orchestration.vision_desc')}
+                                            </span>
+                                        </div>
+
+                                        {/* Right: Sync Controls */}
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            <div
+                                                className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all shadow-md border premium-emphasis ${(config.visionModel)
+                                                    ? 'premium-emerald bg-emerald-500/10 text-emerald-400'
+                                                    : 'bg-slate-800/80 text-slate-500 border-white/5'
+                                                    }`}
+                                                title={config.visionModel ? t('settings.orchestration.connection_active') : 'Default: Native Mode'}
+                                            >
+                                                <Icon name={config.visionProvider === 'ollama' ? 'network-wired' : 'key'} />
+                                            </div>
+                                            
+                                            <button
+                                                onClick={() => onTestConnection(config.visionProvider)}
+                                                disabled={loadingModels[config.visionProvider || 'gemini'] || connectionStatus === 'testing'}
+                                                className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all shadow-md border premium-emphasis bg-slate-800/80 text-slate-400 border-white/5 hover:bg-slate-700 hover:text-white active:scale-95 group/v-sync overflow-hidden`}
+                                            >
+                                                <Icon
+                                                    name="sync"
+                                                    className={`${(loadingModels[config.visionProvider || 'gemini'] || (connectionStatus === 'testing' && (config.visionProvider === config.provider)))
+                                                        ? 'fa-spin text-emerald-400 opacity-100 !transition-none'
+                                                        : 'opacity-60 group-hover/v-sync:opacity-100 group-hover/v-sync:rotate-180 transition-all duration-500'
+                                                    }`}
+                                                />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-8 items-end">
+                                        <div className="lg:col-span-5">
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block ml-1">{t('settings.orchestration.provider')}</label>
+                                            <div className="flex gap-2 premium-card !bg-black/20 p-1.5 rounded-2xl border border-white/5">
+                                                {(Object.keys(PROVIDERS) as Provider[]).map(pId => {
+                                                    const isSelected = config.visionProvider === pId;
+                                                    return (
+                                                        <button
+                                                            key={pId}
+                                                            onClick={() => updateConfig('visionProvider', pId)}
+                                                            className={`flex-1 py-3 rounded-xl transition-all flex flex-col items-center justify-center gap-1.5 ${isSelected
+                                                                ? `bg-emerald-600/90 text-white shadow-lg shadow-emerald-900/40 ring-1 ring-white/20`
+                                                                : 'hover:bg-white/5 text-slate-400'
+                                                                }`}
+                                                        >
+                                                            {pId === 'gemini' ? (
+                                                                <img src="./geminiICON.png" alt="Gemini" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]' : 'opacity-40 grayscale hover:opacity-80'}`} />
+                                                            ) : pId === 'ollama' ? (
+                                                                <img src="./ollamaICON.webp" alt="Ollama" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'brightness-0 invert opacity-40 hover:opacity-80'}`} />
+                                                            ) : pId === 'groq' ? (
+                                                                <img src="./groqICON.png" alt="Groq" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'brightness-0 invert opacity-40 hover:opacity-80'}`} />
+                                                            ) : pId === 'zai' ? (
+                                                                <img src="./zai.png" alt="Z.AI" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,165,0,0.3)]' : 'brightness-0 invert opacity-40 hover:opacity-80'}`} />
+                                                            ) : (
+                                                                <Icon name={(PROVIDERS as any)[pId]?.icon || 'robot'} className="text-lg" />
+                                                            )}
+                                                            <span className={`text-[9px] font-black uppercase tracking-wider ${isSelected ? 'text-white' : 'text-slate-600'}`}>
+                                                                {PROVIDERS[pId].name.split(' ')[0]}
+                                                            </span>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        <div className="lg:col-span-7">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1 block ml-1">{t('settings.orchestration.model')}</label>
+                                                {config.visionModel && (
+                                                    <button 
+                                                        onClick={() => updateConfig('visionModel', '')}
+                                                        className="text-[9px] font-black text-red-400/80 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 px-2.5 py-1.5 rounded-lg uppercase tracking-wider transition-all duration-300 flex items-center gap-1.5 border border-transparent hover:border-red-500/40"
+                                                    >
+                                                        <Icon name="power-off" /> {t('settings.orchestration.disable_vision')}
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div className="relative">
+                                                <ModernSelect
+                                                    value={config.visionModel}
+                                                    onChange={(val) => updateConfig('visionModel', val)}
+                                                    placeholder="-- MODO NATIVO SELECCIONADO --"
+                                                    options={[
+                                                        { value: '', label: 'NATIVE VISION (Using Chat/Agent model)' },
+                                                        ...(models[config.visionProvider || 'gemini'] || []).map(m => {
+                                                            const isVision = m.id.toLowerCase().includes('vision') || 
+                                                                            m.id.toLowerCase().includes('llava') || 
+                                                                            m.name.toLowerCase().includes('vision') ||
+                                                                            m.id.toLowerCase().includes('multimodal') ||
+                                                                            m.id.toLowerCase().includes('1.5-pro') ||
+                                                                            m.id.toLowerCase().includes('1.5-flash') ||
+                                                                            m.id.toLowerCase().includes('sonnet') ||
+                                                                            m.id.toLowerCase().includes('glm-4v') ||
+                                                                            m.id.toLowerCase().includes('pixtral');
+                                                            
+                                                            return { 
+                                                                value: m.id, 
+                                                                label: isVision ? `✨ ${m.name} (Multimodal)` : m.name 
+                                                            };
+                                                        })
+                                                    ]}
                                                     title={t('settings.orchestration.model')}
                                                 />
                                             </div>

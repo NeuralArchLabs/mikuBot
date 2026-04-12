@@ -16,6 +16,8 @@ export const DEFAULT_CONFIG: AppConfig = {
     chatModel: '',
     agentProvider: 'groq',
     agentModel: '',
+    visionProvider: 'gemini',
+    visionModel: '',
     apiKeys: { groq: '', gemini: '', ollama: '', zai: '' },
     ollamaUrl: 'http://localhost:11434',
     temperature: 0.7,

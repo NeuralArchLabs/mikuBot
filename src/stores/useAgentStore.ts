@@ -15,6 +15,7 @@ interface AgentStore {
     messages: Message[];
     agentStatus: AgentStatus;
     isLoading: boolean;
+    isViewing: boolean;
     input: string;
     pendingToolApproval: PendingToolApproval | null;
     executingSessionId: string | null;
@@ -35,6 +36,7 @@ interface AgentStore {
 
     // Actions para otros estados
     setIsLoading: (loading: boolean) => void;
+    setIsViewing: (viewing: boolean) => void;
     setInput: (input: string) => void;
     setPendingToolApproval: (approval: PendingToolApproval | null) => void;
     setExecutingSessionId: (id: string | null) => void;
@@ -45,6 +47,7 @@ export const useAgentStore = create<AgentStore>((set) => ({
     messages: [],
     agentStatus: createDefaultAgentStatus(),
     isLoading: false,
+    isViewing: false,
     input: '',
     pendingToolApproval: null,
     executingSessionId: null,
@@ -107,6 +110,7 @@ export const useAgentStore = create<AgentStore>((set) => ({
 
     // Other states actions
     setIsLoading: (isLoading) => set({ isLoading }),
+    setIsViewing: (isViewing) => set({ isViewing }),
     setInput: (input) => set({ input }),
     setPendingToolApproval: (pendingToolApproval) => set({ pendingToolApproval }),
     setExecutingSessionId: (executingSessionId) => set({ executingSessionId })
@@ -124,6 +128,7 @@ export const selectAgentPhase = (state: AgentStore) => state.agentStatus.phase;
 export const selectCurrentTool = (state: AgentStore) => state.agentStatus.currentTool;
 export const selectAgentLog = (state: AgentStore) => state.agentStatus.log;
 export const selectIsLoading = (state: AgentStore) => state.isLoading;
+export const selectIsViewing = (state: AgentStore) => state.isViewing;
 export const selectInput = (state: AgentStore) => state.input;
 export const selectPendingToolApproval = (state: AgentStore) => state.pendingToolApproval;
 export const selectExecutingSessionId = (state: AgentStore) => state.executingSessionId;

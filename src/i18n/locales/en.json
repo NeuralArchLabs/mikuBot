@@ -279,6 +279,9 @@
             "title": "Neural Orchestration Model Routing",
             "chat_runtime": "Chat Runtime",
             "agent_runtime": "Agent Runtime",
+            "vision_runtime": "Visual Vortex (Vision)",
+            "vision_desc": "Leave unconfigured to use native vision capabilities of the active model",
+            "disable_vision": "Disable Vortex",
             "provider": "Routing Provider",
             "model": "Active Model",
             "sync": "Sync",
@@ -398,7 +401,7 @@
             "agent": "Agent instruction...",
             "recording": "Listening...",
             "analyzing": "Analyzing Parameters...",
-            "live_rec": "LIVE REC"
+            "live_rec": "LISTENING..."
         },
         "actions": {
             "rewind": "Edit & Rewind",
@@ -468,7 +471,16 @@
             "status_manual": "Supervised",
             "status_auto": "Autonomous",
             "status_safe": "Protected",
-            "status_batch": "Direct"
+            "status_batch": "Direct",
+            "no_user_message": "no user message",
+            "user_sent_attachment": "user sent an attachment",
+            "prompt": {
+                "protocol_reinforcement": "PROTOCOL REINFORCEMENT",
+                "useful_reminders": "USEFUL REMINDERS",
+                "user_message": "USER MESSAGE",
+                "file": "FILE",
+                "content": "CONTENT"
+            }
         },
         "approval": {
             "sync_success": "System Synchronized",

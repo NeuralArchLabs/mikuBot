@@ -276,9 +276,12 @@
         },
         "orchestration": {
             "title": "神经编排模型路由",
-            "chat_runtime": "聊天运行时间",
-            "agent_runtime": "智能体运行时间",
-            "provider": "路由提供者",
+            "chat_runtime": "聊天运行时",
+            "agent_runtime": "代理运行时",
+            "vision_runtime": "视觉涡流 (愿景)",
+            "vision_desc": "不配置以使用当前运行模型的原生视觉能力",
+            "disable_vision": "禁用 Vortex",
+            "provider": "活动供应商",
             "model": "激活模型",
             "sync": "同步",
             "select_model": "选择目标架构..."
@@ -396,7 +399,7 @@
             "agent": "代理指令...",
             "recording": "正在聆听...",
             "analyzing": "正在分析参数...",
-            "live_rec": "实时录音"
+            "live_rec": "正在聆听..."
         },
         "actions": {
             "rewind": "编辑并重绕",
@@ -466,7 +469,17 @@
             "status_manual": "受控",
             "status_auto": "自主",
             "status_safe": "受保护",
-            "status_batch": "直接"
+            "status_batch": "直接",
+            "no_user_message": "无用户消息",
+            "user_sent_attachment": "用户发送了附件",
+            "prompt": {
+                "protocol_reinforcement": "协议强化",
+                "useful_reminders": "有用提醒",
+                "user_message": "用户消息",
+                "contained_files": "包含文件上下文",
+                "file": "文件",
+                "content": "内容"
+            }
         },
         "approval": {
             "sync_success": "系统已同步",

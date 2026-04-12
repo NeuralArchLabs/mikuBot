@@ -269,18 +269,28 @@ export async function sendAgentMessage(
         });
     };
 
-    // ─── EPHEMERAL AWARENESS: Marker for cleanup ───
-    const AWARENESS_MARKER = '[AGENT_STATE]';
+    // ─── EPHEMERAL AWARENESS: Inline cleaner ───
     const cleanAwareness = () => {
-        agentMessages = agentMessages.filter(m => !(m.role === 'user' && m.content?.startsWith(AWARENESS_MARKER)));
+        agentMessages = agentMessages.map(m => {
+            if (m.content) {
+                // Deep cleaning of all operational blocks to prevent history pollution
+                m.content = m.content
+                    .replace(/--- ON DUTY REPORT ---/g, '')
+                    .replace(/\[AGENT_STATE\][\s\S]*?\[\/AGENT_STATE\]/g, '')
+                    .replace(/\[OPERATION_FOCUS\][\s\S]*?\[\/OPERATION_FOCUS\]/g, '')
+                    .replace(/\[CURRENT_WORK_PLAN\][\s\S]*?\[\/CURRENT_WORK_PLAN\]/g, '')
+                    .trim();
+                
+                // Ensure content never stays purely empty for tool roles
+                if (!m.content && m.role === 'tool') m.content = ' ';
+            }
+            return m;
+        }).filter(m => {
+            // Remove legacy takeaway messages or messages that became completely empty and aren't tools
+            if (m.role === 'user' && !m.content.trim()) return false;
+            return true;
+        });
     };
-
-    // ─── INITIAL AWARENESS (Turn 0 → before first model call) ───
-    // Per MODES.md A2;A3: inject the starting state so the agent knows its mission from the first turn
-    if (isAgentMode || isInstructionMode) {
-        const initialAwareness = `[AGENT_STATE]\nOriginal Mission: "${missionTrigger}"\nCurrent Turn: 1 of ${MAX_RETRIES}\n[/AGENT_STATE]\n[OPERATION_FOCUS]\nPrevious Result: Mission Start.\nNext Action: Analyze the mission and execute the most relevant action\n[/OPERATION_FOCUS]\n[CURRENT_WORK_PLAN]\nNo active tasks.\n[/CURRENT_WORK_PLAN]`;
-        agentMessages.push({ role: 'user', content: initialAwareness });
-    }
 
     // --- Main Loop ---
     try {
@@ -668,13 +678,23 @@ export async function sendAgentMessage(
                 }
                 const taskProgressBlock = `\nNext Action: ${nextAction}`;
                 const autoTaskInfo = turnAutoTasks.length > 0 ? `\n✨ AUTO-SYNC: Tasks automatically completed: ${turnAutoTasks.join(', ')}` : '';
-                const unplannedInfo = (successfulCalls.length > 0 && turnAutoTasks.length === 0 && freshTasksContent.includes('[ ]'))
+                const significantCalls = successfulCalls.filter(tc => 
+                    !['read_file', 'list_files', 'search_files', 'get_file_outline', 'miku_clock', 'get_system_metrics', 'list_available_skills', 'get_crypto_price', 'read_url'].includes(tc.function.name)
+                );
+                const unplannedInfo = (significantCalls.length > 0 && turnAutoTasks.length === 0 && freshTasksContent.includes('[ ]'))
                     ? '\n⚠️ NOTE: You have performed actions that do not seem to match any pending task in your plan.' : '';
 
-                // 3. Inject fresh awareness (model sees this on next iteration)
+                // 3. Inject fresh awareness into the LAST message (usually a tool response)
                 const workPlan = `[CURRENT_WORK_PLAN]\n${freshTasksContent.trim() || 'No active tasks.'}\n[/CURRENT_WORK_PLAN]`;
-                const awarenessBlock = `[AGENT_STATE]\nOriginal Mission: "${missionTrigger}"\nCurrent Turn: ${iterations} of ${MAX_RETRIES}\n[/AGENT_STATE]\n[OPERATION_FOCUS]\nPrevious Result: ${lastExecutionFeedback}${autoTaskInfo}${unplannedInfo}${taskProgressBlock}\n[/OPERATION_FOCUS]\n${workPlan}`;
-                agentMessages.push({ role: 'user', content: awarenessBlock });
+                const awarenessBlock = `\n\n--- ON DUTY REPORT ---\n[AGENT_STATE]\nInitial Request: "${missionTrigger}"\nCurrent Turn: ${iterations}\n[/AGENT_STATE]\n[OPERATION_FOCUS]\nPrevious Result: ${lastExecutionFeedback}${autoTaskInfo}${unplannedInfo}${taskProgressBlock}\n[/OPERATION_FOCUS]\n${workPlan}`;
+                
+                const lastMsg = agentMessages[agentMessages.length - 1];
+                if (lastMsg) {
+                    lastMsg.content = (lastMsg.content || '').trim() + awarenessBlock;
+                } else {
+                    // Fallback if history is empty
+                    agentMessages.push({ role: 'user', content: awarenessBlock });
+                }
             }
         }
     } catch (err) {

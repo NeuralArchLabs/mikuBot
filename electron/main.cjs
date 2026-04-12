@@ -10,6 +10,7 @@ const http = require('http');
 // valid http:// origin. This is required because external services like
 // YouTube block embeds from non-HTTP origins (file://, custom://).
 let localServerPort = null;
+const activeStreams = new Map();
 
 const MIME_TYPES = {
     '.html': 'text/html; charset=utf-8',
@@ -117,6 +118,7 @@ let searxenaProcess = null;
 let SEARXENA_ENV_READY = false; // Persistent state for SearXena health
 let isSearXenaInstalling = false; // Lock for installation
 let deferWindowShow = false; // Flag to defer window show until installation completes
+const sessionSaveTimers = new Map(); // Debounce map for heavy session saving
 
 /**
  * Robust App Icon Loader
@@ -220,6 +222,54 @@ function safeWriteJSON(filePath, data) {
         if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
         return { ok: false, error: error.message };
     }
+}
+
+/**
+ * Startup Zombie Killer
+ * Checks for processes listening on SearXena's port (8000) and attempts to kill them.
+ * This prevents orphan engines from eating resources after a crash/dev-restart.
+ */
+async function purgeOrphanEngines() {
+    return new Promise((resolve) => {
+        console.log('[Main Process] Checking for orphan engines on port 8000...');
+        const { exec } = require('child_process');
+        
+        // Windows-specific port check and kill
+        const findCmd = 'netstat -ano | findstr :8000';
+        exec(findCmd, (err, stdout) => {
+            if (err || !stdout) {
+                console.log('[Main Process] No orphan engines found on port 8000.');
+                return resolve();
+            }
+
+            const lines = stdout.trim().split('\n');
+            const pids = new Set();
+            lines.forEach(line => {
+                const parts = line.trim().split(/\s+/);
+                const pid = parts[parts.length - 1];
+                if (pid && pid !== '0' && pid !== process.pid.toString()) {
+                    pids.add(pid);
+                }
+            });
+
+            if (pids.size === 0) return resolve();
+
+            console.log(`[Main Process] Found ${pids.size} potential orphan PIDs: ${Array.from(pids).join(', ')}. Purging...`);
+            
+            pids.forEach(pid => {
+                try {
+                    process.kill(parseInt(pid), 'SIGKILL');
+                    console.log(`[Main Process] Successfully killed orphan PID ${pid}`);
+                } catch (e) {
+                    // Try taskkill as fallback on Windows
+                    exec(`taskkill /F /PID ${pid}`, () => {});
+                }
+            });
+            
+            // Give system a moment to release ports
+            setTimeout(resolve, 1000);
+        });
+    });
 }
 
 function encryptValue(val) {
@@ -562,6 +612,7 @@ ipcMain.handle('api-stream', async (event, { provider, model, body, ollamaUrl, s
 
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), timeoutMs);
+        activeStreams.set(streamId, controller);
 
         // Standard SSE headers to prevent buffering
         headers['Accept'] = 'text/event-stream';
@@ -607,6 +658,7 @@ ipcMain.handle('api-stream', async (event, { provider, model, body, ollamaUrl, s
             return { ok: true };
         } finally {
             clearTimeout(timeout);
+            activeStreams.delete(streamId);
         }
     } catch (error) {
         const isTimeout = error.name === 'AbortError';
@@ -620,6 +672,15 @@ ipcMain.handle('api-stream', async (event, { provider, model, body, ollamaUrl, s
             ok: false,
             error: isTimeout ? `Stream timed out after ${timeoutSeconds}s.` : error.message,
         };
+    }
+});
+
+ipcMain.on('api-stream-abort', (event, streamId) => {
+    const controller = activeStreams.get(streamId);
+    if (controller) {
+        console.log(`[Main Process] Aborting stream per renderer request: ${streamId}`);
+        controller.abort();
+        activeStreams.delete(streamId);
     }
 });
 
@@ -1006,15 +1067,30 @@ ipcMain.handle('load-session', async (event, id) => {
 });
 
 ipcMain.handle('save-session', async (event, session) => {
-    try {
-        const sessionsDir = getEffectivePaths().sessions;
-        if (!fs.existsSync(sessionsDir)) fs.mkdirSync(sessionsDir, { recursive: true });
-        const filePath = path.join(sessionsDir, `${session.id}.json`);
-        return safeWriteJSON(filePath, session);
-    } catch (error) {
-        console.error(`[Main Process] Error in save-session:`, error.message);
-        return { ok: false, error: error.message };
+    // Debounce logic: prevent disk thrashing by waiting for 5s of inactivity.
+    // We immediately ACK the renderer to avoid "reply was never sent" errors
+    // when rapid successive calls cancel previous timers.
+    if (sessionSaveTimers.has(session.id)) {
+        clearTimeout(sessionSaveTimers.get(session.id));
     }
+
+    const timer = setTimeout(() => {
+        sessionSaveTimers.delete(session.id);
+        try {
+            const sessionsDir = getEffectivePaths().sessions;
+            if (!fs.existsSync(sessionsDir)) fs.mkdirSync(sessionsDir, { recursive: true });
+            const filePath = path.join(sessionsDir, `${session.id}.json`);
+            safeWriteJSON(filePath, session);
+            console.log(`[Main Process] Debounced save for session ${session.id} completed.`);
+        } catch (error) {
+            console.error(`[Main Process] Error in debounced save-session:`, error.message);
+        }
+    }, 5000);
+
+    sessionSaveTimers.set(session.id, timer);
+
+    // Immediate ACK — the actual write happens asynchronously after the debounce window
+    return { ok: true, queued: true };
 });
 
 ipcMain.handle('delete-session', async (event, id) => {
@@ -1798,6 +1874,80 @@ ipcMain.handle('run-extract', async (event, { url }) => {
 
         req.write(data);
         req.end();
+    });
+});
+
+ipcMain.handle('select-files', async () => {
+    const { dialog } = require('electron');
+    return await dialog.showOpenDialog({
+        properties: ['openFile', 'multiSelections'],
+        filters: [
+            { name: 'All Supported Files', extensions: ['pdf', 'txt', 'md', 'py', 'js', 'ts', 'tsx', 'jsx', 'json', 'c', 'cpp', 'h', 'rs', 'go', 'rb', 'php', 'sql', 'html', 'css', 'yaml', 'yml', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'ps1'] },
+            { name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp'] },
+            { name: 'Documents', extensions: ['pdf', 'txt', 'md', 'json', 'yaml', 'yml'] },
+            { name: 'Code', extensions: ['py', 'js', 'ts', 'tsx', 'jsx', 'c', 'cpp', 'h', 'rs', 'go', 'rb', 'php', 'sql', 'html', 'css'] }
+        ]
+    });
+});
+
+ipcMain.handle('read-file-data', async (event, filePath) => {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const buffer = fs.readFileSync(filePath);
+        const ext = path.extname(filePath).toLowerCase();
+        
+        // Simple mime mapper since we don't have mime-types dependency
+        const mimeMap = {
+            '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', 
+            '.gif': 'image/gif', '.webp': 'image/webp', '.pdf': 'application/pdf',
+            '.txt': 'text/plain', '.md': 'text/markdown', '.json': 'application/json'
+        };
+        const mimeType = mimeMap[ext] || 'application/octet-stream';
+        
+        return { 
+            ok: true, 
+            data: `data:${mimeType};base64,${buffer.toString('base64')}`, 
+            name: path.basename(filePath), 
+            type: mimeType,
+            path: filePath
+        };
+    } catch (error) {
+        return { ok: false, error: error.message };
+    }
+});
+
+ipcMain.handle('extract-file-content', async (event, { path: filePath }) => {
+    return new Promise((resolve) => {
+        const { execFile } = require('child_process');
+        const pythonExe = ENGINE_PYTHON_EXE;
+        const extractScript = path.join(baseDir, 'engine', 'extract.py');
+
+        console.log(`[Main Process] Universal Extraction triggering for: "${filePath}"`);
+
+        execFile(pythonExe, [extractScript, filePath], { 
+            timeout: 60000, 
+            maxBuffer: 15 * 1024 * 1024 
+        }, (error, stdout, stderr) => {
+            if (stderr) console.warn('[Main Process] Extraction Debug/Stderr:', stderr);
+            
+            if (error) {
+                if (error.killed) {
+                    console.error('[Main Process] Extraction KILLED due to timeout/buffer');
+                    return resolve({ ok: false, error: 'Extraction timed out or exceeded memory limits' });
+                }
+                console.error('[Main Process] Extraction Error:', error.message);
+                return resolve({ ok: false, error: error.message });
+            }
+            try {
+                const parsed = JSON.parse(stdout);
+                console.log(`[Main Process] Extraction Success for "${filePath}". Content length: ${parsed.content?.length || 0}`);
+                resolve({ ok: true, data: parsed });
+            } catch (e) {
+                console.error('[Main Process] Failed to parse extraction JSON:', e.message, stdout);
+                resolve({ ok: false, error: 'Failed to parse extraction results' });
+            }
+        });
     });
 });
 
@@ -2692,7 +2842,10 @@ if (!gotTheLock) {
     });
 
     app.whenReady().then(async () => {
-        // 0. Start local HTTP server for production builds
+        // 0. Zombie Killer - Ensure clean slate
+        await purgeOrphanEngines();
+
+        // 1. Start local HTTP server for production builds
         if (app.isPackaged) {
             try {
                 const distPath = path.join(__dirname, '../dist');

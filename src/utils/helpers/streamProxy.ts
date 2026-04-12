@@ -65,6 +65,7 @@ export async function streamViaProxy(options: StreamProxyOptions): Promise<void>
         // Handle abort
         if (options.abortSignal) {
             options.abortSignal.addEventListener('abort', () => {
+                if (isElectron) electron.abortApiStream(streamId);
                 if (cleanup) cleanup();
                 if (!resolved) {
                     resolved = true;

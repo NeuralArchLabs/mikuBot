@@ -31,6 +31,8 @@ export interface AppConfig {
     chatModel?: string;
     agentProvider?: Provider;
     agentModel?: string;
+    visionProvider?: Provider;
+    visionModel?: string;
     apiKeys: Record<Provider, string>;
     ollamaUrl: string;
     temperature: number;

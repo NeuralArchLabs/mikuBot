@@ -395,6 +395,21 @@
   }
 }
 
+@keyframes vision-neon-pulse {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.4), inset 0 0 15px rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.6);
+  }
+}
+
+.vision-neon-pulse-border {
+  animation: vision-neon-pulse 2.5s ease-in-out infinite;
+}
+
 @keyframes arrow-sequence {
 
   0%,

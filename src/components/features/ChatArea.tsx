@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Message, AgentStatus, PendingToolApproval, AgentMode, ApprovalMode, Attachment } from '../../types';
+import { Message, AgentStatus, PendingToolApproval, AgentMode, ApprovalMode, Attachment, AppConfig, Provider, ModelInfo } from '../../types';
 import { Icon, MarkdownRenderer } from '../common/Common';
 import { ToolApprovalPanel } from '../panels/ToolApprovalPanel';
 import { AgentStatusPanel } from '../panels/AgentStatusPanel';
@@ -8,8 +8,8 @@ import { ToolBlock } from '../common/ToolBlock';
 import { CollapsibleMessage } from '../common/CollapsibleMessage';
 import { CollapsibleTextBlock } from '../common/CollapsibleTextBlock';
 import { TypewriterIdle } from '../common/TypewriterIdle';
-import { useAgentStore, selectInput, selectMessages, selectAgentStatus, selectIsLoading, selectPendingToolApproval, selectExecutingSessionId } from '../../stores/useAgentStore';
-import { persistence } from '../../services';
+import { useAgentStore, selectInput, selectMessages, selectAgentStatus, selectIsLoading, selectIsViewing, selectPendingToolApproval, selectExecutingSessionId } from '../../stores/useAgentStore';
+import { persistence, VisionService } from '../../services';
 
 interface ChatAreaProps {
     sessionId: string;
@@ -38,12 +38,14 @@ interface ChatAreaProps {
     assistantAlias?: string;
     sessions?: any[];
     onSessionsUpdate?: (sessions: any[] | ((prev: any[]) => any[])) => void;
+    config: AppConfig;
+    models: Record<Provider, ModelInfo[]>;
 }
 
 const ChatInputControls = React.memo(({
-    isRecording, partialText, agentMode, isLoading, executingSessionId, currentSessionId, agentIteration, agentPhase, agentIsInstructionMode, attachments, t,
+    isRecording, partialText, agentMode, isLoading, isViewing, executingSessionId, currentSessionId, agentIteration, agentPhase, agentIsInstructionMode, attachments, t,
     inputRef, fileInputRef,
-    toggleRecording, onAbort, handleSend, handleSendAsInstruction, onReprompt, handleFileChange, handleRemoveAttachment, boltGlow, isSent, safeMode, approvalMode, debugMode, onDebugModeChange
+    toggleRecording, onAbort, handleSend, handleSendAsInstruction, onReprompt, handleNativeFileSelect, handleRemoveAttachment, boltGlow, isSent, safeMode, approvalMode, debugMode, onDebugModeChange
 }: any) => {
     // Character-level isolation: Use local state for typing to avoid global store overhead on every keystroke.
     const globalInput = useAgentStore(selectInput);
@@ -123,9 +125,32 @@ const ChatInputControls = React.memo(({
                         {attachments.map((att: any) => (
                             <div key={att.id} className="relative group bg-slate-800 border border-slate-700 rounded-lg p-1 flex items-center justify-center w-10 h-10 shadow-sm">
                                 {att.type.startsWith('image/') ? (
-                                    <img src={att.data} alt={att.name} className="w-full h-full object-cover rounded-md" />
+                                    <>
+                                        <img src={att.data} alt={att.name} className={`w-full h-full object-cover rounded-md transition-all duration-500 ${att.isAnalyzing ? 'blur-[1px] brightness-50' : ''}`} />
+                                        {att.isAnalyzing && (
+                                            <div className="absolute inset-0 flex items-center justify-center">
+                                                <div className="absolute inset-0 bg-emerald-500/20 animate-pulse rounded-md" />
+                                                <Icon name="eye" className="text-emerald-400 text-xs animate-bounce" />
+                                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500 shadow-[0_0_10px_#10b981] animate-scan-fast" />
+                                            </div>
+                                        )}
+                                    </>
                                 ) : (
-                                    <Icon name="file-alt" className="text-slate-400 text-[16px]" />
+                                    <div className="flex flex-col items-center justify-center gap-0.5">
+                                        <Icon 
+                                            name={
+                                                att.name.endsWith('.pdf') ? "file-pdf" : 
+                                                att.name.endsWith('.json') || att.name.endsWith('.yaml') || att.name.endsWith('.yml') ? "file-code" :
+                                                "file-alt"
+                                            } 
+                                            className={`text-[16px] ${
+                                                att.name.endsWith('.pdf') ? "text-rose-400" : 
+                                                att.name.endsWith('.json') ? "text-amber-400" :
+                                                "text-slate-400"
+                                            }`} 
+                                        />
+                                        <span className="text-[6px] uppercase font-bold text-slate-500 truncate max-w-[32px]">{att.name.split('.').pop()}</span>
+                                    </div>
                                 )}
                                 <button
                                     onClick={() => handleRemoveAttachment(att.id)}
@@ -140,19 +165,16 @@ const ChatInputControls = React.memo(({
                     </div>
                 )}
 
-                {/* File Input (Hidden) & Trigger (Left of textarea) */}
-                <div className={`mode-transition-wrap mx-1 ${!isLoading ? 'visible-mode' : 'hidden-mode'}`}>
-                    <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleFileChange}
-                        className="hidden"
-                        multiple
-                        accept="image/png, image/jpeg, image/webp"
-                        title={t('chat.actions.select_files')}
-                    />
+                {/* File Selection Trigger (Left of textarea) */}
+                <div className={`mode-transition-wrap mx-1 ${(!isLoading && !isViewing) ? 'visible-mode' : 'hidden-mode'}`}>
                     <button
-                        onClick={() => fileInputRef.current?.click()}
+                        onClick={async () => {
+                            if (!(window as any).electron) return;
+                            const result = await (window as any).electron.selectFiles();
+                            if (result && !result.canceled && result.filePaths.length > 0) {
+                                handleNativeFileSelect(result.filePaths);
+                            }
+                        }}
                         className="h-[50px] w-[50px] bg-slate-800/40 backdrop-blur-md border border-slate-700/50 hover:text-slate-200 hover:bg-slate-700/60 hover:border-slate-600 rounded-xl flex items-center justify-center transition-all duration-300 shadow-lg shadow-black/20 text-slate-400 group-hover:border-slate-500/30"
                         title={t('chat.actions.attach')}
                     >
@@ -172,11 +194,18 @@ const ChatInputControls = React.memo(({
                             : 'border-slate-800/60 focus:ring-cyan-500/30 focus:border-cyan-500/40 pr-16 shadow-[0_10px_30px_-5px_rgba(0,0,0,0.5)]'
                             }`}
                         rows={1}
+                        disabled={isViewing}
+                        style={{ opacity: isViewing ? 0.4 : 1 }}
                     />
                     {isRecording && (
-                        <div className="absolute right-12 flex items-center gap-2 px-2.5 py-1 bg-slate-950/80 backdrop-blur-md rounded-full border border-emerald-500/30 animate-pulse pointer-events-none shadow-[0_0_15px_rgba(16,185,129,0.15)]">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-                            <span className="text-[8px] font-black text-emerald-400 uppercase tracking-[0.15em]">{t('chat.placeholders.live_rec')}</span>
+                        <div className="absolute right-12 top-[-16px] flex items-center gap-2.5 px-3 py-1.5 bg-emerald-950/80 backdrop-blur-xl rounded-full border border-emerald-500/40 pointer-events-none shadow-[0_-5px_20px_rgba(16,185,129,0.15)] transition-all duration-500 ease-out z-20">
+                            <div className="relative flex items-center justify-center">
+                                <div className="absolute w-2 h-2 rounded-full bg-emerald-500/40 animate-ping" />
+                                <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]" />
+                            </div>
+                            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em] leading-none drop-shadow-sm">
+                                {t('chat.placeholders.live_rec')}
+                            </span>
                         </div>
                     )}
 
@@ -210,7 +239,7 @@ const ChatInputControls = React.memo(({
                 <div className={`flex items-end ${agentMode !== 'agent' ? 'gap-2' : ''} mode-transition-wrap mx-1 ${!isLoading ? 'visible-mode action-enter' : 'hidden-mode action-exit'} pointer-events-auto`}>
                     <button
                         onClick={handleSendWithSync}
-                        disabled={!localInput.trim() && attachments.length === 0}
+                        disabled={isViewing || (!localInput.trim() && attachments.length === 0)}
                         className={`h-[50px] px-4 rounded-xl flex items-center justify-center min-w-[50px] disabled:opacity-30 disabled:cursor-not-allowed btn-send-morph shadow-lg ${agentMode === 'agent' ? 'is-agent shadow-purple-900/20' : 'is-chat shadow-blue-900/20'}`}
                         title={t('chat.actions.send')}
                     >
@@ -240,7 +269,7 @@ const ChatInputControls = React.memo(({
                     <div className={`transition-all duration-500 ${agentMode !== 'agent' ? 'w-[50px] opacity-100' : 'w-0 opacity-0 overflow-hidden'} mode-transition-wrap ${agentMode !== 'agent' ? 'visible-mode instruction-enter' : 'hidden-mode instruction-exit'} pointer-events-auto`}>
                         <button
                             onClick={handleSendAsInstructionWithSync}
-                            disabled={!localInput.trim() && attachments.length === 0}
+                            disabled={isViewing || (!localInput.trim() && attachments.length === 0)}
                             className={`h-[50px] px-4 w-full btn-instruction-premium text-white rounded-xl flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed text-[10px] font-bold shadow-lg shadow-purple-900/20 ${boltGlow ? 'pulse-glow' : ''}`}
                             title={t('chat.actions.send_instruction_desc')}
                         >
@@ -290,7 +319,9 @@ export const ChatArea = ({
     userName,
     assistantAlias,
     sessions,
-    onSessionsUpdate
+    onSessionsUpdate,
+    config,
+    models
 }: ChatAreaProps) => {
     const { t, i18n } = useTranslation();
 
@@ -298,6 +329,7 @@ export const ChatArea = ({
     const messages = useAgentStore(selectMessages);
     const agentStatus = useAgentStore(selectAgentStatus);
     const isLoading = useAgentStore(selectIsLoading);
+    const isViewing = useAgentStore(selectIsViewing);
     const pendingApproval = useAgentStore(selectPendingToolApproval);
     const executingSessionId = useAgentStore(selectExecutingSessionId);
 
@@ -370,6 +402,7 @@ export const ChatArea = ({
 
     const [attachments, setAttachments] = React.useState<Attachment[]>([]);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
+    const pendingSendRef = React.useRef<{ type: 'send' | 'instruction' } | null>(null);
 
     const audioCtxRef = React.useRef<AudioContext | null>(null);
     const streamRef = React.useRef<MediaStream | null>(null);
@@ -378,7 +411,15 @@ export const ChatArea = ({
 
     const handleSend = () => {
         if (isRecording) {
-            toggleRecording(); // Detener grabación al enviar
+            toggleRecording();
+        }
+        // Deferred send: if any attachment is still being analyzed, queue the send
+        if (attachments.some(a => a.isAnalyzing)) {
+            pendingSendRef.current = { type: 'send' };
+            useAgentStore.getState().setIsViewing(true);
+            setIsSent(true);
+            setTimeout(() => setIsSent(false), 700);
+            return;
         }
         setIsSent(true);
         onSend(attachments);
@@ -388,11 +429,19 @@ export const ChatArea = ({
 
     const handleSendAsInstruction = () => {
         if (isRecording) {
-            toggleRecording(); // Detener grabación al enviar
+            toggleRecording();
+        }
+        // Deferred send: if any attachment is still being analyzed, queue the send
+        if (attachments.some(a => a.isAnalyzing)) {
+            pendingSendRef.current = { type: 'instruction' };
+            useAgentStore.getState().setIsViewing(true);
+            setBoltGlow(true);
+            setIsSent(true);
+            setTimeout(() => { setBoltGlow(false); setIsSent(false); }, 700);
+            return;
         }
         setBoltGlow(true);
         setIsSent(true);
-        // Delay slightly to show the glow before sending (and triggering isLoading)
         setTimeout(() => {
             onSendAsInstruction(attachments);
             setAttachments([]);
@@ -401,30 +450,133 @@ export const ChatArea = ({
         }, 300);
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!e.target.files) return;
-        const files = Array.from(e.target.files) as File[];
-        files.forEach(file => {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const base64Content = event.target?.result as string;
-                // Remove data:image/png;base64, prefix if you want raw base64, but keeping it is fine for preview
-                setAttachments(prev => [...prev, {
-                    id: Date.now().toString() + Math.random().toString(),
-                    name: file.name,
-                    type: file.type,
-                    data: base64Content
-                }]);
-            };
-            // Read as data URL to easily preview and send
-            reader.readAsDataURL(file);
-        });
-        e.target.value = ''; // Reset input
+    const handleNativeFileSelect = async (filePaths: string[]) => {
+        if (!(window as any).electron) return;
+        
+        for (const filePath of filePaths) {
+            try {
+                // 1. Get visual data (pre-loading preview)
+                const fileInfo = await (window as any).electron.readFileData(filePath);
+                if (!fileInfo.ok) {
+                    console.error(`[Native Selection] Failed to read file data for ${filePath}:`, fileInfo.error);
+                    continue;
+                }
+
+                let extractedContent: string | undefined = undefined;
+                const attachmentId = Date.now().toString() + Math.random().toString();
+
+                // 2. Vision Runtime Phase (Vortex Visual)
+                // Determine the effective model that will handle this message
+                const activeProvider = (agentMode === 'agent' && config.agentProvider && config.agentModel)
+                    ? config.agentProvider
+                    : (config.chatProvider && config.chatModel)
+                        ? config.chatProvider
+                        : config.provider;
+
+                const activeModel = (agentMode === 'agent' && config.agentProvider && config.agentModel)
+                    ? config.agentModel
+                    : (config.chatProvider && config.chatModel)
+                        ? config.chatModel
+                        : config.model;
+
+                // Vortex activates ONLY when configured with a DIFFERENT model than the active runtime.
+                // If the vision model is the same as chat/agent, we skip the extra API call
+                // and let the image flow natively through the main multimodal pipeline.
+                const isVortexDistinct = config.visionProvider && config.visionModel
+                    && !(config.visionProvider === activeProvider && config.visionModel === activeModel);
+
+                const isImage = fileInfo.type.startsWith('image/');
+
+                if (isImage && isVortexDistinct) {
+                    // Create pending attachment with analyzing state
+                    setAttachments(prev => [...prev, {
+                        id: attachmentId,
+                        name: fileInfo.name,
+                        type: fileInfo.type,
+                        data: fileInfo.data,
+                        isAnalyzing: true
+                    }]);
+
+                    // Perform background analysis
+                    VisionService.describeImage(config, fileInfo.data, fileInfo.type, models)
+                        .then(description => {
+                            setAttachments(prev => prev.map(a => 
+                                a.id === attachmentId 
+                                    ? { ...a, extractedContent: description, isAnalyzing: false } 
+                                    : a
+                            ));
+                        })
+                        .catch(err => {
+                            console.error('[Vision Runtime] Analysis failed:', err);
+                            setAttachments(prev => prev.map(a => 
+                                a.id === attachmentId 
+                                    ? { ...a, isAnalyzing: false } 
+                                    : a
+                            ));
+                        });
+                    
+                    continue; // Skip the standard extractor phase for this image as we just handled it
+                }
+
+                // 3. Standard Extractor Phase (for non-images or native mode)
+                if (!isImage) {
+                    try {
+                        const result = await (window as any).electron.extractFileContent({ path: filePath });
+                        if (result.ok && result.data.success) {
+                            extractedContent = result.data.content;
+                            console.log(`[Universal Extraction] Success for ${fileInfo.name} (${result.data.type})`);
+                        } else {
+                            console.warn(`[Universal Extraction] Native extraction failed for ${fileInfo.name}:`, result.error || result.data?.error);
+                            // Fallback for simple text files since we have the path now
+                            if (fileInfo.type.startsWith('text/') || fileInfo.name.match(/\.(ts|tsx|js|jsx|json|md|py|c|cpp|h|rs|go|ps1)$/i)) {
+                                // Already have the Base64 in fileInfo.data, but extraction is usually cleaner.
+                                // If extraction failed, we use the original content if possible.
+                            }
+                        }
+                    } catch (err) {
+                        console.error(`[Universal Extraction] Critical error extracting ${fileInfo.name}:`, err);
+                    }
+                }
+
+                setAttachments(prev => {
+                    const newAttachment = {
+                        id: attachmentId,
+                        name: fileInfo.name,
+                        type: fileInfo.type,
+                        // Clear binary data for non-images after extraction to save RAM
+                        data: fileInfo.type.startsWith('image/') ? fileInfo.data : undefined,
+                        extractedContent: extractedContent
+                    };
+                    return [...prev, newAttachment];
+                });
+
+            } catch (err) {
+                console.error(`[Native Selection] Error processing ${filePath}:`, err);
+            }
+        }
     };
 
     const handleRemoveAttachment = (id: string) => {
         setAttachments(prev => prev.filter(a => a.id !== id));
     };
+
+    // ⚡ DEFERRED SEND: Fire the queued send when vision analysis completes
+    React.useEffect(() => {
+        if (!pendingSendRef.current) return;
+        if (attachments.some(a => a.isAnalyzing)) return;
+
+        // All attachments done analyzing — execute the queued send
+        const pendingType = pendingSendRef.current.type;
+        pendingSendRef.current = null;
+        useAgentStore.getState().setIsViewing(false);
+
+        if (pendingType === 'instruction') {
+            onSendAsInstruction(attachments);
+        } else {
+            onSend(attachments);
+        }
+        setAttachments([]);
+    }, [attachments, onSend, onSendAsInstruction]);
 
     // Auto-focus input when session changes or agent finishes
     React.useEffect(() => {
@@ -432,6 +584,16 @@ export const ChatArea = ({
             inputRef.current?.focus({ preventScroll: true });
         }
     }, [isLoading, sessionId]);
+
+    // 👁️ Auto-scroll to viewing bubble when Vision Runtime activates
+    React.useEffect(() => {
+        if (isViewing) {
+            setTimeout(() => {
+                const bubble = document.getElementById('vision-viewing-bubble');
+                bubble?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+        }
+    }, [isViewing]);
 
     React.useEffect(() => {
         const handleGlobalKeyDown = (e: KeyboardEvent) => {
@@ -807,8 +969,6 @@ export const ChatArea = ({
                 </div>
             )}
 
-
-
             {/* Neural Raw Viewer (Debug Overlay) */}
             {debugMode && (
                 <div className="absolute inset-0 z-[90] bg-slate-950/95 backdrop-blur-md flex flex-col p-6 animate-in fade-in zoom-in-95 duration-300 transform-gpu">
@@ -865,30 +1025,42 @@ export const ChatArea = ({
                                             </span>
                                         )}
                                     </div>
-                                    <div className="text-slate-400 leading-relaxed whitespace-pre-wrap break-all border-l-2 border-white/10 pl-4">
-                                        {(m.thought || m.reasoning_content || m.reasoning) && (
-                                            <div className="mb-3 p-3 bg-fuchsia-500/5 rounded border border-fuchsia-500/20 text-fuchsia-300/80 italic text-[10px]">
-                                                <strong>[{t('chat.labels.active_reasoning')?.toUpperCase() || 'ACTIVE REASONING'}]</strong><br/>
-                                                {m.thought || m.reasoning_content || m.reasoning}
-                                            </div>
-                                        )}
-                                        {Array.isArray(m.content) 
-                                            ? m.content.map((c: any, ci: number) => (
-                                                <div key={ci} className="mb-2">
-                                                    {c.type === 'text' && c.text}
-                                                    {c.type === 'thinking' && (
-                                                        <div className="mb-2 p-3 bg-fuchsia-500/5 rounded border border-fuchsia-500/20 text-fuchsia-300/80 italic text-[10px]">
-                                                            <strong>[{t('chat.labels.active_reasoning')?.toUpperCase() || 'ACTIVE REASONING'}]</strong><br/>
-                                                            {c.thinking}
-                                                        </div>
-                                                    )}
+                                    <div className={`text-slate-400 leading-relaxed font-mono border-l-2 border-white/10 pl-4 overflow-hidden ${m.role === 'tool' ? 'bg-black/30 rounded-r-lg py-2' : ''}`}>
+                                        <div className="max-h-[450px] overflow-y-auto custom-scrollbar pr-2 whitespace-pre-wrap break-all text-[10px]">
+                                            {(m.thought || m.reasoning_content || m.reasoning) && (
+                                                <div className="mb-3 p-3 bg-fuchsia-500/5 rounded border border-fuchsia-500/20 text-fuchsia-300/80 italic text-[9px]">
+                                                    <div className="flex items-center gap-2 mb-1 opacity-60">
+                                                        <Icon name="brain" />
+                                                        <strong>[{t('chat.labels.active_reasoning')?.toUpperCase() || 'ACTIVE REASONING'}]</strong>
+                                                    </div>
+                                                    {m.thought || m.reasoning_content || m.reasoning}
                                                 </div>
-                                            ))
-                                            : (m.content || (m.role === 'tool' && m.error ? m.error : t('chat.labels.empty_body')))
-                                        }
+                                            )}
+                                            {Array.isArray(m.content) 
+                                                ? m.content.map((c: any, ci: number) => (
+                                                    <div key={ci} className="mb-2">
+                                                        {c.type === 'text' && c.text}
+                                                        {c.type === 'thinking' && (
+                                                            <div className="mb-2 p-3 bg-fuchsia-500/5 rounded border border-fuchsia-500/20 text-fuchsia-300/80 italic text-[9px]">
+                                                                <div className="flex items-center gap-2 mb-1 opacity-60">
+                                                                    <Icon name="brain" />
+                                                                    <strong>[{t('chat.labels.active_reasoning')?.toUpperCase() || 'ACTIVE REASONING'}]</strong>
+                                                                </div>
+                                                                {c.thinking}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))
+                                                : (m.content || (m.role === 'tool' && m.error ? m.error : t('chat.labels.empty_body')))
+                                            }
+                                        </div>
                                         {m.tool_calls && (
-                                            <div className="mt-2 p-2 bg-blue-500/10 rounded border border-blue-500/20 text-blue-300">
-                                                <strong>{t('chat.labels.tool_calls')}:</strong> {JSON.stringify(m.tool_calls, null, 2)}
+                                            <div className="mt-2 p-2 bg-blue-500/10 rounded border border-blue-500/20 text-blue-300/80 text-[10px]">
+                                                <div className="flex items-center gap-2 mb-1 opacity-60">
+                                                    <Icon name="cog" />
+                                                    <strong>{t('chat.labels.tool_calls')?.toUpperCase()}:</strong>
+                                                </div>
+                                                <pre className="whitespace-pre-wrap break-all opacity-80">{JSON.stringify(m.tool_calls, null, 2)}</pre>
                                             </div>
                                         )}
                                     </div>
@@ -1018,11 +1190,11 @@ export const ChatArea = ({
                                                 <span className="font-mono text-xs tracking-wider animate-pulse uppercase">{t('chat.placeholders.analyzing')}</span>
                                             </div>
                                         ) : (
-                                            <div className="text-[13px] sm:text-[14px] leading-loose overflow-visible break-words max-w-full w-full px-2 sm:px-4">
+                                            <div className="text-[13px] sm:text-[14px] leading-loose overflow-visible break-words max-w-full w-full px-2 sm:px-4 text-justify">
                                                 {msg.attachments && msg.attachments.length > 0 && (
                                                     <div className="flex flex-wrap gap-2 mb-3">
                                                         {msg.attachments.map(att => (
-                                                            <div key={att.id} className="relative group bg-slate-800 border border-slate-700 rounded-lg p-2 flex items-center gap-2 max-w-[200px]">
+                                                            <div key={att.id} className="relative group bg-slate-800/80 rounded-xl p-2.5 flex items-center gap-3 max-w-[220px] shadow-xl shadow-black/40 hover:bg-slate-700 transition-all duration-300">
                                                                 {att.type.startsWith('image/') ? (
                                                                     <img src={att.data} alt={att.name} className="h-16 w-auto object-contain rounded" />
                                                                 ) : (
@@ -1056,7 +1228,7 @@ export const ChatArea = ({
                                                                     ) : (block.type === 'thought' || block.type === 'text') ? (() => {
                                                                         const hasTools = msg.blocks!.some(b => b.type === 'tool_call');
                                                                         const forceCollapse = isOld || (hasTools && !debugMode) || block.type === 'thought';
-                                                                        return <CollapsibleTextBlock content={block.content} forceCollapse={forceCollapse} isThought={block.type === 'thought'} isStreaming={msg.isStreaming} />;
+                                                                        return <CollapsibleTextBlock content={block.content} forceCollapse={forceCollapse} isThought={block.type === 'thought'} isStreaming={msg.isStreaming} mode={block.type === 'thought' ? 'minimal' : 'full'} />;
                                                                     })() : block.type === 'tool_call' ? (
                                                                         <ToolBlock block={block} isOld={isOld} isStreaming={msg.isStreaming} invertRotation={idx % 2 !== 0} />
                                                                     ) : null}
@@ -1066,7 +1238,7 @@ export const ChatArea = ({
                                                     </div>
                                                 ) : (
                                                     msg.text && (
-                                                        <MarkdownRenderer content={msg.text} isStreaming={msg.isStreaming} />
+                                                        <MarkdownRenderer content={msg.text} isStreaming={msg.isStreaming} mode={msg.role === 'user' ? 'none' : 'full'} />
                                                     )
                                                 )}
                                             </div>
@@ -1111,13 +1283,59 @@ export const ChatArea = ({
 
                         return MessageContent;
                     })}
+
+                    {/* 👁️ VISION RUNTIME: Viewing Bubble — Shows while Vortex Visual is processing */}
+                    {isViewing && (
+                        <div id="vision-viewing-bubble" className="flex justify-center w-full animate-slide-up my-4">
+                            <div className="max-w-[85%] sm:max-w-[75%] lg:max-w-[65%]">
+                                <div className="bg-slate-900/70 backdrop-blur-md rounded-2xl px-6 py-4 border vision-neon-pulse-border">
+                                    <div className="flex items-center gap-3">
+                                        <div className="relative">
+                                            <Icon name="eye" className="text-xl text-emerald-400 animate-pulse" />
+                                            <div className="absolute inset-0 rounded-full bg-emerald-400/20 animate-ping" />
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-emerald-300 text-xs font-bold tracking-widest uppercase">
+                                                Vortex Visual
+                                            </span>
+                                            <span className="text-slate-400 text-[10px] italic mt-0.5">
+                                                {t('chat.labels.vision_analyzing', { defaultValue: 'Analyzing visual context...' })}
+                                            </span>
+                                        </div>
+                                        <div className="flex gap-1 ml-4">
+                                            {[0, 150, 300].map(ms => (
+                                                <div key={ms} className="w-1.5 h-1.5 rounded-full bg-emerald-400/60" style={{ animation: `pulse 1.4s ease-in-out ${ms}ms infinite` }} />
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="h-4" /> {/* Bottom breathing room */}
                 </div>
             </div>
 
             {/* Sticky Overlay Area for Active Task / Background Status - Only visible while Miku is doing something */}
-            <div className={`z-20 w-full agent-status-docked ${isLoading ? 'active' : ''}`}>
-                <div className="w-full bg-slate-950/40 backdrop-blur-md border-t border-slate-800/20 agent-status-animate-in">
+            <div className="z-20 w-full relative">
+                
+                {/* Elevated Tool Approval Panel - Full Edge-to-Edge Banner Attached to Dock */}
+                {isExecutingThisSession && pendingApproval && (
+                    <div className="absolute bottom-full left-0 w-full z-[100] animate-slide-up pointer-events-none">
+                        <div className="w-full shadow-[0_-15px_40px_-10px_rgba(0,0,0,0.6)] overflow-hidden border-t border-amber-500/40 pointer-events-auto bg-slate-900/95 backdrop-blur-xl">
+                            <ToolApprovalPanel
+                                key={pendingApproval.toolCall.id}
+                                pending={pendingApproval}
+                                onApprove={onApproveToolCall}
+                                onReject={onRejectToolCall}
+                            />
+                        </div>
+                    </div>
+                )}
+
+                <div className={`w-full agent-status-docked ${(isLoading || pendingApproval) ? 'active' : ''}`}>
+                    <div className="w-full bg-slate-950/40 backdrop-blur-md border-t border-slate-800/20 agent-status-animate-in">
                     {isExecutingThisSession ? (
                         <div className="w-full">
                             <AgentStatusPanel
@@ -1125,16 +1343,6 @@ export const ChatArea = ({
                                 onAbort={onAbort}
                                 onReprompt={onReprompt}
                             />
-
-                            {pendingApproval && (
-                                <div className="p-4 pt-1">
-                                    <ToolApprovalPanel
-                                        pending={pendingApproval}
-                                        onApprove={onApproveToolCall}
-                                        onReject={onRejectToolCall}
-                                    />
-                                </div>
-                            )}
                         </div>
                     ) : (
                         executingSessionId && (
@@ -1158,8 +1366,9 @@ export const ChatArea = ({
                     )}
                 </div>
             </div>
+        </div>
 
-            <div className={`px-4 pb-4 ${isLoading ? 'pt-0' : 'pt-4'} bg-slate-900/40 border-t ${isLoading ? 'border-transparent' : 'border-slate-800/50'} transition-all duration-500`}>
+        <div className={`px-4 pb-4 ${isLoading ? 'pt-0' : 'pt-4'} bg-slate-900/40 border-t ${isLoading ? 'border-transparent' : 'border-slate-800/50'} transition-all duration-500`}>
                 <div className="max-w-5xl mx-auto flex items-center gap-2 mb-2 flex-wrap">
                     <button
                         onClick={() => onAgentModeChange(agentMode === 'chat' ? 'agent' : 'chat')}
@@ -1249,6 +1458,7 @@ export const ChatArea = ({
                     partialText={partialText}
                     agentMode={agentMode}
                     isLoading={isLoading}
+                    isViewing={isViewing}
                     executingSessionId={executingSessionId}
                     currentSessionId={sessionId}
                     agentIteration={agentStatus.iteration}
@@ -1263,7 +1473,7 @@ export const ChatArea = ({
                     handleSend={handleSend}
                     handleSendAsInstruction={handleSendAsInstruction}
                     onReprompt={onReprompt}
-                    handleFileChange={handleFileChange}
+                    handleNativeFileSelect={handleNativeFileSelect}
                     handleRemoveAttachment={handleRemoveAttachment}
                     boltGlow={boltGlow}
                     isSent={isSent}
