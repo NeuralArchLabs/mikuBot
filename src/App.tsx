@@ -278,11 +278,43 @@ export const App = () => {
     }, [t, clearMessages, setInputStore, resetAgentStatus, setPendingToolApprovalStore]);
 
     const onSelectSession = useCallback(async (id: string) => {
-        // ⚡ BACKGROUND PERSISTENCE: 
+        // ⚡ BACKGROUND PERSISTENCE:
         // We no longer wipe agentStatus or pendingToolApproval on switch.
         // This allows the background session to continue updating its live state
         // even if the user is looking at a different session.
         // The UI in ChatArea will handle showing/hiding panels based on executingSessionId.
+
+        // Save current session before switching to prevent data loss
+        const currentId = state.sessionId;
+        if (currentId && currentId !== id) {
+            const currentMessages = useAgentStore.getState().messages;
+            if (currentMessages.length > 0) {
+                const currentSession = sessions?.find(s => s.id === currentId);
+                const firstRealMsg = currentMessages.find(
+                    m => !m.excludeFromContext && m.role === 'user'
+                );
+                const candidateContent = firstRealMsg?.text?.slice(0, 30);
+                const isDefaultTitle = !currentSession?.title ||
+                    currentSession.title === t('common.new_neural_branch') ||
+                    currentSession.title === t('common.active_session') ||
+                    (candidateContent && currentSession.title === candidateContent);
+                const title = isDefaultTitle
+                    ? (candidateContent || currentSession?.title || t('common.new_neural_branch'))
+                    : (currentSession?.title || t('common.new_neural_branch'));
+
+                persistence.saveSession({
+                    id: currentId,
+                    title,
+                    messages: currentMessages,
+                    timestamp: Date.now(),
+                    agentMode: state.agentMode,
+                    safeMode: state.safeMode,
+                    approvalMode: state.approvalMode,
+                    debugMode: state.debugMode,
+                    draft: useAgentStore.getState().input,
+                });
+            }
+        }
 
         const session = await persistence.loadSession(id);
         if (session) {

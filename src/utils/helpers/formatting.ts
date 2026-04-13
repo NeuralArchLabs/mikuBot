@@ -215,10 +215,15 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         return `\n${id}\n`;
     });
 
+    // ═══════════════════════════════════════════════════════════════════
+    // PHASE 0a: INLINE CODE PROTECTION
+    // MUST run BEFORE the HTML protector so that backtick-wrapped tags
+    // like `<h1>` in table cells become code pills, not real HTML.
+    // ═══════════════════════════════════════════════════════════════════
     // 0a. Double inline code block protection (supports internal single backticks)
     html = html.replace(/``([^`\n]+?)``/g, (match, code) => {
         const id = `__BLOCK_${pieces.length}__`;
-        const codeTrimmed = code.replace(/^ | $/g, ''); // Trim exactly one space on each side if present
+        const codeTrimmed = code.replace(/^ | $/g, '');
         const escapedCode = codeTrimmed.replace(/</g, '‹').replace(/>/g, '›').replace(/\$/g, '‹DOLLAR›');
         pieces.push(`<code class="bg-indigo-500/10 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-[0.9em] border border-indigo-400/20 mx-1 shadow-[0_0_8px_rgba(99,102,241,0.1)]">${escapedCode}</code>`);
         return id;
@@ -227,11 +232,86 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
     // 0b. Single inline code protection
     html = html.replace(/`([^`\n]+)`/g, (match, code) => {
         const id = `__BLOCK_${pieces.length}__`;
-        // Escape < and > to prevent them from becoming pieces later
         const escapedCode = code.replace(/</g, '‹').replace(/>/g, '›').replace(/\$/g, '‹DOLLAR›');
         pieces.push(`<code class="bg-indigo-500/10 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-[0.9em] border border-indigo-400/20 mx-1 shadow-[0_0_8px_rgba(99,102,241,0.1)]">${escapedCode}</code>`);
         return id;
     });
+
+    // ═══════════════════════════════════════════════════════════════════
+    // PHASE 0.5: UNIVERSAL HTML PROTECTION — "Passthrough Sovereignty"
+    // Runs AFTER backtick handlers so `<tag>` in backticks stays as code.
+    // Captures all remaining RAW HTML tags and shields them from Markdown.
+    // ═══════════════════════════════════════════════════════════════════
+
+    html = (function protectHtmlTags(input: string): string {
+        let result = input;
+        let safetyLimit = 500;
+        
+        // Tags sorted longest-first to prevent regex prefix collisions (e.g., 'b' matching 'br')
+        const allTags = [
+            'figcaption', 'blockquote', 'fieldset', 'progress', 'textarea', 'summary',
+            'details', 'section', 'article', 'caption', 'dialog', 'figure', 'footer',
+            'header', 'legend', 'center', 'button', 'canvas', 'iframe', 'output',
+            'select', 'source', 'strong', 'aside', 'embed', 'input', 'label', 'meter',
+            'param', 'small', 'tbody', 'tfoot', 'thead', 'track', 'video', 'audio',
+            'table', 'form', 'main', 'mark', 'math', 'code', 'cite', 'abbr', 'samp',
+            'span', 'area', 'base', 'link', 'meta', 'nav', 'pre', 'div', 'del', 'dfn',
+            'ins', 'kbd', 'sub', 'sup', 'var', 'wbr', 'col', 'img',
+            'svg', 'dd', 'dl', 'dt', 'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+            'hr', 'br', 'li', 'ol', 'td', 'th', 'tr', 'ul',
+            'a', 'b', 'i', 'p', 's', 'u'
+        ];
+        const selfClosing = ['img', 'br', 'hr', 'source', 'track', 'embed', 'param', 'area', 'base', 'col', 'link', 'meta', 'wbr', 'input'];
+
+        while (safetyLimit-- > 0) {
+            const tagPattern = new RegExp(`<(${allTags.join('|')})(?=\\s|>|/>)(\\s[^>]*)?>`, 'i');
+            const openMatch = result.match(tagPattern);
+            if (!openMatch || openMatch.index === undefined) break;
+
+            const startIdx = openMatch.index;
+            const tagName = openMatch[1].toLowerCase();
+            const afterOpen = startIdx + openMatch[0].length;
+
+            let matchEnd = -1;
+            let fullTagContent = '';
+
+            if (selfClosing.includes(tagName) || openMatch[0].endsWith('/>')) {
+                matchEnd = afterOpen;
+                fullTagContent = result.substring(startIdx, matchEnd);
+            } else {
+                const openRe = new RegExp(`<${tagName}[\\s>]`, 'gi');
+                const closeRe = new RegExp(`<\\/${tagName}>`, 'gi');
+                let depth = 1;
+                let cursor = afterOpen;
+
+                while (depth > 0 && cursor < result.length) {
+                    openRe.lastIndex = cursor;
+                    closeRe.lastIndex = cursor;
+                    const nextOpen = openRe.exec(result);
+                    const nextClose = closeRe.exec(result);
+                    if (!nextClose) { matchEnd = afterOpen; break; }
+                    if (nextOpen && nextOpen.index < nextClose.index) {
+                        depth++;
+                        cursor = nextOpen.index + nextOpen[0].length;
+                    } else {
+                        depth--;
+                        if (depth === 0) {
+                            matchEnd = nextClose.index + nextClose[0].length;
+                        } else {
+                            cursor = nextClose.index + nextClose[0].length;
+                        }
+                    }
+                }
+                if (matchEnd !== -1) fullTagContent = result.substring(startIdx, matchEnd);
+                else { fullTagContent = openMatch[0]; matchEnd = afterOpen; }
+            }
+
+            const id = `__BLOCK_${pieces.length}__`;
+            pieces.push(fullTagContent);
+            result = result.substring(0, startIdx) + `\n${id}\n` + result.substring(matchEnd);
+        }
+        return result;
+    })(html);
 
     // 1a. Math block formulas ($$ ... $$) - Process after code blocks to protect code $
     html = html.replace(/\$\$([\s\S]*?)\$\$/gs, (match, formula) => {
@@ -328,62 +408,11 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         return `‹esc-${char.charCodeAt(0)}›`;
     });
 
-    // 1. Protect HTML tags that should render as actual elements
-    html = html.replace(/<details([^>]*)>([\s\S]*?)<\/details>/gi, (match, attrs, content) => {
-        const id = `__BLOCK_${pieces.length}__`;
-        let sMatch = content.match(/<summary>([\s\S]*?)<\/summary>/i);
-        let summaryText = sMatch ? sMatch[1].replace(/^[▶►▸▼] ?/g, '').trim() : 'Details';
-        let bodyRaw = sMatch ? content.replace(sMatch[0], '') : content;
-        const isOpen = attrs.toLowerCase().includes('open');
+    // 1. HTML PROTECTION — Already handled in Phase 0.5 (before backtick handlers).
 
-        pieces.push(`<details ${isOpen ? 'open' : ''} class="bg-black/10 border border-white/5 rounded-xl my-6 overflow-hidden group/details shadow-2xl transition cursor-pointer">` +
-            `<summary class="px-8 py-5 font-black text-cyan-400/90 uppercase tracking-widest text-[11px] hover:bg-white/5 transition outline-none list-none select-none flex items-center gap-3">` +
-            `<span class="group-open/details:rotate-90 transition-transform">▶</span>${summaryText}</summary>` +
-            `<div class="details-content-body px-12 py-8 text-slate-300 leading-loose bg-black/10 select-text border-t border-white/5">${toHtml(bodyRaw.trim(), isStreaming)}</div></details>`);
-        return `\n${id}\n`;
-    });
+    // 1b. Form/Media/Block Element Protection is now handled by the Universal Protector (Phase 1).
+    // The specialized iframe hardening is now integrated or follows below.
 
-    // Protect <div> with full content
-    html = html.replace(/<div\s+([^>]*?)>([\s\S]*?)<\/div>/gi, (match, attrs, content) => {
-        const id = `__BLOCK_${pieces.length}__`;
-        pieces.push(`<div ${attrs}>${toHtml(content, isStreaming)}</div>`);
-        return `\n${id}\n`;
-    });
-
-    // Protect <iframe> to prevent it from being wrapped in <p> or having its attributes mangled
-    // IMPROVED: Global Iframe Hardener for Production Compatibility + Responsive Wrapper
-    html = html.replace(/<iframe\s+([^>]*?)>([\s\S]*?)<\/iframe>/gi, (match, attrs, content) => {
-        let enhancedAttrs = attrs;
-        
-        // 1. Ensure global referrer policy (critical for production builds)
-        if (!enhancedAttrs.includes('referrerpolicy')) {
-            enhancedAttrs += ' referrerpolicy="strict-origin-when-cross-origin"';
-        }
-
-        // 2. Cleanup 'allow' attribute (remove unrecognized features that cause console noise)
-        enhancedAttrs = enhancedAttrs.replace(/web-share[;]?\s*/g, '');
-
-        // 3. Anti-focus-stealing: prevent iframes from auto-scrolling the page on load
-        if (!enhancedAttrs.includes('tabindex')) {
-            enhancedAttrs += ' tabindex="-1"';
-        }
-
-        // 4. Strip hardcoded width/height so the responsive CSS wrapper takes over
-        enhancedAttrs = enhancedAttrs.replace(/\s*width\s*=\s*["']\d+["']/gi, '');
-        enhancedAttrs = enhancedAttrs.replace(/\s*height\s*=\s*["']\d+["']/gi, '');
-
-        const id = `__BLOCK_${pieces.length}__`;
-        // 5. Wrap in responsive container to prevent overflow on small screens
-        pieces.push(`<div class="responsive-iframe-wrap"><iframe ${enhancedAttrs.trim()}>${content}</iframe></div>`);
-        return `\n${id}\n`;
-    });
-
-    // Protect HTML <code> tags with attributes (styled code blocks) from being split by line processor
-    html = html.replace(/<code\s+([^>]*?)>([\s\S]*?)<\/code>/gi, (match, attrs, content) => {
-        const id = `__BLOCK_${pieces.length}__`;
-        pieces.push(`<code ${attrs}>${content.trim()}</code>`);
-        return id;
-    });
 
     // 1c. Universal Admonition Parser — Phase 1
     html = html.replace(/^[ \t]*(?:>\s*)?\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|DANGER|INFO|SUCCESS|FAILURE|BUG|EXAMPLE|QUOTE|QUESTION|FAQ)\]([\-\+])?(?:[ \t]+(.*))?\s*?\n?((?:(?!(?:[ \t]*>\s*\[!)).*\n?)*)/gim, (match, type, collapseSign, title, body) => {
@@ -475,7 +504,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         }
 
         const extra = isStreaming ? 'data-animated="true" is-visible' : '';
-        pieces.push(`<div ${extra} class="image-container flex flex-col items-center justify-center my-6 group/img">` +
+        pieces.push(`<div ${extra} class="image-container w-full flex flex-col items-center justify-center my-6 group/img" style="text-align:center;">` +
             `<img src="${url}" alt="${cleanAlt}" ${width} ${height} class="max-w-full h-auto rounded-2xl border border-white/10 shadow-2xl transition group-hover/img:scale-[1.01] hover:shadow-cyan-500/10" />` +
             (cleanAlt ? `<span class="mt-2 text-[10px] text-slate-500 font-mono tracking-tight opacity-0 group-hover/img:opacity-100 transition-opacity italic">${cleanAlt}</span>` : '') +
             `</div>`);
@@ -590,6 +619,14 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
     html = html.replace(/\*\*\*(?!\s)(.+?)\*\*\*/g, '<strong class="text-indigo-400 drop-shadow-[1px_1.5px_0px_rgba(0,0,0,1)]"><em>$1</em></strong>');
     html = html.replace(/\*\*(?!\s)(.+?)\*\*/g, '<strong class="text-indigo-300 drop-shadow-[1px_1.5px_0px_rgba(0,0,0,1)]">$1</strong>');
     html = html.replace(/\*(?!\s)(.+?)\*/g, '<em class="text-slate-300">$1</em>');
+
+    // Protect __BLOCK_N__ placeholders from underscore patterns before processing
+    html = html.replace(/__BLOCK_(\d+)__/g, '‹BLOCK_$1›');
+    html = html.replace(/(?<!\w)___(?!\s)(.+?)___(?!\w)/g, '<strong class="text-indigo-400 drop-shadow-[1px_1.5px_0px_rgba(0,0,0,1)]"><em>$1</em></strong>');
+    html = html.replace(/(?<!\w)__(?!\s)(.+?)__(?!\w)/g, '<strong class="text-indigo-300 drop-shadow-[1px_1.5px_0px_rgba(0,0,0,1)]">$1</strong>');
+    html = html.replace(/(?<!\w)_(?!\s)(.+?)_(?!\w)/g, '<em class="text-slate-300">$1</em>');
+    // Restore __BLOCK_N__ placeholders
+    html = html.replace(/‹BLOCK_(\d+)›/g, '__BLOCK_$1__');
     html = html.replace(/~~(?!\s)(.+?)~~/g, '<del class="text-slate-500 line-through">$1</del>');
 
     html = html.replace(/‹esc-asterisk›/g, '*');
@@ -866,6 +903,10 @@ function processInlineMarkdown(text: string): string {
     result = result.replace(/\*\*(?!\s)(.+?)\*\*/g, '<strong class="text-indigo-300 drop-shadow-[1px_1.5px_0px_rgba(0,0,0,1)]">$1</strong>');
     // Italic *text*
     result = result.replace(/\*(?!\s)(.+?)\*/g, '<em class="text-slate-300">$1</em>');
+    // Underscore emphasis variants (word-boundary aware per CommonMark)
+    result = result.replace(/(?<!\w)___(?!\s)(.+?)___(?!\w)/g, '<strong class="text-indigo-400 drop-shadow-[1px_1.5px_0px_rgba(0,0,0,1)]"><em>$1</em></strong>');
+    result = result.replace(/(?<!\w)__(?!\s)(.+?)__(?!\w)/g, '<strong class="text-indigo-300 drop-shadow-[1px_1.5px_0px_rgba(0,0,0,1)]">$1</strong>');
+    result = result.replace(/(?<!\w)_(?!\s)(.+?)_(?!\w)/g, '<em class="text-slate-300">$1</em>');
     // Strikethrough ~~text~~
     result = result.replace(/~~(?!\s)(.+?)~~/g, '<del class="text-slate-500 line-through">$1</del>');
     // Highlight ==text==
@@ -1075,7 +1116,16 @@ function convertListsToHtml(html: string): string {
             if (isDivider) {
                 processed.push('\n---DIVIDER---\n');
             } else if (trimmed) {
-                const blockTags = ['<h1', '<h2', '<h3', '<h4', '<h5', '<h6', '<pre', '<table', '<blockquote', '<div', '<details', '<summary', '<section', '<p', '<br', '</h', '</pre', '</table', '</blockquote', '</div', '</details', '</summary', '</section', '</p'];
+                const blockTags = [
+                    '<h1', '<h2', '<h3', '<h4', '<h5', '<h6', 
+                    '<pre', '<table', '<blockquote', '<div', '<details', '<summary', 
+                    '<section', '<article', '<aside', '<nav', '<header', '<footer', '<main', 
+                    '<figure', '<figcaption', '<p', '<br', '<blockquote', 
+                    '</h', '</pre', '</table', '</blockquote', '</div', '</details', '</summary', 
+                    '</section', '</article', '</aside', '</nav', '</header', '</footer', '</main', 
+                    '</figure', '</figcaption', '</p',
+                    '__BLOCK_' // Placeholder immunity
+                ];
                 const startsWithBlock = blockTags.some(tag => trimmed.toLowerCase().startsWith(tag));
                 
                 // Formatting tags should remain inline and NOT trigger a div wrapper if they are on a line alone

@@ -1072,10 +1072,12 @@ ipcMain.handle('save-session', async (event, session) => {
     // We immediately ACK the renderer to avoid "reply was never sent" errors
     // when rapid successive calls cancel previous timers.
     if (sessionSaveTimers.has(session.id)) {
-        clearTimeout(sessionSaveTimers.get(session.id));
+        clearTimeout(sessionSaveTimers.get(session.id).timer);
     }
 
-    const timer = setTimeout(() => {
+    const entry = { timer: null, data: session };
+
+    entry.timer = setTimeout(() => {
         sessionSaveTimers.delete(session.id);
         try {
             const sessionsDir = getEffectivePaths().sessions;
@@ -1088,7 +1090,7 @@ ipcMain.handle('save-session', async (event, session) => {
         }
     }, 5000);
 
-    sessionSaveTimers.set(session.id, timer);
+    sessionSaveTimers.set(session.id, entry);
 
     // Immediate ACK — the actual write happens asynchronously after the debounce window
     return { ok: true, queued: true };
@@ -2946,6 +2948,21 @@ if (!gotTheLock) {
     app.on('before-quit', () => {
         isQuitting = true;
         stopSearXenaSync(); // Use sync version to ensure it happens before exit
+
+        // Flush all pending session saves synchronously to prevent data loss
+        for (const [sessionId, entry] of sessionSaveTimers.entries()) {
+            clearTimeout(entry.timer);
+            try {
+                const sessionsDir = getEffectivePaths().sessions;
+                if (!fs.existsSync(sessionsDir)) fs.mkdirSync(sessionsDir, { recursive: true });
+                const filePath = path.join(sessionsDir, `${entry.data.id}.json`);
+                safeWriteJSON(filePath, entry.data);
+                console.log(`[Main Process] Flushed session ${sessionId} on quit.`);
+            } catch (e) {
+                console.error(`[Main Process] Flush error for ${sessionId}:`, e.message);
+            }
+        }
+        sessionSaveTimers.clear();
     });
 
     app.on('will-quit', () => {

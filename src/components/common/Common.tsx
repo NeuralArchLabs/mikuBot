@@ -176,7 +176,7 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
                                         // Short quotes (~1 char/tick), long content batches to finish in ~4s
                                         const contentLength = fullHtml.length - cursor;
                                         const TICK_MS = 16; // ~60fps aligned
-                                        const MAX_DURATION_MS = 4000;
+                                        const MAX_DURATION_MS = Math.min(4000 + Math.max(0, contentLength - 600) * 2, 12000);
                                         const totalTicks = MAX_DURATION_MS / TICK_MS;
                                         const charsPerTick = contentLength < 200 ? 1
                                             : contentLength < 600 ? Math.max(2, Math.ceil(contentLength / totalTicks))

@@ -384,7 +384,28 @@ export const ChatArea = ({
                         : s
                 ));
             }, 1000);
-            return () => clearTimeout(timer);
+            return () => {
+                clearTimeout(timer);
+                // Flush: save immediately on unmount or dependency change
+                const msgs = useAgentStore.getState().messages;
+                if (sessionId && msgs.length > 0) {
+                    const sess = sessions?.find(s => s.id === sessionId);
+                    const firstMsg = msgs.find(m => !m.excludeFromContext && m.role === 'user');
+                    const cand = firstMsg?.text?.slice(0, 30);
+                    const isDef = !sess?.title ||
+                        sess.title === t('common.new_neural_branch') ||
+                        sess.title === t('common.active_session') ||
+                        (cand && sess.title === cand);
+                    const ttl = isDef
+                        ? (cand || sess?.title || t('common.new_neural_branch'))
+                        : (sess?.title || t('common.new_neural_branch'));
+                    persistence.saveSession({
+                        id: sessionId, title: ttl, messages: msgs,
+                        timestamp: Date.now(), agentMode, safeMode, approvalMode, debugMode,
+                        draft: useAgentStore.getState().input,
+                    });
+                }
+            };
         }
     }, [messages, sessionId, agentMode, safeMode, approvalMode, debugMode, sessions, onSessionsUpdate, t]);
     const inputRef = React.useRef<HTMLTextAreaElement>(null);
@@ -645,7 +666,7 @@ export const ChatArea = ({
                 const now = Date.now();
                 // REVEAL LOGIC: Update UI every 800ms OR if we complete a word/block
                 const isWordComplete = /[\s\.\!\?\n\>\}\]:]/.test(chunk);
-                const hasTimePassed = (now - lastUpdateMsRef.current) > 800;
+                const hasTimePassed = (now - lastUpdateMsRef.current) > 200;
 
                 if (isWordComplete || hasTimePassed) {
                     const latestContent = lastMsg.text + chunkBufferRef.current;
