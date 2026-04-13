@@ -1633,9 +1633,11 @@ To see all your additional enabled skills and their full technical parameters, y
         };
         setMessagesStore(prev => [...prev, modelMsg]);
 
-        // ⚡ BACKGROUND TRACKER: Keep a local copy of messages for this execution 
+        // ⚡ BACKGROUND TRACKER: Keep a local copy of messages for this execution
         // to support persistence when the user switches sessions.
-        let localMessages = [...useAgentStore.getState().messages, modelMsg];
+        // NOTE: modelMsg was already added to the store at line ~1634 via setMessagesStore (synchronous),
+        // so getState().messages already includes it. Do NOT append modelMsg again → duplication bug.
+        let localMessages = [...useAgentStore.getState().messages];
 
         const ac = new AbortController();
         abortControllerRef.current = ac;
@@ -1976,10 +1978,24 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
             }
         } catch (error) {
             if (error instanceof DOMException && error.name === 'AbortError') return undefined;
-            setMessagesStore(prev => prev.map(m => m.id === modelMsgId ? { ...m, text: `⚠️ Error: ${error instanceof Error ? error.message : 'Unknown'}` } : m));
+            // ⚡ SESSION ISOLATION: Only update global store if still on original session
+            if (stateRef.current.sessionId === ctxSessionId) {
+                setMessagesStore(prev => prev.map(m => m.id === modelMsgId ? { ...m, text: `⚠️ Error: ${error instanceof Error ? error.message : 'Unknown'}` } : m));
+            }
+            // Always save error state to the executing session's persistence
+            localMessages = localMessages.map(m => m.id === modelMsgId ? { ...m, text: `⚠️ Error: ${error instanceof Error ? error.message : 'Unknown'}` } : m);
+            persistence.saveSession({ id: ctxSessionId, title: sessions.find(s => s.id === ctxSessionId)?.title || t('common.new_neural_branch'), messages: localMessages, timestamp: Date.now() });
         } finally {
             setIsLoadingStore(false);
-            updateMessageStreaming(modelMsgId, false);
+
+            // ⚡ SESSION ISOLATION: Guard global store updates in finally block
+            const isStillOriginalSession = stateRef.current.sessionId === ctxSessionId;
+            if (isStillOriginalSession) {
+                updateMessageStreaming(modelMsgId, false);
+            }
+            // Always persist final state to the executing session (even if user switched away)
+            localMessages = localMessages.map(m => m.id === modelMsgId ? { ...m, isStreaming: false } : m);
+            persistence.saveSession({ id: ctxSessionId, title: sessions.find(s => s.id === ctxSessionId)?.title || t('common.new_neural_branch'), messages: localMessages, timestamp: Date.now() });
 
             // [AUTO-NAME] On 3rd turn (approx 6 messages)
             // We use a small timeout just to detach from the main render cycle, but we use captured data
@@ -2047,7 +2063,8 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                         if (cleanTitle && cleanTitle.length > 2) {
                             setSessions(prev => prev.map(s => s.id === ctxSessionId ? { ...s, title: cleanTitle } : s));
                             // Save to persistence
-                            const latestMsgs = useAgentStore.getState().messages;
+                            // ⚡ Use localMessages (correct session) instead of global store (may have switched)
+                            const latestMsgs = localMessages;
                             persistence.saveSession({
                                 id: ctxSessionId,
                                 title: cleanTitle,
@@ -2068,24 +2085,27 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
             // 🧹 RAM GARBAGE COLLECTION: Clear heavy extractedContent from older attachments
             // to prevent the state from becoming massive during long dev sessions.
             // We keep only the last 5 attachments with content to maintain context windows.
-            setMessagesStore(prev => {
-                let attachmentCount = 0;
-                return [...prev].reverse().map(msg => {
-                    if (!msg.attachments || msg.attachments.length === 0) return msg;
-                    return {
-                        ...msg,
-                        attachments: msg.attachments.map(att => {
-                            if (!att.extractedContent) return att;
-                            attachmentCount++;
-                            if (attachmentCount > 5) {
-                                // Purge old content from RAM
-                                return { ...att, extractedContent: undefined };
-                            }
-                            return att;
-                        })
-                    };
-                }).reverse();
-            });
+            // ⚡ SESSION ISOLATION: Only GC attachments if still on original session to avoid modifying wrong session's data
+            if (isStillOriginalSession) {
+                setMessagesStore(prev => {
+                    let attachmentCount = 0;
+                    return [...prev].reverse().map(msg => {
+                        if (!msg.attachments || msg.attachments.length === 0) return msg;
+                        return {
+                            ...msg,
+                            attachments: msg.attachments.map(att => {
+                                if (!att.extractedContent) return att;
+                                attachmentCount++;
+                                if (attachmentCount > 5) {
+                                    // Purge old content from RAM
+                                    return { ...att, extractedContent: undefined };
+                                }
+                                return att;
+                            })
+                        };
+                    }).reverse();
+                });
+            }
 
             // Task complete - release execution lock
             setExecutingSessionId(null);
@@ -2114,12 +2134,17 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
         };
 
         const uiMessageHandler = (taskName: string, response: string) => {
-            // If the message is an error, we show it anyway
             const isError = response.includes('Neural Error');
 
-            // Now that processMessage handles UI for scheduled tasks, this summary is redundant 
+            // Now that processMessage handles UI for scheduled tasks, this summary is redundant
             // unless it's an error notification.
             if (!isError) return;
+
+            // ⚡ SESSION ISOLATION: Route error messages to the executing session only.
+            // Adding to the global store would contaminate whatever session the user is currently
+            // viewing, which may differ from the session where the task is running.
+            const executingId = useAgentStore.getState().executingSessionId;
+            const currentId = stateRef.current.sessionId;
 
             const schedulerMsg: Message = {
                 id: `sched_err_${Date.now()}`,
@@ -2131,7 +2156,23 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                 isScheduler: true,
                 isInitiallyCollapsed: false, // Show errors!
             };
-            setMessagesStore(prev => [...prev, schedulerMsg]);
+
+            if (executingId && executingId === currentId) {
+                // User is viewing the executing session — safe to add to global store
+                setMessagesStore(prev => [...prev, schedulerMsg]);
+            } else if (executingId) {
+                // User switched away — save directly to the executing session's persistence
+                persistence.loadSession(executingId).then(session => {
+                    if (session) {
+                        persistence.saveSession({
+                            id: executingId,
+                            title: session.title || t('common.new_neural_branch'),
+                            messages: [...(session.messages || []), schedulerMsg],
+                            timestamp: Date.now(),
+                        });
+                    }
+                });
+            }
         };
 
         neuralScheduler.init(

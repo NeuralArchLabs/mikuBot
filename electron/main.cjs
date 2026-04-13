@@ -1056,6 +1056,27 @@ ipcMain.handle('get-sessions', async () => {
 
 ipcMain.handle('load-session', async (event, id) => {
     try {
+        // ⚡ FLUSH PENDING DEBOUNCED DATA: If this session has a pending save in the
+        // debounce queue, that data is MORE RECENT than what's on disk. Flush it
+        // synchronously and return it instead of reading stale data from disk.
+        // This prevents "disappearing messages" when switching sessions during
+        // background task execution.
+        const pending = sessionSaveTimers.get(id);
+        if (pending) {
+            clearTimeout(pending.timer);
+            sessionSaveTimers.delete(id);
+            try {
+                const sessionsDir = getEffectivePaths().sessions;
+                if (!fs.existsSync(sessionsDir)) fs.mkdirSync(sessionsDir, { recursive: true });
+                const filePath = path.join(sessionsDir, `${id}.json`);
+                safeWriteJSON(filePath, pending.data);
+                console.log(`[Main Process] load-session: Flushed pending data for ${id} before loading.`);
+            } catch (flushErr) {
+                console.error(`[Main Process] load-session flush error:`, flushErr.message);
+            }
+            return { ok: true, session: pending.data };
+        }
+
         const filePath = path.join(getEffectivePaths().sessions, `${id}.json`);
         if (fs.existsSync(filePath)) {
             const data = fs.readFileSync(filePath, 'utf8');

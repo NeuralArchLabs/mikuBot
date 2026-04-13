@@ -386,8 +386,14 @@ export const ChatArea = ({
             }, 1000);
             return () => {
                 clearTimeout(timer);
-                // Flush: save immediately on unmount or dependency change
-                const msgs = useAgentStore.getState().messages;
+                // Flush: save immediately on unmount or dependency change.
+                // ⚡ CRITICAL FIX: Use closure-captured `messages` instead of reading from the
+                // global store. During session switches, React processes the cleanup AFTER the
+                // store has been replaced with the new session's messages. Reading from the store
+                // would save Session B's messages to Session A's file → data corruption.
+                // The closure's `messages` is guaranteed to be the value from when this effect
+                // was set up, which belongs to the correct session.
+                const msgs = messages;
                 if (sessionId && msgs.length > 0) {
                     const sess = sessions?.find(s => s.id === sessionId);
                     const firstMsg = msgs.find(m => !m.excludeFromContext && m.role === 'user');
