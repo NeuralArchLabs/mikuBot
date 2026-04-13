@@ -346,7 +346,8 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
             </div>
 
             {/* Sub-navigation */}
-            <div className="flex gap-2 bg-black/30 p-1.5 rounded-xl border border-transparent">
+            {/* Sub-navigation */}
+            <div className="flex justify-center gap-4 py-2">
                 {([
                     { id: 'tasks' as const, label: t('scheduler.actions.tasks'), icon: 'list' },
                     { id: 'create' as const, label: editingTask ? t('scheduler.actions.edit') : t('scheduler.actions.new_task'), icon: 'plus' },
@@ -361,10 +362,10 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
                             }
                             setView(tab.id);
                         }}
-                        className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 border border-transparent ${view === tab.id
-                            ? 'bg-cyan-500/10 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.1)]'
-                            : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-                            } hover:border-cyan-500/50`}
+                        className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 border ${view === tab.id
+                            ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.15)] ring-1 ring-cyan-500/20'
+                            : 'text-slate-500 border-transparent hover:text-slate-200 hover:bg-white/5'
+                            }`}
                     >
                         <Icon name={tab.icon} /> {tab.label}
                     </button>
@@ -615,16 +616,16 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
                                                 />
                                             </div>
                                         ) : (
-                                            <div className="flex items-center w-full bg-black/40 border border-white/5 rounded-lg hover:bg-black/60 focus-within:border-cyan-500/50 focus-within:ring-1 focus-within:ring-cyan-500/30 focus-within:shadow-[0_0_10px_rgba(6,182,212,0.15)] transition-all">
+                                            <div className="flex items-center w-full bg-slate-900/60 border border-white/5 rounded-xl hover:bg-black/60 focus-within:border-cyan-500/50 focus-within:ring-1 focus-within:ring-cyan-500/30 focus-within:shadow-[0_0_20px_rgba(6,182,212,0.1)] transition-all overflow-hidden">
                                                 <button 
                                                     onClick={(e) => { e.preventDefault(); setForm(f => ({ ...f, schedule: Math.max(1, parseInt(f.schedule || '30') - 1).toString() })) }}
-                                                    className="h-[50px] w-14 flex items-center justify-center text-slate-500 hover:text-cyan-400 hover:bg-white/5 rounded-l-lg transition-colors border-r border-white/5 shrink-0"
+                                                    className="h-[52px] w-14 flex items-center justify-center text-slate-500 hover:text-red-400 hover:bg-red-500/5 transition-all border-r border-white/10 shrink-0 group/dec"
                                                     title={t('common.decrease', 'Disminuir')}
                                                     aria-label="Disminuir intervalo"
                                                 >
-                                                    <Icon name="minus" className="text-xs" />
+                                                    <Icon name="minus" className="text-[10px] group-hover/dec:scale-125 transition-transform" />
                                                 </button>
-                                                <div className="flex-1 flex flex-col items-center justify-center relative py-1">
+                                                <div className="grow flex flex-col items-center justify-center relative py-1 h-[52px]">
                                                     <input
                                                         type="number"
                                                         min={1}
@@ -633,17 +634,17 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
                                                         aria-label="Intervalo de tiempo en minutos"
                                                         title="Intervalo en minutos"
                                                         onChange={e => setForm({ ...form, schedule: e.target.value })}
-                                                        className="w-full bg-transparent text-center text-[16px] font-black text-cyan-300 font-mono focus:outline-none placeholder-slate-600/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pt-0.5"
+                                                        className="w-full bg-transparent text-center text-[18px] font-black text-cyan-400 font-mono focus:outline-none placeholder-slate-600/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none leading-none pt-1"
                                                     />
-                                                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-500 mt-1">{t('scheduler.type_desc.minutes', 'Minutos')}</span>
+                                                    <span className="text-[7px] font-black uppercase tracking-[0.2em] text-cyan-500/40 -mt-0.5">{t('scheduler.type_desc.minutes', 'Minutos')}</span>
                                                 </div>
                                                 <button 
                                                     onClick={(e) => { e.preventDefault(); setForm(f => ({ ...f, schedule: (parseInt(f.schedule || '30') + 1).toString() })) }}
-                                                    className="h-[50px] w-14 flex items-center justify-center text-slate-500 hover:text-cyan-400 hover:bg-white/5 rounded-r-lg transition-colors border-l border-white/5 shrink-0"
+                                                    className="h-[52px] w-14 flex items-center justify-center text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/5 transition-all border-l border-white/10 shrink-0 group/inc"
                                                     title={t('common.increase', 'Aumentar')}
                                                     aria-label="Aumentar intervalo"
                                                 >
-                                                    <Icon name="plus" className="text-xs" />
+                                                    <Icon name="plus" className="text-[10px] group-hover/inc:scale-125 transition-transform" />
                                                 </button>
                                             </div>
                                         )}

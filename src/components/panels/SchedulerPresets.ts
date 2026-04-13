@@ -35,6 +35,11 @@ export const useTaskPresets = () => {
             data: { name: t('scheduler.presets_data.heartbeat'), prompt: t('scheduler.presets_data.heartbeat_prompt'), scheduleType: 'interval', schedule: '120', channel: 'telegram', mode: 'chat' } as PresetTaskData
         },
         {
+            label: t('scheduler.presets_data.radar'),
+            icon: 'rss',
+            data: { name: t('scheduler.presets_data.radar'), prompt: t('scheduler.presets_data.radar_prompt'), scheduleType: 'cron', schedule: '0 9 * * *', channel: 'telegram', mode: 'agent' } as PresetTaskData
+        },
+        {
             label: t('scheduler.presets_data.system_report'),
             icon: 'server',
             data: { name: t('scheduler.presets_data.system_report'), prompt: t('scheduler.presets_data.system_report_prompt'), scheduleType: 'cron', schedule: '0 12 * * *', channel: 'telegram', mode: 'agent' } as PresetTaskData
