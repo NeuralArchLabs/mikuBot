@@ -475,7 +475,8 @@
             "status_safe": "Protected",
             "status_batch": "Direct",
             "no_user_message": "no user message",
-            "user_sent_attachment": "user sent an attachment",
+            "user_sent_attachment": "user attached {{count}} file",
+            "user_sent_attachment_plural": "user attached {{count}} files",
             "prompt": {
                 "protocol_reinforcement": "PROTOCOL REINFORCEMENT",
                 "useful_reminders": "USEFUL REMINDERS",

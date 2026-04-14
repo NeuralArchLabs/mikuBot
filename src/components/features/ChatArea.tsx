@@ -1268,8 +1268,12 @@ export const ChatArea = ({
                                                     <div className="flex flex-wrap gap-2 mb-3">
                                                         {msg.attachments.map(att => (
                                                             <div key={att.id} className="relative group bg-slate-800/80 rounded-xl p-2.5 flex items-center gap-3 max-w-[220px] shadow-xl shadow-black/40 hover:bg-slate-700 transition-all duration-300">
-                                                                {att.type.startsWith('image/') ? (
+                                                                {att.type.startsWith('image/') && att.data ? (
                                                                     <img src={att.data} alt={att.name} className="h-16 w-auto object-contain rounded" />
+                                                                ) : att.type.startsWith('image/') ? (
+                                                                    <div className="h-10 w-10 rounded bg-slate-700/60 flex items-center justify-center shrink-0">
+                                                                        <Icon name="image" className="text-cyan-400/60 text-sm" />
+                                                                    </div>
                                                                 ) : (
                                                                     <Icon name="file-alt" className="text-slate-400 text-lg" />
                                                                 )}

@@ -490,7 +490,8 @@
             "status_safe": "Protegido",
             "status_batch": "Directo",
             "no_user_message": "sin mensaje de usuario",
-            "user_sent_attachment": "usuario envió un archivo adjunto",
+            "user_sent_attachment": "usuario adjuntó {{count}} archivo",
+            "user_sent_attachment_plural": "usuario adjuntó {{count}} archivos",
             "prompt": {
                 "protocol_reinforcement": "REFUERZO DE PROTOCOLO",
                 "useful_reminders": "RECORDATORIOS ÚTILES",

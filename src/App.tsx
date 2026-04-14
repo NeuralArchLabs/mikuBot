@@ -42,8 +42,14 @@ const electron = (window as any).electron;
 const generateMsgId = () => `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
 /**
- * Performance Optimization: Strips heavy binary and extracted text data from 
- * attachments before persisting session to disk.
+ * Performance Optimization: Strips heavy binary/base64 data from attachments
+ * before persisting session to disk.
+ *
+ * IMPORTANT: We preserve `extractedContent` (text descriptions from Visual Vortex
+ * or file extraction) because it's essential for future context. Without it,
+ * previously attached files become invisible shells after session reload.
+ * Only `data` (raw base64) is stripped — it can be huge and is not needed
+ * for text-based context injection.
  */
 const stripHeavyAttachments = (messages: Message[]): Message[] => {
     return messages.map(msg => {
@@ -52,8 +58,8 @@ const stripHeavyAttachments = (messages: Message[]): Message[] => {
             ...msg,
             attachments: msg.attachments.map(att => ({
                 ...att,
-                data: undefined,            // Remove binary/base64
-                extractedContent: undefined // Remove massive text blocks from disk persistence
+                data: undefined            // Remove binary/base64 (can be MB-sized)
+                // extractedContent is PRESERVED — it's text and essential for future context
             }))
         };
     });
@@ -1654,7 +1660,7 @@ To see all your additional enabled skills and their full technical parameters, y
 
                     if (m.attachments && m.attachments.length > 0) {
                         // The attachment notification tag always goes at the end of the text block
-                        content += `\n\n(${t('chat.labels.user_sent_attachment', { defaultValue: 'user sent an attachment' })})`;
+                        content += `\n\n(${t('chat.labels.user_sent_attachment', { count: m.attachments.length, defaultValue: 'user attached {{count}} file', defaultValue_plural: 'user attached {{count}} files' })})`;
                         
                         // Inject contents only if it's NOT the current message (avoiding duplication with reinforcement engine)
                         if (m.id !== userMsgId) {
@@ -1741,7 +1747,7 @@ To see all your additional enabled skills and their full technical parameters, y
             let userMsgText = text.trim() ? text : `(${t('chat.labels.no_user_message', { defaultValue: 'no user message' })})`;
             if (userAttachments && userAttachments.length > 0) {
                 // Ensuring the attachment tag is at the very end of the text block
-                userMsgText += `\n\n(${t('chat.labels.user_sent_attachment', { defaultValue: 'user sent an attachment' })})`;
+                userMsgText += `\n\n(${t('chat.labels.user_sent_attachment', { count: userAttachments.length, defaultValue: 'user attached {{count}} file', defaultValue_plural: 'user attached {{count}} files' })})`;
             }
 
             let finalUserText = userMsgText;
@@ -2082,28 +2088,32 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                 }
             }, 1000);
 
-            // 🧹 RAM GARBAGE COLLECTION: Clear heavy extractedContent from older attachments
-            // to prevent the state from becoming massive during long dev sessions.
-            // We keep only the last 5 attachments with content to maintain context windows.
-            // ⚡ SESSION ISOLATION: Only GC attachments if still on original session to avoid modifying wrong session's data
+            // 🧹 RAM GARBAGE COLLECTION: Clear truly massive extractedContent from older
+            // attachments to prevent the state from becoming unmanageable.
+            //
+            // We only purge content exceeding 150KB (very large PDFs/code dumps).
+            // Normal descriptions (Vision Vortex output, typical file extractions) are
+            // always preserved — they are essential for future context in subsequent turns.
+            //
+            // ⚡ SESSION ISOLATION: Only GC attachments if still on original session
             if (isStillOriginalSession) {
                 setMessagesStore(prev => {
-                    let attachmentCount = 0;
-                    return [...prev].reverse().map(msg => {
+                    let changed = false;
+                    const updated = prev.map(msg => {
                         if (!msg.attachments || msg.attachments.length === 0) return msg;
-                        return {
-                            ...msg,
-                            attachments: msg.attachments.map(att => {
-                                if (!att.extractedContent) return att;
-                                attachmentCount++;
-                                if (attachmentCount > 5) {
-                                    // Purge old content from RAM
-                                    return { ...att, extractedContent: undefined };
-                                }
-                                return att;
-                            })
-                        };
-                    }).reverse();
+                        const updatedAtts = msg.attachments.map(att => {
+                            if (!att.extractedContent) return att;
+                            // Only purge truly massive extractions (>150KB)
+                            if (att.extractedContent.length > 150000) {
+                                changed = true;
+                                return { ...att, extractedContent: `[Content purged — ${att.name} was ${(att.extractedContent.length / 1024).toFixed(0)}KB. Re-upload for full content.]` };
+                            }
+                            return att;
+                        });
+                        if (!changed) return msg;
+                        return { ...msg, attachments: updatedAtts };
+                    });
+                    return changed ? updated : prev;
                 });
             }
 

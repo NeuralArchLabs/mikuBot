@@ -473,7 +473,7 @@
             "status_safe": "受保护",
             "status_batch": "直接",
             "no_user_message": "无用户消息",
-            "user_sent_attachment": "用户发送了附件",
+            "user_sent_attachment": "用户附加了 {{count}} 个文件",
             "prompt": {
                 "protocol_reinforcement": "协议强化",
                 "useful_reminders": "有用提醒",
