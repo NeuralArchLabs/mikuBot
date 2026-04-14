@@ -158,6 +158,7 @@ export const App = () => {
     const stateRef = useRef(state);
     const modelsRef = useRef(models);
     const lastProcessedUpdateIdRef = useRef<number>(0);
+    const sessionLoadingRef = useRef(false);
     const namedSessionsTurnsRef = useRef<Map<string, number>>(new Map());
     const skillsCacheRef = useRef<any[]>([]);
     const lastSkillsFetchRef = useRef<number>(0);
@@ -290,8 +291,14 @@ export const App = () => {
         // even if the user is looking at a different session.
         // The UI in ChatArea will handle showing/hiding panels based on executingSessionId.
 
+        // ── LOADING GUARD: Prevent auto-save from firing with mixed state ──
+        // Signals ChatArea's auto-save to skip during the async load window,
+        // avoiding a race condition where Zustand updates messages BEFORE React
+        // updates sessionId, causing the old sessionId to be paired with new messages.
+        sessionLoadingRef.current = true;
+
         // Save current session before switching to prevent data loss
-        const currentId = state.sessionId;
+        const currentId = stateRef.current.sessionId;
         if (currentId && currentId !== id) {
             const currentMessages = useAgentStore.getState().messages;
             if (currentMessages.length > 0) {
@@ -313,10 +320,10 @@ export const App = () => {
                     title,
                     messages: currentMessages,
                     timestamp: Date.now(),
-                    agentMode: state.agentMode,
-                    safeMode: state.safeMode,
-                    approvalMode: state.approvalMode,
-                    debugMode: state.debugMode,
+                    agentMode: stateRef.current.agentMode,
+                    safeMode: stateRef.current.safeMode,
+                    approvalMode: stateRef.current.approvalMode,
+                    debugMode: stateRef.current.debugMode,
                     draft: useAgentStore.getState().input,
                 });
             }
@@ -324,12 +331,11 @@ export const App = () => {
 
         const session = await persistence.loadSession(id);
         if (session) {
-            setMessagesStore(session.messages || []);
-            setInputStore(session.draft || '');
-            
-            // Mode Isolation: If switching to chat, always apply safe defaults.
+            // ── ATOMIC UPDATE: Set sessionId FIRST so React state matches Zustand ──
+            // This ensures ChatArea receives the correct sessionId prop before or
+            // simultaneously with the new messages from Zustand.
             const isChatMode = (session.agentMode || 'chat') === 'chat';
-            
+
             setState(prev => ({
                 ...prev,
                 sessionId: id,
@@ -339,9 +345,10 @@ export const App = () => {
                 approvalMode: isChatMode ? 'auto' : (session.approvalMode || 'auto'),
                 debugMode: false // Always close debug mode on selection
             }));
+
+            setMessagesStore(session.messages || []);
+            setInputStore(session.draft || '');
         } else {
-            clearMessages();
-            setInputStore('');
             setState(prev => ({
                 ...prev,
                 sessionId: id,
@@ -351,7 +358,16 @@ export const App = () => {
                 approvalMode: 'auto',
                 debugMode: false
             }));
+            clearMessages();
+            setInputStore('');
         }
+
+        // ── LOADING GUARD: Allow auto-save after a microtask ──
+        // Use queueMicrotask so the guard lifts AFTER React has committed
+        // both the sessionId and messages updates to the DOM.
+        queueMicrotask(() => {
+            sessionLoadingRef.current = false;
+        });
     }, [clearMessages, resetAgentStatus, setPendingToolApprovalStore, setInputStore, setMessagesStore]);
 
     const onDeleteSession = useCallback(async (id: string) => {

@@ -5,6 +5,7 @@
 
 /** Emoji shortcode map */
 import { getEmojiAnimationClass } from '../animations/emojiAnimations';
+import i18n from '../../i18n';
 const EMOJI_MAP: Record<string, string> = {
     smile: '😊', grin: '😁', joy: '😂', heart: '❤️', fire: '🔥',
     rocket: '🚀', thumbsup: '👍', thumbsdown: '👎', star: '⭐', eyes: '👀',
@@ -417,9 +418,96 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
     // 1b. Form/Media/Block Element Protection is now handled by the Universal Protector (Phase 1).
     // The specialized iframe hardening is now integrated or follows below.
 
+    // 1b-2. Emoji Callout Normalization — Convert emoji-based callout headers to [!TYPE] format
+    // Handles AI-generated callouts like: > 💡 **Tip (Sugerencia):** → > [!TIP] Sugerencia
+    const EMOJI_CALLOUT_MAP: Record<string, string> = {
+        '💡': 'TIP', '⚠️': 'WARNING', '📝': 'NOTE', '🔧': 'INFO', '🚨': 'DANGER',
+        '✅': 'SUCCESS', '❌': 'FAILURE', '❓': 'QUESTION', '📖': 'EXAMPLE', '🔒': 'SECURITY',
+        '⏳': 'TODO', '📌': 'REMEMBER', 'ℹ️': 'INFO', '🛡️': 'SECURITY', '🐛': 'BUG',
+        '🔥': 'DANGER', '📢': 'IMPORTANT', '🎯': 'IMPORTANT', '✏️': 'NOTE',
+        '🟢': 'SUCCESS', '🔴': 'DANGER', '🟡': 'WARNING', '🔵': 'INFO',
+    };
+
+    // Fase A: Emoji-based detection
+    const emojiAlt = Object.keys(EMOJI_CALLOUT_MAP).join('|');
+    const emojiCalloutRegex = new RegExp(`^[ \\t]*>\\s*(${emojiAlt})\\s*(.*)$`, 'gm');
+    html = html.replace(emojiCalloutRegex, (_match, emoji: string, rest: string) => {
+        const type = EMOJI_CALLOUT_MAP[emoji];
+        if (!type) return _match;
+        const title = rest.replace(/\*+/g, '').replace(/[:：]\s*$/, '').trim();
+        return `> [!${type}]${title ? ' ' + title : ''}`;
+    });
+
+    // Fase B: Keyword-based detection (English + Chinese, no emoji required)
+    const KEYWORD_CALLOUT_MAP: Record<string, string> = {
+        // English
+        'tip': 'TIP', 'tips': 'TIP', 'suggestion': 'TIP',
+        'warning': 'WARNING', 'warn': 'WARNING', 'attention': 'WARNING',
+        'note': 'NOTE', 'notes': 'NOTE',
+        'info': 'INFO', 'information': 'INFO',
+        'danger': 'DANGER', 'alert': 'DANGER',
+        'success': 'SUCCESS', 'done': 'SUCCESS',
+        'error': 'FAILURE', 'failure': 'FAILURE', 'fail': 'FAILURE',
+        'question': 'QUESTION', 'ask': 'QUESTION',
+        'example': 'EXAMPLE', 'demo': 'EXAMPLE',
+        'security': 'SECURITY', 'secure': 'SECURITY',
+        'todo': 'TODO', 'pending': 'TODO', 'task': 'TODO',
+        'remember': 'REMEMBER',
+        'important': 'IMPORTANT',
+        'caution': 'CAUTION', 'careful': 'CAUTION',
+        'bug': 'BUG', 'issue': 'BUG',
+        // Chinese
+        '提示': 'TIP', '建议': 'TIP', '小贴士': 'TIP',
+        '警告': 'WARNING', '注意': 'WARNING',
+        '备注': 'NOTE', '笔记': 'NOTE', '注': 'NOTE',
+        '信息': 'INFO', '说明': 'INFO',
+        '危险': 'DANGER', '警报': 'DANGER',
+        '成功': 'SUCCESS', '完成': 'SUCCESS',
+        '错误': 'FAILURE', '失败': 'FAILURE', '报错': 'FAILURE',
+        '问题': 'QUESTION', '疑问': 'QUESTION',
+        '示例': 'EXAMPLE', '例子': 'EXAMPLE', '案例': 'EXAMPLE',
+        '安全': 'SECURITY', '安全提示': 'SECURITY',
+        '待办': 'TODO', '待处理': 'TODO', '待完成': 'TODO',
+        '记住': 'REMEMBER', '牢记': 'REMEMBER', '提醒': 'REMEMBER',
+        '重要': 'IMPORTANT', '关键': 'IMPORTANT',
+        '当心': 'CAUTION', '小心': 'CAUTION',
+        '缺陷': 'BUG', '漏洞': 'BUG',
+    };
+
+    html = html.replace(/^>\s*\*{1,2}\s*([^*\n:：]+?)\s*\*{1,2}\s*[:：]?\s*$/gm, (_match, rawKeyword: string) => {
+        const keyword = rawKeyword.trim().toLowerCase();
+        const type = KEYWORD_CALLOUT_MAP[keyword];
+        if (!type) return _match;
+        return `> [!${type}]`;
+    });
+
+    // Fase C: Spanish [!TYPE] normalization — converts Spanish callout types to English
+    const SPANISH_CALLOUT_MAP: Record<string, string> = {
+        'ÉXITO': 'SUCCESS',      'EXITO': 'SUCCESS',
+        'EJEMPLO': 'EXAMPLE',
+        'ERROR': 'FAILURE',
+        'PREGUNTA': 'QUESTION',  'PREGUNTAS': 'QUESTION',
+        'SEGURIDAD': 'SECURITY',
+        'NOTA': 'NOTE',
+        'CONSEJO': 'TIP',        'SUGERENCIA': 'TIP',
+        'AVISO': 'WARNING',      'ADVERTENCIA': 'WARNING',
+        'PELIGRO': 'DANGER',     'ALERTA': 'DANGER',
+        'IMPORTANTE': 'IMPORTANT',
+        'PRECAUCIÓN': 'CAUTION', 'PRECAUCION': 'CAUTION',
+        'INFORMACIÓN': 'INFO',   'INFORMACION': 'INFO',
+        'RECUERDA': 'REMEMBER',  'RECORDATORIO': 'REMEMBER',
+        'PENDIENTE': 'TODO',     'TAREA': 'TODO',
+        'FRECUENTES': 'FAQ',
+    };
+    const spanishTypes = Object.keys(SPANISH_CALLOUT_MAP).join('|');
+    const spanishCalloutRegex = new RegExp(`\\[!(${spanishTypes})\\]`, 'gi');
+    html = html.replace(spanishCalloutRegex, (_match, type: string) => {
+        const normalized = SPANISH_CALLOUT_MAP[type.toUpperCase()];
+        return normalized ? `[!${normalized}]` : _match;
+    });
 
     // 1c. Universal Admonition Parser — Phase 1
-    html = html.replace(/^[ \t]*(?:>\s*)?\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|DANGER|INFO|SUCCESS|FAILURE|BUG|EXAMPLE|QUOTE|QUESTION|FAQ)\]([\-\+])?(?:[ \t]+(.*))?\s*?\n?((?:(?!(?:[ \t]*>\s*\[!)).*\n?)*)/gim, (match, type, collapseSign, title, body) => {
+    html = html.replace(/^[ \t]*(?:>\s*)?\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|DANGER|INFO|SUCCESS|FAILURE|BUG|EXAMPLE|QUOTE|QUESTION|FAQ|SECURITY|TODO|REMEMBER)\]([\-\+])?(?:[ \t]+(.*))?\s*?\n?((?:(?!(?:[ \t]*>\s*\[!)).*\n?)*)/gim, (match, type, collapseSign, title, body) => {
         const id = `__BLOCK_${pieces.length}__`;
         const typeUp = type.toUpperCase();
         
@@ -449,10 +537,24 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
             'QUOTE':     { icon: '<i class="fas fa-quote-left"></i>',       color: 'text-slate-400',    border: 'border-slate-500/70',    bg: 'bg-slate-800/60',   glow: 'shadow-[inset_0_0_20px_rgba(148,163,184,0.04)]' },
             'QUESTION':  { icon: '<i class="fas fa-question-circle"></i>',  color: 'text-cyan-400',     border: 'border-cyan-500/70',     bg: 'bg-cyan-500/10',     glow: 'shadow-[inset_0_0_20px_rgba(34,211,238,0.04)]' },
             'FAQ':       { icon: '<i class="fas fa-comments"></i>',         color: 'text-purple-400',   border: 'border-purple-500/70',   bg: 'bg-purple-500/10',   glow: 'shadow-[inset_0_0_20px_rgba(168,85,247,0.04)]' },
+            'SECURITY':  { icon: '<i class="fas fa-shield-alt"></i>',       color: 'text-teal-400',     border: 'border-teal-500/70',     bg: 'bg-teal-500/10',     glow: 'shadow-[inset_0_0_20px_rgba(20,184,166,0.04)]' },
+            'TODO':      { icon: '<i class="fas fa-tasks"></i>',             color: 'text-amber-300',    border: 'border-amber-400/70',    bg: 'bg-amber-500/10',    glow: 'shadow-[inset_0_0_20px_rgba(252,211,77,0.04)]' },
+            'REMEMBER':  { icon: '<i class="fas fa-thumbtack"></i>',         color: 'text-pink-400',     border: 'border-pink-500/70',     bg: 'bg-pink-500/10',     glow: 'shadow-[inset_0_0_20px_rgba(236,72,153,0.04)]' },
         };
 
         const s = styles[typeUp] || styles['INFO'];
-        const displayTitle = title ? title.replace(/^[>\s]+/, '').trim() : typeUp;
+
+        // Localized display title: uses i18n if available, falls back to English type name
+        const CALLOUT_I18N_KEYS: Record<string, string> = {
+            'NOTE': 'callout_note', 'TIP': 'callout_tip', 'IMPORTANT': 'callout_important',
+            'WARNING': 'callout_warning', 'CAUTION': 'callout_caution', 'DANGER': 'callout_danger',
+            'INFO': 'callout_info', 'SUCCESS': 'callout_success', 'FAILURE': 'callout_failure',
+            'BUG': 'callout_bug', 'EXAMPLE': 'callout_example', 'QUOTE': 'callout_quote',
+            'QUESTION': 'callout_question', 'FAQ': 'callout_faq', 'SECURITY': 'callout_security',
+            'TODO': 'callout_todo', 'REMEMBER': 'callout_remember',
+        };
+        const localizedDefault = CALLOUT_I18N_KEYS[typeUp] ? i18n.t(`common.${CALLOUT_I18N_KEYS[typeUp]}`) : typeUp;
+        const displayTitle = title ? title.replace(/^[>\s]+/, '').trim() : (localizedDefault !== `common.${CALLOUT_I18N_KEYS[typeUp]}` ? localizedDefault : typeUp);
         const isCollapsible = !!collapseSign;
         const isOpen = collapseSign === '+';
 
@@ -474,8 +576,8 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
     });
 
     // 1d. Standard Blockquote Parser (Phase 1) — Nesting-aware with recursive rendering
-    // Captures consecutive lines starting with > (including blank > lines for paragraph breaks)
-    html = html.replace(/(^[ \t]*>.*(?:\n(?:[ \t]*>.*|[ \t]*))*)/gm, (match) => {
+    // Captures consecutive lines starting with > (supports > on its own line for paragraph breaks)
+    html = html.replace(/(^[ \t]*>.*(?:\n[ \t]*>.*)*)/gm, (match) => {
         // Verify at least one real > line exists (not just whitespace)
         if (!/^[ \t]*>/m.test(match)) return match;
         const id = `__BLOCK_${pieces.length}__`;
@@ -1023,7 +1125,7 @@ function convertListsToHtml(html: string): string {
     const listStack: { type: 'ul' | 'ol'; indent: number }[] = [];
 
     const closeListsToLevel = (targetIndent: number) => {
-        while (listStack.length > 0 && listStack[listStack.length - 1].indent >= targetIndent) {
+        while (listStack.length > 0 && listStack[listStack.length - 1].indent > targetIndent) {
             const popped = listStack.pop()!;
             processed.push(`</li></${popped.type}>`);
         }
@@ -1035,6 +1137,15 @@ function convertListsToHtml(html: string): string {
             processed.push(`</li></${popped.type}>`);
         }
     };
+
+    // Depth-aware style profiles for <li> items (indexed by effectiveDepth)
+    const liDepthStyles = [
+        'pl-1 text-slate-200 leading-relaxed',           // Level 0 — primary items
+        'pl-1 text-sm text-slate-300/90 leading-relaxed', // Level 1 — first nesting
+        'pl-1 text-sm text-slate-400/80 leading-snug',    // Level 2 — deep nesting
+        'pl-1 text-xs text-slate-500/70 leading-snug',    // Level 3+ — very deep
+    ];
+    const getLiStyle = (d: number) => liDepthStyles[Math.min(d, liDepthStyles.length - 1)];
 
     for (let i = 0; i < contentLines.length; i++) {
         const line = contentLines[i];
@@ -1056,9 +1167,9 @@ function convertListsToHtml(html: string): string {
             const content = isTask ? taskMatch[4] : (ulMatch ? ulMatch[3] : olMatch![3]);
             const rawIndent = (taskMatch ? taskMatch[1] : (ulMatch ? ulMatch[1] : olMatch![1])).length;
             const indent = rawIndent;
-            const depth = listStack.length;
 
-            if (depth === 0) {
+            // ── PHASE 1: Stack manipulation (open/close lists) ──
+            if (listStack.length === 0) {
                 // First list item ever — open a new list
                 const marginClass = 'my-2';
                 processed.push(`<${type} class="space-y-1 ${marginClass} ml-6 cursor-default marker:text-indigo-400/60">`);
@@ -1067,9 +1178,11 @@ function convertListsToHtml(html: string): string {
                 const top = listStack[listStack.length - 1];
 
                 if (indent > top.indent) {
-                    processed.push(`<${type} class="space-y-1 mt-0.5 ml-5 cursor-default marker:text-indigo-400/60">`);
+                    // Deeper nesting — open new nested list
+                    processed.push(`<${type} class="space-y-0.5 mt-1 ml-4 cursor-default marker:text-cyan-400/50">`);
                     listStack.push({ type, indent });
                 } else if (indent < top.indent) {
+                    // Returning to a higher level — close deeper lists
                     closeListsToLevel(indent);
 
                     if (listStack.length > 0) {
@@ -1085,15 +1198,19 @@ function convertListsToHtml(html: string): string {
                 }
             }
 
-            // Render the <li>
+            // ── PHASE 2: Compute EFFECTIVE depth AFTER stack changes ──
+            // This is the nesting level of this item: 0 = root, 1 = first child, etc.
+            const effectiveDepth = listStack.length - 1;
+
+            // ── PHASE 3: Render <li> with correct depth-aware styling ──
             if (isTask) {
                 const marker = taskMatch[3].toLowerCase();
                 const isChecked = marker === 'x';
                 const isPartial = marker === '/';
-                
+
                 let checkIcon = '☐';
                 let textClass = 'text-slate-300';
-                
+
                 if (isChecked) {
                     checkIcon = '☑';
                     textClass = 'text-slate-500 line-through decoration-white/10';
@@ -1102,11 +1219,14 @@ function convertListsToHtml(html: string): string {
                     textClass = 'text-indigo-200 font-medium';
                 }
 
-                processed.push(`<li class="list-none pl-1 flex items-center gap-3">`
+                // Task items also get smaller at deeper nesting
+                const taskSizeClass = effectiveDepth === 0 ? '' : effectiveDepth === 1 ? 'text-sm' : 'text-xs';
+
+                processed.push(`<li class="list-none pl-1 flex items-center gap-3 ${taskSizeClass}">`
                     + `<span class="${isPartial ? 'text-[#fca865]' : 'text-indigo-400/60'} text-base mb-0.5 mr-0.5">${checkIcon}</span>`
                     + `<span class="${textClass}">${content}</span>`);
             } else {
-                processed.push(`<li class="pl-1">${content}`);
+                processed.push(`<li class="${getLiStyle(effectiveDepth)}">${content}`);
             }
         } else if (trimmed === "" && i < contentLines.length - 1 && (contentLines[i+1].match(/^(\s*)[\*\-] /) || contentLines[i+1].match(/^(\s*)\d+\. /))) {
             // Skip empty lines between list groups (keep list context open)

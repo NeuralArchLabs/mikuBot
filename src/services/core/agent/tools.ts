@@ -320,31 +320,38 @@ export async function executeToolCall(
                 if (!args.query) {
                     return { success: false, error: 'The "query" parameter is required for web_search. Please provide a search query.' };
                 }
-                let nativeError = '';
-                // Prioritize Native Internal Search (Python bridge) if in Electron
+                // Prioritize Native Internal Search (SearXena Python bridge) if in Electron
                 if (typeof window !== 'undefined' && (window as any).electron?.runSearch) {
-                    try {
-                        const response = await (window as any).electron.runSearch({ 
-                            query: args.query,
-                            category: args.category || 'general'
-                        });
-                        if (response.ok) {
-                            return { success: true, data: response.data };
+                    const maxRetries = 2;
+                    let lastError = '';
+                    for (let attempt = 0; attempt < maxRetries; attempt++) {
+                        try {
+                            const response = await (window as any).electron.runSearch({
+                                query: args.query,
+                                category: args.category || 'general'
+                            });
+                            if (response.ok) {
+                                return { success: true, data: response.data };
+                            }
+                            lastError = response.error || 'Unknown error';
+                            console.warn(`[Search] SearXena attempt ${attempt + 1} failed:`, response.error);
+                            // Known fatal errors — don't retry, report immediately
+                            if (response.error?.includes('Engine not installed')) {
+                                return { success: false, error: `SearXena: El motor no está instalado. Ejecuta la instalación desde Ajustes → SearXena.` };
+                            }
+                        } catch (e) {
+                            lastError = e instanceof Error ? e.message : String(e);
+                            console.error(`[Search] SearXena attempt ${attempt + 1} error:`, e);
                         }
-                        nativeError = response.error || 'Unknown error';
-                        console.warn("Native Search failed, falling back to APIs...", response.error);
-                        if (response.error?.includes('Engine not installed') || response.error?.includes('ECONNREFUSED') || response.error?.includes('no responde') || response.error?.includes('Timeout')) {
-                            return {
-                                success: false,
-                                error: `Native Search failed: ${response.error}. TIP: El motor searXena no parece estar activo o no responde. Verifica que esté arrancado y no esté saturado.`
-                            };
-                        }
-                    } catch (e) {
-                        nativeError = e instanceof Error ? e.message : String(e);
-                        console.error("Native Search error, falling back...", e);
                     }
+                    // SearXena exhausted retries — return its error, don't silently fall through
+                    return {
+                        success: false,
+                        error: `SearXena: ${lastError}. El motor no responde después de ${maxRetries} intentos. Verifica que esté arrancado y no esté saturado.`
+                    };
                 }
 
+                // Fallback to external APIs only if SearXena is NOT available at all
                 if (config.tavilyApiKey) {
                     try {
                         const data = await safeFetch('https://api.tavily.com/search', {
@@ -377,8 +384,7 @@ export async function executeToolCall(
                     }
                 }
 
-                const fallbackMsg = nativeError ? ` Native Search Error: ${nativeError}.` : '';
-                return { success: false, error: `No Search method available.${fallbackMsg} Ensure the internal Python engine is ready or add an API Key (Tavily/Brave) in Settings.` };
+                return { success: false, error: `No external Search API available. Add an API Key (Tavily/Brave) in Settings, or ensure SearXena is installed and running.` };
             }
 
             case 'read_url': {

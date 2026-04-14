@@ -337,6 +337,18 @@ export const ChatArea = ({
 
     const isExecutingThisSession = !executingSessionId || executingSessionId === sessionId;
 
+    // ── SESSION LOAD GUARD ──────────────────────────────────────────
+    // Prevents auto-save from firing with mixed state during session switches.
+    // When sessionId changes, there's a window where Zustand has updated messages
+    // but React hasn't updated sessionId yet — saving in this window would
+    // write the NEW session's messages to the OLD session's file (data corruption).
+    const skipSaveRef = useRef(false);
+    const prevSessionIdRef = useRef(sessionId);
+    if (sessionId !== prevSessionIdRef.current) {
+        prevSessionIdRef.current = sessionId;
+        skipSaveRef.current = true;
+    }
+
     // [Performance Fix] Scroll Logic moved here from App.tsx to keep App from re-rendering on every streaming letter.
     useEffect(() => {
         if (scrollRef.current) {
@@ -345,7 +357,20 @@ export const ChatArea = ({
     }, [messages, isLoading, pendingApproval, agentStatus.phase, scrollRef]);
 
     // [Performance Fix] Session Auto-saver moved here from App.tsx.
+    // ── SESSION SAVE GUARD ──
+    // On session switch, there's a race: Zustand updates `messages` immediately but
+    // React's `sessionId` prop updates in the next render. This creates a frame where
+    // new messages are paired with the old sessionId. Without the guard, the cleanup
+    // function would save new messages to the old session → data corruption.
+    // skipSaveRef is set to true when sessionId changes, preventing the first save
+    // after a switch. It's cleared in the cleanup so the next cycle can save normally.
     useEffect(() => {
+        // Skip save during session loading (guard set by sessionId change detection above)
+        if (skipSaveRef.current) {
+            skipSaveRef.current = false;
+            return;
+        }
+
         if (sessionId && sessions && onSessionsUpdate) {
             const timer = setTimeout(() => {
                 const currentSession = sessions.find(s => s.id === sessionId);
