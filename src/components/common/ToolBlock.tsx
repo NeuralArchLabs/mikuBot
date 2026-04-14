@@ -3,6 +3,16 @@ import { useTranslation } from 'react-i18next';
 import { MessageBlock } from '../../types';
 import { Icon as IconComp } from './Common';
 
+/** Core built-in tools — anything NOT in this set is a Neural Skill */
+export const CORE_TOOLS = new Set([
+    'read_file', 'update_file', 'patch_file', 'delete_file',
+    'list_files', 'search_files', 'get_system_metrics',
+    'web_search', 'deep_research',
+    'run_console', 'read_url', 'add_scheduled_task',
+    'send_telegram_message', 'batch_operation', 'get_file_outline',
+    'list_available_skills'
+]);
+
 interface ToolBlockProps {
     block: MessageBlock;
     isOld?: boolean;
@@ -47,6 +57,65 @@ const AtomLoader = ({ className, invertRotation }: { className?: string, invertR
                         <mpath href="#orbit2" />
                     </animateMotion>
                     <animate attributeName="r" values="0.7;1.5;0.7" dur="1.5s" repeatCount="indefinite" />
+                </circle>
+            </g>
+        </g>
+    </svg>
+);
+
+/** Neural Atom — 3 fixed orbits, 3 moving electrons, neon blue nucleus & electrons */
+const NeuralAtomLoader = ({ className }: { className?: string }) => (
+    <svg
+        viewBox="0 0 24 24"
+        className={`${className} atom-loader-svg neural-atom-svg`}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+    >
+        <defs>
+            <path id="neural-orbit1" d="M 22 12 A 10 4 0 1 1 2 12 A 10 4 0 1 1 22 12" />
+            <path id="neural-orbit2" d="M 22 12 A 10 4 0 1 0 2 12 A 10 4 0 1 0 22 12" />
+            <path id="neural-orbit3" d="M 22 12 A 10 4 0 1 1 2 12 A 10 4 0 1 1 22 12" />
+        </defs>
+
+        {/* Nucleus — neon blue pulse */}
+        <circle cx="12" cy="12" r="2.5" fill="currentColor" className="animate-neural-nucleus text-blue-400" />
+
+        {/* Orbit 1 — 0° (horizontal), fixed */}
+        <g className="neural-orbit-fixed">
+            <g transform="rotate(0 12 12)">
+                <ellipse cx="12" cy="12" rx="10" ry="4" stroke="currentColor" strokeWidth="0.5" className="text-blue-400/20" />
+                <circle r="1.5" fill="currentColor" className="text-blue-400 drop-shadow-[0_0_4px_currentColor]">
+                    <animateMotion dur="1.2s" repeatCount="indefinite">
+                        <mpath href="#neural-orbit1" />
+                    </animateMotion>
+                    <animate attributeName="r" values="1.5;0.8;1.5" dur="2s" repeatCount="indefinite" />
+                </circle>
+            </g>
+        </g>
+
+        {/* Orbit 2 — 60°, fixed */}
+        <g className="neural-orbit-fixed">
+            <g transform="rotate(60 12 12)">
+                <ellipse cx="12" cy="12" rx="10" ry="4" stroke="currentColor" strokeWidth="0.5" className="text-blue-400/20" />
+                <circle r="1.5" fill="currentColor" className="text-blue-400 drop-shadow-[0_0_4px_currentColor]">
+                    <animateMotion dur="0.9s" repeatCount="indefinite">
+                        <mpath href="#neural-orbit2" />
+                    </animateMotion>
+                    <animate attributeName="r" values="0.8;1.5;0.8" dur="1.5s" repeatCount="indefinite" />
+                </circle>
+            </g>
+        </g>
+
+        {/* Orbit 3 — -60°, fixed */}
+        <g className="neural-orbit-fixed">
+            <g transform="rotate(-60 12 12)">
+                <ellipse cx="12" cy="12" rx="10" ry="4" stroke="currentColor" strokeWidth="0.5" className="text-blue-400/20" />
+                <circle r="1.5" fill="currentColor" className="text-blue-400 drop-shadow-[0_0_4px_currentColor]">
+                    <animateMotion dur="1.5s" repeatCount="indefinite">
+                        <mpath href="#neural-orbit3" />
+                    </animateMotion>
+                    <animate attributeName="r" values="1.2;0.7;1.2" dur="1.8s" repeatCount="indefinite" />
                 </circle>
             </g>
         </g>
@@ -114,6 +183,9 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
     }, [result, endTime, i18n.language]);
 
     if (!toolCall) return null;
+
+    // 🧠 Neural Skill Detection — dynamic tools not in the core set
+    const isNeuralSkill = !CORE_TOOLS.has(toolCall.function.name);
 
     const isSuccess = result?.success && 
                       result?.data?.success !== false && 
@@ -216,7 +288,7 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
 
     return (
         <div ref={containerRef} className={`relative mb-4 pl-6 transition-all duration-300 ${entranceClass} ${isExpanded ? 'w-full' : 'w-full max-w-3xl'}`}>
-            <div className={`tool-block overflow-hidden transition-all duration-300 rounded-xl bg-black/60 shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),0_8px_30px_rgba(0,0,0,0.5)] border-t-[3px] border-l-[3px] border-t-slate-900/50 border-l-slate-900/50 border-b border-r border-b-white/5 border-r-white/5 ${isExpanded ? 'bg-black/70' : 'hover:bg-black/50'} ring-1 ring-slate-900/50`}>
+            <div className={`tool-block overflow-hidden transition-all duration-300 rounded-xl bg-black/60 shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),0_8px_30px_rgba(0,0,0,0.5)] border-t-[3px] border-l-[3px] ${isNeuralSkill ? 'border-t-blue-950/40 border-l-blue-950/40' : 'border-t-slate-900/50 border-l-slate-900/50'} border-b border-r border-b-white/5 border-r-white/5 ${isExpanded ? 'bg-black/70' : 'hover:bg-black/50'} ring-1 ${isNeuralSkill ? 'ring-blue-900/40' : 'ring-slate-900/50'}`}>
                 {/* Consolidated Header / Summary Strip */}
                 <div
                     className={`tool-block-header flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors hover:bg-white/[0.02] ${isExpanded ? 'bg-slate-800/40 border-b border-white/5' : ''}`}
@@ -226,27 +298,30 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
                         <div className={`relative w-4 h-4 flex items-center justify-center rounded-full transition-all duration-700 ${showTransformation ? 'tool-completion-glow' : ''}`}>
                             {/* Loading Atom (Fades out when result arrives) */}
                             <div className={`absolute inset-0 flex items-center justify-center transition-all duration-700 cubic-bezier(0.34, 1.56, 0.64, 1) ${!isPlaceholder ? 'opacity-0 scale-0 rotate-180' : 'opacity-100 scale-100 tool-icon-pending'}`}>
-                                <AtomLoader className="w-5 h-5 flex-shrink-0 text-amber-500" invertRotation={invertRotation} />
+                                {isNeuralSkill
+                                    ? <NeuralAtomLoader className="w-5 h-5 flex-shrink-0 text-blue-400" />
+                                    : <AtomLoader className="w-5 h-5 flex-shrink-0 text-amber-500" invertRotation={invertRotation} />
+                                }
                             </div>
                             
                             {/* Result Icon (Morphs in when result arrives) */}
-                            <div className={`absolute inset-0 flex items-center justify-center transition-all duration-700 cubic-bezier(0.34, 1.56, 0.64, 1) ${isPlaceholder ? 'opacity-0 scale-0 -rotate-180' : ((isSuccess && !isAborted && !isDenied) ? 'tool-icon-success' : (hasError || isAborted || isDenied) ? 'tool-icon-error' : 'tool-icon-pending')}`}>
-                                <IconComp 
-                                    name={(isSuccess && !isAborted && !isDenied) ? 'check-circle' : isDenied ? 'ban' : isAborted ? 'stop-circle' : hasError ? 'exclamation-triangle' : 'cog'} 
+                            <div className={`absolute inset-0 flex items-center justify-center transition-all duration-700 cubic-bezier(0.34, 1.56, 0.64, 1) ${isPlaceholder ? 'opacity-0 scale-0 -rotate-180' : ((isSuccess && !isAborted && !isDenied) ? (isNeuralSkill ? 'tool-icon-neural-success' : 'tool-icon-success') : (hasError || isAborted || isDenied) ? 'tool-icon-error' : 'tool-icon-pending')}`}>
+                                <IconComp
+                                    name={(isSuccess && !isAborted && !isDenied) ? 'check-circle' : isDenied ? 'ban' : isAborted ? 'stop-circle' : hasError ? 'exclamation-triangle' : 'cog'}
                                     className={`icon-center-rig fa-fw ${showTransformation ? 'animate-tool-pulse' : ''} ${!isPlaceholder && !isOld ? 'animate-tool-morph' : ''} ${isAborted ? 'text-orange-500/50' : isDenied ? 'text-rose-500/50' : ''}`} 
                                 />
                             </div>
                         </div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                        <span className={`text-[10px] font-bold uppercase tracking-tighter ${isNeuralSkill ? 'text-blue-400' : 'text-slate-400'}`}>
                             {toolCall.function.name}
                         </span>
-                        {(isSuccess && !isPlaceholder) && <span className="text-[9px] text-emerald-500/50 font-mono font-bold ml-1 hidden sm:inline">{t('common.ready')}</span>}
+                        {(isSuccess && !isPlaceholder) && <span className={`text-[9px] font-mono font-bold ml-1 hidden sm:inline ${isNeuralSkill ? 'text-cyan-400/50' : 'text-emerald-500/50'}`}>{t('common.ready')}</span>}
                     </div>
 
                     {!isExpanded && (
                         <>
                             <div className="w-px h-3 bg-white/10 flex-shrink-0" />
-                            <span className={`text-[11px] truncate flex-1 font-mono tracking-tight ${isPlaceholder ? 'text-slate-500 italic animate-pulse' : (isAborted || isDenied) ? 'text-orange-500/40 italic' : (isSuccess ? 'text-emerald-400/80' : hasError ? 'text-rose-400/80' : 'text-slate-500 italic')}`}>
+                            <span className={`text-[11px] truncate flex-1 font-mono tracking-tight ${isPlaceholder ? (isNeuralSkill ? 'text-blue-400/40 italic animate-pulse' : 'text-slate-500 italic animate-pulse') : (isAborted || isDenied) ? 'text-orange-500/40 italic' : (isSuccess ? (isNeuralSkill ? 'text-cyan-400/80' : 'text-emerald-400/80') : hasError ? 'text-rose-400/80' : 'text-slate-500 italic')}`}>
                                 {truncatedText}
                             </span>
                         </>
@@ -259,7 +334,7 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
 
                 {/* Inline Summary for Expanded State */}
                 {isExpanded && (
-                    <div className={`px-4 py-3 bg-slate-800/10 border-b border-white/5 font-medium ${isSuccess ? 'text-emerald-400' : hasError ? 'text-rose-400' : 'text-slate-500 italic'} text-[12px] sm:text-[13px] leading-relaxed`}>
+                    <div className={`px-4 py-3 bg-slate-800/10 border-b border-white/5 font-medium ${isSuccess ? (isNeuralSkill ? 'text-cyan-400' : 'text-emerald-400') : hasError ? 'text-rose-400' : 'text-slate-500 italic'} text-[12px] sm:text-[13px] leading-relaxed`}>
                          <IconComp name="info-circle" className="mr-2 opacity-50" />
                          {friendlySummary}
                     </div>
@@ -290,7 +365,7 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
 
                         {result && (
                             <div className="space-y-2">
-                                <div className={`text-[9px] uppercase tracking-widest font-bold flex items-center justify-between gap-1 ${isSuccess ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                <div className={`text-[9px] uppercase tracking-widest font-bold flex items-center justify-between gap-1 ${isSuccess ? (isNeuralSkill ? 'text-cyan-600' : 'text-emerald-600') : 'text-rose-600'}`}>
                                     <div className="flex items-center gap-1">
                                         <IconComp name={isSuccess ? 'check-double' : 'exclamation-triangle'} /> {t('common.detailed_response')}
                                     </div>
@@ -300,7 +375,7 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
                                         </div>
                                     )}
                                 </div>
-                                <pre className={`custom-scrollbar overflow-y-auto max-h-60 p-3 bg-black/40 rounded-lg text-[10px] whitespace-pre-wrap break-all border transition-colors duration-500 ${isSuccess ? 'text-emerald-400/70 border-emerald-500/10' : 'text-rose-400/70 border-rose-500/10'}`}>
+                                <pre className={`custom-scrollbar overflow-y-auto max-h-60 p-3 bg-black/40 rounded-lg text-[10px] whitespace-pre-wrap break-all border transition-colors duration-500 ${isSuccess ? (isNeuralSkill ? 'text-cyan-400/70 border-cyan-500/10' : 'text-emerald-400/70 border-emerald-500/10') : 'text-rose-400/70 border-rose-500/10'}`}>
                                     {JSON.stringify(result.data || result.error, null, 2)}
                                     {!isSuccess && hasError && <span className="block mt-2 text-rose-500/50 italic font-sans">{t('common.system_exception')}</span>}
                                 </pre>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { PendingToolApproval } from '../../types';
 import { Icon } from '../common/Common';
 import { useTranslation } from 'react-i18next';
+import { CORE_TOOLS } from '../common/ToolBlock';
 
 interface ToolApprovalPanelProps {
     pending: PendingToolApproval;
@@ -53,17 +54,19 @@ export const ToolApprovalPanel = React.memo(({
     // Truncate args for display if too long
     const displayArgs = args.length > 300 ? args.substring(0, 300) + '...' : args;
 
+    const isNeural = !CORE_TOOLS.has(pending.toolCall.function.name);
+
     if (status === 'approved') {
         return (
-            <div className="w-full p-8 flex flex-col items-center justify-center text-emerald-400 min-h-[220px]">
+            <div className={`w-full p-8 flex flex-col items-center justify-center min-h-[220px] ${isNeural ? 'text-blue-400' : 'text-emerald-400'}`}>
                 <div className="relative mb-6">
-                    <div className="w-16 h-16 rounded-full border-2 border-emerald-500/20 border-t-emerald-400 animate-spin"></div>
+                    <div className={`w-16 h-16 rounded-full border-2 animate-spin ${isNeural ? 'border-blue-400/20 border-t-blue-400' : 'border-emerald-500/20 border-t-emerald-400'}`}></div>
                     <div className="absolute inset-0 flex items-center justify-center text-2xl animate-pulse">
                         <Icon name="check" />
                     </div>
                 </div>
                 <div className="text-sm font-mono tracking-[0.3em] uppercase animate-pulse">{t('chat.approval.sync_success')}</div>
-                <div className="text-[10px] text-emerald-500/40 mt-3 font-mono tracking-widest uppercase">
+                <div className={`text-[10px] mt-3 font-mono tracking-widest uppercase ${isNeural ? 'text-blue-400/40' : 'text-emerald-500/40'}`}>
                     {t('chat.approval.executing')} {pending.toolCall.function.name}
                 </div>
             </div>
@@ -85,11 +88,11 @@ export const ToolApprovalPanel = React.memo(({
     const isConsoleCommand = toolName === 'run_console';
     const isNonWorkSpace = (toolArgs.source === 'core' || toolArgs.source === 'library') &&
         (toolName === 'update_file' || toolName === 'read_file');
+    const isNeuralSkill = !CORE_TOOLS.has(toolName);
 
     // Accent color based on risk level
-    const accentColor = isConsoleCommand ? 'red' : isNonWorkSpace ? 'amber' : 'amber';
     const borderClass = isConsoleCommand ? 'border-red-500/50' : 'border-slate-700/30';
-    const barClass = isConsoleCommand ? 'bg-red-500/70' : isNonWorkSpace ? 'bg-amber-500/50' : 'bg-amber-500/50';
+    const barClass = isConsoleCommand ? 'bg-red-500/70' : isNonWorkSpace ? 'bg-amber-500/50' : isNeuralSkill ? 'bg-blue-400/50' : 'bg-amber-500/50';
 
     const getSourceLabel = (src?: string) => {
         if (!src) return t('settings.pathways.workspace');
@@ -110,12 +113,14 @@ export const ToolApprovalPanel = React.memo(({
                 <div className="flex items-center gap-3 min-w-max border-r border-slate-700/50 pr-4">
                     <div className={`w-8 h-8 rounded flex items-center justify-center border ${isConsoleCommand
                         ? 'bg-red-500/10 text-red-400 border-red-500/20'
-                        : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                        : isNeuralSkill
+                            ? 'bg-blue-400/10 text-blue-400 border-blue-400/20'
+                            : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
                         }`}>
-                        <Icon name={isConsoleCommand ? 'terminal' : 'shield-alt'} />
+                        <Icon name={isConsoleCommand ? 'terminal' : isNeuralSkill ? 'brain' : 'shield-alt'} />
                     </div>
                     <div>
-                        <div className={`text-[10px] uppercase tracking-widest font-bold ${isConsoleCommand ? 'text-red-500/80' : 'text-amber-500/80'
+                        <div className={`text-[10px] uppercase tracking-widest font-bold ${isConsoleCommand ? 'text-red-500/80' : isNeuralSkill ? 'text-blue-400/80' : 'text-amber-500/80'
                             }`}>
                             {isConsoleCommand ? t('chat.approval.console_access') : t('chat.approval.security_check')}
                         </div>
@@ -208,7 +213,9 @@ export const ToolApprovalPanel = React.memo(({
                         onClick={handleApprove}
                         className={`approval-btn px-6 h-[36px] rounded-lg text-white shadow-lg text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 flex-1 sm:flex-none border ${isConsoleCommand
                             ? 'bg-red-600 hover:bg-red-500 shadow-red-900/20 border-red-500/50'
-                            : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/20 border-emerald-500/50'
+                            : isNeuralSkill
+                                ? 'bg-blue-500 hover:bg-blue-400 shadow-blue-900/20 border-blue-400/50'
+                                : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/20 border-emerald-500/50'
                             }`}
                     >
                         <Icon name="check" /> {isConsoleCommand ? t('chat.approval.authorize_console') : t('chat.approval.authorize_exec')}

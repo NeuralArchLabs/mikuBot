@@ -97,9 +97,17 @@
 .markdown-body ul,
 .markdown-body ol {
   margin-bottom: 0.5em;
-  margin-left: 1.25em;
-  padding-left: 0.25em;
   list-style-position: outside;
+}
+
+.markdown-body ul {
+  margin-left: 2em;
+  padding-left: 0.5em;
+}
+
+.markdown-body ol {
+  margin-left: 2.5em;
+  padding-left: 0.75em;
 }
 
 /* Unordered List Hierarchy */
@@ -205,6 +213,12 @@
 .markdown-body th,
 .markdown-body td {
   text-align: left;
+}
+
+/* Respect inline text-align on parent table/containers for td/th */
+.markdown-body [style*="text-align"] th,
+.markdown-body [style*="text-align"] td {
+  text-align: inherit;
 }
 
 .markdown-body tr:last-child td {
@@ -361,13 +375,33 @@
 
 /* ═══════════════════════════════════════════════════════════════════
    RAW HTML COLOR RESET — Ensures model-generated HTML renders faithfully
-   in the dark-themed chat. Elements with inline backgrounds get dark text
-   by default; inline style="color:..." always wins (higher specificity).
+   in the dark-themed chat.
+
+   Strategy: Force dark text on elements with inline backgrounds that lack
+   a standalone "color:" property. Uses property-boundary detection to
+   distinguish "color:" from "background-color:" substrings.
+   Nested elements inside containers with explicit color inherit that color.
    ═══════════════════════════════════════════════════════════════════ */
-.markdown-body [style*="background"] {
-  color: #212529;
+
+/* ── Rule A: Dark text on background containers without standalone color ── */
+/* Matches elements with "background" in style but NO standalone "color:" property.
+   Specificity: 0,6,0 — beats existing inherit rules (0,2,1) on the parent element. */
+.markdown-body [style*="background"]:not([style*=" color:"]):not([style*=";color:"]):not([style*="; color:"]):not([style^="color:"]) {
+  color: #1e293b;
 }
-/* Ensure children of styled containers inherit correctly */
+
+/* ── Rule B: Nested elements in colored parents inherit that color ── */
+/* Prevents Rule A from forcing dark text on nested bg elements inside containers
+   that already set explicit color (e.g. gradient div with "color: white").
+   Specificity: 0,7,0 — beats Rule A (0,6,0). */
+.markdown-body [style*=" color:"] [style*="background"]:not([style*=" color:"]):not([style*=";color:"]):not([style*="; color:"]):not([style^="color:"]),
+.markdown-body [style*=";color:"] [style*="background"]:not([style*=" color:"]):not([style*=";color:"]):not([style*="; color:"]):not([style^="color:"]),
+.markdown-body [style*="; color:"] [style*="background"]:not([style*=" color:"]):not([style*=";color:"]):not([style*="; color:"]):not([style^="color:"]),
+.markdown-body [style^="color:"] [style*="background"]:not([style*=" color:"]):not([style*=";color:"]):not([style*="; color:"]):not([style^="color:"]) {
+  color: inherit;
+}
+
+/* Children of styled containers inherit color correctly */
 .markdown-body [style*="background"] th,
 .markdown-body [style*="background"] td,
 .markdown-body [style*="background"] strong,
@@ -393,6 +427,21 @@
 .markdown-body [style*="text-align"] h6,
 .markdown-body [style*="text-align"] div:not([style*="text-align"]) {
   text-align: inherit;
+}
+
+/* Center images inside elements with inline text-align (block images need margin auto) */
+.markdown-body [style*="text-align"] > img {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Basic styling for AI-generated details/summary elements with inline backgrounds */
+.markdown-body details[style*="background"] {
+  overflow: hidden;
+}
+.markdown-body details[style*="background"] > summary {
+  cursor: pointer;
+  font-weight: 600;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -758,6 +807,11 @@
   color: rgb(52 211 153);
 }
 
+.tool-icon-neural-success {
+  color: rgb(96 165 250);
+  filter: drop-shadow(0 0 4px rgba(96, 165, 250, 0.6));
+}
+
 .tool-icon-error {
   color: rgb(248 113 113);
 }
@@ -1103,6 +1157,21 @@
 }
 
 .atom-orbit-group {
+  transform-origin: center !important;
+}
+
+/* ── Neural Atom Loader (3 fixed orbits, electrons only move) ────── */
+@keyframes neural-nucleus-pulse-kf {
+  0%, 100% { transform: scale(1); opacity: 0.8; filter: drop-shadow(0 0 3px #60a5fa); }
+  50% { transform: scale(1.4); opacity: 1; filter: drop-shadow(0 0 10px #60a5fa) brightness(1.4); }
+}
+
+.animate-neural-nucleus {
+  animation: neural-nucleus-pulse-kf 1.2s ease-in-out infinite;
+  transform-origin: center !important;
+}
+
+.neural-orbit-fixed {
   transform-origin: center !important;
 }
 

@@ -4,7 +4,7 @@ import { Message, AgentStatus, PendingToolApproval, AgentMode, ApprovalMode, Att
 import { Icon, MarkdownRenderer } from '../common/Common';
 import { ToolApprovalPanel } from '../panels/ToolApprovalPanel';
 import { AgentStatusPanel } from '../panels/AgentStatusPanel';
-import { ToolBlock } from '../common/ToolBlock';
+import { ToolBlock, CORE_TOOLS } from '../common/ToolBlock';
 import { CollapsibleMessage } from '../common/CollapsibleMessage';
 import { CollapsibleTextBlock } from '../common/CollapsibleTextBlock';
 import { TypewriterIdle } from '../common/TypewriterIdle';
@@ -1404,7 +1404,7 @@ export const ChatArea = ({
                 {/* Elevated Tool Approval Panel - Full Edge-to-Edge Banner Attached to Dock */}
                 {isExecutingThisSession && pendingApproval && (
                     <div className="absolute bottom-full left-0 w-full z-[100] animate-slide-up pointer-events-none">
-                        <div className="w-full shadow-[0_-15px_40px_-10px_rgba(0,0,0,0.6)] overflow-hidden border-t border-amber-500/40 pointer-events-auto bg-slate-900/95 backdrop-blur-xl">
+                        <div className={`w-full shadow-[0_-15px_40px_-10px_rgba(0,0,0,0.6)] overflow-hidden border-t pointer-events-auto bg-slate-900/95 backdrop-blur-xl ${!CORE_TOOLS.has(pendingApproval.toolCall.function.name) ? 'border-blue-400/40' : 'border-amber-500/40'}`}>
                             <ToolApprovalPanel
                                 key={pendingApproval.toolCall.id}
                                 pending={pendingApproval}
