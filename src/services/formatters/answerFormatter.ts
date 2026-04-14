@@ -22,6 +22,7 @@ export function formatFinalResponse(rawText: any): string {
 
     // 1. Normalize line endings
     formatted = formatted.replace(/\r\n/g, '\n');
+    formatted = formatted.replace(/\r/g, '\n'); // Standalone \r safety
 
     // --- PHASE 1: ASSET PROTECTION (BLOCKS) ---
     // Extract and protect blocks that should NEVER be affected by generic unescaping logic (\n, \t)
@@ -72,6 +73,18 @@ export function formatFinalResponse(rawText: any): string {
         // Fix: Use replacer function to prevent String.prototype.replace from eating $ signs
         formatted = formatted.replace(`___PROTECTED_BLOCK_${i}___`, () => pieces[i]);
     }
+
+    // --- PHASE 3.5: SAFETY NET ---
+    // Regex-based catch-all for any placeholders that survived the sequential loop.
+    // This handles edge cases where the loop might miss some placeholders due to
+    // text mutations between protection and restoration phases.
+    formatted = formatted.replace(/___PROTECTED_BLOCK_(\d+)___/g, (match, idxStr) => {
+        const idx = parseInt(idxStr, 10);
+        if (idx >= 0 && idx < pieces.length) {
+            return pieces[idx];
+        }
+        return ''; // Remove orphaned placeholders
+    });
 
     // 4. Trim trailing whitespace
     formatted = formatted.split('\n').map(line => line.trimEnd()).join('\n');

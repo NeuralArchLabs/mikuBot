@@ -250,16 +250,20 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         // Tags sorted longest-first to prevent regex prefix collisions (e.g., 'b' matching 'br')
         const allTags = [
             'figcaption', 'blockquote', 'fieldset', 'progress', 'textarea', 'summary',
+            'datalist', 'colgroup', 'optgroup', 'noscript', 'template',
             'details', 'section', 'article', 'caption', 'dialog', 'figure', 'footer',
             'header', 'legend', 'center', 'button', 'canvas', 'iframe', 'output',
-            'select', 'source', 'strong', 'aside', 'embed', 'input', 'label', 'meter',
+            'select', 'source', 'strong', 'address', 'picture', 'acronym',
+            'aside', 'embed', 'input', 'label', 'meter', 'option', 'strike',
             'param', 'small', 'tbody', 'tfoot', 'thead', 'track', 'video', 'audio',
-            'table', 'form', 'main', 'mark', 'math', 'code', 'cite', 'abbr', 'samp',
+            'table', 'form', 'main', 'mark', 'math', 'time', 'data', 'ruby', 'slot',
+            'code', 'cite', 'abbr', 'samp',
             'span', 'area', 'base', 'link', 'meta', 'nav', 'pre', 'div', 'del', 'dfn',
             'ins', 'kbd', 'sub', 'sup', 'var', 'wbr', 'col', 'img',
-            'svg', 'dd', 'dl', 'dt', 'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+            'bdo', 'big', 'map', 'svg', 'dd', 'dl', 'dt', 'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
             'hr', 'br', 'li', 'ol', 'td', 'th', 'tr', 'ul',
-            'a', 'b', 'i', 'p', 's', 'u'
+            'rt', 'rp',
+            'a', 'b', 'i', 'p', 'q', 's', 'u'
         ];
         const selfClosing = ['img', 'br', 'hr', 'source', 'track', 'embed', 'param', 'area', 'base', 'col', 'link', 'meta', 'wbr', 'input'];
 

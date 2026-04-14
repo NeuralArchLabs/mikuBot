@@ -444,6 +444,42 @@
   font-weight: 600;
 }
 
+/* ── Dark Theme Overrides for UA-Default Light Backgrounds ─────────── */
+
+/* Mark — amber highlight tuned for dark chat instead of browser yellow */
+.markdown-body mark {
+  background-color: rgba(250, 204, 21, 0.3);
+  color: #fbbf24;
+  padding: 0.1em 0.3em;
+  border-radius: 2px;
+}
+
+/* Dialog — override UA white canvas so text remains visible */
+.markdown-body dialog {
+  background: rgba(15, 23, 42, 0.95);
+  color: #e2e8f0;
+  border-color: rgba(96, 165, 250, 0.3);
+  border-radius: 10px;
+}
+
+/* Form inputs — dark theme for inputs/selects/textareas without inline background */
+.markdown-body input:not([style*="background"]):not([style*="background-color"]):not([type="color"]):not([type="range"]):not([type="file"]):not([type="checkbox"]):not([type="radio"]),
+.markdown-body textarea:not([style*="background"]):not([style*="background-color"]),
+.markdown-body select:not([style*="background"]):not([style*="background-color"]) {
+  background-color: rgba(15, 23, 42, 0.8);
+  color: #e2e8f0;
+}
+
+.markdown-body input::placeholder,
+.markdown-body textarea::placeholder {
+  color: rgba(148, 163, 184, 0.5);
+}
+
+.markdown-body select option {
+  background-color: #0f172a;
+  color: #e2e8f0;
+}
+
 /* ═══════════════════════════════════════════════════════════════════
    MERMAID DIAGRAM SIZING — Constrains SVG height, allows scroll
    for very tall diagrams (Journey, Gantt, etc.)
