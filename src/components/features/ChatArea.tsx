@@ -1215,9 +1215,9 @@ export const ChatArea = ({
                         const isPriority = index >= messages.length - 4 || priorityIndices.includes(index) || msg.isStreaming || isLast;
 
                         const MessageContent = (
-                            <div id={`msg-${msg.id}`} className={`flex group relative w-full ${msg.role === 'user' ? 'justify-end'
+                            <div id={`msg-${msg.id}`} className={`flex group relative w-full ${msg.role === 'user' ? 'justify-center lg:justify-end'
                                 : msg.role === 'system' ? 'justify-center'
-                                    : 'justify-start'
+                                    : 'justify-center lg:justify-start'
                                 }`}>
                                 {msg.role === 'system' ? (
                                     <div className={`max-w-[70%] rounded-md px-3 py-2 text-[11px] font-mono border ${msg.isScheduler
@@ -1229,9 +1229,9 @@ export const ChatArea = ({
                                         <MarkdownRenderer content={msg.text} />
                                     </div>
                                 ) : (
-                                    <div className={`relative w-auto max-w-[88%] sm:max-w-[85%] p-5 sm:px-8 sm:py-6 transition-colors duration-300 break-words message-pop-in transform-gpu rounded-[32px] ${msg.role === 'user'
+                                    <div className={`relative w-auto max-w-[95%] lg:max-w-[90%] p-5 sm:px-8 sm:py-6 transition-colors duration-300 break-words message-pop-in transform-gpu rounded-[32px] ${msg.role === 'user'
                                         ? 'bg-blue-600/20 border border-transparent group-hover:border-blue-500/30 text-blue-50 rounded-br-none shadow-[0_15px_35px_-10px_rgba(0,0,0,0.6)]'
-                                        : 'bg-slate-800 border border-transparent group-hover:border-slate-700 text-slate-200 rounded-bl-none shadow-[0_10px_25px_-3px_rgba(0,0,0,0.9)]'
+                                        : 'bg-slate-800 border border-transparent group-hover:border-slate-700 text-slate-200 rounded-bl-none shadow-[0_10px_25px_-3px_rgba(0,0,0,0.9)] lg:ml-6'
                                         }`}>
 
                                         {/* --- Action Bar --- */}

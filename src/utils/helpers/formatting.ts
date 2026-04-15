@@ -312,6 +312,43 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
             }
 
             const id = `__BLOCK_${pieces.length}__`;
+            // Auto-center <img> and <iframe> when the model doesn't specify alignment
+            if (tagName === 'img' || tagName === 'iframe') {
+                const hasAlign = /\balign\s*=|float\s*:\s*(?!none)|margin-left\s*:\s*auto|margin-right\s*:\s*auto|margin\s*:[^;]*auto|text-align\s*:\s*(?:left|right|center)|justify-content\s*:/.test(fullTagContent);
+                if (!hasAlign) {
+                    fullTagContent = `<div style="text-align:center;display:flex;justify-content:center;">${fullTagContent}</div>`;
+                }
+            }
+            // Allow markdown headers and tables inside container HTML tags.
+            // The model sometimes places markdown inside <div>, <section>, etc.
+            // We pre-convert only the safe markdown patterns (lines without HTML tags)
+            // before storing the block, so they render correctly.
+            if ((tagName === 'div' || tagName === 'section' || tagName === 'article' || tagName === 'aside' || tagName === 'main' || tagName === 'figure' || tagName === 'details' || tagName === 'summary') && fullTagContent.includes('\n')) {
+                const openTagEnd = fullTagContent.indexOf('>') + 1;
+                const closeTagIdx = fullTagContent.lastIndexOf('</');
+                if (closeTagIdx > openTagEnd) {
+                    const openTag = fullTagContent.substring(0, openTagEnd);
+                    let inner = fullTagContent.substring(openTagEnd, closeTagIdx);
+                    const closeTag = fullTagContent.substring(closeTagIdx);
+
+                    // Convert markdown headers — only on lines without any '<' (avoids breaking nested HTML)
+                    inner = inner.replace(/^(#{1,6})\s+(.+)$/gm, (m, hashes, text) => {
+                        if (text.includes('<')) return m;
+                        const lvl = hashes.length;
+                        if (lvl === 1) return `<h1 class="text-lg font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-indigo-300 drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-6 mb-1">${text}</h1><div class="h-px w-full" style="background: linear-gradient(to right, transparent 0%, rgba(34,211,238,0.3) 2%, rgba(34,211,238,0.3) 98%, transparent 100%); margin-bottom: 1.5rem;"></div>`;
+                        if (lvl === 2) return `<h2 class="text-md font-bold text-cyan-400 drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-5 mb-1">${text}</h2><div class="h-px w-full" style="background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.15) 2%, rgba(255,255,255,0.15) 98%, transparent 100%); margin-bottom: 1rem;"></div>`;
+                        if (lvl === 3) return `<h3 class="text-sm font-bold text-[#FC8F35] drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-4 mb-2">${text}</h3>`;
+                        if (lvl === 4) return `<h4 class="text-sm font-bold text-[#fca865] drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-4 mb-2">${text}</h4>`;
+                        if (lvl === 5) return `<h5 class="text-xs font-bold text-indigo-400/70 mt-3 mb-1">${text}</h5>`;
+                        return `<h6 class="text-xs font-bold text-slate-500 mt-3 mb-1">${text}</h6>`;
+                    });
+
+                    // Convert markdown tables using existing converter
+                    inner = convertTablesToHtml(inner);
+
+                    fullTagContent = openTag + inner + closeTag;
+                }
+            }
             pieces.push(fullTagContent);
             result = result.substring(0, startIdx) + `\n${id}\n` + result.substring(matchEnd);
         }

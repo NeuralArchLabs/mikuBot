@@ -1,3 +1,25 @@
+## [2.3.1] - 2026-04-14
+### Added
+- **Append-Only Streaming Renderer**: Eliminated chat bubble flickering during LLM streaming. The renderer now uses `insertAdjacentHTML` to append complete paragraphs to the DOM without touching existing content — zero re-renders, zero flicker.
+- **Streaming Paragraph Fade-In**: New `stream-paragraph-enter` animation (0.35s ease-out, subtle translateY + opacity) for paragraphs appearing during streaming.
+- **Renderer Animation Freeze During Streaming**: All post-streaming animations (blockquote typewriter, code fade-in, dividers, mermaid) are frozen at their first frame while streaming is active. Only the signature scan effect (`global-sig-scan`) keeps running.
+- **Ollama Native HTTP Streaming**: Replaced Electron's built-in `fetch` (undici) with Node.js native `http.request` for Ollama streams, eliminating internal buffering that caused the UI to appear hung during slow local inference.
+- **Ollama Keep-Alive & IPv4**: Added `keep_alive: 30m` to prevent model unloads between requests, and forced `127.0.0.1` to skip Windows DNS resolution delays.
+- **Model Loading Status**: Added `modelLoading` status handling in the stream proxy to gracefully ignore Ollama VRAM loading heartbeats.
+- **Markdown Inside HTML Tags**: The formatter now correctly renders markdown headers (`# h1`–`###### h6`) and markdown tables inside HTML container tags (`<div>`, `<section>`, `<article>`, `<aside>`, `<main>`, `<figure>`, `<details>`, `<summary>`).
+- **Auto-Centered Images & Iframes**: `<img>` and `<iframe>` tags without explicit alignment attributes are automatically centered in the chat.
+- **CSS for Inline Code & Underline**: Added explicit `.markdown-body` styles for `<code>` (indigo background, monospace) and `<u>` (underline with offset) to ensure correct rendering regardless of Tailwind resets.
+
+### Changed
+- **Responsive Chat Bubble Alignment**: Chat bubbles now center on small screens (when the sidebar collapses to icon-only mode) and use natural left/right alignment on large screens, maximizing content width at all resolutions.
+- **Streaming Buffer Strategy**: Switched from token-level flushing (200ms) to paragraph-level flushing with a 1.5s safety timeout, dramatically reducing DOM updates during streaming.
+
+### Fixed
+- **Streaming Flicker**: Resolved persistent chat bubble flickering caused by `dangerouslySetInnerHTML` replacing the entire DOM on every chunk update.
+- **Signature Animation Override**: Fixed a CSS cascade conflict where a later `.markdown-body.is-streaming` rule was overriding the `global-sig-scan` signature animation.
+- **Premature Signature Reveal**: Removed a `useEffect` that was adding `is-visible` to signature wrappers during streaming, which caused post-streaming animations to skip.
+- **Typewriter Speed**: Restored original adaptive typewriter speeds (3500–12000ms, 1/2/4 chars/tick) that were incorrectly accelerated in a prior session.
+
 ## [2.3.0] - 2026-04-10
 ### Added
 - **Persistent Background Agents**: Enabled true multi-session execution. Miku now runs complex agent tasks autonomously in the background natively. Switching to another neural branch preserves the task state, showing real-time background status indicators.
