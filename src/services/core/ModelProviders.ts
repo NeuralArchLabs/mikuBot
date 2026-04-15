@@ -370,14 +370,23 @@ export class OllamaProvider extends ModelProvider {
             model: this.options.config.model,
             messages: this.serializeMessages(messages),
             stream: true,
+            // keep_alive prevents the model from being unloaded from VRAM between requests.
+            // Without this, every message after ~5 min of inactivity triggers a full model
+            // reload (30-120s for larger models), causing the UI to appear "hung".
+            keep_alive: '30m',
+            // num_ctx is intentionally omitted — Ollama uses the context size configured
+            // in the Ollama app per model (via Modelfile), which is the correct source of truth.
             options: { temperature: this.options.config.temperature ?? 0.7 },
             tools: this.options.useTools ? this.options.tools : undefined
         };
 
         if (this.options.isElectronProxy) {
+            // Pass the configured ollamaUrl through; the main process will normalize localhost→127.0.0.1
             return this.streamProxy('ollama', { ...body, ollamaUrl: this.options.config.ollamaUrl }, false);
         } else {
-            const url = `${this.options.config.ollamaUrl || 'http://localhost:11434'}/api/chat`;
+            // Direct mode (dev/browser): force IPv4 to skip Windows DNS resolution delay.
+            const rawBase = (this.options.config.ollamaUrl || 'http://localhost:11434').replace('localhost', '127.0.0.1');
+            const url = `${rawBase}/api/chat`;
             return this.streamFetch(url, { 'Content-Type': 'application/json' }, body, false);
         }
     }

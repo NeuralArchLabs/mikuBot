@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useRef, useState, useCallback } from 'react';
+import React, { useMemo, useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { toHtml, renderMermaidBlocks, renderSingleMermaidBlock } from '../../utils';
 import { formatFinalResponse } from '../../services/formatters';
@@ -85,10 +85,42 @@ const globalAnimationQueue = new AnimationQueueManager();
 // DO NOT ALTER recursion logic or sanitizer settings.
 const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content: string, isStreaming?: boolean, mode?: 'full' | 'minimal' | 'none' }) => {
     const containerRef = useRef<HTMLDivElement>(null);
+    // Tracks how many characters of content have been committed to the DOM via append.
+    // Existing DOM content is NEVER touched — only new paragraphs get appended.
+    const committedLenRef = useRef(0);
 
+    // Full HTML for non-streaming mode (final render + post-streaming animations)
     const html = useMemo(() => {
-        const normalized = formatFinalResponse(content);
-        return toHtml(normalized, isStreaming, mode);
+        if (isStreaming) return '';
+        return toHtml(formatFinalResponse(content), false, mode);
+    }, [content, isStreaming, mode]);
+
+    // ⚡ APPEND-ONLY STREAMING: During streaming, detect new complete paragraphs and
+    // append them to the DOM using insertAdjacentHTML. This is zero-flicker because
+    // existing DOM nodes are never removed or replaced — only new ones are added.
+    useLayoutEffect(() => {
+        if (!isStreaming || !containerRef.current) {
+            committedLenRef.current = 0;
+            return;
+        }
+
+        const prevLen = committedLenRef.current;
+        const newContent = content.substring(prevLen);
+        if (!newContent) return;
+
+        // Find the last paragraph break in the new (uncommitted) content
+        const paraBreak = newContent.lastIndexOf('\n\n');
+        if (paraBreak < 0) return; // No complete paragraph yet — keep buffering
+
+        // Commit everything up to and including the paragraph break
+        const commitUpTo = prevLen + paraBreak + 2;
+        const newParagraphs = content.substring(prevLen, commitUpTo);
+        const newHtml = toHtml(formatFinalResponse(newParagraphs), true, mode);
+
+        containerRef.current.insertAdjacentHTML('beforeend',
+            `<div class="stream-paragraph-enter">${newHtml}</div>`
+        );
+        committedLenRef.current = commitUpTo;
     }, [content, isStreaming, mode]);
 
     // ⚡ DEFER ANIMATIONS: Prevent intersection observer initialization during streaming
@@ -101,23 +133,20 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
             (entries) => {
                 entries.forEach((entry) => {
                     const el = entry.target as HTMLElement;
-                    
-                    // ⚡ STATUS CHECK: Bail if already fully animated or specifically marked as done
+
                     if (el.hasAttribute('data-animated')) return;
 
                     if (entry.isIntersecting) {
-                        // ⚡ QUEUE PROTECTION: Don't enqueue twice 
                         if (el.hasAttribute('data-enqueued')) return;
                         el.setAttribute('data-enqueued', 'true');
-                        
-                        // ⚡ IMMEDIATE CONCEALMENT (Pre-animation)
+
                         if (el.tagName === 'BLOCKQUOTE') {
                             if (!el.hasAttribute('data-queued-ui')) {
                                 el.setAttribute('data-queued-ui', 'true');
                                 const fullHtml = el.getAttribute('data-original-html') || '';
                                 const titleMatch = fullHtml.match(/^<div class="[^"]*non-typing[^"]*">.*?<\/div>/);
                                 const idleTitleHtml = titleMatch ? titleMatch[0] : '';
-                                
+
                                 el.innerHTML = `<div class="blockquote-anim-container relative">`
                                     + `<div class="blockquote-placeholder invisible select-none pointer-events-none">${fullHtml}</div>`
                                     + `<div class="blockquote-typing absolute inset-0">${idleTitleHtml}</div>`
@@ -125,13 +154,11 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
                             }
                         }
 
-                        // ⚡ ENQUEUE TASK
                         globalAnimationQueue.enqueue(el, () => {
                             return new Promise<void>((resolve) => {
-                                // 👁 VALIDACIÓN DINÁMICA DE VIEWPORT: Si el usuario ya huyó (scroll rápido), abortar y saltar al resultado final
                                 const rect = el.getBoundingClientRect();
                                 const isVisible = rect.top < window.innerHeight + 300 && rect.bottom > -300;
-                                
+
                                 if (!isVisible) {
                                     if (el.tagName === 'BLOCKQUOTE') {
                                         el.innerHTML = el.getAttribute('data-original-html') || '';
@@ -158,7 +185,7 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
                                         el.classList.add('is-typing', 'is-visible');
                                         const fullHtml = el.getAttribute('data-original-html') || '';
                                         const typingEl = el.querySelector('.blockquote-typing') as HTMLElement;
-                                        
+
                                         if (!typingEl) {
                                             el.setAttribute('data-animated', 'true');
                                             el.removeAttribute('data-enqueued');
@@ -168,20 +195,18 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
 
                                         const titleMatch = fullHtml.match(/^<div class="[^"]*non-typing[^"]*">.*?<\/div>/);
                                         const idleTitleHtml = titleMatch ? titleMatch[0] : '';
-                                        
+
                                         let cursor = idleTitleHtml.length;
                                         let currentHtml = idleTitleHtml;
-                                        
-                                        // ⚡ ADAPTIVE SPEED: Dynamic chars per tick based on content length
-                                        // Short quotes (~1 char/tick), long content batches to finish in ~4s
+
                                         const contentLength = fullHtml.length - cursor;
-                                        const TICK_MS = 16; // ~60fps aligned
+                                        const TICK_MS = 16;
                                         const MAX_DURATION_MS = Math.min(4000 + Math.max(0, contentLength - 600) * 2, 12000);
                                         const totalTicks = MAX_DURATION_MS / TICK_MS;
                                         const charsPerTick = contentLength < 200 ? 1
                                             : contentLength < 600 ? Math.max(2, Math.ceil(contentLength / totalTicks))
                                             : Math.max(4, Math.ceil(contentLength / totalTicks));
-                                        
+
                                         let lastTime = 0;
                                         const tickLoop = (now: number) => {
                                             if (!lastTime) lastTime = now;
@@ -200,9 +225,7 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
                                                 return;
                                             }
 
-                                            // Process multiple characters per tick
                                             for (let i = 0; i < charsPerTick && cursor < fullHtml.length; i++) {
-                                                // Skip non-typing divs in one jump
                                                 if (fullHtml[cursor] === '<') {
                                                     const remaining = fullHtml.substring(cursor);
                                                     const nonTypingMatch = remaining.match(/^<div class="[^"]*non-typing[^"]*">.*?<\/div>/);
@@ -211,7 +234,6 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
                                                         cursor += nonTypingMatch[0].length;
                                                         continue;
                                                     }
-                                                    // Skip entire HTML tags as one unit
                                                     const tagMatch = remaining.match(/^<[^>]+>/);
                                                     if (tagMatch) {
                                                         currentHtml += tagMatch[0];
@@ -223,7 +245,6 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
                                                 cursor++;
                                             }
 
-                                            // Update DOM after processing this tick's batch
                                             if (typingEl) {
                                                 const isTypingFinished = fullHtml.substring(cursor).replace(/<[^>]+>/g, '').trim() === '';
                                                 if (cursor < fullHtml.length && !isTypingFinished) {
@@ -236,7 +257,7 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
                                         };
                                         (el as any)._typeRaf = requestAnimationFrame(tickLoop);
                                     } else {
-                                        resolve(); // Failsafe
+                                        resolve();
                                     }
                                 } else if (el.classList.contains('mermaid')) {
                                     renderSingleMermaidBlock(el);
@@ -250,7 +271,7 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
                                         el.setAttribute('data-animated', 'true');
                                         el.removeAttribute('data-enqueued');
                                         resolve();
-                                    }, 400); 
+                                    }, 400);
                                 } else if (el.classList.contains('signature-wrapper')) {
                                     el.classList.add('is-visible');
                                     setTimeout(() => {
@@ -274,12 +295,10 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
                             });
                         });
                     } else {
-                        // ⚡ DYNAMIC PRUNING: If element leaves viewport before animation starts, remove it from queue
                         if (el.hasAttribute('data-enqueued') && !el.classList.contains('is-typing')) {
                             globalAnimationQueue.dequeue(el);
                             el.removeAttribute('data-enqueued');
-                            
-                            // Revert concealment if it's a blockquote
+
                             if (el.tagName === 'BLOCKQUOTE' && el.hasAttribute('data-queued-ui')) {
                                 el.innerHTML = el.getAttribute('data-original-html') || '';
                                 el.removeAttribute('data-queued-ui');
@@ -296,7 +315,6 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
             if (el.tagName === 'BLOCKQUOTE' && !el.hasAttribute('data-original-html')) {
                 const htmlEl = el as HTMLElement;
                 htmlEl.setAttribute('data-original-html', htmlEl.innerHTML);
-                // We keep original content here to ensure a "pre-render" phase calculates the height correctly
             }
             observer.observe(el);
         });
@@ -309,10 +327,22 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
         };
     }, [html, isStreaming]);
 
+    if (isStreaming) {
+        // During streaming: container is empty initially. Paragraphs are appended
+        // by the useLayoutEffect above as they complete. No React re-rendering of content.
+        return (
+            <div
+                ref={containerRef}
+                className="markdown-body font-mono px-1 is-streaming"
+                lang="es"
+            />
+        );
+    }
+
     return (
         <div
             ref={containerRef}
-            className={`markdown-body font-mono px-1 ${isStreaming ? 'is-streaming' : ''}`}
+            className="markdown-body font-mono px-1"
             lang="es"
             dangerouslySetInnerHTML={{ __html: html }}
         />

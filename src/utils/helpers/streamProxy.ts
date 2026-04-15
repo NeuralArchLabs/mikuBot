@@ -57,6 +57,11 @@ export async function streamViaProxy(options: StreamProxyOptions): Promise<void>
                 return;
             }
 
+            // modelLoading: Ollama pre-flight passed but the model is being loaded into VRAM.
+            // This is a status heartbeat — not a data chunk. We ignore it here; the UI
+            // already shows a 'thinking' phase indicator during this period.
+            if (data.modelLoading) return;
+
             if (data.chunk) {
                 options.onChunk(data.chunk);
             }

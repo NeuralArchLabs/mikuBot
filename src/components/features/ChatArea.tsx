@@ -693,13 +693,21 @@ export const ChatArea = ({
             if (chunk) {
                 // Accumulate in high-performance buffer
                 chunkBufferRef.current += chunk;
-                
-                const now = Date.now();
-                // REVEAL LOGIC: Update UI every 800ms OR if we complete a word/block
-                const isWordComplete = /[\s\.\!\?\n\>\}\]:]/.test(chunk);
-                const hasTimePassed = (now - lastUpdateMsRef.current) > 200;
 
-                if (isWordComplete || hasTimePassed) {
+                const now = Date.now();
+                // 🎯 PARAGRAPH-LEVEL FLUSH: Only push to store when complete paragraphs arrive.
+                // The renderer uses append-only DOM updates — it never re-renders existing content.
+                // By flushing only at paragraph boundaries, each flush produces clean HTML blocks
+                // that can be safely appended without any flicker.
+                const buffer = chunkBufferRef.current;
+
+                // Paragraph boundary: complete block-level unit, safe to flush
+                const endsParagraph = /\n\s*\n\s*$/.test(buffer);
+                // Safety timeout: push whatever we have after 1.5s to prevent UI feeling frozen
+                // (handles single-paragraph responses that never hit \n\n)
+                const elapsed = now - lastUpdateMsRef.current;
+
+                if (endsParagraph || elapsed >= 1500) {
                     const latestContent = lastMsg.text + chunkBufferRef.current;
                     updateMessageContent(lastMsg.id, latestContent);
                     chunkBufferRef.current = '';

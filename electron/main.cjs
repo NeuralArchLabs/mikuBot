@@ -571,6 +571,120 @@ function getVoskModelPath() {
 // All LLM API calls go through here. The renderer sends the request
 // body WITHOUT any API keys — keys are injected by the main process
 // from config.json. Streaming chunks are forwarded via webContents.send.
+//
+// ARCHITECTUAL NOTE — Ollama Local Model Streaming:
+// Electron's built-in fetch (undici) internally buffers NDJSON responses.
+// For fast cloud APIs this is invisible, but local models generate tokens
+// slowly (10-50 tok/s), so undici may hold data indefinitely waiting to
+// fill its internal buffer. This causes the UI to appear "hung" even though
+// the model IS generating.
+// Solution: Ollama requests use Node.js native `http.request` which emits
+// 'data' events as raw bytes arrive on the TCP socket — zero buffering.
+// Cloud providers (Groq, Gemini, Z.AI) continue using fetch since their
+// high throughput makes buffering invisible.
+
+/**
+ * Ollama-specific streaming using native http module.
+ * Returns a Promise that resolves with { ok, error? }.
+ */
+function streamOllamaRequest(url, body, streamId, sender, timeoutMs) {
+    const http = require('http');
+    const parsedUrl = new URL(url);
+
+    return new Promise((resolve) => {
+        // Strip ollamaUrl from body before sending — it's our internal routing
+        // field, not part of the Ollama API spec.
+        const cleanBody = { ...body };
+        delete cleanBody.ollamaUrl;
+        const bodyStr = JSON.stringify(cleanBody);
+
+        let resolved = false;
+        const finish = (result) => {
+            if (resolved) return;
+            resolved = true;
+            resolve(result);
+        };
+
+        const req = http.request({
+            hostname: parsedUrl.hostname,
+            port: parseInt(parsedUrl.port) || 11434,
+            path: parsedUrl.pathname,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(bodyStr),
+            },
+            // Disable Nagle's algorithm for lowest-latency chunk delivery
+            // (prevents TCP from holding small packets to batch them)
+        }, (res) => {
+            if (res.statusCode !== 200) {
+                let errData = '';
+                res.on('data', chunk => errData += chunk);
+                res.on('end', () => {
+                    if (!sender.isDestroyed()) {
+                        sender.send('api-stream-chunk', { streamId, chunk: null, done: true, error: `HTTP ${res.statusCode}: ${errData}` });
+                    }
+                    finish({ ok: false, error: `HTTP ${res.statusCode}: ${errData}` });
+                });
+                return;
+            }
+
+            // Force UTF-8 string decoding so 'data' events emit strings, not Buffers.
+            res.setEncoding('utf-8');
+
+            res.on('data', (chunk) => {
+                if (!sender.isDestroyed()) {
+                    sender.send('api-stream-chunk', { streamId, chunk });
+                } else {
+                    req.destroy();
+                }
+            });
+
+            res.on('end', () => {
+                if (!sender.isDestroyed()) {
+                    sender.send('api-stream-chunk', { streamId, chunk: null, done: true });
+                }
+                finish({ ok: true });
+            });
+
+            res.on('error', (err) => {
+                console.error(`[Ollama Stream] Response error:`, err.message);
+                if (!sender.isDestroyed()) {
+                    sender.send('api-stream-chunk', { streamId, chunk: null, done: true, error: err.message });
+                }
+                finish({ ok: false, error: err.message });
+            });
+        });
+
+        // Disable Nagle on the underlying socket once it connects
+        req.on('socket', (socket) => {
+            socket.setNoDelay(true);
+        });
+
+        req.on('error', (err) => {
+            console.error(`[Ollama Stream] Request error:`, err.message);
+            if (!sender.isDestroyed()) {
+                sender.send('api-stream-chunk', { streamId, chunk: null, done: true, error: err.message });
+            }
+            finish({ ok: false, error: err.message });
+        });
+
+        // Timeout: destroy the request if it takes too long
+        const timer = setTimeout(() => {
+            req.destroy(new Error(`Ollama stream timed out after ${Math.round(timeoutMs / 1000)}s`));
+        }, timeoutMs);
+
+        req.on('close', () => clearTimeout(timer));
+
+        // Store a destroy handle so api-stream-abort can kill this request
+        activeStreams.set(streamId, { abort: () => req.destroy() });
+
+        // Send the request body and finalize
+        req.write(bodyStr);
+        req.end();
+    });
+}
+
 ipcMain.handle('api-stream', async (event, { provider, model, body, ollamaUrl, streamId }) => {
     const sender = event.sender;
     const keys = getApiKeys();
@@ -603,19 +717,60 @@ ipcMain.handle('api-stream', async (event, { provider, model, body, ollamaUrl, s
                 'Content-Type': 'application/json',
             };
         } else if (provider === 'ollama') {
-            url = `${ollamaUrl || 'http://localhost:11434'}/api/chat`;
+            // Force IPv4 — on Windows, 'localhost' can resolve to ::1 (IPv6) first,
+            // causing a 2-30s delay if Ollama only listens on 127.0.0.1.
+            const rawBase = (ollamaUrl || 'http://localhost:11434').replace('localhost', '127.0.0.1');
+            url = `${rawBase}/api/chat`;
             headers = { 'Content-Type': 'application/json' };
         } else {
             return { ok: false, error: `Unknown provider: ${provider}` };
         }
 
-        console.log(`[Main Process] Starting SSE Stream (${provider}/${model}) -> ${url.split('?')[0]}`);
+        console.log(`[Main Process] Starting Stream (${provider}/${model}) -> ${url.split('?')[0]}`);
 
+        // ── Ollama: Dedicated Native HTTP Streaming ──────────────────────────
+        // Uses Node.js http module instead of fetch for zero-buffering NDJSON
+        // streaming. See architectural note above for why this is necessary.
+        if (provider === 'ollama') {
+            // Pre-flight: fast connectivity check before opening the heavy stream
+            const baseUrl = url.replace('/api/chat', '');
+            try {
+                const http = require('http');
+                await new Promise((resolve, reject) => {
+                    const pingReq = http.get(`${baseUrl}/api/tags`, { timeout: 5000 }, (res) => {
+                        // Drain the response body to free the socket
+                        res.resume();
+                        if (res.statusCode >= 200 && res.statusCode < 400) {
+                            resolve();
+                        } else {
+                            reject(new Error(`HTTP ${res.statusCode}`));
+                        }
+                    });
+                    pingReq.on('error', reject);
+                    pingReq.on('timeout', () => {
+                        pingReq.destroy();
+                        reject(new Error('Connection timed out (5s)'));
+                    });
+                });
+            } catch (pingErr) {
+                return { ok: false, error: `Cannot connect to Ollama at ${baseUrl}: ${pingErr.message}. Is Ollama running?` };
+            }
+
+            // Signal renderer that the model may need to load into VRAM
+            if (!sender.isDestroyed()) {
+                sender.send('api-stream-chunk', { streamId, modelLoading: true });
+            }
+
+            console.log(`[Ollama] Pre-flight OK. Starting native HTTP stream for model: ${model}`);
+            return await streamOllamaRequest(url, body, streamId, sender, timeoutMs);
+        }
+
+        // ── Cloud Providers: Standard fetch-based streaming ─────────────────
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), timeoutMs);
         activeStreams.set(streamId, controller);
 
-        // Standard SSE headers to prevent buffering
+        // SSE headers for cloud providers only
         headers['Accept'] = 'text/event-stream';
         headers['Cache-Control'] = 'no-cache';
         headers['Connection'] = 'keep-alive';
@@ -677,10 +832,15 @@ ipcMain.handle('api-stream', async (event, { provider, model, body, ollamaUrl, s
 });
 
 ipcMain.on('api-stream-abort', (event, streamId) => {
-    const controller = activeStreams.get(streamId);
-    if (controller) {
+    const handle = activeStreams.get(streamId);
+    if (handle) {
         console.log(`[Main Process] Aborting stream per renderer request: ${streamId}`);
-        controller.abort();
+        // Handle both AbortController (cloud) and native http destroy handle (Ollama)
+        if (typeof handle.abort === 'function') {
+            handle.abort();
+        } else if (handle instanceof AbortController) {
+            handle.abort();
+        }
         activeStreams.delete(streamId);
     }
 });

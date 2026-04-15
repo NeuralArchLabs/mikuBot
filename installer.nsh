@@ -12,33 +12,7 @@
   DetailPrint "🔍 Fase 1: Verificando requisitos del sistema..."
   Sleep 1000
 
-  ; 1. Check for Ollama (Local AI Engine)
-  DetailPrint "Comprobando motor de IA local (Ollama)..."
-  nsExec::ExecToStack 'cmd /c "ollama --version"'
-  Pop $0
-  Pop $1
-  ${If} $0 != 0
-    DetailPrint "AVISO: Ollama no detectado. Se requiere para inferencia 100% privada."
-    MessageBox MB_YESNO|MB_ICONQUESTION "MikuCentral utiliza Ollama para ejecutar modelos neuronales locales de forma segura en tu dispositivo.$\r$\nOllama no fue detectado en tu sistema.$\r$\n$\r$\n¿Deseas descargar e instalar Ollama ahora mismo? (Recomendado)" IDNO skip_ollama
-    
-    DetailPrint "⬇️ Descargando Ollama Setup (esto puede tardar unos minutos)..."
-    nsExec::ExecToLog 'powershell.exe -Command "Invoke-WebRequest -Uri https://ollama.com/download/OllamaSetup.exe -OutFile $PLUGINSDIR\OllamaSetup.exe"'
-    
-    DetailPrint "🛠️ Ejecutando instalador de Ollama. Sigue las instrucciones en pantalla..."
-    ExecWait '"$PLUGINSDIR\OllamaSetup.exe"'
-    DetailPrint "✅ Ollama procesado."
-    
-    skip_ollama:
-  ${Else}
-    DetailPrint "✅ Ollama detectado correctamente: $1"
-  ${EndIf}
-
-  DetailPrint "--------------------------------------------------------"
-  DetailPrint "TIP DE USO: Prueba el 'Modo Seguro' si quieres autorizar"
-  DetailPrint "cada acción técnica que realice el asistente."
-  DetailPrint "--------------------------------------------------------"
-
-  ; 2. Check for Git (Workspace / Repositories)
+  ; 1. Check for Git (Workspace / Repositories)
   DetailPrint "Comprobando herramientas de desarrollo (Git)..."
   nsExec::ExecToStack 'cmd /c "git --version"'
   Pop $0
@@ -64,7 +38,7 @@
   DetailPrint "quieres operar tu asistente 24/7 desde cualquier lugar."
   DetailPrint "--------------------------------------------------------"
 
-  ; 3. Check for Visual C++ Redistributable 2015-2022 (x64)
+  ; 2. Check for Visual C++ Redistributable 2015-2022 (x64)
   DetailPrint "Comprobando librerías de sistema (VC++ Redist)..."
   ClearErrors
   ReadRegStr $0 HKLM "SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64" "Installed"

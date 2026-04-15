@@ -69,6 +69,7 @@ const StreamingRenderer: React.FC<ContentRendererProps> = ({ content, isStreamin
         //   - Long (800+): batch to finish in ~3.5s max → no flicker
         const remaining = content.length - typedLengthRef.current;
         if (remaining <= 0) { setIsFinished(true); return; }
+
         const TICK_MS = 16; // ~60fps aligned
         const MAX_DURATION_MS = Math.min(3500 + Math.max(0, content.length - 800) * 2, 12000);
         const totalTicks = MAX_DURATION_MS / TICK_MS;

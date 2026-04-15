@@ -2752,3 +2752,30 @@ select.premium-input option {
   border-radius: 8px;
 }
 
+/* ── Streaming Paragraph Fade-In ──────────────────────────── */
+@keyframes stream-paragraph-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.stream-paragraph-enter {
+  animation: stream-paragraph-enter 0.35s ease-out forwards;
+}
+
+/* ── Freeze Renderer Animations During Streaming ─────────── */
+/* All post-streaming animations (blockquote typewriter, code fade-in,  */
+/* divider, mermaid) stay frozen at their first frame. The signature    */
+/* scan effect on the container keeps running (handled by the rule on    */
+/* .markdown-body.is-streaming above).                                  */
+.markdown-body.is-streaming blockquote,
+.markdown-body.is-streaming .code-block-anim,
+.markdown-body.is-streaming .divider-container,
+.markdown-body.is-streaming .mermaid {
+  animation: none !important;
+  opacity: 0;
+}
