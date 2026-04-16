@@ -21,6 +21,8 @@
         "callout_security": "Security",
         "callout_todo": "Todo",
         "callout_remember": "Remember",
+        "callout_check": "Checklist",
+        "callout_abstract": "Abstract",
         "confirm": "Confirm",
         "back": "Back",
         "continue": "Continue",

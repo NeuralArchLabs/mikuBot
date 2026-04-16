@@ -349,8 +349,19 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                     fullTagContent = openTag + inner + closeTag;
                 }
             }
+            // Inline tags must not break text flow (critical for table cells, paragraphs)
+            const inlineTags = new Set(['strong', 'em', 'b', 'i', 'u', 'span', 'a', 'code', 'kbd', 'mark', 'small', 'abbr', 'sub', 'sup', 'var', 'dfn', 'cite', 'q', 's', 'strike', 'del', 'ins', 'samp', 'bdo', 'big', 'time', 'data', 'ruby', 'rt', 'rp', 'wbr']);
+
+            // Inject CSS classes for inline formatting tags captured by the protector
+            if (tagName === 'strong' || tagName === 'b') {
+                fullTagContent = fullTagContent.replace(/<(strong|b)(\s[^>]*)?>/i, '<$1 class="text-indigo-300 drop-shadow-[1px_1.5px_0px_rgba(0,0,0,1)] mx-0.5">');
+            } else if (tagName === 'em' || tagName === 'i') {
+                fullTagContent = fullTagContent.replace(/<(em|i)(\s[^>]*)?>/i, '<$1 class="text-slate-300 mx-0.5">');
+            }
+
             pieces.push(fullTagContent);
-            result = result.substring(0, startIdx) + `\n${id}\n` + result.substring(matchEnd);
+            const sep = inlineTags.has(tagName) ? '' : '\n';
+            result = result.substring(0, startIdx) + `${sep}${id}${sep}` + result.substring(matchEnd);
         }
         return result;
     })(html);
@@ -463,6 +474,8 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         '⏳': 'TODO', '📌': 'REMEMBER', 'ℹ️': 'INFO', '🛡️': 'SECURITY', '🐛': 'BUG',
         '🔥': 'DANGER', '📢': 'IMPORTANT', '🎯': 'IMPORTANT', '✏️': 'NOTE',
         '🟢': 'SUCCESS', '🔴': 'DANGER', '🟡': 'WARNING', '🔵': 'INFO',
+        '✓': 'CHECK', '✔': 'CHECK', '☑': 'CHECK', '📋': 'CHECK',
+        '📄': 'ABSTRACT',
     };
 
     // Fase A: Emoji-based detection
@@ -493,6 +506,8 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         'important': 'IMPORTANT',
         'caution': 'CAUTION', 'careful': 'CAUTION',
         'bug': 'BUG', 'issue': 'BUG',
+        'check': 'CHECK', 'checklist': 'CHECK', 'verification': 'CHECK', 'verify': 'CHECK',
+        'abstract': 'ABSTRACT', 'summary': 'ABSTRACT', 'overview': 'ABSTRACT', 'synopsis': 'ABSTRACT',
         // Chinese
         '提示': 'TIP', '建议': 'TIP', '小贴士': 'TIP',
         '警告': 'WARNING', '注意': 'WARNING',
@@ -535,6 +550,8 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         'RECUERDA': 'REMEMBER',  'RECORDATORIO': 'REMEMBER',
         'PENDIENTE': 'TODO',     'TAREA': 'TODO',
         'FRECUENTES': 'FAQ',
+        'VERIFICACIÓN': 'CHECK', 'VERIFICACION': 'CHECK', 'COMPROBACIÓN': 'CHECK', 'COMPROBACION': 'CHECK', 'REVISIÓN': 'CHECK', 'REVISION': 'CHECK', 'LISTA': 'CHECK',
+        'RESUMEN': 'ABSTRACT', 'SÍNTESIS': 'ABSTRACT', 'SINTESIS': 'ABSTRACT', 'ABSTRACTO': 'ABSTRACT', 'VISIÓN GENERAL': 'ABSTRACT', 'VISION GENERAL': 'ABSTRACT',
     };
     const spanishTypes = Object.keys(SPANISH_CALLOUT_MAP).join('|');
     const spanishCalloutRegex = new RegExp(`\\[!(${spanishTypes})\\]`, 'gi');
@@ -544,7 +561,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
     });
 
     // 1c. Universal Admonition Parser — Phase 1
-    html = html.replace(/^[ \t]*(?:>\s*)?\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|DANGER|INFO|SUCCESS|FAILURE|BUG|EXAMPLE|QUOTE|QUESTION|FAQ|SECURITY|TODO|REMEMBER)\]([\-\+])?(?:[ \t]+(.*))?\s*?\n?((?:(?!(?:[ \t]*>\s*\[!)).*\n?)*)/gim, (match, type, collapseSign, title, body) => {
+    html = html.replace(/^[ \t]*(?:>\s*)?\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|DANGER|INFO|SUCCESS|FAILURE|BUG|EXAMPLE|QUOTE|QUESTION|FAQ|SECURITY|TODO|REMEMBER|CHECK|ABSTRACT)\]([\-\+])?(?:[ \t]+(.*))?\s*?\n?((?:(?!(?:[ \t]*>\s*\[!)).*\n?)*)/gim, (match, type, collapseSign, title, body) => {
         const id = `__BLOCK_${pieces.length}__`;
         const typeUp = type.toUpperCase();
         
@@ -577,6 +594,8 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
             'SECURITY':  { icon: '<i class="fas fa-shield-alt"></i>',       color: 'text-teal-400',     border: 'border-teal-500/70',     bg: 'bg-teal-500/10',     glow: 'shadow-[inset_0_0_20px_rgba(20,184,166,0.04)]' },
             'TODO':      { icon: '<i class="fas fa-tasks"></i>',             color: 'text-amber-300',    border: 'border-amber-400/70',    bg: 'bg-amber-500/10',    glow: 'shadow-[inset_0_0_20px_rgba(252,211,77,0.04)]' },
             'REMEMBER':  { icon: '<i class="fas fa-thumbtack"></i>',         color: 'text-pink-400',     border: 'border-pink-500/70',     bg: 'bg-pink-500/10',     glow: 'shadow-[inset_0_0_20px_rgba(236,72,153,0.04)]' },
+            'CHECK':     { icon: '<i class="fas fa-clipboard-check"></i>',   color: 'text-emerald-300',  border: 'border-emerald-400/70',  bg: 'bg-emerald-500/10',  glow: 'shadow-[inset_0_0_20px_rgba(52,211,153,0.04)]' },
+            'ABSTRACT':  { icon: '<i class="fas fa-file-alt"></i>',          color: 'text-indigo-400',   border: 'border-indigo-500/70',   bg: 'bg-indigo-500/10',   glow: 'shadow-[inset_0_0_20px_rgba(99,102,241,0.04)]' },
         };
 
         const s = styles[typeUp] || styles['INFO'];
@@ -589,6 +608,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
             'BUG': 'callout_bug', 'EXAMPLE': 'callout_example', 'QUOTE': 'callout_quote',
             'QUESTION': 'callout_question', 'FAQ': 'callout_faq', 'SECURITY': 'callout_security',
             'TODO': 'callout_todo', 'REMEMBER': 'callout_remember',
+            'CHECK': 'callout_check', 'ABSTRACT': 'callout_abstract',
         };
         const localizedDefault = CALLOUT_I18N_KEYS[typeUp] ? i18n.t(`common.${CALLOUT_I18N_KEYS[typeUp]}`) : typeUp;
         const displayTitle = title ? title.replace(/^[>\s]+/, '').trim() : (localizedDefault !== `common.${CALLOUT_I18N_KEYS[typeUp]}` ? localizedDefault : typeUp);
@@ -778,7 +798,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
 
     html = html.replace(/==([^=\n]+)==/g, '<mark class="bg-[#FC8F35]/25 text-[#fcc18d] px-1 py-0.5 rounded-sm border-b border-[#FC8F35]/30 mx-0.5">$1</mark>');
 
-    html = html.replace(/~([^~\n]+)~/g, '<sub class="text-slate-400 text-[0.7em] leading-none">$1</sub>');
+    html = html.replace(/~([^~\n<]+)~/g, '<sub class="text-slate-400 text-[0.7em] leading-none">$1</sub>');
 
     // 13a. Footnote definitions [^1]: 
     html = html.replace(/^\[\^([^\]]+)\]:\s+(.*)$/gm, (match, label, content) => {
@@ -796,7 +816,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         return id;
     });
 
-    html = html.replace(/\^([^\^\n]+)\^/g, '<sup class="text-slate-400 text-[0.7em] leading-none">$1</sup>');
+    html = html.replace(/\^([^\^\n<]+)\^/g, '<sup class="text-slate-400 text-[0.7em] leading-none">$1</sup>');
 
     // 12. Blockquotes — now handled in Phase 1 (section 1d) with nesting support
 

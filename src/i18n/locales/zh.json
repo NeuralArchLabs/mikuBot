@@ -21,6 +21,8 @@
         "callout_security": "安全",
         "callout_todo": "待办",
         "callout_remember": "记住",
+        "callout_check": "检查清单",
+        "callout_abstract": "摘要",
         "confirm": "确认",
         "back": "后退",
         "continue": "继续",

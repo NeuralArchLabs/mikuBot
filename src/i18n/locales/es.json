@@ -21,6 +21,8 @@
         "callout_security": "Seguridad",
         "callout_todo": "Pendiente",
         "callout_remember": "Recordatorio",
+        "callout_check": "Verificación",
+        "callout_abstract": "Resumen",
         "confirm": "Confirmar",
         "back": "Atrás",
         "continue": "Continuar",

@@ -55,6 +55,7 @@ export const LibraryManager = ({
     const [renameInput, setRenameInput] = useState('');
     const [rawBlueprints, setRawBlueprints] = useState<Blueprint[]>([]);
     const [blueprints, setBlueprints] = useState<Blueprint[]>([]);
+    const [showPreview, setShowPreview] = useState(false);
 
     useEffect(() => {
         const loadBlueprints = async () => {
@@ -293,7 +294,9 @@ export const LibraryManager = ({
                                                     onClick={(e) => { e.stopPropagation(); onToggleSelect(name); }}
                                                     className={`w-5 h-5 rounded border flex items-center justify-center transition-all cursor-pointer flex-shrink-0 ${isSelected
                                                         ? 'bg-pink-600 border-pink-600 text-white shadow-[0_0_15px_rgba(236,72,153,0.3)]'
-                                                        : 'bg-slate-800 border-transparent text-transparent hover:bg-slate-700 hover:border-slate-700'
+                                                        : isActive
+                                                            ? 'bg-slate-700 border-slate-500/50 text-transparent hover:border-slate-400'
+                                                            : 'bg-slate-800 border-transparent text-transparent hover:bg-slate-700 hover:border-slate-700'
                                                         }`}
                                                 >
                                                     <Icon name="check" className="text-[10px]" />
@@ -362,6 +365,12 @@ export const LibraryManager = ({
                                         {editMode ? (
                                             <>
                                                 <button
+                                                    onClick={() => setShowPreview(!showPreview)}
+                                                    className={`px-3 py-1 rounded text-[10px] font-medium transition-colors flex items-center gap-1 ${showPreview ? 'bg-violet-600/20 text-violet-300 ring-1 ring-violet-500/40' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'}`}
+                                                >
+                                                    <Icon name={showPreview ? 'edit' : 'eye'} /> {showPreview ? t('editor.editor') : t('editor.live_preview')}
+                                                </button>
+                                                <button
                                                     onClick={handleCancelEdit}
                                                     className="px-2 py-1 text-[10px] text-slate-400 hover:text-slate-200 transition-colors"
                                                 >
@@ -387,12 +396,12 @@ export const LibraryManager = ({
                                 </div>
 
                                 {editMode ? (
-                                    <div className="flex-1 flex overflow-hidden">
-                                        {/* Editor */}
-                                        <div className="w-1/2 flex flex-col">
-                                            <div className="px-3 py-1 bg-slate-900/50">
-                                                <span className="text-[10px] text-slate-600 uppercase tracking-widest">{t('editor.editor')}</span>
-                                            </div>
+                                    showPreview ? (
+                                        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                                            <MarkdownRenderer content={editContent} />
+                                        </div>
+                                    ) : (
+                                        <div className="flex-1 flex flex-col">
                                             <textarea
                                                 value={editContent}
                                                 onChange={(e) => setEditContent(e.target.value)}
@@ -401,16 +410,7 @@ export const LibraryManager = ({
                                                 spellCheck={false}
                                             />
                                         </div>
-                                        {/* Live Preview */}
-                                        <div className="w-1/2 flex flex-col">
-                                            <div className="px-3 py-1 bg-slate-900/50">
-                                                <span className="text-[10px] text-slate-600 uppercase tracking-widest">{t('editor.live_preview')}</span>
-                                            </div>
-                                            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-                                                <MarkdownRenderer content={editContent} />
-                                            </div>
-                                        </div>
-                                    </div>
+                                    )
                                 ) : (
                                     <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
                                         <MarkdownRenderer content={files[viewFile]} />
@@ -430,13 +430,10 @@ export const LibraryManager = ({
                 </div>
 
                 {/* ── Footer ─────────────────────────────────────────── */}
-                <div className="h-14 bg-slate-950/40 px-6 flex items-center justify-between">
-                    <div className="text-xs text-slate-500">
-                        {t('sidebar.sessions_count', { count: selectedFiles.length })} • {t('sidebar.sessions_count', { count: Object.keys(files).length })}
-                    </div>
+                <div className="h-14 bg-slate-950/40 flex items-center justify-center">
                     <button
                         onClick={onClose}
-                        className="px-6 py-2 bg-pink-600 hover:bg-pink-500 text-white rounded font-medium text-sm transition-colors shadow-lg shadow-pink-900/20"
+                        className="px-8 py-2 bg-pink-600 hover:bg-pink-500 text-white rounded-full font-medium text-sm transition-colors shadow-lg shadow-pink-900/20"
                     >
                         {t('library.actions.save')}
                     </button>

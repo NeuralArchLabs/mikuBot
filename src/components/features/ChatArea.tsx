@@ -349,13 +349,6 @@ export const ChatArea = ({
         skipSaveRef.current = true;
     }
 
-    // [Performance Fix] Scroll Logic moved here from App.tsx to keep App from re-rendering on every streaming letter.
-    useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        }
-    }, [messages, isLoading, pendingApproval, agentStatus.phase, scrollRef]);
-
     // [Performance Fix] Session Auto-saver moved here from App.tsx.
     // ── SESSION SAVE GUARD ──
     // On session switch, there's a race: Zustand updates `messages` immediately but
@@ -848,10 +841,23 @@ export const ChatArea = ({
     const [isAnchoring, setIsAnchoring] = React.useState(false);
     const lockedScrollTopRef = React.useRef<number | null>(null);
 
+    // 🎯 LOCK TARGET: When set, syncScroll targets this element instead of the whole message.
+    // Used after tool use to lock on the narrative block rather than the message wrapper.
+    const lockTargetRef = React.useRef<string | null>(null);
+
     // 🔧 DYNAMIC BLOCK-AWARE LOCKING: Track blocks to reset lock on new text after tools
     const lastBlocksRef = React.useRef<any[]>([]);
     const lastBlockCountRef = React.useRef(0);
     const lastBlockTypeRef = React.useRef<string | null>(null);
+
+    // [Performance Fix] Scroll Logic — Naive auto-scroll for non-streaming state changes.
+    // GUARD: Skip during streaming or when lock is active — the lock engine handles those cases.
+    useEffect(() => {
+        if (!scrollRef.current || messages.length === 0) return;
+        const lastMsg = messages[messages.length - 1];
+        if (isAnchoring || lastMsg?.isStreaming) return;
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }, [messages, isLoading, pendingApproval, agentStatus.phase, scrollRef]);
 
     // 🖱️ HUMAN INTERACTION SENSORS: Only break the lock on PHYSICAL input
     React.useEffect(() => {
@@ -882,7 +888,7 @@ export const ChatArea = ({
     // [SCROLL ENGINE] Physical Interaction Lock for Streaming
     React.useEffect(() => {
         if (!scrollRef.current || messages.length === 0) return;
-        
+
         const lastMsg = messages[messages.length - 1];
         const scrollContainer = scrollRef.current;
         const LOCK_MARGIN = 28; // Standard spacing for icon/header visibility
@@ -891,12 +897,13 @@ export const ChatArea = ({
         if (isAnchoring && lastMessageIdRef.current && lastMessageIdRef.current !== lastMsg.id) {
             setIsAnchoring(false);
             lockedScrollTopRef.current = null;
+            lockTargetRef.current = null;
             lastMessageIdRef.current = lastMsg.id;
             return;
         }
 
         lastMessageIdRef.current = lastMsg.id;
-        
+
         // --- PHASE 1: Detection & Precision Positioning ---
         const syncScroll = () => {
             if (!scrollRef.current) return;
@@ -904,43 +911,66 @@ export const ChatArea = ({
             const lastMsg = messages[messages.length - 1];
             if (!lastMsg) return;
 
-            const msgEl = document.getElementById(`msg-${lastMsg.id}`);
-            if (!msgEl) return;
+            // 🎯 Use lock target if set (for block-aware locking after tools), otherwise use message element
+            const targetEl = lockTargetRef.current
+                ? document.getElementById(lockTargetRef.current)
+                : document.getElementById(`msg-${lastMsg.id}`);
+            if (!targetEl) return;
 
             const bannerEl = document.querySelector('.folder-permission-banner');
             const bannerHeight = bannerEl ? (bannerEl as HTMLElement).offsetHeight : 0;
             const containerRect = container.getBoundingClientRect();
             const boundaryTop = containerRect.top + bannerHeight + LOCK_MARGIN;
 
-            // 🎯 BOUNDARY-AWARE CALCULATION: Stop overshooting
-            // idealScrollTop is where we should be to keep the message at exactly boundaryTop
-            const msgRect = msgEl.getBoundingClientRect();
-            const idealScrollTop = container.scrollTop + (msgRect.top - boundaryTop);
+            // 🎯 BOUNDARY-AWARE CALCULATION: idealScrollTop places the target at boundaryTop
+            const targetRect = targetEl.getBoundingClientRect();
+            const idealScrollTop = container.scrollTop + (targetRect.top - boundaryTop);
 
             if (isAnchoring) {
-                // 🔒 STAY LOCKED: Absolute coordinate
-                if (lockedScrollTopRef.current !== null) {
-                    container.scrollTop = lockedScrollTopRef.current;
-                }
+                // 🔒 RECALCULATE FROM DOM: Handles layout shifts (status bar, resize) automatically.
+                // No stored absolute value — we derive the correct position every tick.
+                container.scrollTop = idealScrollTop;
             } else if (lastMsg.isStreaming) {
-                // 🚀 SOFT-BRAKE FOLLOW: Follow bottom, but never past the ideal lock point
-                const maxBottom = container.scrollHeight - container.clientHeight;
-                const nextScroll = Math.min(maxBottom, idealScrollTop);
+                const blocks = lastMsg.blocks || [];
+                const lastBlock = blocks[blocks.length - 1];
+                const isToolActive = lastBlock?.type === 'tool_call';
 
-                container.scrollTop = nextScroll;
+                if (isToolActive) {
+                    // 🔧 TOOL MODE: Follow freely to bottom so user sees tool execution
+                    const maxBottom = container.scrollHeight - container.clientHeight;
+                    container.scrollTop = maxBottom;
+                } else {
+                    // 🚀 SOFT-BRAKE FOLLOW: Follow bottom, but never past the ideal lock point
+                    const maxBottom = container.scrollHeight - container.clientHeight;
+                    const nextScroll = Math.min(maxBottom, idealScrollTop);
 
-                // Permanent Lock Engagement: Once we hit the ideal point, cement it
-                if (nextScroll >= idealScrollTop - 1) {
-                    setIsAnchoring(true);
-                    lockedScrollTopRef.current = idealScrollTop;
+                    container.scrollTop = nextScroll;
+
+                    // Permanent Lock Engagement: Once we hit the ideal point, cement it
+                    if (nextScroll >= idealScrollTop - 1) {
+                        setIsAnchoring(true);
+                    }
                 }
             }
         };
 
         if (lastMsg.isStreaming || isAnchoring) {
             syncScroll();
-            const frameId = requestAnimationFrame(syncScroll);
-            return () => cancelAnimationFrame(frameId);
+            // 🔄 CONTINUOUS LOOP: Keeps correcting during CSS transitions (status bar 0.4s),
+            // layout shifts, and DOM growth. Throttled to ~10fps when not streaming to save CPU.
+            let active = true;
+            let lastTick = 0;
+            const tick = (time: number) => {
+                if (!active) return;
+                const interval = lastMsg.isStreaming ? 0 : 100; // Full speed during streaming, 10fps when locked
+                if (time - lastTick >= interval) {
+                    syncScroll();
+                    lastTick = time;
+                }
+                requestAnimationFrame(tick);
+            };
+            const frameId = requestAnimationFrame(tick);
+            return () => { active = false; cancelAnimationFrame(frameId); };
         }
 
         // --- PHASE 3: Standard Auto-scroll (Fallback for User/System) ---
@@ -958,7 +988,9 @@ export const ChatArea = ({
         }
     }, [messages, agentStatus.phase, pendingApproval, isAnchoring, isAgentActive]);
 
-    // 🔧 DYNAMIC BLOCK-AWARE LOCKING: Detect new text blocks after tool execution
+    // 🔧 DYNAMIC BLOCK-AWARE LOCKING: Detect block transitions during streaming
+    // - When tool_call blocks appear: release lock so user can see tools
+    // - When narrative appears after tools: set lock target, let syncScroll handle lock engagement
     React.useEffect(() => {
         if (messages.length === 0 || !scrollRef.current) return;
 
@@ -974,84 +1006,58 @@ export const ChatArea = ({
 
         const prevBlocks = lastBlocksRef.current;
         const prevBlockCount = lastBlockCountRef.current;
-        const LOCK_MARGIN = 28;
 
         // Update refs for next comparison
         lastBlocksRef.current = currentBlocks;
         lastBlockCountRef.current = currentBlocks.length;
 
-        // 🔍 DETECT 1: New block added
-        let shouldReanchor = false;
-        let targetBlockIndex = -1;
-
+        // 🔧 DETECT: New block added
         if (currentBlocks.length > prevBlockCount) {
             const newBlockIndex = currentBlocks.length - 1;
             const newBlock = currentBlocks[newBlockIndex];
             const prevLastBlockType = prevBlocks.length > 0 ? prevBlocks[prevBlocks.length - 1]?.type : null;
 
-            // Check if we transitioned from tool_call to narrative (answer/thought/text)
             const narrativeTypes = ['answer', 'thought', 'text'];
-            const isNarrativeAfterTool = prevLastBlockType === 'tool_call' && narrativeTypes.includes(newBlock.type);
 
-            if (isNarrativeAfterTool) {
-                shouldReanchor = true;
-                targetBlockIndex = newBlockIndex;
+            if (newBlock.type === 'tool_call' && isAnchoring) {
+                // 🔧 TOOL APPEARED: Release lock so user can see tool execution
+                setIsAnchoring(false);
+                lockedScrollTopRef.current = null;
+                lockTargetRef.current = null;
             }
 
-            // Update last block type for tracking
+            if (prevLastBlockType === 'tool_call' && narrativeTypes.includes(newBlock.type)) {
+                // 🔧 NARRATIVE AFTER TOOLS: Release lock, set target to the new narrative block.
+                // syncScroll will follow it and engage lock naturally when it reaches the viewport top.
+                setIsAnchoring(false);
+                lockedScrollTopRef.current = null;
+                lockTargetRef.current = `block-${lastMsg.id}-${newBlockIndex}`;
+            }
+
             lastBlockTypeRef.current = newBlock.type;
         }
 
-        // 🔍 DETECT 2: Content growth in last narrative block after tool_call
-        if (!shouldReanchor && currentBlocks.length === prevBlockCount && prevBlocks.length > 0) {
+        // 🔧 DETECT: Content growth in last narrative block after tool_call
+        if (currentBlocks.length === prevBlockCount && prevBlocks.length > 0 && !lockTargetRef.current) {
             const lastBlock = currentBlocks[currentBlocks.length - 1];
             const prevLastBlock = prevBlocks[prevBlocks.length - 1];
 
-            // Check if we're in a narrative block after a tool_call
             const narrativeTypes = ['answer', 'thought', 'text'];
             const isNarrative = narrativeTypes.includes(lastBlock.type);
             const prevWasTool = prevBlocks.some(b => b.type === 'tool_call');
 
-            // If content grew and we're in narrative after tool, re-anchor
             if (isNarrative && prevWasTool && lastBlock.content !== prevLastBlock.content) {
-                // Check if this is a "new content after tool" scenario
-                // by comparing with previously seen narrative blocks
                 const hasSeenThisNarrativeBefore = prevBlocks.some(
                     (b, i) => i > 0 && prevBlocks[i - 1]?.type === 'tool_call' &&
                     narrativeTypes.includes(b.type)
                 );
 
                 if (!hasSeenThisNarrativeBefore) {
-                    shouldReanchor = true;
-                    targetBlockIndex = currentBlocks.length - 1;
+                    // Set lock target without engaging lock — syncScroll handles engagement
+                    setIsAnchoring(false);
+                    lockedScrollTopRef.current = null;
+                    lockTargetRef.current = `block-${lastMsg.id}-${currentBlocks.length - 1}`;
                 }
-            }
-        }
-
-        // 🔓 RE-ANCHOR: Release old lock and establish new one on target block
-        if (shouldReanchor && targetBlockIndex >= 0) {
-            if (isAnchoring) {
-                setIsAnchoring(false);
-                lockedScrollTopRef.current = null;
-            }
-
-            // 🎯 FOCUS ON TARGET BLOCK: Scroll to bring the block into view
-            const blockEl = document.getElementById(`block-${lastMsg.id}-${targetBlockIndex}`);
-            if (blockEl && scrollRef.current) {
-                // Calculate position to show the new block with LOCK_MARGIN
-                const bannerEl = document.querySelector('.folder-permission-banner');
-                const bannerHeight = bannerEl ? (bannerEl as HTMLElement).offsetHeight : 0;
-                const containerRect = scrollRef.current.getBoundingClientRect();
-                const blockRect = blockEl.getBoundingClientRect();
-                const boundaryTop = containerRect.top + bannerHeight + LOCK_MARGIN;
-                const idealScrollTop = scrollRef.current.scrollTop + (blockRect.top - boundaryTop);
-
-                // Scroll to the block
-                scrollRef.current.scrollTop = idealScrollTop;
-
-                // 🔒 RE-ENGAGE LOCK: Lock on the new block
-                setIsAnchoring(true);
-                lockedScrollTopRef.current = idealScrollTop;
             }
         }
     }, [messages, isAnchoring]);

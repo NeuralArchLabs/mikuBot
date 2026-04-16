@@ -7,7 +7,7 @@ import { Icon as IconComp } from './Common';
 export const CORE_TOOLS = new Set([
     'read_file', 'update_file', 'patch_file', 'delete_file',
     'list_files', 'search_files', 'get_system_metrics',
-    'web_search', 'deep_research',
+    'web_search',
     'run_console', 'read_url', 'add_scheduled_task',
     'send_telegram_message', 'batch_operation', 'get_file_outline',
     'list_available_skills'
