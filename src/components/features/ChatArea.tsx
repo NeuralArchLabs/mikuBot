@@ -102,7 +102,7 @@ const ChatInputControls = React.memo(({
                 e.preventDefault();
 
                 const hasContent = localInput.trim() || attachments.length > 0;
-                const canReprompt = !isLoading && agentIteration > 0 && agentPhase !== 'idle';
+                const canReprompt = !isLoading && agentIteration >= 0 && (agentPhase === 'aborted' || agentPhase === 'error');
 
                 if (!hasContent && canReprompt) {
                     onReprompt();
@@ -177,7 +177,7 @@ const ChatInputControls = React.memo(({
                                 handleNativeFileSelect(result.filePaths);
                             }
                         }}
-                        className="h-[50px] w-[50px] bg-slate-800/40 backdrop-blur-md border border-slate-700/50 hover:text-slate-200 hover:bg-slate-700/60 hover:border-slate-600 rounded-xl flex items-center justify-center transition-all duration-300 shadow-lg shadow-black/20 text-slate-400 group-hover:border-slate-500/30"
+                        className="h-[50px] w-[50px] bg-slate-800/20 backdrop-blur-md border border-dashed border-slate-700/30 hover:text-slate-200 hover:bg-slate-700/40 hover:border-slate-500/50 rounded-xl flex items-center justify-center transition-all duration-300 shadow-lg shadow-black/10 text-slate-500 hover:text-slate-400 group-hover:border-slate-500/30"
                         title={t('chat.actions.attach')}
                     >
                         <Icon name="plus" className="text-lg" />
@@ -264,7 +264,7 @@ const ChatInputControls = React.memo(({
                         />
 
                         <div className={isSent ? 'send-icon-fly' : ''}>
-                            <Icon name="paper-plane" className={`text-lg transition-transform duration-300 ${agentMode === 'agent' ? 'rainbow-icon' : ''} rotate-45 -ml-1`} />
+                            <Icon name="paper-plane" className={`text-lg transition-transform duration-300 ${agentMode === 'agent' ? 'rainbow-icon' : ''} rotate-45 -ml-2 p-[2px] -m-[2px] icon-shadow-premium`} />
                         </div>
                     </button>
 
@@ -275,18 +275,18 @@ const ChatInputControls = React.memo(({
                             className={`h-[50px] px-4 w-full btn-instruction-premium text-white rounded-xl flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed text-[10px] font-bold shadow-lg shadow-purple-900/20 ${boltGlow ? 'pulse-glow' : ''}`}
                             title={t('chat.actions.send_instruction_desc')}
                         >
-                            <Icon name="bolt" className={`text-lg ${boltGlow ? 'instruction-bolt-glow' : (isSent ? 'icon-pulse' : '')}`} />
+                            <Icon name="bolt" className={`text-lg icon-shadow-premium ${boltGlow ? 'instruction-bolt-glow' : (isSent ? 'icon-pulse' : '')}`} />
                         </button>
                     </div>
                 </div>
 
-                {!isLoading && agentIteration > 0 && agentPhase !== 'idle' && (
+                {!isLoading && (agentIteration > 0 || agentPhase === 'aborted' || agentPhase === 'error') && agentPhase !== 'idle' && (
                     <button
                         onClick={onReprompt}
                         className="h-[50px] px-4 btn-continue-premium text-white rounded-xl flex items-center justify-center min-w-[50px] shadow-lg shadow-orange-900/20 mx-1 pointer-events-auto"
                         title={t('chat.actions.resume_task')}
                     >
-                        <Icon name="redo" className="icon-spin-once text-lg" />
+                        <Icon name="redo" className="icon-spin-once text-lg icon-shadow-premium" />
                     </button>
                 )}
                 </div>

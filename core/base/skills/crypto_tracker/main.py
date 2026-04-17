@@ -23,12 +23,12 @@ def main():
                     "price_usd": f"${price:,.2f}",
                     "change_24h": f"{change:+.2f}%",
                     "status": "success",
-                    "message": f"El precio actual de {coin_id.capitalize()} es {price:,.2f} USD ({change:+.2f}% en las últimas 24h)."
+                    "message": f"The current price of {coin_id.capitalize()} is {price:,.2f} USD ({change:+.2f}% in the last 24h)."
                 }
             else:
                 result = {
                     "status": "error",
-                    "message": f"No se encontró información para '{coin_id}'. Asegúrate de usar el ID correcto (ej: 'bitcoin', 'ethereum')."
+                    "message": f"Information for '{coin_id}' not found. Make sure to use the correct ID (e.g., 'bitcoin', 'ethereum')."
                 }
         
         print(json.dumps(result))
@@ -36,7 +36,7 @@ def main():
     except Exception as e:
         print(json.dumps({
             "status": "error", 
-            "message": f"Error al conectar con la API de precios: {str(e)}"
+            "message": f"Error connecting to the pricing API: {str(e)}"
         }))
 
 if __name__ == "__main__":

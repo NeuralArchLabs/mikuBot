@@ -81,20 +81,20 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                 // Strip existing variation selectors and force Variation Selector-16 (color emoji)
                 const forcedEmoji = emojiMatch.replace(/[\uFE0E\uFE0F]/g, '') + '\uFE0F';
                 // Force a color-emoji specific font stack to prevent OS from rendering text variants
-                return `<span class="${animClass}" style="font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Segoe UI Symbol', emoji;">${forcedEmoji}</span>`;
+                return `<span class="${animClass}" style="font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Segoe UI Symbol', emoji; display: inline-block; vertical-align: middle;">${forcedEmoji}</span>`;
             });
             
             pieces.push(`<div class="signature-wrapper mb-8 mt-4 flex items-center">`
                 + `<span class="inline-flex items-center h-9 font-mono font-black select-none overflow-visible relative `
                 + `animate-sig-pop">`
                 + `<div class="animate-sig-bg-walk mask-edge-fade"></div>`
-                + `<span class="relative z-10 flex items-center">`
-                + `<span class="text-[18px] text-indigo-400 opacity-80">{{</span>`
+                + `<span class="relative z-10 flex items-center h-full -translate-y-[1.5px]">`
+                + `<span class="text-[18px] text-indigo-400 opacity-80 leading-none">{{</span>`
                 // Directional clip-path replaces overflow-hidden to allow vertical glow bleed while clipping horizontal bounds for the spread animation
-                + `<span class="inline-flex items-center justify-center animate-sig-bracket-spread whitespace-nowrap" style="clip-path: inset(-25px -20px);">`
-                + `<span class="text-[14px] text-indigo-200 uppercase animate-sig-text-glow px-2">${styledInner}</span>`
+                + `<span class="inline-flex items-center justify-center h-full animate-sig-bracket-spread whitespace-nowrap" style="clip-path: inset(-25px -20px);">`
+                + `<span class="text-[14px] text-indigo-200 uppercase animate-sig-text-glow px-2 leading-none">${styledInner}</span>`
                 + `</span>`
-                + `<span class="text-[18px] text-indigo-400 opacity-80">}}</span>`
+                + `<span class="text-[18px] text-indigo-400 opacity-80 leading-none">}}</span>`
                 + `</span></span></div>`);
             return id;
         }
@@ -139,7 +139,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
             styledInner = styledInner.replace(/(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu, (emojiMatch) => {
                 const animClass = getEmojiAnimationClass(emojiMatch);
                 const forcedEmoji = emojiMatch.replace(/[\uFE0E\uFE0F]/g, '') + '\uFE0F';
-                return `<span class="${animClass}" style="font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Segoe UI Symbol', emoji;">${forcedEmoji}</span>`;
+                return `<span class="${animClass}" style="font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Segoe UI Symbol', emoji; display: inline-block; vertical-align: middle;">${forcedEmoji}</span>`;
             });
 
             const id = `__BLOCK_${pieces.length}__`;
@@ -147,12 +147,12 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                 + `<span class="inline-flex items-center h-9 font-mono font-black select-none overflow-visible relative `
                 + `animate-sig-pop">`
                 + `<div class="animate-sig-bg-walk mask-edge-fade"></div>`
-                + `<span class="relative z-10 flex items-center">`
-                + `<span class="text-[18px] text-indigo-400 opacity-80">{{</span>`
-                + `<span class="inline-flex items-center justify-center animate-sig-bracket-spread whitespace-nowrap" style="clip-path: inset(-25px -20px);">`
-                + `<span class="text-[14px] text-indigo-200 uppercase animate-sig-text-glow px-2">${styledInner}</span>`
+                + `<span class="relative z-10 flex items-center h-full -translate-y-[1.5px]">`
+                + `<span class="text-[18px] text-indigo-400 opacity-80 leading-none">{{</span>`
+                + `<span class="inline-flex items-center justify-center h-full animate-sig-bracket-spread whitespace-nowrap" style="clip-path: inset(-25px -20px);">`
+                + `<span class="text-[14px] text-indigo-200 uppercase animate-sig-text-glow px-2 leading-none">${styledInner}</span>`
                 + `</span>`
-                + `<span class="text-[18px] text-indigo-400 opacity-80">}}</span>`
+                + `<span class="text-[18px] text-indigo-400 opacity-80 leading-none">}}</span>`
                 + `</span></span></div>`);
             return id;
         }

@@ -30,7 +30,7 @@ def main():
         result = {
             "available_skills": skills_list,
             "count": len(skills_list),
-            "usage_tip": "Para usar una de estas habilidades, simplemente llámala por su nombre de función con los parámetros requeridos."
+            "usage_tip": "To use one of these skills, simply call it by its function name with the required parameters."
         }
         print(json.dumps(result, ensure_ascii=False))
         

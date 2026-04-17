@@ -430,13 +430,18 @@ export const LibraryManager = ({
                 </div>
 
                 {/* ── Footer ─────────────────────────────────────────── */}
-                <div className="h-14 bg-slate-950/40 flex items-center justify-center">
-                    <button
-                        onClick={onClose}
-                        className="px-8 py-2 bg-pink-600 hover:bg-pink-500 text-white rounded-full font-medium text-sm transition-colors shadow-lg shadow-pink-900/20"
-                    >
-                        {t('library.actions.save')}
-                    </button>
+                <div className="h-14 bg-slate-950/40 flex items-center">
+                    {/* Spacer to align with sidebar (w-1/3) and keep button centered to content area */}
+                    <div className="w-1/3 hidden lg:block" />
+                    
+                    <div className="flex-1 flex items-center justify-center">
+                        <button
+                            onClick={onClose}
+                            className="px-8 py-2 bg-pink-600 hover:bg-pink-500 text-white rounded-full font-medium text-sm transition-colors shadow-lg shadow-pink-900/20"
+                        >
+                            {t('library.actions.save')}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

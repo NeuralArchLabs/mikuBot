@@ -10,7 +10,7 @@ def main():
         target_tool = args.get('tool_name', '').lower().strip()
         
         if not target_tool:
-            print(json.dumps({"error": "Debe proporcionar el nombre de una herramienta (tool_name)."}))
+            print(json.dumps({"error": "You must provide a tool name (tool_name)."}))
             return
 
         # Localizar el archivo TOOL_USAGE_LIBRARY.md
@@ -24,7 +24,7 @@ def main():
             library_path = os.path.join(os.path.dirname(base_dir), 'TOOL_USAGE_LIBRARY.md')
 
         if not os.path.exists(library_path):
-            print(json.dumps({"error": f"No se encontró el archivo de referencia en {library_path}"}))
+            print(json.dumps({"error": f"Reference file not found at {library_path}"}))
             return
 
         with open(library_path, 'r', encoding='utf-8') as f:
@@ -40,7 +40,7 @@ def main():
             result = {
                 "tool": target_tool,
                 "manual_snippet": snippet,
-                "note": "Asegúrate de seguir exactamente la estructura de parámetros mostrada arriba."
+                "note": "Ensure you follow exactly the parameter structure shown above."
             }
         else:
             # Si no está en el core, buscar en las carpetas de skills por usage.md
@@ -56,7 +56,7 @@ def main():
                     result = {
                         "tool": target_tool,
                         "manual_snippet": snippet,
-                        "note": "Manual extraído del archivo de uso de la skill."
+                        "note": "Manual extracted from the skill's usage file."
                     }
                     skill_usage_found = True
 
@@ -70,15 +70,15 @@ def main():
                                 result = {
                                     "tool": target_tool,
                                     "manual_snippet": f.read().strip(),
-                                    "note": "Manual extraído del archivo de uso de la skill."
+                                    "note": "Manual extracted from the skill's usage file."
                                 }
                                 skill_usage_found = True
                                 break
 
             if not skill_usage_found:
                 result = {
-                    "error": f"No se encontró un manual para la herramienta '{target_tool}'.",
-                    "suggestion": "Usa 'list_available_skills' para verificar los nombres correctos de las herramientas disponibles."
+                    "error": f"No manual found for the tool '{target_tool}'.",
+                    "suggestion": "Use 'list_available_skills' to verify the correct names of available tools."
                 }
 
         print(json.dumps(result, ensure_ascii=False))

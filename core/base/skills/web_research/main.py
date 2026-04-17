@@ -70,7 +70,7 @@ def web_research(query, max_sites=3, categories=None):
             except: continue
 
             if not total_results:
-                return {"success": False, "error": f"No se encontraron resultados para: {query}"}
+                return {"success": False, "error": f"No results found for: {query}"}
 
             # Step 2: Extract & Analyze
             # Limitamos para no saturar si hay muchas categorías
@@ -92,10 +92,10 @@ def web_research(query, max_sites=3, categories=None):
                 "query": query,
                 "categories_used": categories,
                 "extracted_sources": final_selection,
-                "summary": f"Análisis completado en {len(final_selection)} fuentes de categorías: {', '.join(categories)}."
+                "summary": f"Analysis completed across {len(final_selection)} sources from categories: {', '.join(categories)}."
             }
     except Exception as e:
-        return {"success": False, "error": f"Error en web_research: {str(e)}"}
+        return {"success": False, "error": f"Error in web_research: {str(e)}"}
 
 if __name__ == "__main__":
     try:
@@ -104,7 +104,7 @@ if __name__ == "__main__":
         max_sites = args.get('max_sites', 3)
         categories = args.get('categories', ['general'])
         if not query:
-            output = {"success": False, "error": "Missing required parameter: query. Debes proveer una cadena para buscar."}
+            output = {"success": False, "error": "Missing required parameter: query. You must provide a search string."}
             sys.stdout.write(json.dumps(output, ensure_ascii=False) + "\n")
             sys.exit(0)
         output = web_research(query, max_sites, categories)

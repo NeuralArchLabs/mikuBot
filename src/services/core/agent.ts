@@ -712,7 +712,7 @@ export async function sendAgentMessage(
                 const taskProgressBlock = `\nNext Action: ${nextAction}`;
                 const autoTaskInfo = turnAutoTasks.length > 0 ? `\n✨ AUTO-SYNC: Tasks automatically completed: ${turnAutoTasks.join(', ')}` : '';
                 const significantCalls = successfulCalls.filter(tc => 
-                    !['read_file', 'list_files', 'search_files', 'get_file_outline', 'miku_clock', 'get_system_metrics', 'list_available_skills', 'get_crypto_price', 'read_url'].includes(tc.function.name)
+                    !['read_file', 'list_files', 'search_files', 'get_file_outline', 'miku_clock', 'get_system_metrics', 'get_crypto_price', 'read_url', 'add_scheduled_task'].includes(tc.function.name)
                 );
                 const unplannedInfo = (significantCalls.length > 0 && turnAutoTasks.length === 0 && freshTasksContent.includes('[ ]'))
                     ? '\n⚠️ NOTE: You have performed actions that do not seem to match any pending task in your plan.' : '';
@@ -738,7 +738,12 @@ export async function sendAgentMessage(
         onChunk(`\n\n${errorMsg}`, false, []);
         throw err;
     } finally {
-        if (!hasFatalError) onStatus({ phase: 'idle', elapsedMs: Date.now() - startTime });
+        if (!hasFatalError) {
+            onStatus({ 
+                phase: abortSignal.aborted ? 'aborted' : 'idle', 
+                elapsedMs: Date.now() - startTime 
+            });
+        }
         // ─── FINAL SWEEP: Remove all ephemeral awareness from saved history ───
         cleanAwareness();
         if (onFinalRawHistory) onFinalRawHistory([...agentMessages]);

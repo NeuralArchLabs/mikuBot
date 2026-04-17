@@ -10,7 +10,7 @@ export const CORE_TOOLS = new Set([
     'web_search',
     'run_console', 'read_url', 'add_scheduled_task',
     'send_telegram_message', 'batch_operation', 'get_file_outline',
-    'list_available_skills'
+    'request_agent_mode'
 ]);
 
 interface ToolBlockProps {
@@ -305,10 +305,10 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
                             </div>
                             
                             {/* Result Icon (Morphs in when result arrives) */}
-                            <div className={`absolute inset-0 flex items-center justify-center transition-all duration-700 cubic-bezier(0.34, 1.56, 0.64, 1) ${isPlaceholder ? 'opacity-0 scale-0 -rotate-180' : ((isSuccess && !isAborted && !isDenied) ? (isNeuralSkill ? 'tool-icon-neural-success' : 'tool-icon-success') : (hasError || isAborted || isDenied) ? 'tool-icon-error' : 'tool-icon-pending')}`}>
+                            <div className={`absolute inset-0 flex items-center justify-center transition-all duration-700 cubic-bezier(0.34, 1.56, 0.64, 1) ${isPlaceholder ? 'opacity-0 scale-0 -rotate-180' : ((isSuccess && !isAborted && !isDenied) ? (isNeuralSkill ? 'tool-icon-neural-success animate-neural-strobe' : 'tool-icon-success') : (hasError || isAborted || isDenied) ? 'tool-icon-error' : 'tool-icon-pending')}`}>
                                 <IconComp
                                     name={(isSuccess && !isAborted && !isDenied) ? 'check-circle' : isDenied ? 'ban' : isAborted ? 'stop-circle' : hasError ? 'exclamation-triangle' : 'cog'}
-                                    className={`icon-center-rig fa-fw ${showTransformation ? 'animate-tool-pulse' : ''} ${!isPlaceholder && !isOld ? 'animate-tool-morph' : ''} ${isAborted ? 'text-orange-500/50' : isDenied ? 'text-rose-500/50' : ''}`} 
+                                    className={`icon-center-rig fa-fw ${showTransformation ? (isNeuralSkill ? '' : 'animate-tool-pulse') : ''} ${!isPlaceholder && !isOld ? 'animate-tool-morph' : ''} ${isAborted ? 'text-orange-500/50' : isDenied ? 'text-rose-500/50' : ''}`} 
                                 />
                             </div>
                         </div>
