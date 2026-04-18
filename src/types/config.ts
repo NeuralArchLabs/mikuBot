@@ -72,6 +72,10 @@ export interface AppConfig {
     verbosity?: string;
     humorLevel?: string;
     customRules?: string;
+    // Appearance
+    theme?: string;
+    chatBackgroundImage?: string;
+    chatFont?: string;
 }
 
 /** Application State */

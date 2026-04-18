@@ -1190,10 +1190,30 @@ export const ChatArea = ({
                 </div>
             )}
 
+            {config.chatBackgroundImage && (
+                <div className="absolute inset-0 pointer-events-none z-0 transition-opacity duration-500"
+                    style={{
+                        backgroundImage: (() => {
+                            let url = config.chatBackgroundImage.replace(/\\/g, '/');
+                            if (!url.startsWith('http') && !url.startsWith('data:') && !url.startsWith('local://')) {
+                                url = `local:///${url.replace(/^\//, '')}`;
+                            }
+                            return `url("${url}")`;
+                        })(),
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        backgroundAttachment: 'fixed'
+                    }}
+                />
+            )}
+
             <div
                 key={sessionId}
-                className="flex-1 overflow-y-auto p-4 custom-scrollbar chat-area-scroll chat-fade-mask relative animate-chat flex flex-col transform-gpu"
+                className="flex-1 overflow-y-auto p-4 custom-scrollbar chat-area-scroll chat-fade-mask relative animate-chat flex flex-col transform-gpu z-10"
                 ref={scrollRef}
+                style={{ 
+                    fontFamily: 'var(--chat-font)'
+                }}
             >
                 <div className="flex-1" />
                 <div className="space-y-6 w-full max-w-[98%] sm:max-w-[95%] lg:max-w-4xl mx-auto pb-4">
@@ -1235,17 +1255,23 @@ export const ChatArea = ({
                                         <MarkdownRenderer content={msg.text} />
                                     </div>
                                 ) : (
-                                    <div className={`relative w-auto max-w-[95%] lg:max-w-[90%] p-5 sm:px-8 sm:py-6 transition-colors duration-300 break-words message-pop-in transform-gpu rounded-[32px] ${msg.role === 'user'
-                                        ? 'bg-blue-600/20 border border-transparent group-hover:border-blue-500/30 text-blue-50 rounded-br-none shadow-[0_15px_35px_-10px_rgba(0,0,0,0.6)]'
-                                        : 'bg-slate-800 border border-transparent group-hover:border-slate-700 text-slate-200 rounded-bl-none shadow-[0_10px_25px_-3px_rgba(0,0,0,0.9)] lg:ml-6'
-                                        }`}>
+                                    <div className={`relative w-auto max-w-[95%] lg:max-w-[90%] p-5 sm:px-8 sm:py-6 break-words message-pop-in rounded-[32px] ${msg.role === 'user' ? 'rounded-br-none' : 'rounded-bl-none lg:ml-6'}`}>
+                                        
+                                        {/* --- Layer 1: Shadow Isolation --- */}
+                                        <div className={`absolute inset-0 z-0 rounded-[inherit] pointer-events-none ${msg.role === 'user' ? 'shadow-[0_15px_35px_-10px_rgba(0,0,0,0.6)]' : 'shadow-[0_10px_25px_-3px_rgba(0,0,0,0.9)]'}`} />
+
+                                        {/* --- Layer 2: Glass Backdrop --- */}
+                                        <div className={`absolute inset-0 z-0 rounded-[inherit] pointer-events-none backdrop-blur-md ${msg.role === 'user' ? 'bg-blue-900/75' : 'bg-slate-800/90'}`} />
+
+                                        {/* --- Layer 3: Interactive Border --- */}
+                                        <div className={`absolute inset-0 z-0 rounded-[inherit] pointer-events-none border border-transparent transition-colors duration-300 ${msg.role === 'user' ? 'group-hover:border-blue-500/30' : 'group-hover:border-slate-600/60'}`} />
 
                                         {/* --- Action Bar --- */}
-                                        <div className={`absolute -top-3 ${msg.role === 'user' ? 'right-4' : 'left-4'} flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10`}>
+                                        <div className={`absolute -top-3 ${msg.role === 'user' ? 'right-4' : 'left-4'} flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50`}>
                                             {msg.role === 'user' && (
                                                 <button
                                                     onClick={() => onRewind(index)}
-                                                    className="bg-slate-800 border border-slate-700 text-amber-400 hover:text-amber-300 px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-2xl"
+                                                    className="bg-slate-800/80 backdrop-blur-sm border border-slate-700/50 text-amber-400 hover:text-amber-300 px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-md"
                                                     title={t('chat.actions.rewind')}
                                                 >
                                                     <Icon name="history" /> {t('chat.actions.rewind')}
@@ -1260,14 +1286,17 @@ export const ChatArea = ({
                                                         btn.innerHTML = t('chat.actions.copied');
                                                         setTimeout(() => btn.innerHTML = origText, 2000);
                                                     }}
-                                                    className="bg-slate-800 border border-slate-700 text-blue-400 hover:text-blue-300 px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-2xl"
+                                                    className="bg-slate-800/80 backdrop-blur-sm border border-slate-700/50 text-blue-400 hover:text-blue-300 px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-md"
                                                 >
                                                     <Icon name="copy" /> {t('chat.actions.copy')}
                                                 </button>
                                             )}
                                         </div>
 
-                                        <div className="text-[10px] font-bold opacity-30 mb-3 flex items-center justify-between uppercase tracking-[0.2em]">
+                                        {/* --- Layer 4: Content --- */}
+                                        <div className={`relative z-10 h-full flex flex-col ${msg.role === 'user' ? 'text-blue-50' : 'text-slate-200'}`}>
+                                            
+                                            <div className="text-[10px] font-bold opacity-30 mb-3 flex items-center justify-between uppercase tracking-[0.2em]">
                                             <div className="flex items-center gap-2">
                                                 {msg.role === 'user' ? (
                                                     <Icon name="user-circle" />
@@ -1368,17 +1397,18 @@ export const ChatArea = ({
                                             </div>
                                         )}
 
-                                        {/* Operative Reality Metadata */}
-                                        {msg.role === 'assistant' && msg.provider && (
-                                            <div className="mt-4 pt-3 border-t border-slate-700/50 flex items-center justify-between">
-                                                <div className="flex items-center gap-2 text-[9px] font-mono text-slate-500">
-                                                    <span className="bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700/50 text-blue-400 font-bold uppercase">
-                                                        {msg.provider}
-                                                    </span>
-                                                    <span className="opacity-60">{msg.model || t('chat.labels.default_model')}</span>
+                                            {/* Operative Reality Metadata */}
+                                            {msg.role === 'assistant' && msg.provider && (
+                                                <div className="mt-4 pt-3 border-t border-slate-700/50 flex items-center justify-between">
+                                                    <div className="flex items-center gap-2 text-[9px] font-mono text-slate-500">
+                                                        <span className="bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700/50 text-blue-400 font-bold uppercase">
+                                                            {msg.provider}
+                                                        </span>
+                                                        <span className="opacity-60">{msg.model || t('chat.labels.default_model')}</span>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        )}
+                                            )}
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -1455,7 +1485,13 @@ export const ChatArea = ({
                 )}
 
                 <div className={`w-full agent-status-docked ${(isLoading || pendingApproval) ? 'active' : ''}`}>
-                    <div className="w-full bg-slate-950/40 backdrop-blur-md border-t border-slate-800/20 agent-status-animate-in">
+                    <div 
+                        className="w-full bg-slate-950/20 backdrop-blur-md agent-status-animate-in"
+                        style={config.chatBackgroundImage ? { 
+                            maskImage: "linear-gradient(to bottom, transparent 0%, black 12px, black calc(100% - 16px), transparent 100%)", 
+                            WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 12px, black calc(100% - 16px), transparent 100%)" 
+                        } : {}}
+                    >
                     {isExecutingThisSession ? (
                         <div className="w-full">
                             <AgentStatusPanel

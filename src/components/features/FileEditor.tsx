@@ -48,7 +48,7 @@ export const FileEditor = ({
     return (
         <div className="flex-1 flex h-full overflow-hidden text-slate-200">
             <div className="w-auto min-w-[120px] max-w-[160px] md:min-w-[160px] md:max-w-56 lg:min-w-[200px] lg:max-w-72 xl:min-w-[240px] xl:max-w-[320px] bg-slate-900/30 border-r border-slate-800/50 flex flex-col flex-shrink-0 overflow-hidden">
-                <div className="p-3 flex items-center justify-between border-b border-slate-800/50">
+                <div className="pl-7 pr-3 py-3 flex items-center justify-between border-b border-slate-800/50">
                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">{t('editor.title')}</span>
                     <button onClick={onAddFile} className="text-slate-500 hover:text-cyan-400 transition-colors" title={t('editor.add')}>
                         <Icon name="plus" />
@@ -59,7 +59,7 @@ export const FileEditor = ({
                         <div key={filename} className="group relative">
                             <button
                                 onClick={() => setSelectedFile(filename)}
-                                className={`w-full text-left px-3 py-3 text-xs font-mono border-l-2 transition-all duration-300 flex items-center justify-between overflow-hidden ${selectedFile === filename
+                                className={`w-full text-left pl-7 pr-3 py-3 text-xs font-mono border-l-2 transition-all duration-300 flex items-center justify-between overflow-hidden ${selectedFile === filename
                                     ? 'bg-slate-800 border-cyan-500 text-cyan-400'
                                     : 'border-transparent text-slate-500 hover:bg-slate-800/30 hover:text-slate-300'
                                     }`}

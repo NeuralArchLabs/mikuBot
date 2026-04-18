@@ -92,8 +92,8 @@ export const TitleBar: React.FC = () => {
     }, []);
 
     return (
-        <div className="h-[35px] bg-[#0f172a] flex items-center px-4 select-none relative z-[100] border-b border-slate-800/50 app-region-drag">
-            
+        <div className="h-[36px] flex items-center px-4 select-none relative z-[100] border-b shadow-[0_8px_30px_-5px_rgba(0,0,0,0.5)] shadow-black/30 app-region-drag" style={{ backgroundColor: 'var(--background-color)', borderColor: 'var(--border-color)' }}>
+
             {/* Menu Buttons */}
             <div ref={menuRef} className="flex h-full app-region-no-drag">
                 {Object.entries(menuItems).map(([id, menu]) => (
@@ -101,18 +101,19 @@ export const TitleBar: React.FC = () => {
                         <button
                             onClick={() => setActiveMenu(activeMenu === id ? null : id)}
                             onMouseEnter={() => activeMenu && setActiveMenu(id)}
-                            className={`px-3 py-1 text-xs font-medium transition-colors rounded-md mx-0.5 ${
-                                activeMenu === id 
-                                ? 'bg-slate-800 text-white shadow-[0_0_15px_-3px_rgba(59,130,246,0.2)]' 
-                                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                            }`}
+                            className={`px-3 py-1 text-xs font-medium transition-colors rounded-md mx-0.5 ${activeMenu === id
+                                ? 'text-white shadow-[0_0_15px_-3px_rgba(59,130,246,0.2)]'
+                                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                                }`}
+                            style={{ backgroundColor: activeMenu === id ? 'var(--surface-color)' : 'transparent' }}
                         >
                             {menu.label}
                         </button>
 
                         {/* Dropdown Menu */}
                         {activeMenu === id && (
-                            <div className="absolute top-[32px] left-0.5 bg-[#1e293b]/95 backdrop-blur-xl border border-slate-700/50 rounded-lg shadow-2xl py-2 min-w-[220px] z-[110] animate-in fade-in zoom-in duration-150 origin-top overflow-hidden">
+                            <div className="absolute top-[35px] left-0.5 backdrop-blur-xl border rounded-lg shadow-2xl py-2 min-w-[220px] z-[110] animate-in fade-in zoom-in duration-150 origin-top overflow-hidden"
+                                style={{ backgroundColor: 'var(--surface-color)', borderColor: 'var(--border-color)' }}>
                                 {menu.options.map((option, idx) => (
                                     option.separator ? (
                                         <div key={`sep-${idx}`} className="h-px bg-slate-700/50 my-1 mx-2" />

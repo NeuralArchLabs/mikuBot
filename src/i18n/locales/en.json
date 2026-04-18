@@ -270,6 +270,13 @@
         "title": "System Configuration",
         "language_select": "Interface Language",
         "language_desc": "Select the global language for mikuBot",
+        "appearance": {
+            "title": "Appearance & Themes",
+            "theme": "System Theme",
+            "theme_desc": "Change the visual vibe of your assistant",
+            "chat_font": "Chat Typography",
+            "chat_bg": "Background Image (URL)"
+        },
         "tabs": {
             "core": "Core System",
             "core_desc": "Platform Configuration & Runtime Keys",

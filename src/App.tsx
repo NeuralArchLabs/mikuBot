@@ -18,7 +18,8 @@ import {
     SystemDialogConfig,
     OnboardingWizard,
     AboutDialog,
-    Icon
+    Icon,
+    ThemeManager
 } from './components';
 import {
     fetchModels,
@@ -2323,7 +2324,8 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
     };
 
     return (
-        <div className="flex flex-col h-screen w-full bg-[#0f172a] text-slate-200 overflow-hidden font-sans miku-app-isolate contain-layout">
+        <div className="flex flex-col h-screen overflow-hidden font-sans antialiased selection:bg-blue-500/30 selection:text-blue-100 miku-app-isolate" style={{ backgroundColor: 'var(--background-color)', color: 'var(--text-primary)' }}>
+            <ThemeManager theme={state.config.theme} chatFont={state.config.chatFont} />
             {state.config.isConfigured && <TitleBar />}
             <div className="flex flex-1 overflow-hidden relative contain-layout">
             {!state.config.isConfigured && (
@@ -2336,6 +2338,18 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
             )}
             <SystemDialog config={dialogConfig} />
             <AboutDialog isOpen={!!state.isAboutOpen} onClose={() => setState(p => ({ ...p, isAboutOpen: false }))} />
+            <div className={`flex flex-col h-full z-30 w-16 lg:w-68 flex-shrink-0 transition-all duration-500 relative miku-sidebar-isolate border-r border-white/5 ${state.activeTab === 'chat' ? 'sidebar-shadow-chat' : 'sidebar-shadow-default'}`} style={{ backgroundColor: 'var(--sidebar-bg)' }}>
+                <div className="flex-1 overflow-y-auto custom-scrollbar overflow-x-hidden">
+                    <Sidebar
+                        state={{ ...state, askConfirm, onSelectSession, onDeleteSession, onNewSession, onExportSession, onImportSession, onDeleteFile: (n: string, t: FileTarget) => deleteFile(n, t), onAddFile: (n: string, t: FileTarget) => createFile(n, t) } as any}
+                        sessions={sessions}
+                        loadingSessions={loadingSessions}
+                        setState={setState}
+                        onClear={handleClear}
+                        triggerNeuralEgg={lastNeuralTrigger}
+                    />
+                </div>
+            </div>
             <LibraryManager
                 isOpen={state.isLibraryExpanded} onClose={() => setState(p => ({ ...p, isLibraryExpanded: false }))}
                 files={state.additionalFiles} selectedFiles={state.selectedLibraryFiles}
@@ -2348,17 +2362,9 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                 editFileRequested={state.libraryEditFile}
                 onClearEditRequest={() => setState(p => ({ ...p, libraryEditFile: null }))}
             />
-            <Sidebar
-                state={{ ...state, askConfirm, onSelectSession, onDeleteSession, onNewSession, onExportSession, onImportSession, onDeleteFile: (n: string, t: FileTarget) => deleteFile(n, t), onAddFile: (n: string, t: FileTarget) => createFile(n, t) } as any}
-                sessions={sessions}
-                loadingSessions={loadingSessions}
-                setState={setState}
-                onClear={handleClear}
-                triggerNeuralEgg={lastNeuralTrigger}
-            />
 
             {/* Persistent UI Shell Container to prevent flashes on tab swap */}
-            <div className="flex-1 flex flex-col h-full bg-slate-950/40 overflow-hidden relative contain-layout">
+            <main className="flex-1 flex flex-col min-w-0 relative" style={{ backgroundColor: 'var(--background-color)' }}>
                 {/* Persistent View Stack: Each view stays mounted to preserve state and scroll position */}
                 <div className={`flex-1 flex flex-col h-full ${state.activeTab !== 'chat' ? 'hidden' : ''}`}>
                     <ChatArea
@@ -2480,9 +2486,9 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                 <div className={`flex-1 flex flex-col h-full animate-control-room ${state.activeTab !== 'scheduler' ? 'hidden' : ''}`}>
                     <div className="flex-1 overflow-y-auto custom-scrollbar">
                         <div className="max-w-4xl mx-auto p-6 md:p-10">
-                            <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-800/50">
+                            <div className="flex items-center justify-between mb-8 pb-6 border-b border-[var(--border-color)]">
                                 <div className="flex items-center gap-4">
-                                    <div className="bg-cyan-500/20 p-3 rounded-2xl text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.2)]">
+                                    <div className="bg-[var(--accent-color)]/20 p-3 rounded-2xl text-[var(--accent-color)] shadow-[0_0_20px_rgba(6,182,212,0.2)]">
                                         <Icon name="clock" className="text-3xl animate-clock-neural" />
                                     </div>
                                     <div>
@@ -2514,7 +2520,7 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                         </div>
                     </div>
                 </div>
-                </div>
+            </main>
 
             {/* SearXena Installation Progress Overlay */}
             {searxenaInstalling && (

@@ -3052,6 +3052,16 @@ if (!gotTheLock) {
     });
 
     app.whenReady().then(async () => {
+        // Register local file protocol for custom user assets (like backgrounds)
+        require('electron').protocol.registerFileProtocol('local', (request, callback) => {
+            const url = request.url.replace(/^local:\/\//, '');
+            try {
+                return callback(decodeURIComponent(url));
+            } catch (error) {
+                return callback(url);
+            }
+        });
+
         // 0. Zombie Killer - Ensure clean slate
         await purgeOrphanEngines();
 

@@ -5,6 +5,7 @@ import { neuralScheduler } from '../../services';
 import { AppConfig, ModelInfo, Provider } from '../../types';
 import { PROVIDERS } from '../../constants';
 import { Icon, ModernSelect, SelectOption } from '../common/Common';
+import { THEMES } from '../../constants/themes';
 import { SchedulerTab } from './SchedulerTab';
 import { SkillsPanel } from './SkillsPanel';
 
@@ -77,6 +78,10 @@ export const SettingsPanel = ({
     const [searxenaStatus, setSearxenaStatus] = useState<{ installed: boolean, envReady: boolean, running: boolean }>({ installed: false, envReady: false, running: false });
     const [startingSearxena, setStartingSearxena] = useState(false);
     const [updatingSearxena, setUpdatingSearxena] = useState(false);
+
+    const onSyncModelArchitectures = () => {
+        onTestConnection(config.provider === 'ollama' ? 'ollama' : config.provider);
+    };
     const [showSkillsBlueprints, setShowSkillsBlueprints] = useState(false);
     const [isWaving, setIsWaving] = useState(false);
     const { t, i18n } = useTranslation();
@@ -195,41 +200,41 @@ export const SettingsPanel = ({
     return (
         <div className={`flex-1 ${settingsTab === 'skills' ? 'lg:overflow-hidden pb-2' : 'overflow-y-auto pb-6'} p-3 md:p-6 pt-4 md:pt-6 custom-scrollbar relative`} onScroll={handleScroll}>
             {/* Subdued ambient glow background */}
-            <div className="absolute top-0 left-1/4 w-1/2 h-96 bg-blue-600/10 blur-[120px] pointer-events-none rounded-full transform-gpu" />
-            <div className="absolute bottom-0 right-1/4 w-1/3 h-64 bg-purple-600/10 blur-[100px] pointer-events-none rounded-full transform-gpu" />
+            <div className="absolute top-0 left-1/4 w-1/2 h-96 bg-[var(--primary-color)] opacity-[0.07] blur-[120px] pointer-events-none rounded-full transform-gpu" />
+            <div className="absolute bottom-0 right-1/4 w-1/3 h-64 bg-purple-600/05 blur-[100px] pointer-events-none rounded-full transform-gpu" />
 
             <div className={`mx-auto w-full relative z-10 transition-all duration-700 ease-in-out ${settingsTab === 'skills' ? 'max-w-7xl px-2 lg:px-4 space-y-0' : 'max-w-4xl space-y-6'}`}>
 
                 {/* ── Shared Macro-Tab Header ─────────────────────────── */}
                 <div className={`flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 relative transition-all duration-500 ease-in-out`}>
-                    <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-slate-800/80 to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--border-color)] to-transparent" />
                     <div className="flex flex-col sm:flex-row items-baseline lg:flex lg:items-baseline gap-2 md:gap-2 lg:gap-2 xl:gap-4 w-full lg:w-auto">
                         {/* Core System Tab Title */}
                         <button
                             onClick={() => setSettingsTab('core')}
-                            className={`text-left flex flex-col items-start transition-all duration-300 group ${settingsTab === 'core' ? '' : 'opacity-35 hover:opacity-60'}`}
+                            className={`text-left flex flex-col items-start transition-all duration-300 group ${settingsTab === 'core' ? '' : 'opacity-40 hover:opacity-100'}`}
                         >
-                            <h2 className={`text-2xl md:text-3xl lg:text-xl xl:text-3xl font-black tracking-tighter select-none ${settingsTab === 'core' ? 'text-white text-shadow-premium animate-title-slide' : 'text-slate-400 group-hover:text-slate-200 transition-all duration-300'}`}>
+                            <h2 className={`text-2xl md:text-3xl lg:text-xl xl:text-3xl font-black tracking-tighter select-none ${settingsTab === 'core' ? 'text-[var(--text-primary)] text-shadow-premium animate-title-slide' : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-all duration-300'}`}>
                                 {t('settings.tabs.core')}
                             </h2>
                             {settingsTab === 'core' && (
-                                <p className="text-blue-400 text-[10px] md:text-xs font-bold tracking-widest uppercase select-none opacity-80 mt-0.5 animate-title-slide">{t('settings.tabs.core_desc')}</p>
+                                <p className="text-[var(--primary-color)] text-[10px] md:text-xs font-bold tracking-widest uppercase select-none opacity-80 mt-0.5 animate-title-slide">{t('settings.tabs.core_desc')}</p>
                             )}
                         </button>
 
                         {/* Separator */}
-                        <div className={`hidden xl:block w-px h-8 flex-shrink-0 self-center rounded-full bg-gradient-to-b from-transparent transition-colors duration-500 ${settingsTab === 'skills' ? 'via-cyan-400/30' : 'via-slate-800/80'} to-transparent`} />
+                        <div className={`hidden xl:block w-px h-8 flex-shrink-0 self-center rounded-full bg-gradient-to-b from-transparent transition-colors duration-500 ${settingsTab === 'skills' ? 'via-cyan-400/30' : 'via-[var(--border-color)]'} to-transparent`} />
 
                         {/* Neural Skills Tab Title */}
                         <button
                             onClick={() => setSettingsTab('skills')}
-                            className={`text-left transition-all duration-300 group flex items-baseline gap-2 lg:gap-3 ${settingsTab === 'skills' ? '' : 'opacity-35 hover:opacity-60'}`}
+                            className={`text-left transition-all duration-300 group flex items-baseline gap-2 lg:gap-3 ${settingsTab === 'skills' ? '' : 'opacity-40 hover:opacity-100'}`}
                         >
                             <div className="flex-shrink-0 self-baseline">
-                                <Icon name="puzzle-piece" className={`text-xl lg:text-lg xl:text-xl transform -translate-y-[3px] lg:-translate-y-[3.5px] ${settingsTab === 'skills' ? 'text-cyan-400' : 'text-slate-500 group-hover:text-slate-300'}`} />
+                                <Icon name="puzzle-piece" className={`text-xl lg:text-lg xl:text-xl transform -translate-y-[3px] lg:-translate-y-[3.5px] ${settingsTab === 'skills' ? 'text-cyan-400' : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'}`} />
                             </div>
                             <div className="flex flex-col">
-                                <h2 className={`text-2xl md:text-3xl lg:text-xl xl:text-3xl font-black tracking-tighter select-none ${settingsTab === 'skills' ? 'text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-teal-400 text-shadow-premium animate-title-slide' : 'text-slate-400 group-hover:text-slate-200 transition-all duration-300'}`}>
+                                <h2 className={`text-2xl md:text-3xl lg:text-xl xl:text-3xl font-black tracking-tighter select-none ${settingsTab === 'skills' ? 'text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-teal-400 text-shadow-premium animate-title-slide' : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-all duration-300'}`}>
                                     {t('settings.tabs.skills')}
                                 </h2>
                                 {settingsTab === 'skills' && (
@@ -243,17 +248,17 @@ export const SettingsPanel = ({
 
                     {/* Action Buttons — contextual */}
                     {settingsTab === 'core' && (
-                        <div className="grid grid-cols-2 lg:flex lg:flex-row lg:items-center gap-2 md:gap-2 bg-slate-900/40 p-1.5 md:p-2 rounded-2xl border border-transparent shadow-xl flex-shrink-0 w-full lg:w-auto animate-in fade-in slide-in-from-top-1 duration-700">
+                        <div className="grid grid-cols-2 lg:flex lg:flex-row lg:items-center gap-2 md:gap-2 bg-[var(--surface-color)] p-1.5 md:p-2 rounded-2xl border border-transparent shadow-xl flex-shrink-0 w-full lg:w-auto animate-in fade-in slide-in-from-top-1 duration-700">
                             <button
                                 onClick={onLoadConfig}
-                                className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-slate-800/40 hover:bg-cyan-600/20 text-cyan-400 rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-cyan-900/10 transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-transparent hover:border-cyan-500/40 whitespace-nowrap"
+                                className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-[var(--hover-color)] hover:bg-cyan-600/20 text-cyan-400 rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-cyan-900/10 transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-transparent hover:border-cyan-500/40 whitespace-nowrap"
                                 title={t('settings.actions.load')}
                             >
                                 <Icon name="download" className="text-sm xl:text-base flex-shrink-0" /> <span className="inline lg:hidden min-[1150px]:inline">{t('settings.actions.load')}</span>
                             </button>
                             <button
                                 onClick={onExportConfig}
-                                className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-slate-800/40 hover:bg-slate-700/60 text-slate-300 rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-transparent hover:border-slate-500/40 shadow-lg whitespace-nowrap"
+                                className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-[var(--hover-color)] hover:bg-[var(--surface-color)] text-[var(--text-secondary)] rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-transparent hover:border-[var(--border-color)] shadow-lg whitespace-nowrap"
                                 title={t('settings.actions.export')}
                             >
                                 <Icon name="upload" className="text-sm xl:text-base flex-shrink-0" /> <span className="inline lg:hidden min-[1150px]:inline">{t('settings.actions.export')}</span>
@@ -261,7 +266,7 @@ export const SettingsPanel = ({
                             <button
                                 onClick={onResetGlobal}
                                 title={t('settings.actions.default')}
-                                className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-slate-800/40 hover:bg-red-500/10 text-slate-400 hover:text-red-400 rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-transparent hover:border-red-500/40 shadow-lg whitespace-nowrap"
+                                className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-[var(--hover-color)] hover:bg-red-500/10 text-[var(--text-secondary)] hover:text-red-400 rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-transparent hover:border-red-500/40 shadow-lg whitespace-nowrap"
                             >
                                 <Icon name="history" className="text-sm xl:text-base flex-shrink-0" /> <span className="inline lg:hidden min-[1150px]:inline">{t('settings.actions.default')}</span>
                             </button>
@@ -275,13 +280,13 @@ export const SettingsPanel = ({
                     )}
 
                     {settingsTab === 'skills' && (
-                        <div className="grid grid-cols-2 lg:flex lg:flex-row lg:items-center bg-slate-900/40 p-1.5 md:p-2 xl:p-3 rounded-2xl border border-transparent shadow-xl flex-shrink-0 w-full lg:w-auto animate-in fade-in slide-in-from-top-1 duration-700 gap-1.5 xl:gap-3 transition-all duration-500 ease-in-out">
+                        <div className="grid grid-cols-2 lg:flex lg:flex-row lg:items-center bg-[var(--surface-color)] p-1.5 md:p-2 xl:p-3 rounded-2xl border border-[var(--border-color)] shadow-xl flex-shrink-0 w-full lg:w-auto animate-in fade-in slide-in-from-top-1 duration-700 gap-1.5 xl:gap-3 transition-all duration-500 ease-in-out">
                              <button
                                 onClick={() => setShowSkillsBlueprints(!showSkillsBlueprints)}
                                 className={`w-full lg:w-11 min-[1150px]:w-auto h-11 xl:h-auto py-3 px-3 lg:px-4 xl:px-6 rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-widest transition-all duration-500 ease-in-out flex items-center justify-center gap-2 border hover:scale-105 active:scale-95 ${
                                     showSkillsBlueprints 
                                     ? 'bg-cyan-500 text-black border-transparent shadow-[0_0_20px_rgba(6,182,212,0.4)]' 
-                                    : 'bg-slate-800/50 text-slate-300 border-transparent hover:bg-slate-800 hover:text-white hover:border-slate-700/50'
+                                    : 'bg-[var(--hover-color)] text-[var(--text-secondary)] border-transparent hover:bg-[var(--surface-color)] hover:text-[var(--text-primary)] hover:border-[var(--border-color)]'
                                 }`}
                                 title={t('settings.actions.new_directive')}
                             >
@@ -325,7 +330,7 @@ export const SettingsPanel = ({
                         <div className="space-y-3">
                             <div className="premium-card p-5 flex items-center justify-between gap-6">
                                 <div className="space-y-1">
-                                    <div className="text-sm font-black text-white">{t('settings.language_select')}</div>
+                                    <div className="text-sm font-black text-[var(--text-primary)]">{t('settings.language_select')}</div>
                                     <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{t('settings.language_desc')}</div>
                                 </div>
                                 <div className="flex gap-2 bg-black/20 p-1.5 rounded-2xl border border-white/5">
@@ -352,9 +357,109 @@ export const SettingsPanel = ({
 
                         <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
+                        {/* Appearance Section */}
+                        <div className="space-y-4">
+                            <label className="text-sm font-black text-[var(--text-primary)] uppercase tracking-[0.2em] flex items-center gap-2">
+                                <Icon name="palette" className="text-cyan-400" /> {t('settings.appearance.title', 'Appearance')}
+                            </label>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Theme Selection */}
+                                <div className="premium-card p-6 space-y-4">
+                                    <div className="flex flex-col gap-1">
+                                        <div className="text-sm font-black text-[var(--text-primary)]">{t('settings.appearance.theme', 'System Theme')}</div>
+                                        <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{t('settings.appearance.theme_desc', 'Change the visual vibe of your assistant')}</div>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+                                        {Object.entries(THEMES).map(([id, themeData]) => (
+                                            <button
+                                                key={id}
+                                                onClick={() => updateConfig('theme', id)}
+                                                className={`group relative flex flex-col items-center gap-2 p-2 rounded-2xl transition-all border-2 ${
+                                                    (config.theme || 'miku') === id
+                                                    ? 'bg-white/10 border-cyan-400 shadow-lg shadow-cyan-900/20'
+                                                    : 'bg-black/20 border-transparent hover:bg-white/5'
+                                                }`}
+                                            >
+                                                <div 
+                                                    className="w-10 h-10 rounded-full shadow-inner border border-white/10"
+                                                    style={{ background: themeData['--primary-color'] }}
+                                                />
+                                                <span className={`text-[9px] font-black uppercase tracking-tighter ${
+                                                    (config.theme || 'miku') === id ? 'text-cyan-400' : 'text-slate-500 group-hover:text-slate-300'
+                                                }`}>
+                                                    {id}
+                                                </span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Typography & Background */}
+                                <div className="premium-card p-6 space-y-5">
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block ml-1">{t('settings.appearance.chat_font', 'Chat Font')}</label>
+                                            <ModernSelect
+                                                value={config.chatFont || 'Outfit'}
+                                                onChange={(val) => updateConfig('chatFont', val)}
+                                                options={[
+                                                    { value: 'Outfit', label: 'Outfit (Default)', style: { fontFamily: 'Outfit' } },
+                                                    // Sans-Serif
+                                                    { value: 'Inter', label: 'Inter', style: { fontFamily: 'Inter' } },
+                                                    { value: 'Montserrat', label: 'Montserrat', style: { fontFamily: 'Montserrat' } },
+                                                    { value: 'Roboto', label: 'Roboto', style: { fontFamily: 'Roboto' } },
+                                                    { value: 'Questrial', label: 'Questrial', style: { fontFamily: 'Questrial' } },
+                                                    { value: 'Comfortaa', label: 'Comfortaa', style: { fontFamily: 'Comfortaa' } },
+                                                    // Serif
+                                                    { value: 'Playfair Display', label: 'Playfair Display', style: { fontFamily: 'Playfair Display' } },
+                                                    { value: 'Lora', label: 'Lora', style: { fontFamily: 'Lora' } },
+                                                    { value: 'Merriweather', label: 'Merriweather', style: { fontFamily: 'Merriweather' } },
+                                                    // Monospace
+                                                    { value: 'JetBrains Mono', label: 'JetBrains Mono', style: { fontFamily: 'JetBrains Mono' } },
+                                                    { value: 'Fira Code', label: 'Fira Code', style: { fontFamily: 'Fira Code' } },
+                                                    // Decorative
+                                                    { value: 'Orbitron', label: 'Orbitron (Futuristic)', style: { fontFamily: 'Orbitron' } },
+                                                    { value: 'Sacramento', label: 'Sacramento (Script)', style: { fontFamily: 'Sacramento' } },
+                                                    { value: 'Architects Daughter', label: 'Architects Daughter', style: { fontFamily: 'Architects Daughter' } }
+                                                ]}
+                                                title="Font"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block ml-1">{t('settings.appearance.chat_bg', 'Chat Background URL')}</label>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={config.chatBackgroundImage || ''}
+                                                    onChange={(e) => updateConfig('chatBackgroundImage', e.target.value)}
+                                                    placeholder="https://example.com/image.jpg"
+                                                    className="flex-1 bg-[var(--surface-color)] border border-[var(--border-color)] rounded-xl px-4 py-3 text-xs text-[var(--text-primary)] font-mono focus:outline-none focus:ring-1 focus:ring-cyan-500/50 transition-all shadow-inner"
+                                                />
+                                                {config.chatBackgroundImage && (
+                                                    <button 
+                                                        onClick={() => updateConfig('chatBackgroundImage', '')}
+                                                        className="w-10 h-10 rounded-xl flex items-center justify-center transition-all bg-red-500/10 hover:bg-red-500/20 text-red-500"
+                                                        title={t('common.clear', 'Clear Background')}
+                                                        aria-label={t('common.clear', 'Clear Background')}
+                                                    >
+                                                        <Icon name="times" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="h-px bg-gradient-to-r from-transparent via-[var(--border-color)] to-transparent" />
+
                         {/* Knowledge Base Section */}
                         <div className="space-y-3">
-                            <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
+                            <label className="text-sm font-black text-[var(--text-primary)] uppercase tracking-[0.2em] flex items-center gap-2">
                                 <Icon name="database" className="text-blue-500" /> {t('settings.pathways.title')}
                             </label>
                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -382,11 +487,11 @@ export const SettingsPanel = ({
                                             <Icon name="box" className="text-3xl md:text-xl lg:text-lg xl:text-xl transition-all" />
                                         </div>
                                         <div className="truncate flex-1">
-                                            <div className="text-xl md:text-base lg:text-sm xl:text-base font-black text-slate-100 tracking-wide mb-1 lg:mb-0 transition-all">{t('settings.pathways.workspace')}</div>
+                                            <div className="text-xl md:text-base lg:text-sm xl:text-base font-black text-[var(--text-primary)] tracking-wide mb-1 lg:mb-0 transition-all">{t('settings.pathways.workspace')}</div>
                                             <div className="text-[11px] md:text-[9px] lg:text-[8px] xl:text-[9px] font-bold uppercase tracking-widest text-emerald-500/80 truncate transition-all">{t('settings.pathways.workspace_desc')}</div>
                                         </div>
                                     </div>
-                                    <div className="text-xs font-mono text-slate-400 mb-3 truncate bg-black/40 p-3 rounded-xl border border-white/5 shadow-inner leading-relaxed" title={workSpacePathName}>
+                                    <div className="text-xs font-mono text-[var(--text-secondary)] mb-3 truncate bg-[var(--hover-color)] p-3 rounded-xl border border-[var(--border-color)] leading-relaxed" title={workSpacePathName}>
                                         {workSpacePathName || "Not configured"}
                                     </div>
                                     <button
@@ -422,11 +527,11 @@ export const SettingsPanel = ({
                                             <Icon name="hdd" className="text-3xl md:text-xl lg:text-lg xl:text-xl transition-all" />
                                         </div>
                                         <div className="truncate flex-1">
-                                            <div className="text-xl md:text-base lg:text-sm xl:text-base font-black text-slate-100 tracking-wide mb-1 lg:mb-0 transition-all">{t('settings.pathways.core')}</div>
+                                            <div className="text-xl md:text-base lg:text-sm xl:text-base font-black text-[var(--text-primary)] tracking-wide mb-1 lg:mb-0 transition-all">{t('settings.pathways.core')}</div>
                                             <div className="text-[11px] md:text-[9px] lg:text-[8px] xl:text-[9px] font-bold uppercase tracking-widest text-indigo-500/80 truncate transition-all">{t('settings.pathways.core_desc')}</div>
                                         </div>
                                     </div>
-                                    <div className="text-xs font-mono text-slate-400 mb-5 truncate bg-black/40 p-3 rounded-xl border border-white/5 shadow-inner leading-relaxed" title={corePathName}>
+                                    <div className="text-xs font-mono text-[var(--text-secondary)] mb-5 truncate bg-[var(--hover-color)] p-3 rounded-xl border border-[var(--border-color)] leading-relaxed" title={corePathName}>
                                         {corePathName || "Internal Defaults"}
                                     </div>
                                     <button
@@ -462,11 +567,11 @@ export const SettingsPanel = ({
                                             <Icon name="book" className="text-3xl md:text-xl lg:text-lg xl:text-xl transition-all" />
                                         </div>
                                         <div className="truncate flex-1">
-                                            <div className="text-xl md:text-base lg:text-sm xl:text-base font-black text-slate-100 tracking-wide mb-1 lg:mb-0 transition-all">{t('settings.pathways.library')}</div>
+                                            <div className="text-xl md:text-base lg:text-sm xl:text-base font-black text-[var(--text-primary)] tracking-wide mb-1 lg:mb-0 transition-all">{t('settings.pathways.library')}</div>
                                             <div className="text-[11px] md:text-[9px] lg:text-[8px] xl:text-[9px] font-bold uppercase tracking-widest text-pink-500/80 truncate transition-all">{t('settings.pathways.library_desc')}</div>
                                         </div>
                                     </div>
-                                    <div className="text-xs font-mono text-slate-400 mb-5 truncate bg-black/40 p-3 rounded-xl border border-white/5 shadow-inner leading-relaxed" title={extraPathName}>
+                                    <div className="text-xs font-mono text-[var(--text-secondary)] mb-5 truncate bg-[var(--hover-color)] p-3 rounded-xl border border-[var(--border-color)] leading-relaxed" title={extraPathName}>
                                         {extraPathName || "No Links"}
                                     </div>
                                     <button
@@ -502,11 +607,11 @@ export const SettingsPanel = ({
                                             <Icon name="bolt" className="text-3xl md:text-xl lg:text-lg xl:text-xl transition-all" />
                                         </div>
                                         <div className="truncate flex-1">
-                                            <div className="text-xl md:text-base lg:text-sm xl:text-base font-black text-slate-100 tracking-wide mb-1 lg:mb-0 transition-all">{t('settings.pathways.commands')}</div>
+                                            <div className="text-xl md:text-base lg:text-sm xl:text-base font-black text-[var(--text-primary)] tracking-wide mb-1 lg:mb-0 transition-all">{t('settings.pathways.commands')}</div>
                                             <div className="text-[11px] md:text-[9px] lg:text-[8px] xl:text-[9px] font-bold uppercase tracking-widest text-amber-500/80 truncate transition-all">{t('settings.pathways.commands_desc')}</div>
                                         </div>
                                     </div>
-                                    <div className="text-xs font-mono text-slate-400 mb-5 truncate bg-black/40 p-3 rounded-xl border border-white/5 shadow-inner leading-relaxed" title={toolsPathName}>
+                                    <div className="text-xs font-mono text-[var(--text-secondary)] mb-5 truncate bg-[var(--hover-color)] p-3 rounded-xl border border-[var(--border-color)] leading-relaxed" title={toolsPathName}>
                                         {toolsPathName || "Not configured"}
                                     </div>
                                     <button
@@ -524,13 +629,13 @@ export const SettingsPanel = ({
 
                         {/* Dynamic Configuration per Mode */}
                         <div className="space-y-4">
-                            <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
+                            <label className="text-sm font-black text-[var(--text-primary)] uppercase tracking-[0.2em] flex items-center gap-2">
                                 <Icon name="microchip" className="text-purple-400" /> {t('settings.orchestration.title')}
                             </label>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {/* Chat Configuration Card */}
-                                <div className="premium-card premium-blue rounded-[2rem] p-6 shadow-2xl relative overflow-hidden transform-gpu group">
+                                <div className="premium-card premium-blue rounded-[2rem] p-6 shadow-2xl relative miku-composite-isolate group">
                                     <div className="absolute top-0 right-0 w-full h-1 bg-gradient-to-r from-blue-600 to-cyan-400 opacity-0 group-hover:opacity-50 transition-all duration-700" />
 
                                     <div className="flex items-center justify-between mb-6">
@@ -538,7 +643,7 @@ export const SettingsPanel = ({
                                             <div className="bg-blue-500/20 p-2 rounded-xl text-blue-400 border border-transparent group-hover:border-blue-500/40 premium-transition">
                                                 <Icon name="brain" className="text-xl mx-0.5" />
                                             </div>
-                                            <span className="font-black text-white tracking-tight text-lg">{t('settings.orchestration.chat_runtime')}</span>
+                                            <span className="font-black text-[var(--text-primary)] tracking-tight text-lg">{t('settings.orchestration.chat_runtime')}</span>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <div
@@ -555,10 +660,9 @@ export const SettingsPanel = ({
                                                 <Icon name={config.chatProvider === 'ollama' ? 'network-wired' : 'key'} />
                                             </div>
                                             <button
-                                                onClick={() => onTestConnection(config.chatProvider)}
-                                                disabled={loadingModels[config.chatProvider || 'gemini'] || loadingModels[config.provider] || connectionStatus === 'testing'}
+                                                onClick={onSyncModelArchitectures}
                                                 title={t('settings.orchestration.sync')}
-                                                className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all shadow-md border premium-emphasis bg-slate-800/80 text-slate-400 border-white/5 hover:bg-slate-700 hover:text-white active:scale-95 group/sync overflow-hidden`}
+                                                className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all shadow-md border premium-emphasis bg-[var(--surface-color)] text-[var(--text-secondary)] border-[var(--border-color)] hover:bg-[var(--hover-color)] hover:text-[var(--text-primary)] active:scale-95 group/sync overflow-hidden`}
                                             >
                                                 <Icon
                                                     name="sync"
@@ -589,11 +693,11 @@ export const SettingsPanel = ({
                                                             {pId === 'gemini' ? (
                                                                 <img src="./geminiICON.png" alt="Gemini" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]' : 'opacity-40 grayscale hover:opacity-80'}`} />
                                                             ) : pId === 'ollama' ? (
-                                                                <img src="./ollamaICON.webp" alt="Ollama" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'brightness-0 invert opacity-40 hover:opacity-80'}`} />
+                                                                <img src="./ollamaICON.webp" alt="Ollama" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'opacity-40 grayscale group-hover:opacity-80 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
                                                             ) : pId === 'groq' ? (
-                                                                <img src="./groqICON.png" alt="Groq" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'brightness-0 invert opacity-40 hover:opacity-80'}`} />
+                                                                <img src="./groqICON.png" alt="Groq" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'opacity-40 grayscale group-hover:opacity-80 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
                                                             ) : pId === 'zai' ? (
-                                                                <img src="./zai.png" alt="Z.AI" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,165,0,0.3)]' : 'brightness-0 invert opacity-40 hover:opacity-80'}`} />
+                                                                <img src="./zai.png" alt="Z.AI" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,165,0,0.3)]' : 'opacity-40 grayscale group-hover:opacity-80 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
                                                             ) : (
                                                                 <Icon name={(PROVIDERS as any)[pId]?.icon || 'robot'} className="text-lg" />
                                                             )}
@@ -630,7 +734,7 @@ export const SettingsPanel = ({
                                             <div className="bg-purple-500/20 p-2 rounded-xl text-purple-400 border border-transparent group-hover:border-purple-500/40 premium-transition">
                                                 <Icon name="bolt" className="text-xl mx-1" />
                                             </div>
-                                            <span className="font-black text-white tracking-tight text-lg">{t('settings.orchestration.agent_runtime')}</span>
+                                            <span className="font-black text-[var(--text-primary)] tracking-tight text-lg">{t('settings.orchestration.agent_runtime')}</span>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <div
@@ -681,11 +785,11 @@ export const SettingsPanel = ({
                                                             {pId === 'gemini' ? (
                                                                 <img src="./geminiICON.png" alt="Gemini" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]' : 'opacity-40 grayscale hover:opacity-80'}`} />
                                                             ) : pId === 'ollama' ? (
-                                                                <img src="./ollamaICON.webp" alt="Ollama" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'brightness-0 invert opacity-40 hover:opacity-80'}`} />
+                                                                <img src="./ollamaICON.webp" alt="Ollama" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'opacity-40 grayscale group-hover:opacity-80 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
                                                             ) : pId === 'groq' ? (
-                                                                <img src="./groqICON.png" alt="Groq" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'brightness-0 invert opacity-40 hover:opacity-80'}`} />
+                                                                <img src="./groqICON.png" alt="Groq" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'opacity-40 grayscale group-hover:opacity-80 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
                                                             ) : pId === 'zai' ? (
-                                                                <img src="./zai.png" alt="Z.AI" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,165,0,0.3)]' : 'brightness-0 invert opacity-40 hover:opacity-80'}`} />
+                                                                <img src="./zai.png" alt="Z.AI" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,165,0,0.3)]' : 'opacity-40 grayscale group-hover:opacity-80 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
                                                             ) : (
                                                                 <Icon name={(PROVIDERS as any)[pId]?.icon || 'robot'} className="text-lg" />
                                                             )}
@@ -724,7 +828,7 @@ export const SettingsPanel = ({
                                             <div className="bg-emerald-500/20 p-2 rounded-xl text-emerald-400 border border-transparent group-hover:border-emerald-500/40 premium-transition">
                                                 <Icon name="eye" className="text-xl mx-0.5" />
                                             </div>
-                                            <span className="font-black text-white tracking-tight text-lg whitespace-nowrap">{t('settings.orchestration.vision_runtime')}</span>
+                                            <span className="font-black text-[var(--text-primary)] tracking-tight text-lg whitespace-nowrap">{t('settings.orchestration.vision_runtime')}</span>
                                         </div>
 
                                         {/* Middle: Distributed Warning Text */}
@@ -781,11 +885,11 @@ export const SettingsPanel = ({
                                                             {pId === 'gemini' ? (
                                                                 <img src="./geminiICON.png" alt="Gemini" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]' : 'opacity-40 grayscale hover:opacity-80'}`} />
                                                             ) : pId === 'ollama' ? (
-                                                                <img src="./ollamaICON.webp" alt="Ollama" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'brightness-0 invert opacity-40 hover:opacity-80'}`} />
+                                                                <img src="./ollamaICON.webp" alt="Ollama" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'opacity-40 grayscale group-hover:opacity-80 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
                                                             ) : pId === 'groq' ? (
-                                                                <img src="./groqICON.png" alt="Groq" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'brightness-0 invert opacity-40 hover:opacity-80'}`} />
+                                                                <img src="./groqICON.png" alt="Groq" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'opacity-40 grayscale group-hover:opacity-80 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
                                                             ) : pId === 'zai' ? (
-                                                                <img src="./zai.png" alt="Z.AI" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,165,0,0.3)]' : 'brightness-0 invert opacity-40 hover:opacity-80'}`} />
+                                                                <img src="./zai.png" alt="Z.AI" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,165,0,0.3)]' : 'opacity-40 grayscale group-hover:opacity-80 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
                                                             ) : (
                                                                 <Icon name={(PROVIDERS as any)[pId]?.icon || 'robot'} className="text-lg" />
                                                             )}
@@ -851,7 +955,7 @@ export const SettingsPanel = ({
                                 <Icon name="shield-alt" className="text-amber-500" /> {t('settings.security.title')}
                             </label>
 
-                            <div className="premium-panel p-8 shadow-[0_0_40px_rgba(251,191,36,0.05)] space-y-6 relative overflow-hidden transform-gpu">
+                            <div className="premium-panel p-8 shadow-[0_0_40px_rgba(251,191,36,0.05)] space-y-6 relative miku-composite-isolate">
                                 <div className="absolute -top-32 -right-32 w-80 h-80 bg-amber-600/10 blur-3xl rounded-full transform-gpu" />
                                 <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-orange-600/10 blur-3xl rounded-full transform-gpu" />
 
@@ -915,7 +1019,7 @@ export const SettingsPanel = ({
                                     </div>
 
                                     {/* Keys */}
-                                    <div className="md:col-span-7 premium-card p-5 border transition-all duration-700 flex flex-col">
+                                    <div className="md:col-span-7 premium-card p-5 border transition-all duration-700 flex flex-col miku-composite-isolate">
                                         <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">{t('settings.security.key_mgmt')}</h4>
 
                                         <div className="flex gap-2 premium-card !bg-slate-900/60 p-1.5 rounded-2xl mb-4">
@@ -1055,8 +1159,8 @@ export const SettingsPanel = ({
 
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 relative z-10">
                                         <div className="space-y-4">
-                                            <h3 className="text-lg font-black text-white tracking-tight">{t('settings.vosk.manage_title')}</h3>
-                                            <p className="text-xs text-slate-400 leading-relaxed">
+                                            <h3 className="text-lg font-black text-[var(--text-primary)] tracking-tight">{t('settings.vosk.manage_title')}</h3>
+                                            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
                                                 {t('settings.vosk.manage_desc')}
                                             </p>
 
@@ -1348,7 +1452,7 @@ export const SettingsPanel = ({
                                                     <Icon name="rocket" />
                                                 </div>
                                                 <div>
-                                                    <div className="text-sm font-bold text-white">{t('settings.integration.autostart')}</div>
+                                                    <div className="text-sm font-bold text-[var(--text-primary)]">{t('settings.integration.autostart')}</div>
                                                     <div className="text-[10px] text-slate-500 font-medium">{t('settings.integration.autostart_desc')}</div>
                                                 </div>
                                             </div>
@@ -1368,7 +1472,7 @@ export const SettingsPanel = ({
                                                     <Icon name="window-minimize" />
                                                 </div>
                                                 <div>
-                                                    <div className="text-sm font-bold text-white">{t('settings.integration.mintotray')}</div>
+                                                    <div className="text-sm font-bold text-[var(--text-primary)]">{t('settings.integration.mintotray')}</div>
                                                     <div className="text-[10px] text-slate-500 font-medium">{t('settings.integration.mintotray_desc')}</div>
                                                 </div>
                                             </div>
@@ -1397,7 +1501,7 @@ export const SettingsPanel = ({
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
                                         <div>
-                                            <h3 className="text-lg font-black text-white tracking-tight mb-2">{t('settings.backup.subtitle')}</h3>
+                                            <h3 className="text-lg font-black text-[var(--text-primary)] tracking-tight mb-2">{t('settings.backup.subtitle')}</h3>
                                             <p className="text-xs text-slate-400 leading-relaxed">
                                                 {t('settings.backup.desc')}
                                             </p>
@@ -1438,10 +1542,10 @@ export const SettingsPanel = ({
                                         </div>
                                     </div>
 
-                                    <div className="mt-4 p-4 bg-blue-950/20 border border-blue-500/20 rounded-2xl flex items-center gap-4">
-                                        <Icon name="info-circle" className="text-blue-400" />
-                                        <div className="text-[10px] text-blue-200/60 leading-normal">
-                                            <b className="text-blue-300">{t('settings.backup.security_note')}</b> {t('settings.backup.security_desc')}
+                                    <div className="mt-4 p-4 bg-blue-500/10 dark:bg-blue-950/20 border border-blue-500/20 rounded-2xl flex items-center gap-4">
+                                        <Icon name="info-circle" className="text-blue-500" />
+                                        <div className="text-[10px] text-[var(--text-secondary)] leading-normal">
+                                            <b className="text-blue-600 dark:text-blue-300">{t('settings.backup.security_note')}</b> {t('settings.backup.security_desc')}
                                         </div>
                                     </div>
                                 </div>
@@ -1459,9 +1563,9 @@ export const SettingsPanel = ({
                                         <div className="w-14 h-14 rounded-2xl bg-red-500/[0.05] border border-transparent group-hover:bg-red-500/20 group-hover:border-red-500/30 transition-all duration-500 flex items-center justify-center text-red-400/80 group-hover:text-red-400">
                                             <Icon name="exclamation-triangle" className="text-2xl animate-pulse" />
                                         </div>
-                                        <div>
-                                            <h3 className="text-base font-black text-red-200/90 group-hover:text-red-100 tracking-tight mb-1 transition-colors">{t('settings.factory_reset.title')}</h3>
-                                            <p className="text-[10px] text-red-400/30 group-hover:text-red-400/60 font-medium leading-relaxed max-w-sm transition-colors">{t('settings.factory_reset.desc')}</p>
+                                        <div className="flex flex-col">
+                                            <h3 className="text-base font-black text-red-600 dark:text-red-200 tracking-tight mb-1 transition-colors">{t('settings.factory_reset.title')}</h3>
+                                            <p className="text-[10px] text-red-500/80 dark:text-red-400/30 font-medium leading-relaxed max-w-sm transition-colors">{t('settings.factory_reset.desc')}</p>
                                         </div>
                                     </div>
                                     
@@ -1486,7 +1590,7 @@ export const SettingsPanel = ({
                                                 await askAlert(t('dialogs.factory_reset_error', { error: (e as any)?.message }));
                                             }
                                         }}
-                                        className="h-11 px-6 bg-red-500/[0.02] hover:bg-red-500/15 border border-transparent hover:border-red-500/40 text-red-400/60 hover:text-red-100 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 shadow-lg hover:shadow-red-500/10 active:scale-95 group/btn"
+                                        className="h-11 px-6 bg-red-500/[0.02] hover:bg-red-500/15 border border-transparent hover:border-red-500/40 text-red-400/80 dark:text-red-400/60 hover:text-red-700 dark:hover:text-red-100 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 shadow-lg hover:shadow-red-500/10 active:scale-95 group/btn"
                                     >
                                         <Icon name="redo-alt" className="text-sm group-hover/btn:rotate-[360deg] transition-all duration-700" /> 
                                         {t('settings.reset_btn')}

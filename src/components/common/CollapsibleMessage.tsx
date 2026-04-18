@@ -39,7 +39,7 @@ export const CollapsibleMessage: React.FC<CollapsibleMessageProps> = ({ message,
                 {children}
                 <button
                     onClick={() => setIsCollapsed(true)}
-                    className={`absolute -bottom-2 ${buttonPositionClass} bg-slate-800 border border-slate-700 text-slate-400 hover:text-white px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider shadow-lg flex items-center gap-1 z-20 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all duration-300 translate-y-1 group-hover:translate-y-0`}
+                    className={`absolute -bottom-2 ${buttonPositionClass} bg-slate-800 border border-slate-700 text-slate-400 hover:text-white px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider shadow-lg flex items-center gap-1 z-20 invisible opacity-0 group-hover:visible group-hover:opacity-100 focus:visible focus:opacity-100 transition-opacity duration-300 pointer-events-none group-hover:pointer-events-auto`}
                     title="Collapse message"
                 >
                     <Icon name="compress-alt" /> {t('chat.actions.hide')}

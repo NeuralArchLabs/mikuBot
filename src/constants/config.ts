@@ -31,5 +31,8 @@ export const DEFAULT_CONFIG: AppConfig = {
     disabledSkills: [],
     voskModelPath: '',
     maxOutputTokens: 128000,
-    language: 'es'
+    language: 'es',
+    theme: 'miku',
+    chatBackgroundImage: '',
+    chatFont: 'Outfit'
 };

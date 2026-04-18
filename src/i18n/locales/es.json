@@ -273,6 +273,13 @@
         "title": "Configuración del Sistema",
         "language_select": "Idioma de la Interfaz",
         "language_desc": "Selecciona el idioma global de mikuBot",
+        "appearance": {
+            "title": "Apariencia y Temas",
+            "theme": "Tema del Sistema",
+            "theme_desc": "Cambia la vibración visual de tu asistente",
+            "chat_font": "Tipografía del Chat",
+            "chat_bg": "Imagen de Fondo (URL)"
+        },
         "tabs": {
             "core": "Core System",
             "core_desc": "Configuración de Plataforma y Claves",

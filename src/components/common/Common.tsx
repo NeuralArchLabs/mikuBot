@@ -333,7 +333,7 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
         return (
             <div
                 ref={containerRef}
-                className="markdown-body font-mono px-1 is-streaming"
+                className={`${mode !== 'none' ? 'markdown-body' : ''} font-mono px-1 is-streaming`}
                 lang="es"
             />
         );
@@ -342,7 +342,7 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
     return (
         <div
             ref={containerRef}
-            className="markdown-body font-mono px-1"
+            className={`${mode !== 'none' ? 'markdown-body' : ''} font-mono px-1`}
             lang="es"
             dangerouslySetInnerHTML={{ __html: html }}
         />
@@ -467,6 +467,8 @@ export interface SelectOption {
     value: string;
     label: string;
     isCustom?: boolean;
+    style?: React.CSSProperties;
+    className?: string;
 }
 
 export const ModernSelect = ({ 
@@ -525,7 +527,7 @@ export const ModernSelect = ({
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className={`w-full bg-slate-950/70 border border-transparent hover:border-white/10 rounded-2xl px-8 py-4 text-xs text-white outline-none transition-all font-black flex items-center justify-between shadow-inner group`}
+                className={`w-full bg-[var(--surface-color)] border border-[var(--border-color)] hover:border-[var(--primary-color)]/30 rounded-2xl px-8 py-4 text-xs text-[var(--text-primary)] outline-none transition-all font-black flex items-center justify-between shadow-inner group backdrop-blur-md`}
             >
                 <span className="flex-grow text-center truncate px-2 group-hover:text-blue-400 transition-colors">{activeOption ? activeOption.label : placeholder}</span>
                 <Icon 
@@ -566,13 +568,14 @@ export const ModernSelect = ({
                                                 onChange(opt.value);
                                                 setIsOpen(false);
                                             }}
-                                            className={`px-6 py-2.5 mx-1 rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer transition-all ${
+                                            className={`px-6 py-2.5 mx-1 rounded-xl text-[10px] font-black tracking-widest cursor-pointer transition-all ${
                                                 value === opt.value 
                                                     ? 'bg-blue-600/20 text-blue-400 shadow-lg' 
                                                     : isCustom 
                                                         ? 'text-slate-600 hover:bg-white/5 hover:text-slate-300' 
                                                         : 'text-slate-400 hover:bg-white/5 hover:text-white'
-                                            } ${isCustom ? 'italic bg-white/5' : ''}`}
+                                            } ${isCustom ? 'italic bg-white/5' : ''} ${opt.className || (opt.style?.fontFamily ? '' : 'uppercase')}`}
+                                            style={opt.style}
                                         >
                                             {isCustom && !opt.label.toLowerCase().includes('personal') ? `✨ ${opt.label}` : opt.label}
                                         </div>

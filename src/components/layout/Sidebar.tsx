@@ -172,28 +172,29 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
 
     return (
         <>
-            <div className="bg-slate-900 flex flex-col h-full shadow-xl z-30 w-16 lg:w-68 flex-shrink-0 transition-all duration-300 relative overflow-y-auto custom-scrollbar miku-sidebar-isolate">
+            <div className="flex flex-col h-full shadow-xl z-30 w-16 lg:w-68 flex-shrink-0 transition-all duration-300 relative overflow-y-auto custom-scrollbar miku-sidebar-isolate" style={{ backgroundColor: 'var(--sidebar-bg)' }}>
                 {/* Vertical Gradient Border (Fade in from top) */}
-                <div className="absolute right-0 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-slate-700/50 via-[8%] to-slate-700/50 pointer-events-none" />
+                <div className="absolute right-0 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-[var(--border-color)] to-[var(--border-color)] pointer-events-none opacity-50" />
                 
                 {/* Top Section: Logo & Main Nav */}
                 <div className={`flex-none p-3 lg:p-6 pb-0 flex flex-col ${isCompactMode ? 'min-h-0' : 'min-h-full lg:min-h-0'} lg:h-auto`}>
                     <div className={`flex items-center justify-center lg:justify-start gap-3 ${isCompactMode ? 'mb-4' : 'mb-8'} group cursor-default h-10 overflow-visible w-full px-1 relative`}>
                         <div
-                            className="w-10 h-10 rounded-xl bg-slate-800 flex flex-shrink-0 items-center justify-center shadow-md group-hover:scale-110 active:scale-95 transition-all duration-300 overflow-hidden border border-slate-700/50 cursor-pointer relative z-10 premium-button"
+                            className="w-10 h-10 rounded-xl flex flex-shrink-0 items-center justify-center shadow-md group-hover:scale-110 active:scale-95 transition-all duration-300 overflow-hidden border cursor-pointer relative z-10 premium-button"
+                            style={{ backgroundColor: 'var(--surface-color)', borderColor: 'var(--border-color)' }}
                             onClick={triggerEasterEgg}
                         >
                             <img src="./mikuBotICON.png" alt="Miku Logo" className="w-full h-full object-cover shadow-inner" />
                         </div>
                         <div className="hidden lg:block overflow-hidden">
-                            <h1 className={`font-bold text-lg text-white tracking-tight leading-tight whitespace-nowrap overflow-hidden text-ellipsis transition-all duration-300 ${isAnimatingEgg ? 'text-blue-400 font-mono text-sm' : ''}`}>
+                            <h1 className={`font-bold text-lg text-[var(--text-primary)] tracking-tight leading-tight whitespace-nowrap overflow-hidden text-ellipsis transition-all duration-300 ${isAnimatingEgg ? 'text-[var(--primary-color)] font-mono text-sm' : ''}`}>
                                 {displayName}
                             </h1>
-                            <div className="text-[11px] text-slate-500/80 font-bold uppercase tracking-[0.2em] leading-tight mt-0.5">v{APP_VERSION}</div>
+                            <div className="text-[11px] text-[var(--text-secondary)] font-bold uppercase tracking-[0.2em] leading-tight mt-0.5 opacity-60">v{APP_VERSION}</div>
                         </div>
                         {/* Glowy aesthetic separator (absolute, no displacement) */}
-                        <div className="absolute left-4 right-4 h-px bg-gradient-to-r from-transparent via-slate-700/40 to-transparent -bottom-4 pointer-events-none">
-                            <div className="absolute inset-0 h-full bg-gradient-to-r from-transparent via-blue-400/10 to-transparent blur-[2px] opacity-50" />
+                        <div className="absolute left-4 right-4 h-px bg-gradient-to-r from-transparent via-[var(--border-color)] to-transparent -bottom-4 pointer-events-none opacity-40">
+                            <div className="absolute inset-0 h-full bg-gradient-to-r from-transparent via-[var(--primary-color)]/10 to-transparent blur-[2px] opacity-50" />
                         </div>
                     </div>
 
@@ -231,13 +232,17 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                             key={tab.id}
                                             onClick={() => setState(prev => ({ ...prev, activeTab: tab.id as any, selectedFile: '' }))}
                                             className={`w-full flex items-center justify-center lg:justify-start gap-4 px-3 lg:px-4 rounded-xl transition-all duration-300 group premium-button border ${state.activeTab === tab.id
-                                                ? 'bg-slate-800 text-white shadow-md border-slate-800 shadow-blue-500/5'
-                                                : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                                                } hover:border-slate-700/50`}
-                                            style={{ height: `${isCompactMode ? 44 : 53}px` }}
+                                                ? 'text-[var(--text-primary)] shadow-md'
+                                                : 'border-transparent shadow-none text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--hover-color)]'
+                                                }`}
+                                            style={{ 
+                                                height: `${isCompactMode ? 44 : 53}px`,
+                                                backgroundColor: state.activeTab === tab.id ? 'var(--surface-color)' : 'transparent',
+                                                borderColor: state.activeTab === tab.id ? 'transparent' : 'transparent'
+                                            }}
                                             title={tab.label}
                                         >
-                                            <Icon name={tab.icon} className={`${isCompactMode ? 'text-xl lg:text-base' : 'text-2xl lg:text-lg'} flex-shrink-0 ${state.activeTab === tab.id ? tab.color : 'group-hover:text-slate-300'} transition-colors`} />
+                                            <Icon name={tab.icon} className={`${isCompactMode ? 'text-xl lg:text-base' : 'text-2xl lg:text-lg'} flex-shrink-0 ${state.activeTab === tab.id ? tab.color : 'group-hover:text-[var(--text-primary)]'} transition-colors`} />
                                             <span className={`hidden lg:inline-block flex-1 text-left ${isCompactMode ? 'text-sm' : 'text-base'} font-bold tracking-tight truncate whitespace-nowrap`}>{tab.label}</span>
                                         </button>
                                     ))}
@@ -248,17 +253,17 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
 
                     {/* Mobile Contents Toggle (Bottom Fixed on Mobile) */}
                     <div className={`lg:hidden mt-auto ${isCompactMode ? 'pt-2 pb-4' : 'pt-6 pb-8'} space-y-3`}>
-                         <div className="h-px bg-slate-800/50 mb-6" />
+                         <div className="h-px bg-[var(--border-color)] mb-6 opacity-30" />
                          <button
                             onClick={() => setSessionModalOpen(true)}
-                            className="w-10 h-10 mx-auto flex items-center justify-center rounded-xl bg-slate-800/40 border border-slate-700/50 text-slate-400 hover:text-blue-400 hover:bg-blue-400/10 hover:border-blue-500/20 transition-all active:scale-90"
+                            className="w-10 h-10 mx-auto flex items-center justify-center rounded-xl bg-[var(--surface-color)] border border-[var(--border-color)] text-[var(--text-secondary)] hover:text-blue-400 hover:bg-blue-400/10 hover:border-blue-500/20 transition-all active:scale-90"
                             title={t('sidebar.tooltips.sessions')}
                         >
                             <Icon name="history" />
                         </button>
                         <button
                             onClick={() => setState(p => ({ ...p, isLibraryExpanded: true }))}
-                            className="w-10 h-10 mx-auto flex items-center justify-center rounded-xl bg-slate-800/40 border border-slate-700/50 text-slate-400 hover:text-indigo-400 hover:bg-indigo-400/10 hover:border-indigo-500/20 transition-all active:scale-90"
+                            className="w-10 h-10 mx-auto flex items-center justify-center rounded-xl bg-[var(--surface-color)] border border-[var(--border-color)] text-[var(--text-secondary)] hover:text-indigo-400 hover:bg-indigo-400/10 hover:border-indigo-500/20 transition-all active:scale-90"
                             title={t('sidebar.tooltips.library')}
                         >
                             <Icon name="book" />
@@ -289,14 +294,14 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                     </div>
 
                     {/* Context Library - Balanced (flex-1) or Compact Tab */}
-                    <div className="flex-1 flex flex-col border-t border-slate-800/40 shadow-[0_-10px_15px_-5px_rgba(0,0,0,0.3)] transition-all duration-300 min-h-0">
+                    <div className="flex-1 flex flex-col border-t border-[var(--border-color)] shadow-[0_-10px_15px_-5px_rgba(0,0,0,0.3)] transition-all duration-300 min-h-0">
                         <div 
-                            className={`px-5 py-3 flex-1 flex flex-col min-h-0 ${isCompactMode ? 'hover:bg-slate-800/40 rounded-xl mx-2 my-1' : ''}`}
+                            className={`px-5 py-3 flex-1 flex flex-col min-h-0 ${isCompactMode ? 'hover:bg-[var(--hover-color)] rounded-xl mx-2 my-1' : ''}`}
                         >
                              <div className="flex items-center justify-between flex-none mb-2">
                                 <button
                                     onClick={() => setState(prev => ({ ...prev, isLibraryExpanded: true }))}
-                                    className="text-[10px] font-extrabold text-slate-500 hover:text-indigo-400 uppercase tracking-[0.18em] flex items-center gap-1.5 transition-colors group cursor-pointer"
+                                    className="text-[10px] font-extrabold text-[var(--text-secondary)] hover:text-indigo-400 uppercase tracking-[0.18em] flex items-center gap-1.5 transition-colors group cursor-pointer"
                                     title={t('sidebar.tooltips.expand_library')}
                                 >
                                     <Icon name="book" className="text-[9px] opacity-30 group-hover:opacity-100 transition-all" />
@@ -305,19 +310,19 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                 {!isCompactMode && (
                                     <button
                                         onClick={(e) => { e.stopPropagation(); (state as any).onAddFile(`Doc_${Date.now()}.md`, 'extra'); }}
-                                        className="text-slate-500 hover:text-indigo-400 transition-colors p-1 px-2 cursor-pointer group"
+                                        className="text-[var(--text-secondary)] hover:text-indigo-400 transition-colors p-1 px-2 cursor-pointer group"
                                         title={t('sidebar.tooltips.new_doc')}
                                     >
                                         <Icon name="plus" className="text-[10px] group-hover:scale-110 transition-transform" />
                                     </button>
                                 )}
                              </div>
-                            <div className="h-px bg-gradient-to-r from-transparent via-slate-700/50 via-[5%] to-transparent flex-none" />
+                             <div className="h-px bg-gradient-to-r from-transparent via-[var(--border-color)] via-[5%] to-transparent flex-none opacity-40" />
  
                             <div className="flex-1 overflow-y-auto overflow-x-visible custom-scrollbar space-y-1 px-4 -mx-4 pt-3 pb-3 min-h-0">
                                     {Object.keys(state.additionalFiles || {}).length === 0 ? (
-                                        <div className="text-center py-6 px-2 border border-dashed border-slate-800/50 rounded-xl bg-slate-800/10">
-                                            <p className="text-[9px] text-slate-600 italic">{t('sidebar.footer.no_cortex')}</p>
+                                        <div className="text-center py-6 px-2 border border-dashed border-[var(--border-color)] rounded-xl bg-[var(--surface-color)]/30">
+                                            <p className="text-[9px] text-[var(--text-secondary)] italic">{t('sidebar.footer.no_cortex')}</p>
                                         </div>
                                     ) : (
                                         Object.keys(state.additionalFiles || {}).map(filename => {
@@ -335,7 +340,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                                         }}
                                                         className={`w-full text-left px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-[11px] font-mono truncate flex items-center gap-2.5 transition-all duration-300 border border-transparent ${isSelected
                                                             ? 'bg-blue-600/15 text-blue-300'
-                                                            : 'text-slate-500 hover:text-slate-200 hover:bg-slate-800/40'
+                                                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--hover-color)]'
                                                             } hover:border-blue-500/50 hover:shadow-[0_0_15px_-3px_rgba(59,130,246,0.3)]`}
                                                     >
                                                         <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${isSelected ? 'bg-blue-400 shadow-glow' : 'bg-slate-700'}`} />
@@ -348,7 +353,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                                                 await state.onDeleteFile(filename, 'extra');
                                                             }
                                                         }}
-                                                        className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all rounded-lg hover:bg-red-400/10"
+                                                        className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-[var(--text-secondary)] hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all rounded-lg hover:bg-red-400/10"
                                                         title={t('sidebar.tooltips.delete_file', { filename })}
                                                     >
                                                         <Icon name="times" className="text-[9px]" />

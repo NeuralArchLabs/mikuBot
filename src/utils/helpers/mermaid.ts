@@ -267,7 +267,7 @@ function openMermaidFullscreen(svgSource: string) {
     overlay.style.cssText = `
         position: fixed; inset: 0; z-index: 99999;
         background: rgba(2, 6, 23, 0.97);
-        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
         display: flex; flex-direction: column;
         align-items: center; justify-content: center;
         animation: mermaid-overlay-in 0.3s ease-out;
@@ -285,7 +285,7 @@ function openMermaidFullscreen(svgSource: string) {
         border-radius: 12px;
         box-shadow: 0 8px 32px rgba(0,0,0,0.5);
         z-index: 10; user-select: none;
-        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
     `;
     controlBar.innerHTML = `
         <span style="color: #06b6d4; font-size: 10px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; opacity: 0.6;">

@@ -288,10 +288,10 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
 
     return (
         <div ref={containerRef} className={`relative mb-4 pl-6 transition-all duration-300 ${entranceClass} ${isExpanded ? 'w-full' : 'w-full max-w-3xl'}`}>
-            <div className={`tool-block overflow-hidden transition-all duration-300 rounded-xl bg-black/60 shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),0_8px_30px_rgba(0,0,0,0.5)] border-t-[3px] border-l-[3px] ${isNeuralSkill ? 'border-t-blue-950/40 border-l-blue-950/40' : 'border-t-slate-900/50 border-l-slate-900/50'} border-b border-r border-b-white/5 border-r-white/5 ${isExpanded ? 'bg-black/70' : 'hover:bg-black/50'} ring-1 ${isNeuralSkill ? 'ring-blue-900/40' : 'ring-slate-900/50'}`}>
+            <div className={`tool-block overflow-hidden transition-all duration-300 rounded-xl bg-black/35 shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),0_8px_30px_rgba(0,0,0,0.5)] border-t-[3px] border-l-[3px] ${isNeuralSkill ? 'border-t-blue-950/40 border-l-blue-950/40' : 'border-t-slate-900/50 border-l-slate-900/50'} border-b border-r border-b-white/5 border-r-white/5 ${isExpanded ? 'bg-black/70' : 'hover:bg-black/50'} ring-1 ${isNeuralSkill ? 'ring-blue-900/40' : 'ring-slate-900/50'}`}>
                 {/* Consolidated Header / Summary Strip */}
                 <div
-                    className={`tool-block-header flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors hover:bg-white/[0.02] ${isExpanded ? 'bg-slate-800/40 border-b border-white/5' : ''}`}
+                    className={`tool-block-header flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors hover:bg-white/[0.02] ${isExpanded ? 'bg-slate-800/20 border-b border-white/5' : ''}`}
                     onClick={() => setIsExpanded(!isExpanded)}
                 >
                     <div className="flex items-center gap-2 flex-shrink-0">
@@ -342,7 +342,7 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
 
                 {/* Details Area: Typing JSON and Args */}
                 {isExpanded && (
-                    <div className="tool-block-content bg-slate-900/40 p-3 pt-4 space-y-4 animate-in fade-in duration-500">
+                    <div className="tool-block-content bg-slate-900/20 p-3 pt-4 space-y-4 animate-in fade-in duration-500">
                         <div className="space-y-2">
                             <div className="text-[9px] text-slate-600 uppercase tracking-widest font-bold flex items-center gap-1">
                                 <IconComp name="stream" /> {t('common.execution_log')}
@@ -358,7 +358,7 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
                             <div className="text-[9px] text-slate-600 uppercase tracking-widest font-bold flex items-center gap-1">
                                 <IconComp name="code" /> {t('common.arguments')}
                             </div>
-                            <pre className="custom-scrollbar overflow-y-auto max-h-32 p-3 bg-black/40 rounded-lg text-[10px] whitespace-pre-wrap break-all text-indigo-300/60 border border-white/5">
+                            <pre className="custom-scrollbar overflow-y-auto max-h-32 p-3 bg-black/20 rounded-lg text-[10px] whitespace-pre-wrap break-all text-indigo-300/60 border border-white/5">
                                 {JSON.stringify(toolCall.function.arguments, null, 2)}
                             </pre>
                         </div>
@@ -370,12 +370,12 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
                                         <IconComp name={isSuccess ? 'check-double' : 'exclamation-triangle'} /> {t('common.detailed_response')}
                                     </div>
                                     {isSuccess && result.data?.engine === 'searXena' && (
-                                        <div className="text-[8px] font-black text-slate-600 bg-slate-800/40 px-2 py-0.5 rounded border border-slate-800 tracking-[0.2em] animate-in fade-in slide-in-from-right-2 duration-700">
+                                        <div className="text-[8px] font-black text-slate-600 bg-slate-800/20 px-2 py-0.5 rounded border border-slate-800 tracking-[0.2em] animate-in fade-in slide-in-from-right-2 duration-700">
                                             POWERED BY <span className="text-blue-500/60">searXena</span>
                                         </div>
                                     )}
                                 </div>
-                                <pre className={`custom-scrollbar overflow-y-auto max-h-60 p-3 bg-black/40 rounded-lg text-[10px] whitespace-pre-wrap break-all border transition-colors duration-500 ${isSuccess ? (isNeuralSkill ? 'text-cyan-400/70 border-cyan-500/10' : 'text-emerald-400/70 border-emerald-500/10') : 'text-rose-400/70 border-rose-500/10'}`}>
+                                <pre className={`custom-scrollbar overflow-y-auto max-h-60 p-3 bg-black/20 rounded-lg text-[10px] whitespace-pre-wrap break-all border transition-colors duration-500 ${isSuccess ? (isNeuralSkill ? 'text-cyan-400/70 border-cyan-500/10' : 'text-emerald-400/70 border-emerald-500/10') : 'text-rose-400/70 border-rose-500/10'}`}>
                                     {JSON.stringify(result.data || result.error, null, 2)}
                                     {!isSuccess && hasError && <span className="block mt-2 text-rose-500/50 italic font-sans">{t('common.system_exception')}</span>}
                                 </pre>

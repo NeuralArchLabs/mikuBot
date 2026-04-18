@@ -188,8 +188,8 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         const displayLang = langClean || 'code';
 
         const containerClass = isDiagram 
-            ? 'relative group bg-black/55 pt-12 pb-12 px-8 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_15px_45px_rgba(0,0,0,0.65)] transition max-w-full selection:bg-cyan-500/30' 
-            : 'relative group bg-black/55 pt-12 pb-12 px-6 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_15px_45px_rgba(0,0,0,0.65)] backdrop-blur-md transition md:mx-2';
+            ? 'relative group bg-black/35 pt-12 pb-12 px-8 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_15px_45px_rgba(0,0,0,0.65)] transition max-w-full selection:bg-cyan-500/30' 
+            : 'relative group bg-black/35 pt-12 pb-12 px-6 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_15px_45px_rgba(0,0,0,0.65)] backdrop-blur-md transition md:mx-2';
         
         // Studio Elite Header: Minimal Floating Language Badge
         const studioHeader = `
@@ -211,7 +211,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         } else {
             const finalClass = isStreaming ? `${containerClass} isolate overflow-visible is-visible` : `${containerClass} isolate overflow-visible code-block-anim opacity-0 scale-95 blur-sm transition duration-1000 transform-gpu`;
             const extraAttrs = isStreaming ? 'data-animated="true"' : '';
-            pieces.push(`<div class="${finalClass}" ${extraAttrs}>${studioHeader}${copyButton}<div class="overflow-x-auto w-full bg-black/90 rounded-xl p-5 pb-10 border border-transparent"><pre class="bg-transparent border-none p-0 m-0"><code class="text-sm shadow-none font-mono leading-relaxed block">${highlighted}</code></pre></div></div>`);
+            pieces.push(`<div class="${finalClass}" ${extraAttrs}>${studioHeader}${copyButton}<div class="overflow-x-auto w-full bg-black/10 rounded-xl p-5 pb-10 border border-transparent"><pre class="bg-transparent border-none p-0 m-0"><code class="text-sm shadow-none font-mono leading-relaxed block">${highlighted}</code></pre></div></div>`);
         }
         return `\n${id}\n`;
     });
@@ -335,8 +335,8 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                     inner = inner.replace(/^(#{1,6})\s+(.+)$/gm, (m, hashes, text) => {
                         if (text.includes('<')) return m;
                         const lvl = hashes.length;
-                        if (lvl === 1) return `<h1 class="text-lg font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-indigo-300 drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-6 mb-1">${text}</h1><div class="h-px w-full" style="background: linear-gradient(to right, transparent 0%, rgba(34,211,238,0.3) 2%, rgba(34,211,238,0.3) 98%, transparent 100%); margin-bottom: 1.5rem;"></div>`;
-                        if (lvl === 2) return `<h2 class="text-md font-bold text-cyan-400 drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-5 mb-1">${text}</h2><div class="h-px w-full" style="background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.15) 2%, rgba(255,255,255,0.15) 98%, transparent 100%); margin-bottom: 1rem;"></div>`;
+                        if (lvl === 1) return `<h1 class="text-lg font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-indigo-300 drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-6 mb-1">${text}</h1><div class="h-px w-full" style="background: linear-gradient(to right, transparent 0%, rgba(34,211,238,0.15) 2%, rgba(34,211,238,0.15) 98%, transparent 100%); margin-bottom: 1.5rem;"></div>`;
+                        if (lvl === 2) return `<h2 class="text-md font-bold text-cyan-400 drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-5 mb-1">${text}</h2><div class="h-px w-full" style="background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.08) 2%, rgba(255,255,255,0.08) 98%, transparent 100%); margin-bottom: 1rem;"></div>`;
                         if (lvl === 3) return `<h3 class="text-sm font-bold text-[#FC8F35] drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-4 mb-2">${text}</h3>`;
                         if (lvl === 4) return `<h4 class="text-sm font-bold text-[#fca865] drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-4 mb-2">${text}</h4>`;
                         if (lvl === 5) return `<h5 class="text-xs font-bold text-indigo-400/70 mt-3 mb-1">${text}</h5>`;
@@ -370,7 +370,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
     html = html.replace(/\$\$([\s\S]*?)\$\$/gs, (match, formula) => {
         const id = `__BLOCK_${pieces.length}__`;
         const renderedMath = convertMathToHtml(formula.trim());
-        pieces.push(`<div class="my-6 p-6 bg-black/20 border border-white/5 rounded-xl text-center font-serif text-lg italic text-slate-100 overflow-x-auto shadow-inner math-container">${renderedMath}</div>`);
+        pieces.push(`<div class="my-6 p-6 bg-black/10 border border-white/5 rounded-xl text-center font-serif text-lg italic text-slate-100 overflow-x-auto shadow-inner math-container">${renderedMath}</div>`);
         return `\n${id}\n`;
     });
 
@@ -441,7 +441,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         if (!isMathHeuristic(formula)) return match;
         const id = `__BLOCK_${pieces.length}__`;
         const renderedMath = convertMathToHtml(formula.trim());
-        pieces.push(`<div class="my-6 p-6 bg-black/20 border border-white/5 rounded-xl text-center font-serif text-lg italic text-slate-100 overflow-x-auto shadow-inner math-container">${renderedMath}</div>`);
+        pieces.push(`<div class="my-6 p-6 bg-black/10 border border-white/5 rounded-xl text-center font-serif text-lg italic text-slate-100 overflow-x-auto shadow-inner math-container">${renderedMath}</div>`);
         return `\n${id}\n`;
     });
 
@@ -588,7 +588,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
             'FAILURE':   { icon: '<i class="fas fa-times-circle"></i>',     color: 'text-rose-400',     border: 'border-rose-500/80',     bg: 'bg-rose-500/15',     glow: 'shadow-[inset_0_0_20px_rgba(244,63,94,0.05)]' },
             'BUG':       { icon: '<i class="fas fa-bug"></i>',              color: 'text-fuchsia-400',  border: 'border-fuchsia-500/75',  bg: 'bg-fuchsia-500/12',  glow: 'shadow-[inset_0_0_20px_rgba(217,70,239,0.04)]' },
             'EXAMPLE':   { icon: '<i class="fas fa-vial"></i>',             color: 'text-violet-400',   border: 'border-violet-500/70',   bg: 'bg-violet-500/10',   glow: 'shadow-[inset_0_0_20px_rgba(139,92,246,0.04)]' },
-            'QUOTE':     { icon: '<i class="fas fa-quote-left"></i>',       color: 'text-slate-400',    border: 'border-slate-500/70',    bg: 'bg-slate-800/60',   glow: 'shadow-[inset_0_0_20px_rgba(148,163,184,0.04)]' },
+            'QUOTE':     { icon: '<i class="fas fa-quote-left"></i>',       color: 'text-slate-400',    border: 'border-slate-500/70',    bg: 'bg-slate-800/25',   glow: 'shadow-[inset_0_0_20px_rgba(148,163,184,0.04)]' },
             'QUESTION':  { icon: '<i class="fas fa-question-circle"></i>',  color: 'text-cyan-400',     border: 'border-cyan-500/70',     bg: 'bg-cyan-500/10',     glow: 'shadow-[inset_0_0_20px_rgba(34,211,238,0.04)]' },
             'FAQ':       { icon: '<i class="fas fa-comments"></i>',         color: 'text-purple-400',   border: 'border-purple-500/70',   bg: 'bg-purple-500/10',   glow: 'shadow-[inset_0_0_20px_rgba(168,85,247,0.04)]' },
             'SECURITY':  { icon: '<i class="fas fa-shield-alt"></i>',       color: 'text-teal-400',     border: 'border-teal-500/70',     bg: 'bg-teal-500/10',     glow: 'shadow-[inset_0_0_20px_rgba(20,184,166,0.04)]' },
@@ -619,12 +619,12 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         
         if (isCollapsible) {
             const extra = isStreaming ? 'data-animated="true"' : '';
-            pieces.push(`<details ${extra} class="group/callout border-l-[3px] ${s.border} bg-black/40 backdrop-blur-md ${s.glow || ''} shadow-xl pl-6 pr-4 py-3.5 my-5 rounded-r-xl overflow-hidden transition duration-300 select-none cursor-pointer border-y border-y-transparent border-r border-r-transparent hover:border-y-white/10 hover:border-r-white/10" ${isOpen ? 'open' : ''}>`
+            pieces.push(`<details ${extra} class="group/callout border-l-[3px] ${s.border} bg-black/8 backdrop-blur-md ${s.glow || ''} shadow-xl pl-6 pr-4 py-3.5 my-5 rounded-r-xl overflow-hidden transition duration-300 select-none cursor-pointer border-y border-y-transparent border-r border-r-transparent hover:border-y-white/10 hover:border-r-white/10" ${isOpen ? 'open' : ''}>`
                 + `<summary class="flex items-center gap-3 font-black text-[13px] uppercase tracking-[0.2em] ${s.color} non-typing outline-none list-none text-left">`
                 + `<span class="group-open/callout:rotate-90 transition-transform duration-300">▶</span> <span class="text-lg">${s.icon}</span> ${displayTitle}</summary>${bodyHtml}</details>`);
         } else {
             const extra = isStreaming ? 'data-animated="true"' : '';
-            pieces.push(`<blockquote ${extra} class="border-l-[3px] ${s.border} bg-black/40 backdrop-blur-md ${s.glow || ''} shadow-xl pl-6 pr-4 py-3.5 my-5 rounded-r-xl overflow-hidden border-y border-y-transparent border-r border-r-transparent" data-type="admonition">`
+            pieces.push(`<blockquote ${extra} class="border-l-[3px] ${s.border} bg-black/8 backdrop-blur-md ${s.glow || ''} shadow-xl pl-6 pr-4 py-3.5 my-5 rounded-r-xl overflow-hidden border-y border-y-transparent border-r border-r-transparent" data-type="admonition">`
                 + `<div class="flex items-center gap-3 mb-3 font-black text-[13px] uppercase tracking-[0.2em] ${s.color} non-typing"><span class="text-lg">${s.icon}</span> ${displayTitle}</div>${bodyHtml}</blockquote>`);
         }
         
@@ -732,9 +732,9 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         .replace(/‹\/small›/g, '</small>')
         .replace(/‹code\s*([^›]*?)›/gi, '<code class="bg-indigo-500/10 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-[0.9em] border border-indigo-400/20 mx-1 shadow-[0_0_8px_rgba(99,102,241,0.1)]" $1>')
         .replace(/‹\/code›/g, '</code>')
-        .replace(/‹kbd\s*([^›]*?)›/gi, '<kbd class="bg-black/50 border border-white/20 rounded px-1.5 py-0.5 text-xs font-mono text-slate-200 shadow-sm mx-1" $1>')
+        .replace(/‹kbd\s*([^›]*?)›/gi, '<kbd class="bg-black/10 border border-white/20 rounded px-1.5 py-0.5 text-xs font-mono text-slate-200 shadow-sm mx-1" $1>')
         .replace(/‹\/kbd›/g, '</kbd>')
-        .replace(/‹mark\s*([^›]*?)›/gi, '<mark class="bg-[#FC8F35]/25 text-[#fcc18d] px-1 py-0.5 rounded-sm border-b border-[#FC8F35]/30 mx-1 shadow-sm" $1>')
+        .replace(/‹mark\s*([^›]*?)›/gi, '<mark class="bg-[#FC8F35]/15 text-[#fcc18d] px-1 py-0.5 rounded-sm border-b border-[#FC8F35]/30 mx-1 shadow-sm" $1>')
         .replace(/‹\/mark›/g, '</mark>')
         .replace(/‹abbr\s+([^›]+)›/g, '<abbr $1 class="cursor-help border-b border-dotted border-cyan-400/50 decoration-cyan-400/30 text-cyan-200/90 font-bold mx-1">')
         .replace(/‹\/abbr›/g, '</abbr>')
@@ -773,11 +773,11 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
     html = html.replace(/^##### (.+)$/gm, '<h5 class="text-xs font-bold text-indigo-400/70 mt-3 mb-1">$1</h5>');
     html = html.replace(/^#### (.+)$/gm, '<h4 class="text-sm font-bold text-[#fca865] drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-4 mb-2">$1</h4>');
     html = html.replace(/^### (.+)$/gm, '<h3 class="text-sm font-bold text-[#FC8F35] drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-4 mb-2">$1</h3>');
-    html = html.replace(/^## (.+)$/gm, '<h2 class="text-md font-bold text-cyan-400 drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-5 mb-1">$1</h2><div class="h-px w-full" style="background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.15) 2%, rgba(255,255,255,0.15) 98%, transparent 100%); margin-bottom: 1rem;"></div>');
-    html = html.replace(/^# (.+)$/gm, '<h1 class="text-lg font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-indigo-300 drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-6 mb-1">$1</h1><div class="h-px w-full" style="background: linear-gradient(to right, transparent 0%, rgba(34,211,238,0.3) 2%, rgba(34,211,238,0.3) 98%, transparent 100%); margin-bottom: 1.5rem;"></div>');
+    html = html.replace(/^## (.+)$/gm, '<h2 class="text-md font-bold text-cyan-400 drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-5 mb-1">$1</h2><div class="h-px w-full" style="background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.08) 2%, rgba(255,255,255,0.08) 98%, transparent 100%); margin-bottom: 1rem;"></div>');
+    html = html.replace(/^# (.+)$/gm, '<h1 class="text-lg font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-indigo-300 drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-6 mb-1">$1</h1><div class="h-px w-full" style="background: linear-gradient(to right, transparent 0%, rgba(34,211,238,0.15) 2%, rgba(34,211,238,0.15) 98%, transparent 100%); margin-bottom: 1.5rem;"></div>');
 
     const divExtra = isStreaming ? 'data-animated="true" is-visible' : '';
-    html = html.replace(/^(?:\s*[\*\-_]){3,}\s*$/gm, `<div ${divExtra} class="divider-container"><div class="divider-line bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent h-px my-8"></div></div>`);
+    html = html.replace(/^(?:\s*[\*\-_]){3,}\s*$/gm, `<div ${divExtra} class="divider-container"><div class="divider-line bg-gradient-to-r from-transparent via-cyan-500/15 to-transparent h-px my-8"></div></div>`);
 
     html = html.replace(/\*\*\*(?!\s)(.+?)\*\*\*/g, '<strong class="text-indigo-400 drop-shadow-[1px_1.5px_0px_rgba(0,0,0,1)]"><em>$1</em></strong>');
     html = html.replace(/\*\*(?!\s)(.+?)\*\*/g, '<strong class="text-indigo-300 drop-shadow-[1px_1.5px_0px_rgba(0,0,0,1)]">$1</strong>');
@@ -796,7 +796,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
     html = html.replace(/‹esc-hash›/g, '#');
     html = html.replace(/‹esc-dash›/g, '-');
 
-    html = html.replace(/==([^=\n]+)==/g, '<mark class="bg-[#FC8F35]/25 text-[#fcc18d] px-1 py-0.5 rounded-sm border-b border-[#FC8F35]/30 mx-0.5">$1</mark>');
+    html = html.replace(/==([^=\n]+)==/g, '<mark class="bg-[#FC8F35]/15 text-[#fcc18d] px-1 py-0.5 rounded-sm border-b border-[#FC8F35]/30 mx-0.5">$1</mark>');
 
     html = html.replace(/~([^~\n<]+)~/g, '<sub class="text-slate-400 text-[0.7em] leading-none">$1</sub>');
 
@@ -838,7 +838,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         const color = percent >= 80 ? 'bg-cyan-500' : percent >= 50 ? 'bg-blue-500' : percent >= 25 ? 'bg-amber-500' : 'bg-red-500';
         return `<div class="flex items-center gap-3 my-4 shadow-sm select-none">`
             + `<span class="text-slate-400 text-xs font-mono min-w-[90px]">${label.trim()}:</span>`
-            + `<div class="flex-1 max-w-[200px] h-2.5 bg-black/40 rounded-full overflow-hidden border border-white/10 ring-1 ring-white/5">`
+            + `<div class="flex-1 max-w-[200px] h-2.5 bg-black/8 rounded-full overflow-hidden border border-white/10 ring-1 ring-white/5">`
             + `<div class="h-full ${color} rounded-full transition duration-1000 shadow-[0_0_10px_currentColor]/40" style="width:${percent}%"></div>`
             + `</div>`
             + `<span class="text-xs font-mono font-black text-slate-300 w-[45px] text-right">${pct}</span>`
@@ -872,7 +872,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
 
     // 15. Final DIVIDER marker replacement
     const finalDivExtra = isStreaming ? 'data-animated="true" is-visible' : '';
-    html = html.replace(/---DIVIDER---/g, `<div ${finalDivExtra} class="divider-container"><div class="divider-line bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent h-px my-8"></div></div>`);
+    html = html.replace(/---DIVIDER---/g, `<div ${finalDivExtra} class="divider-container"><div class="divider-line bg-gradient-to-r from-transparent via-cyan-500/15 to-transparent h-px my-8"></div></div>`);
 
     if (isStreaming) {
         html = applyStreamingAnimations(html);
@@ -994,7 +994,7 @@ function renderTable(rows: string[][], alignments: ('left' | 'center' | 'right')
     const bodyRows = rows.slice(1);
 
     let html = '<div class="table-container my-10 group/table">';
-    html += '<div class="relative overflow-hidden rounded-xl bg-black/45 backdrop-blur-3xl shadow-[0_15px_40px_rgba(0,0,0,0.4)] transition duration-500">';
+    html += '<div class="relative overflow-hidden rounded-xl bg-black/8 backdrop-blur-3xl shadow-[0_15px_40px_rgba(0,0,0,0.4)] transition duration-500">';
     html += '<div class="absolute inset-0 bg-gradient-to-br from-white/[0.03] to-transparent pointer-events-none z-20"></div>';
     html += '<div class="overflow-x-auto relative z-10"><table class="min-w-full border-collapse m-0 p-0" style="margin: 0 !important; border: none;">';
     
@@ -1073,7 +1073,7 @@ function processInlineMarkdown(text: string): string {
     // Strikethrough ~~text~~
     result = result.replace(/~~(?!\s)(.+?)~~/g, '<del class="text-slate-500 line-through">$1</del>');
     // Highlight ==text==
-    result = result.replace(/==([^=\n]+)==/g, '<mark class="bg-[#FC8F35]/25 text-[#fcc18d] px-1 py-0.5 rounded-sm border-b border-[#FC8F35]/30 mx-0.5">$1</mark>');
+    result = result.replace(/==([^=\n]+)==/g, '<mark class="bg-[#FC8F35]/15 text-[#fcc18d] px-1 py-0.5 rounded-sm border-b border-[#FC8F35]/30 mx-0.5">$1</mark>');
     // Superscript ^text^
     result = result.replace(/\^([^\^\n]+)\^/g, '<sup class="text-slate-400 text-[0.7em] leading-none">$1</sup>');
     // Subscript ~text~
@@ -1093,7 +1093,7 @@ function convertBlockquotesToHtml(block: string, isStreaming: boolean = false): 
     // Depth-based styling: each nesting level gets progressively dimmer border
     const depthStyles = [
         // Level 1 — Primary
-        'border-l-4 border-cyan-500/30 pl-6 pr-4 py-3 my-4 bg-black/40 backdrop-blur-md rounded-r-xl text-slate-300 leading-snug shadow-xl text-md font-medium',
+        'border-l-4 border-cyan-500/30 pl-6 pr-4 py-3 my-4 bg-black/8 backdrop-blur-md rounded-r-xl text-slate-300 leading-snug shadow-xl text-md font-medium',
         // Level 2 — Secondary
         'border-l-[3px] border-indigo-400/25 pl-5 pr-3 py-2 my-2 bg-indigo-500/5 rounded-r-lg text-slate-400 leading-snug text-sm',
         // Level 3+ — Tertiary
