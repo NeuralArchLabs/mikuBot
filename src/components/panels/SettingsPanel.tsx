@@ -363,7 +363,7 @@ export const SettingsPanel = ({
                                 <Icon name="palette" className="text-cyan-400" /> {t('settings.appearance.title', 'Appearance')}
                             </label>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                                 {/* Theme Selection */}
                                 <div className="premium-card p-6 space-y-4">
                                     <div className="flex flex-col gap-1">
@@ -371,28 +371,50 @@ export const SettingsPanel = ({
                                         <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{t('settings.appearance.theme_desc', 'Change the visual vibe of your assistant')}</div>
                                     </div>
                                     
-                                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
-                                        {Object.entries(THEMES).map(([id, themeData]) => (
-                                            <button
-                                                key={id}
-                                                onClick={() => updateConfig('theme', id)}
-                                                className={`group relative flex flex-col items-center gap-2 p-2 rounded-2xl transition-all border-2 ${
-                                                    (config.theme || 'miku') === id
-                                                    ? 'bg-white/10 border-cyan-400 shadow-lg shadow-cyan-900/20'
-                                                    : 'bg-black/20 border-transparent hover:bg-white/5'
-                                                }`}
-                                            >
-                                                <div 
-                                                    className="w-10 h-10 rounded-full shadow-inner border border-white/10"
-                                                    style={{ background: themeData['--primary-color'] }}
-                                                />
-                                                <span className={`text-[9px] font-black uppercase tracking-tighter ${
-                                                    (config.theme || 'miku') === id ? 'text-cyan-400' : 'text-slate-500 group-hover:text-slate-300'
-                                                }`}>
-                                                    {id}
-                                                </span>
-                                            </button>
-                                        ))}
+                                    <div className="flex flex-nowrap items-center justify-between gap-1 sm:gap-2 overflow-x-auto lg:overflow-x-visible pb-2 scrollbar-hide">
+                                        {Object.entries(THEMES).map(([id, themeData]) => {
+                                            let gradient = `linear-gradient(135deg, ${themeData['--primary-color']}, ${themeData['--secondary-color']}, ${themeData['--background-color']})`;
+                                            
+                                            // Theme-specific dominance overrides
+                                            if (id === 'miku') {
+                                                gradient = `linear-gradient(135deg, ${THEMES.cloud['--primary-color']} 0%, ${THEMES.cloud['--primary-color']} 65%, ${themeData['--primary-color']} 100%)`;
+                                            } else if (id === 'midnight') {
+                                                gradient = `linear-gradient(135deg, #000000 0%, #0c1a40 45%, ${themeData['--background-color']} 100%)`;
+                                            } else if (id === 'cloud') {
+                                                gradient = `linear-gradient(135deg, #ffffff 0%, #ffffff 60%, ${themeData['--primary-color']} 100%)`;
+                                            } else if (id === 'cyberpunk') {
+                                                gradient = `linear-gradient(135deg, ${themeData['--background-color']} 0%, ${themeData['--background-color']} 55%, ${themeData['--primary-color']} 100%)`;
+                                            }
+
+                                            return (
+                                                <button
+                                                    key={id}
+                                                    onClick={() => updateConfig('theme', id)}
+                                                    className={`group relative flex flex-col items-center gap-1.5 p-1.5 sm:p-2 rounded-xl transition-all border-2 shrink-0 min-w-[52px] sm:min-w-[68px] ${
+                                                        (config.theme || 'miku') === id
+                                                        ? 'bg-white/10 border-cyan-400 shadow-lg shadow-cyan-900/20'
+                                                        : 'bg-black/20 border-transparent hover:bg-white/5'
+                                                    }`}
+                                                >
+                                                    <div 
+                                                        className="w-8 h-8 sm:w-12 sm:h-12 rounded-full border border-white/10 relative overflow-hidden transform-gpu group-hover:scale-110 transition-all duration-500 shadow-xl"
+                                                        style={{ 
+                                                            boxShadow: `0 10px 20px -5px ${themeData['--primary-color']}80`
+                                                        }}
+                                                    >
+                                                        <div 
+                                                            className="absolute inset-0 scale-[1.25]"
+                                                            style={{ background: gradient }}
+                                                        />
+                                                    </div>
+                                                    <span className={`text-[7px] sm:text-[9px] font-black uppercase tracking-tighter ${
+                                                        (config.theme || 'miku') === id ? 'text-cyan-400' : 'text-slate-500 group-hover:text-slate-300'
+                                                    }`}>
+                                                        {id}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 </div>
 
@@ -701,7 +723,7 @@ export const SettingsPanel = ({
                                                             ) : (
                                                                 <Icon name={(PROVIDERS as any)[pId]?.icon || 'robot'} className="text-lg" />
                                                             )}
-                                                            <span className={`text-[9px] font-black uppercase tracking-wider ${isSelected ? 'text-blue-100' : 'text-slate-500'}`}>
+                                                            <span className={`text-[9px] font-black uppercase tracking-wider ${isSelected ? 'text-blue-100' : 'text-slate-400'}`}>
                                                                 {PROVIDERS[pId].name.split(' ')[0]}
                                                             </span>
                                                         </button>
@@ -793,7 +815,7 @@ export const SettingsPanel = ({
                                                             ) : (
                                                                 <Icon name={(PROVIDERS as any)[pId]?.icon || 'robot'} className="text-lg" />
                                                             )}
-                                                            <span className={`text-[9px] font-black uppercase tracking-wider ${isSelected ? 'text-purple-100' : 'text-slate-500'}`}>
+                                                            <span className={`text-[9px] font-black uppercase tracking-wider ${isSelected ? 'text-purple-100' : 'text-slate-400'}`}>
                                                                 {PROVIDERS[pId].name.split(' ')[0]}
                                                             </span>
                                                         </button>
@@ -893,7 +915,7 @@ export const SettingsPanel = ({
                                                             ) : (
                                                                 <Icon name={(PROVIDERS as any)[pId]?.icon || 'robot'} className="text-lg" />
                                                             )}
-                                                            <span className={`text-[9px] font-black uppercase tracking-wider ${isSelected ? 'text-white' : 'text-slate-600'}`}>
+                                                            <span className={`text-[9px] font-black uppercase tracking-wider ${isSelected ? 'text-white' : 'text-slate-400'}`}>
                                                                 {PROVIDERS[pId].name.split(' ')[0]}
                                                             </span>
                                                         </button>
@@ -955,18 +977,17 @@ export const SettingsPanel = ({
                                 <Icon name="shield-alt" className="text-amber-500" /> {t('settings.security.title')}
                             </label>
 
-                            <div className="premium-panel p-8 shadow-[0_0_40px_rgba(251,191,36,0.05)] space-y-6 relative miku-composite-isolate">
-                                <div className="absolute -top-32 -right-32 w-80 h-80 bg-amber-600/10 blur-3xl rounded-full transform-gpu" />
-                                <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-orange-600/10 blur-3xl rounded-full transform-gpu" />
+                            <div className="premium-panel !bg-amber-500/[0.03] hover:!bg-amber-500/[0.06] p-6 shadow-[0_0_40px_rgba(251,191,36,0.05)] space-y-5 relative miku-composite-isolate border-amber-500/10 hover:border-amber-500/30">
 
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-amber-500/10 pb-4 relative z-10">
                                     <div className="flex items-center gap-4">
                                         <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-900/80 to-amber-950 border border-amber-700/50 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-900/20">
                                             <Icon name="lock" className="text-xl" />
                                         </div>
-                                        <div>
-                                            <h3 className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-orange-400 tracking-tight">{t('settings.security.vault_title')}</h3>
-                                            <p className="text-xs text-amber-500/60 font-medium">{t('settings.security.vault_desc')}</p>
+                                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                                            <h3 className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-orange-400 tracking-tight whitespace-nowrap">{t('settings.security.vault_title')}</h3>
+                                            <div className="hidden sm:block w-px h-4 bg-amber-500/20" />
+                                            <p className="text-[10px] sm:text-xs text-amber-500/60 font-medium uppercase tracking-wider">{t('settings.security.vault_desc')}</p>
                                         </div>
                                     </div>
                                     {/* Obsolete static save button - replaced by floating one */}
@@ -1027,7 +1048,7 @@ export const SettingsPanel = ({
                                                 <button
                                                     key={pId}
                                                     onClick={() => setEditingProvider(pId)}
-                                                    className={`flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all ${editingProvider === pId ? 'bg-slate-700/80 text-white shadow-lg shadow-black/20 ring-1 ring-white/5' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                                                    className={`flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all ${editingProvider === pId ? 'bg-slate-700/80 text-white shadow-lg shadow-black/20 ring-1 ring-white/5' : 'text-slate-300/50 hover:text-slate-100 hover:bg-white/5'
                                                         }`}
                                                 >
                                                     {PROVIDERS[pId].name.split(' ')[0]}

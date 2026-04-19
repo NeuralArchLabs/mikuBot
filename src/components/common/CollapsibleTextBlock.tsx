@@ -8,6 +8,7 @@ interface CollapsibleTextBlockProps {
     isThought?: boolean;
     isStreaming?: boolean;
     mode?: 'full' | 'minimal' | 'none';
+    hasCustomBg?: boolean;
 }
 
 // ── Content Renderers (Polymorphic Logic) ──────────────────────────
@@ -109,7 +110,7 @@ const StreamingRenderer: React.FC<ContentRendererProps> = ({ content, isStreamin
 
 // ── Main Component ──────────────────────────────────────────────────
 
-export const CollapsibleTextBlock: React.FC<CollapsibleTextBlockProps> = ({ content, forceCollapse, isThought, isStreaming, mode }) => {
+export const CollapsibleTextBlock: React.FC<CollapsibleTextBlockProps> = ({ content, forceCollapse, isThought, isStreaming, mode, hasCustomBg }) => {
     const { t } = useTranslation();
     const [isCollapsed, setIsCollapsed] = useState(forceCollapse !== undefined ? forceCollapse : (isThought || false));
     const hasInteractedRef = React.useRef(false);
@@ -167,17 +168,21 @@ export const CollapsibleTextBlock: React.FC<CollapsibleTextBlockProps> = ({ cont
                 /* COLLAPSED ... */
                 <button
                     onClick={handleToggle}
-                    className="w-full text-left cursor-pointer group/inner relative bg-slate-900/20 hover:bg-slate-800/40 border border-white/5 hover:border-blue-500/30 rounded-xl p-3 py-2 text-[11px] text-slate-400 transition-all flex items-center gap-3 shadow-lg focus:outline-none focus:ring-1 focus:ring-blue-500/20 overflow-hidden"
+                    className={`w-full text-left cursor-pointer group/inner relative rounded-xl p-3 py-2 text-[11px] transition-all flex items-center gap-3 shadow-xl focus:outline-none overflow-hidden ${
+                        hasCustomBg 
+                        ? 'bg-slate-900/60 border border-transparent backdrop-blur-2xl text-slate-200 shadow-black/80' 
+                        : 'bg-slate-900/20 hover:bg-slate-800/40 border border-transparent text-slate-400 shadow-black/60'
+                    }`}
                 >
                     <div className="flex-shrink-0 flex items-center gap-2">
                         <Icon name="brain" className={`text-[11px] ${isThought ? 'text-blue-400' : 'text-slate-500'}`} />
-                        <span className="text-[9px] uppercase tracking-[0.2em] font-black text-blue-500/70">{t('chat.labels.reasoning')}</span>
+                        <span className={`text-[9px] uppercase tracking-[0.2em] font-black ${hasCustomBg ? 'text-blue-400' : 'text-blue-500/70'}`}>{t('chat.labels.reasoning')}</span>
                     </div>
                     <div className="w-px h-3 bg-white/10 flex-shrink-0" />
                     
                     {/* Zero-Intrinsic-Width Flex Wrapper */}
                     <div className="flex-1 relative h-4 min-w-0">
-                        <span className="absolute inset-0 truncate opacity-50 group-hover/inner:opacity-100 font-mono tracking-tight transition-opacity leading-4">
+                        <span className={`absolute inset-0 truncate font-mono tracking-tight transition-opacity leading-4 ${hasCustomBg ? 'opacity-100' : 'opacity-50 group-hover/inner:opacity-100'}`}>
                             {summary}
                         </span>
                     </div>
@@ -201,7 +206,7 @@ export const CollapsibleTextBlock: React.FC<CollapsibleTextBlockProps> = ({ cont
                             {t('chat.actions.hide')} <Icon name="chevron-up" className="text-[8px]" />
                         </button>
                     </div>
-                    <div className={`text-[13px] sm:text-[14px] leading-relaxed text-slate-300 rounded-2xl p-4 overflow-hidden transition-[background-color,transform] duration-500 ${isThought ? 'bg-blue-500/[0.03] border border-blue-500/10 shadow-[inner_0_0_20px_rgba(59,130,246,0.01)]' : 'bg-white/[0.01] border border-white/5'}`}>
+                    <div className={`text-[13px] sm:text-[14px] leading-relaxed text-slate-300 rounded-2xl p-4 overflow-hidden transition-[background-color,transform] duration-500 ${isThought ? 'bg-blue-500/[0.03] border border-blue-500/10 shadow-[inner_0_0_20px_rgba(59,130,246,0.01)]' : 'bg-white/[0.01] border border-white/5'} ${hasCustomBg ? 'backdrop-blur-xl bg-slate-900/40' : ''}`}>
                         {isThought ? (
                             <StreamingRenderer content={cleanContent} isStreaming={isStreaming} mode={mode || 'minimal'} onHeightChange={handleHeightUpdate} />
                         ) : (

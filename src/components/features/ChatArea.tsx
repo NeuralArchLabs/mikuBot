@@ -242,7 +242,7 @@ const ChatInputControls = React.memo(({
                     <button
                         onClick={handleSendWithSync}
                         disabled={isViewing || (!localInput.trim() && attachments.length === 0)}
-                        className={`h-[50px] px-4 rounded-xl flex items-center justify-center min-w-[50px] disabled:opacity-30 disabled:cursor-not-allowed btn-send-morph shadow-lg ${agentMode === 'agent' ? 'is-agent shadow-purple-900/20' : 'is-chat shadow-blue-900/20'}`}
+                        className={`h-[50px] px-4 text-white rounded-xl flex items-center justify-center min-w-[50px] disabled:opacity-30 disabled:cursor-not-allowed btn-send-morph shadow-lg ${agentMode === 'agent' ? 'is-agent shadow-purple-900/20' : 'is-chat shadow-blue-900/20'}`}
                         title={t('chat.actions.send')}
                     >
                         {/* Background Clipping Layer */}
@@ -1218,11 +1218,13 @@ export const ChatArea = ({
                 <div className="flex-1" />
                 <div className="space-y-6 w-full max-w-[98%] sm:max-w-[95%] lg:max-w-4xl mx-auto pb-4">
                     {messages.length === 0 && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-20">
-                            <div className="w-20 h-20 rounded-full border-2 border-blue-500/15 flex items-center justify-center mb-6 text-3xl text-blue-500/20">
+                        <div className={`absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-20 ${config.chatBackgroundImage ? 'drop-shadow-[0_20px_50px_rgba(0,0,0,1)] mix-blend-difference' : ''}`}>
+                            <div className={`w-20 h-20 rounded-full border-2 flex items-center justify-center mb-6 text-3xl transition-all ${config.chatBackgroundImage 
+                                ? 'border-white/40 text-white/50 shadow-[0_0_60px_rgba(0,0,0,0.8)]' 
+                                : 'border-blue-500/15 text-blue-500/20'}`}>
                                 <Icon name="terminal" />
                             </div>
-                            <TypewriterIdle />
+                            <TypewriterIdle hasCustomBg={!!config.chatBackgroundImage} />
                         </div>
                     )}
 
@@ -1261,10 +1263,18 @@ export const ChatArea = ({
                                         <div className={`absolute inset-0 z-0 rounded-[inherit] pointer-events-none ${msg.role === 'user' ? 'shadow-[0_15px_35px_-10px_rgba(0,0,0,0.6)]' : 'shadow-[0_10px_25px_-3px_rgba(0,0,0,0.9)]'}`} />
 
                                         {/* --- Layer 2: Glass Backdrop --- */}
-                                        <div className={`absolute inset-0 z-0 rounded-[inherit] pointer-events-none backdrop-blur-md ${msg.role === 'user' ? 'bg-blue-900/75' : 'bg-slate-800/90'}`} />
+                                        <div className={`absolute inset-0 z-0 rounded-[inherit] pointer-events-none backdrop-blur-md ${
+                                            msg.role === 'user' 
+                                                ? 'bg-blue-900/75' 
+                                                : (config.theme === 'cloud' 
+                                                    ? 'bg-slate-700/90 shadow-[inset_0_0_20px_rgba(255,255,255,0.02)]' 
+                                                    : (['cyberpunk', 'forest'].includes(config.theme) 
+                                                        ? 'bg-[var(--surface-color)] shadow-[inset_0_0_20px_rgba(255,255,255,0.02)]' 
+                                                        : 'bg-slate-800/90'))
+                                        }`} />
 
                                         {/* --- Layer 3: Interactive Border --- */}
-                                        <div className={`absolute inset-0 z-0 rounded-[inherit] pointer-events-none border border-transparent transition-colors duration-300 ${msg.role === 'user' ? 'group-hover:border-blue-500/30' : 'group-hover:border-slate-600/60'}`} />
+                                        <div className={`absolute inset-0 z-0 rounded-[inherit] pointer-events-none border border-transparent transition-colors duration-300 ${msg.role === 'user' ? 'group-hover:border-blue-500/30' : 'group-hover:border-[var(--primary-color)]/30'}`} />
 
                                         {/* --- Action Bar --- */}
                                         <div className={`absolute -top-3 ${msg.role === 'user' ? 'right-4' : 'left-4'} flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50`}>
@@ -1294,7 +1304,11 @@ export const ChatArea = ({
                                         </div>
 
                                         {/* --- Layer 4: Content --- */}
-                                        <div className={`relative z-10 h-full flex flex-col ${msg.role === 'user' ? 'text-blue-50' : 'text-slate-200'}`}>
+                                        <div className={`relative z-10 h-full flex flex-col ${
+                                            msg.role === 'user' 
+                                                ? 'text-blue-50' 
+                                                : (config.theme === 'cloud' ? 'text-slate-50' : 'text-slate-50')
+                                        }`}>
                                             
                                             <div className="text-[10px] font-bold opacity-30 mb-3 flex items-center justify-between uppercase tracking-[0.2em]">
                                             <div className="flex items-center gap-2">
@@ -1373,7 +1387,7 @@ export const ChatArea = ({
                                                                     ) : (block.type === 'thought' || block.type === 'text') ? (() => {
                                                                         const hasTools = msg.blocks!.some(b => b.type === 'tool_call');
                                                                         const forceCollapse = isOld || (hasTools && !debugMode) || block.type === 'thought';
-                                                                        return <CollapsibleTextBlock content={block.content} forceCollapse={forceCollapse} isThought={block.type === 'thought'} isStreaming={msg.isStreaming} mode={block.type === 'thought' ? 'minimal' : 'full'} />;
+                                                                        return <CollapsibleTextBlock content={block.content} forceCollapse={forceCollapse} isThought={block.type === 'thought'} isStreaming={msg.isStreaming} mode={block.type === 'thought' ? 'minimal' : 'full'} hasCustomBg={!!config.chatBackgroundImage} />;
                                                                     })() : block.type === 'tool_call' ? (
                                                                         <ToolBlock block={block} isOld={isOld} isStreaming={msg.isStreaming} invertRotation={idx % 2 !== 0} />
                                                                     ) : null}
@@ -1421,6 +1435,7 @@ export const ChatArea = ({
                                     key={`msg-collapsible-${msg.id}-${index}`}
                                     message={msg}
                                     initiallyCollapsed={msg.isInitiallyCollapsed === true || !isPriority}
+                                    hasCustomBg={!!config.chatBackgroundImage}
                                 >
                                     {MessageContent}
                                 </CollapsibleMessage>
@@ -1528,23 +1543,39 @@ export const ChatArea = ({
                 <div className="max-w-5xl mx-auto flex items-center gap-2 mb-2 flex-wrap">
                     <button
                         onClick={() => onAgentModeChange(agentMode === 'chat' ? 'agent' : 'chat')}
-                        className="flex items-center justify-center gap-1.5 px-2 h-6 min-w-[70px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-200 bg-slate-800/50 border-transparent hover:text-slate-300 hover:border-slate-600 active:scale-95 text-slate-500 leading-normal"
+                        className={config.chatBackgroundImage || config.theme === 'cloud' || config.theme === 'cyberpunk' || config.theme === 'forest'
+                            ? `flex items-center justify-center gap-1.5 px-2 h-6 min-w-[70px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border border-transparent transition-all duration-300 opacity-60 hover:opacity-100 active:opacity-100 ${
+                                (config.theme === 'cloud' && !config.chatBackgroundImage)
+                                ? 'bg-slate-200/30 hover:bg-slate-200/60 hover:border-slate-300/50 text-slate-600 hover:text-slate-800 shadow-sm' 
+                                : 'bg-slate-900/40 backdrop-blur-md hover:bg-slate-900/80 hover:text-slate-100 hover:border-slate-700 text-slate-300 shadow-lg'
+                              } active:scale-95 leading-normal`
+                            : "flex items-center justify-center gap-1.5 px-2 h-6 min-w-[70px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border border-transparent transition-all duration-300 bg-slate-800/80 hover:bg-slate-800 hover:text-slate-300 hover:border-slate-700 active:scale-95 text-slate-500 hover:text-slate-300 leading-normal opacity-80 hover:opacity-100"
+                        }
                         title={t('chat.actions.toggle_mode')}
                     >
                         <Icon name="sliders-h" />
                         <span className="-mb-[1px]">{t('chat.labels.mode')}</span>
                     </button>
-                    <div className="relative">
+                    <div className="relative group/mode">
                         <select
                             value={agentMode}
                             onChange={(e) => onAgentModeChange(e.target.value as AgentMode)}
-                            className="bg-slate-800 border border-transparent hover:border-slate-700 rounded px-2 pr-10 py-1 text-xs text-slate-300 font-mono focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 appearance-none"
+                            className={config.chatBackgroundImage || config.theme === 'cloud' || config.theme === 'cyberpunk' || config.theme === 'forest'
+                                ? `backdrop-blur-md border border-transparent transition-all duration-300 appearance-none cursor-pointer shadow-sm hover:shadow-md rounded px-2.5 pr-9 py-1 text-xs font-mono outline-none opacity-60 hover:opacity-100 focus:opacity-100 ${
+                                    (config.theme === 'cloud' && !config.chatBackgroundImage)
+                                    ? 'bg-slate-100/30 hover:bg-slate-100/80 hover:border-slate-300/60 focus:bg-white text-slate-600 focus:text-slate-900 md:backdrop-blur-sm'
+                                    : 'bg-slate-900/40 hover:bg-slate-900 focus:bg-slate-900 hover:border-slate-700 hover:text-slate-100 focus:text-slate-100 text-slate-300'
+                                  }`
+                                : "bg-slate-800/80 border border-transparent hover:border-slate-700 rounded px-2 pr-10 py-1 text-xs text-slate-300 hover:text-slate-200 font-mono focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-300 appearance-none cursor-pointer opacity-80 hover:opacity-100 focus:opacity-100"
+                            }
                             title={t('chat.actions.mode_selector')}
                         >
-                            <option value="chat">💬 {t('chat.modes.chat')}</option>
-                            <option value="agent">🤖 {t('chat.modes.agent')}</option>
+                            <option value="chat" className={(config.theme === 'cloud' && !config.chatBackgroundImage) ? "bg-white text-slate-900" : "bg-slate-900"}>💬 {t('chat.modes.chat')}</option>
+                            <option value="agent" className={(config.theme === 'cloud' && !config.chatBackgroundImage) ? "bg-white text-slate-900" : "bg-slate-900"}>🤖 {t('chat.modes.agent')}</option>
                         </select>
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 scale-75">
+                        <div className={`absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none transition-all duration-300 scale-75 ${
+                            (config.theme === 'cloud' && !config.chatBackgroundImage) ? 'text-slate-400 group-hover/mode:text-slate-600' : 'text-slate-400 group-hover/mode:text-slate-200'
+                        } opacity-40 group-hover/mode:opacity-100`}>
                             <Icon name="chevron-down" />
                         </div>
                     </div>
@@ -1552,14 +1583,14 @@ export const ChatArea = ({
                     {/* Agent-only toggles: Approval Mode + Safe Mode */}
                     <div className={`mode-transition-wrap ${agentMode === 'agent' ? 'visible-mode agent-options-enter' : 'hidden-mode agent-options-exit'}`}>
                         <div className="flex items-center gap-2">
-                            <div className="w-px h-4 bg-slate-700" />
+                            <div className={`w-px h-4 ${(config.theme === 'cloud' && !config.chatBackgroundImage) ? 'bg-slate-300/50' : 'bg-slate-700/50'}`} />
 
                             {/* Approval Mode Toggle */}
                             <button
                                 onClick={() => onApprovalModeChange(approvalMode === 'auto' ? 'manual' : 'auto')}
-                                className={`flex items-center justify-center gap-1.5 px-2 h-6 min-w-[75px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-200 leading-normal ${approvalMode === 'manual'
-                                    ? 'bg-blue-500/15 border-transparent hover:border-blue-500/30 text-blue-400 shadow-sm shadow-blue-500/10'
-                                    : 'bg-amber-500/15 border-transparent hover:border-amber-500/30 text-amber-400 shadow-sm shadow-amber-500/10'
+                                className={`flex items-center justify-center gap-1.5 px-2 h-6 min-w-[75px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border border-transparent transition-all duration-300 leading-normal opacity-70 hover:opacity-100 ${approvalMode === 'manual'
+                                    ? 'bg-blue-500/10 hover:bg-blue-500/20 hover:border-blue-500/30 text-blue-400/80 hover:text-blue-400 shadow-sm shadow-blue-500/10'
+                                    : 'bg-amber-500/10 hover:bg-amber-500/20 hover:border-amber-500/30 text-amber-400/80 hover:text-amber-400 shadow-sm shadow-amber-500/10'
                                     }`}
                                 title={approvalMode === 'manual'
                                     ? t('chat.actions.manual_approval_desc')
@@ -1573,9 +1604,9 @@ export const ChatArea = ({
                             {/* Safe Mode Toggle */}
                             <button
                                 onClick={() => onSafeModeChange(!safeMode)}
-                                className={`flex items-center justify-center gap-1.5 px-2 h-6 min-w-[75px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-200 leading-normal ${safeMode
-                                    ? 'bg-blue-500/15 border-transparent hover:border-blue-500/30 text-blue-400 shadow-sm shadow-blue-500/10'
-                                    : 'bg-amber-500/15 border-transparent hover:border-amber-500/30 text-amber-400 shadow-sm shadow-amber-500/10'
+                                className={`flex items-center justify-center gap-1.5 px-2 h-6 min-w-[75px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border border-transparent transition-all duration-300 leading-normal opacity-70 hover:opacity-100 ${safeMode
+                                    ? 'bg-blue-500/10 hover:bg-blue-500/20 hover:border-blue-500/30 text-blue-400/80 hover:text-blue-400 shadow-sm shadow-blue-500/10'
+                                    : 'bg-amber-500/10 hover:bg-amber-500/20 hover:border-amber-500/30 text-amber-400/80 hover:text-amber-400 shadow-sm shadow-amber-500/10'
                                     }`}
                                 title={safeMode
                                     ? t('chat.actions.safe_mode_on_desc')
@@ -1588,7 +1619,9 @@ export const ChatArea = ({
                         </div>
                     </div>
 
-                    <span className="text-[10px] text-slate-600 font-mono hidden sm:inline-block ml-2">
+                    <span className={`text-[10px] font-mono hidden sm:inline-block ml-2 transition-opacity duration-300 ${
+                        (config.theme === 'cloud' && !config.chatBackgroundImage) ? 'text-slate-500 opacity-60' : 'text-slate-400 opacity-40'
+                    }`}>
                         {agentMode === 'chat'
                             ? t('chat.labels.free_conversation')
                             : `${approvalMode === 'manual' ? '🔒 ' + t('chat.labels.status_manual') : '⚡ ' + t('chat.labels.status_auto')} · ${safeMode ? '💠 ' + t('chat.labels.status_safe') : '📦 ' + t('chat.labels.status_batch')}`
@@ -1598,10 +1631,18 @@ export const ChatArea = ({
                     <div className="ml-auto">
                         <button
                             onClick={() => onDebugModeChange(!debugMode)}
-                            className={`flex items-center justify-center gap-1.5 px-2 h-6 min-w-[75px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-200 leading-normal ${debugMode
-                                ? 'bg-purple-500/15 border-transparent hover:border-purple-500/30 text-purple-400 shadow-sm shadow-purple-500/10'
-                                : 'bg-slate-800/50 border-transparent hover:text-slate-400 hover:border-slate-600 text-slate-500'
-                                }`}
+                            className={config.chatBackgroundImage || config.theme === 'cloud' || config.theme === 'cyberpunk' || config.theme === 'forest'
+                                ? `flex items-center justify-center gap-1.5 px-2 h-6 min-w-[75px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border border-transparent transition-all duration-300 leading-normal opacity-60 hover:opacity-100 ${debugMode
+                                    ? 'bg-purple-500/20 hover:border-purple-500/40 text-purple-300 shadow-lg shadow-purple-500/10 backdrop-blur-md'
+                                    : (config.theme === 'cloud' && !config.chatBackgroundImage)
+                                      ? 'bg-slate-200/20 hover:bg-slate-100/80 hover:border-slate-300/60 text-slate-500 hover:text-slate-800 backdrop-blur-md'
+                                      : 'bg-slate-900/30 hover:bg-slate-900 hover:border-slate-700 hover:text-slate-100 text-slate-300 backdrop-blur-md'
+                                }`
+                                : `flex items-center justify-center gap-1.5 px-2 h-6 min-w-[75px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border border-transparent transition-all duration-300 leading-normal opacity-80 hover:opacity-100 ${debugMode
+                                    ? 'bg-purple-500/15 hover:border-purple-500/30 text-purple-400 shadow-sm shadow-purple-500/10'
+                                    : 'bg-slate-800/50 hover:text-slate-400 hover:border-slate-600 text-slate-500'
+                                }`
+                            }
                             title={debugMode ? t('chat.actions.disable_debug') : t('chat.actions.enable_debug')}
                         >
                             <Icon name="terminal" />

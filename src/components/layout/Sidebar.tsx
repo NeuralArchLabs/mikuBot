@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { AppState, SessionMetadata } from '../../types';
 import { Icon } from '../common/Common';
@@ -172,7 +173,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
 
     return (
         <>
-            <div className="flex flex-col h-full shadow-xl z-30 w-16 lg:w-68 flex-shrink-0 transition-all duration-300 relative overflow-y-auto custom-scrollbar miku-sidebar-isolate" style={{ backgroundColor: 'var(--sidebar-bg)' }}>
+            <div className="flex flex-col h-full shadow-xl z-30 w-16 lg:w-68 flex-shrink-0 transition-all duration-300 relative overflow-y-auto custom-scrollbar" style={{ backgroundColor: 'var(--sidebar-bg)' }}>
                 {/* Vertical Gradient Border (Fade in from top) */}
                 <div className="absolute right-0 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-[var(--border-color)] to-[var(--border-color)] pointer-events-none opacity-50" />
                 
@@ -293,8 +294,8 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                         </div>
                     </div>
 
-                    {/* Context Library - Balanced (flex-1) or Compact Tab */}
-                    <div className="flex-1 flex flex-col border-t border-[var(--border-color)] shadow-[0_-10px_15px_-5px_rgba(0,0,0,0.3)] transition-all duration-300 min-h-0">
+                    <div className="flex-1 flex flex-col relative shadow-[0_-10px_15px_-5px_rgba(0,0,0,0.3)] transition-all duration-300 min-h-0">
+                        <div className="h-px bg-gradient-to-r from-transparent via-[var(--border-color)] via-[5%] to-transparent flex-none opacity-40" />
                         <div 
                             className={`px-5 py-3 flex-1 flex flex-col min-h-0 ${isCompactMode ? 'hover:bg-[var(--hover-color)] rounded-xl mx-2 my-1' : ''}`}
                         >
@@ -370,7 +371,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
             </div>
 
             {/* Deep Session Modal (Available on Mobile & Desktop) */}
-            {sessionModalOpen && (
+            {sessionModalOpen && createPortal(
                 <div className={`fixed inset-0 z-[120] flex items-center justify-center p-4 transition-opacity duration-300 ${isClosing ? 'opacity-0' : 'opacity-100'}`}>
                     <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-sm" onClick={handleClose} />
                     <div className={`relative w-full max-w-2xl premium-panel shadow-2xl flex flex-col overflow-hidden h-[85vh] sm:h-[75vh] ${isClosing ? 'animate-macos-shrink-left' : 'animate-macos-expand-left'}`}>
@@ -423,7 +424,8 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                             />
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </>
     );

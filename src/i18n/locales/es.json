@@ -216,7 +216,7 @@
             "agent_title": "Agente Autónomo",
             "agent_desc": "Modelo potente para ejecución de tareas.",
             "vision_title": "Vortex Visual",
-            "vision_desc": "Motor de Visión Avanzado.",
+            "vision_desc": "Motor de Visión Universal, no configurar para funciones nativas.",
             "fallback_title": "Master Fallback",
             "fallback_desc": "Enrutamiento de emergencia si falla el principal.",
             "select_provider": "Proveedor",

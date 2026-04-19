@@ -288,7 +288,7 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
 
     return (
         <div ref={containerRef} className={`relative mb-4 pl-6 transition-all duration-300 ${entranceClass} ${isExpanded ? 'w-full' : 'w-full max-w-3xl'}`}>
-            <div className={`tool-block overflow-hidden transition-all duration-300 rounded-xl bg-black/35 shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),0_8px_30px_rgba(0,0,0,0.5)] border-t-[3px] border-l-[3px] ${isNeuralSkill ? 'border-t-blue-950/40 border-l-blue-950/40' : 'border-t-slate-900/50 border-l-slate-900/50'} border-b border-r border-b-white/5 border-r-white/5 ${isExpanded ? 'bg-black/70' : 'hover:bg-black/50'} ring-1 ${isNeuralSkill ? 'ring-blue-900/40' : 'ring-slate-900/50'}`}>
+            <div className={`tool-block overflow-hidden transition-all duration-300 rounded-xl bg-slate-950/50 backdrop-blur-md shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),0_8px_30px_rgba(0,0,0,0.5)] border-t-[1.5px] border-l-[1.5px] border-white/10 border-b border-r border-b-black/20 border-r-black/20 ${isExpanded ? 'bg-slate-950/80' : 'hover:bg-slate-950/60'} ring-1 ${isNeuralSkill ? 'ring-blue-500/20' : 'ring-white/5'}`}>
                 {/* Consolidated Header / Summary Strip */}
                 <div
                     className={`tool-block-header flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors hover:bg-white/[0.02] ${isExpanded ? 'bg-slate-800/20 border-b border-white/5' : ''}`}
@@ -321,7 +321,7 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
                     {!isExpanded && (
                         <>
                             <div className="w-px h-3 bg-white/10 flex-shrink-0" />
-                            <span className={`text-[11px] truncate flex-1 font-mono tracking-tight ${isPlaceholder ? (isNeuralSkill ? 'text-blue-400/40 italic animate-pulse' : 'text-slate-500 italic animate-pulse') : (isAborted || isDenied) ? 'text-orange-500/40 italic' : (isSuccess ? (isNeuralSkill ? 'text-cyan-400/80' : 'text-emerald-400/80') : hasError ? 'text-rose-400/80' : 'text-slate-500 italic')}`}>
+                            <span className={`tool-block-summary text-[11px] truncate flex-1 font-mono tracking-tight ${isPlaceholder ? (isNeuralSkill ? 'text-blue-400 italic animate-pulse' : 'text-slate-400 italic animate-pulse') : (isAborted || isDenied) ? 'text-orange-400 italic' : (isSuccess ? (isNeuralSkill ? 'text-cyan-400' : 'text-emerald-400') : hasError ? 'text-rose-400 font-bold' : 'text-slate-400 italic')}`}>
                                 {truncatedText}
                             </span>
                         </>
@@ -334,7 +334,7 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
 
                 {/* Inline Summary for Expanded State */}
                 {isExpanded && (
-                    <div className={`px-4 py-3 bg-slate-800/10 border-b border-white/5 font-medium ${isSuccess ? (isNeuralSkill ? 'text-cyan-400' : 'text-emerald-400') : hasError ? 'text-rose-400' : 'text-slate-500 italic'} text-[12px] sm:text-[13px] leading-relaxed`}>
+                    <div className={`tool-block-summary px-4 py-3 bg-slate-800/10 border-b border-white/5 font-medium ${isSuccess ? (isNeuralSkill ? 'text-cyan-400' : 'text-emerald-400') : hasError ? 'text-rose-400' : 'text-slate-500 italic'} text-[12px] sm:text-[13px] leading-relaxed`}>
                          <IconComp name="info-circle" className="mr-2 opacity-50" />
                          {friendlySummary}
                     </div>
@@ -347,10 +347,10 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
                             <div className="text-[9px] text-slate-600 uppercase tracking-widest font-bold flex items-center gap-1">
                                 <IconComp name="stream" /> {t('common.execution_log')}
                             </div>
-                            <div className="text-[10px] text-slate-500 font-mono leading-relaxed bg-black/20 p-2 rounded-lg border border-white/5">
-                                {t('common.status')}: {isSuccess ? t('common.status_success') : hasError ? t('common.status_error') : t('common.status_pending')}<br />
-                                {t('common.executed')}: {endTime || startTime}<br />
-                                ID: {toolCall.id}
+                            <div className="tool-block-id text-[10px] text-[var(--text-secondary)] font-mono leading-relaxed bg-black/20 p-2 rounded-lg border border-white/5">
+                                <span className="opacity-60">{t('common.status')}:</span> <span className={isSuccess ? (isNeuralSkill ? 'text-cyan-400' : 'text-emerald-400') : hasError ? 'text-rose-400' : ''}>{isSuccess ? t('common.status_success') : hasError ? t('common.status_error') : t('common.status_pending')}</span><br />
+                                <span className="opacity-60">{t('common.executed')}:</span> {endTime || startTime}<br />
+                                <span className="opacity-60">ID:</span> {toolCall.id}
                             </div>
                         </div>
 
@@ -358,7 +358,7 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
                             <div className="text-[9px] text-slate-600 uppercase tracking-widest font-bold flex items-center gap-1">
                                 <IconComp name="code" /> {t('common.arguments')}
                             </div>
-                            <pre className="custom-scrollbar overflow-y-auto max-h-32 p-3 bg-black/20 rounded-lg text-[10px] whitespace-pre-wrap break-all text-indigo-300/60 border border-white/5">
+                            <pre className="custom-scrollbar overflow-y-auto max-h-32 p-3 bg-black/20 rounded-lg text-[10px] whitespace-pre-wrap break-all text-[var(--text-primary)] opacity-80 border border-white/5 font-mono">
                                 {JSON.stringify(toolCall.function.arguments, null, 2)}
                             </pre>
                         </div>
@@ -375,9 +375,9 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
                                         </div>
                                     )}
                                 </div>
-                                <pre className={`custom-scrollbar overflow-y-auto max-h-60 p-3 bg-black/20 rounded-lg text-[10px] whitespace-pre-wrap break-all border transition-colors duration-500 ${isSuccess ? (isNeuralSkill ? 'text-cyan-400/70 border-cyan-500/10' : 'text-emerald-400/70 border-emerald-500/10') : 'text-rose-400/70 border-rose-500/10'}`}>
+                                <pre className={`custom-scrollbar overflow-y-auto max-h-60 p-3 bg-black/20 rounded-lg text-[10px] whitespace-pre-wrap break-all border transition-colors duration-500 font-mono ${isSuccess ? (isNeuralSkill ? 'text-cyan-400 border-cyan-500/20' : 'text-emerald-400 border-emerald-500/20') : 'text-rose-400 border-rose-500/20'}`}>
                                     {JSON.stringify(result.data || result.error, null, 2)}
-                                    {!isSuccess && hasError && <span className="block mt-2 text-rose-500/50 italic font-sans">{t('common.system_exception')}</span>}
+                                    {!isSuccess && hasError && <span className="block mt-2 text-rose-400 italic font-sans">{t('common.system_exception')}</span>}
                                 </pre>
                             </div>
                         )}

@@ -61,7 +61,7 @@ export const THEMES: Record<string, ThemeColors> = {
     '--primary-color': '#d946ef', // Fuchsia-500
     '--secondary-color': '#facc15', // Yellow-400
     '--background-color': '#1a103d', // Deep Purple
-    '--surface-color': 'rgba(45, 27, 105, 0.6)',
+    '--surface-color': 'rgba(45, 27, 105, 0.9)',
     '--text-primary': '#ffffff',
     '--text-secondary': '#22d3ee', // Cyan-400
     '--accent-color': '#22d3ee',
@@ -74,7 +74,7 @@ export const THEMES: Record<string, ThemeColors> = {
     '--primary-color': '#10b981', // Emerald-500
     '--secondary-color': '#84cc16', // Lime-500
     '--background-color': '#064e3b', // Emerald-900
-    '--surface-color': 'rgba(2, 44, 34, 0.6)',
+    '--surface-color': 'rgba(2, 44, 34, 0.9)',
     '--text-primary': '#ecfdf5',
     '--text-secondary': '#fbbf24', // Amber-400
     '--accent-color': '#fbbf24',

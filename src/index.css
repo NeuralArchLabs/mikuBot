@@ -2498,6 +2498,22 @@ select.premium-input option {
   to { transform: translateY(-1.5px) scale(1.02); }
 }
 
+/* Scrollbar Utility */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Theme-specific Overrides */
+.theme-cloud .tool-block-header,
+.theme-cloud .tool-block-id,
+.theme-cloud .tool-block-summary {
+  text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
 .xena-eye, .xena-nose {
   animation-play-state: paused;
 }
@@ -2979,7 +2995,7 @@ select.premium-input option {
 .theme-cloud .text-blue-200,
 .theme-cloud .text-blue-200\/60,
 .theme-cloud .text-blue-300,
-.theme-cloud .text-blue-400 {
+.theme-cloud :not(.signature-wrapper) .text-blue-400 {
     color: #1d4ed8 !important; /* Blue-700 */
 }
 
@@ -3018,14 +3034,42 @@ select.premium-input option {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
+/* High-Contrast Mode Toggles for Cloud Theme */
+.theme-cloud .bg-blue-500\/15, 
+.theme-cloud .bg-blue-500\/10 {
+    background-color: rgba(239, 246, 255, 0.4) !important; /* blue-50 */
+    color: #1d4ed8 !important; /* blue-700 */
+    border: 1px solid rgba(37, 99, 235, 0.3) !important;
+    backdrop-filter: blur(12px) !important;
+}
+
+.theme-cloud .bg-amber-500\/15,
+.theme-cloud .bg-amber-500\/10 {
+    background-color: rgba(255, 251, 235, 0.4) !important; /* amber-50 */
+    color: #b45309 !important; /* amber-700 */
+    border: 1px solid rgba(245, 158, 11, 0.3) !important;
+    backdrop-filter: blur(12px) !important;
+}
+
 .theme-cloud .bg-emerald-500\/10,
 .theme-cloud .bg-indigo-500\/10,
-.theme-cloud .bg-pink-500\/10,
-.theme-cloud .bg-amber-500\/10 {
-    background-color: rgba(0, 0, 0, 0.03);
+.theme-cloud .bg-pink-500\/10 {
+    background-color: rgba(255, 255, 255, 0.6) !important;
+    border: 1px solid rgba(0, 0, 0, 0.05) !important;
 }
 
 .theme-cloud .premium-emerald { --pc-color: #059669; --pc-glow: rgba(5, 150, 105, 0.2); }
 .theme-cloud .premium-indigo { --pc-color: #4f46e5; --pc-glow: rgba(79, 70, 229, 0.2); }
 .theme-cloud .premium-pink   { --pc-color: #db2777; --pc-glow: rgba(219, 39, 119, 0.2); }
 .theme-cloud .premium-amber  { --pc-color: #d97706; --pc-glow: rgba(217, 119, 6, 0.2); }
+.theme-cloud .titlebar-active-chat,
+.theme-cloud .titlebar-active-standard {
+    border-color: rgba(0, 0, 0, 0.2) !important;
+    transition: border-color 0.5s ease;
+}
+
+/* Explicit Signature Legibility Restoration for Cloud Theme */
+.theme-cloud .signature-wrapper .text-cyan-300 { color: #67e8f9 !important; }
+.theme-cloud .signature-wrapper .text-blue-400 { color: #60a5fa !important; }
+.theme-cloud .signature-wrapper .text-indigo-400 { color: #818cf8 !important; }
+.theme-cloud .signature-wrapper .text-indigo-200 { color: #c7d2fe !important; }

@@ -285,13 +285,13 @@
         },
         "pathways": {
             "title": "系统路径",
-            "workspace": "神经工作区",
+            "workspace": "WorkSpace",
             "workspace_desc": "主要目录",
-            "core": "Cortex 核心",
+            "core": "Core",
             "core_desc": "SOUL, USER, CONTEXT",
-            "library": "神经库",
+            "library": "Library",
             "library_desc": "辅助上下文",
-            "commands": "命令引擎",
+            "commands": "Commands",
             "commands_desc": "TOOLS & SKILLS",
             "select": "选择"
         },

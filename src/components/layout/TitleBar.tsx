@@ -11,7 +11,11 @@ interface MenuOption {
     submenu?: MenuOption[];
 }
 
-export const TitleBar: React.FC = () => {
+interface TitleBarProps {
+    activeTab?: string;
+}
+
+export const TitleBar: React.FC<TitleBarProps> = ({ activeTab }) => {
     const { t } = useTranslation();
     const [activeMenu, setActiveMenu] = useState<string | null>(null);
     const menuRef = useRef<HTMLDivElement>(null);
@@ -92,7 +96,8 @@ export const TitleBar: React.FC = () => {
     }, []);
 
     return (
-        <div className="h-[36px] flex items-center px-4 select-none relative z-[100] border-b shadow-[0_8px_30px_-5px_rgba(0,0,0,0.5)] shadow-black/30 app-region-drag" style={{ backgroundColor: 'var(--background-color)', borderColor: 'var(--border-color)' }}>
+        <div className={`h-[35px] flex items-center px-4 select-none relative z-[100] shadow-[0_8px_40px_-2px_rgba(0,0,0,0.8)] shadow-black/60 app-region-drag transition-colors duration-500 ${activeTab === 'chat' ? 'titlebar-active-chat' : 'titlebar-active-standard'}`} style={{ backgroundColor: 'var(--background-color)' }}>
+            <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--border-color)] via-[5%] to-transparent opacity-40" />
 
             {/* Menu Buttons */}
             <div ref={menuRef} className="flex h-full app-region-no-drag">
@@ -101,8 +106,8 @@ export const TitleBar: React.FC = () => {
                         <button
                             onClick={() => setActiveMenu(activeMenu === id ? null : id)}
                             onMouseEnter={() => activeMenu && setActiveMenu(id)}
-                            className={`px-3 py-1 text-xs font-medium transition-colors rounded-md mx-0.5 ${activeMenu === id
-                                ? 'text-white shadow-[0_0_15px_-3px_rgba(59,130,246,0.2)]'
+                            className={`px-3 py-1 text-xs font-medium transition-all rounded-md mx-0.5 ${activeMenu === id
+                                ? 'text-[var(--primary-color)] shadow-[0_0_15px_-3px_var(--primary-color)] scale-105'
                                 : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                                 }`}
                             style={{ backgroundColor: activeMenu === id ? 'var(--surface-color)' : 'transparent' }}

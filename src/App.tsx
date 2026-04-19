@@ -2326,7 +2326,7 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
     return (
         <div className="flex flex-col h-screen overflow-hidden font-sans antialiased selection:bg-blue-500/30 selection:text-blue-100 miku-app-isolate" style={{ backgroundColor: 'var(--background-color)', color: 'var(--text-primary)' }}>
             <ThemeManager theme={state.config.theme} chatFont={state.config.chatFont} />
-            {state.config.isConfigured && <TitleBar />}
+            {state.config.isConfigured && <TitleBar activeTab={state.activeTab} />}
             <div className="flex flex-1 overflow-hidden relative contain-layout">
             {!state.config.isConfigured && (
                 <OnboardingWizard 
@@ -2488,14 +2488,14 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                         <div className="max-w-4xl mx-auto p-6 md:p-10">
                             <div className="flex items-center justify-between mb-8 pb-6 border-b border-[var(--border-color)]">
                                 <div className="flex items-center gap-4">
-                                    <div className="bg-[var(--accent-color)]/20 p-3 rounded-2xl text-[var(--accent-color)] shadow-[0_0_20px_rgba(6,182,212,0.2)]">
+                                    <div className="bg-cyan-500/20 p-3 rounded-2xl text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.25)]">
                                         <Icon name="clock" className="text-3xl animate-clock-neural" />
                                     </div>
                                     <div>
                                         <h2 className="text-3xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-teal-400 text-shadow-premium">
                                             Scheduler
                                         </h2>
-                                        <p className="text-cyan-500/60 text-xs font-bold tracking-widest uppercase">Autonomous Task Management</p>
+                                        <p className={`${state.config.theme === 'cloud' ? 'text-cyan-600/60' : 'text-[var(--text-secondary)]'} text-xs font-bold tracking-widest uppercase`}>Autonomous Task Management</p>
                                     </div>
                                 </div>
                                 <div className="flex gap-3">
@@ -2504,13 +2504,13 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                                             const res = await neuralScheduler.importTasks();
                                             if (res) window.dispatchEvent(new CustomEvent('scheduler-data-updated'));
                                         }}
-                                        className="px-4 py-2.5 bg-slate-900/60 hover:bg-slate-800 text-slate-300 rounded-xl font-bold uppercase tracking-widest flex items-center gap-2 transition-all border border-transparent hover:border-slate-700/50 text-xs"
+                                        className="px-4 py-2.5 bg-[var(--surface-color)]/40 hover:bg-[var(--surface-color)] text-[var(--text-primary)] opacity-70 hover:opacity-100 rounded-xl font-bold uppercase tracking-widest flex items-center gap-2 transition-all border border-transparent hover:border-[var(--border-color)] text-xs shadow-lg hover:shadow-xl shadow-black/20"
                                     >
                                         <Icon name="download" /> Import
                                     </button>
                                     <button
                                         onClick={() => neuralScheduler.exportTasks()}
-                                        className="px-4 py-2.5 bg-slate-900/60 hover:bg-slate-800 text-slate-300 rounded-xl font-bold uppercase tracking-widest flex items-center gap-2 transition-all border border-transparent hover:border-slate-700/50 text-xs"
+                                        className="px-4 py-2.5 bg-[var(--surface-color)]/40 hover:bg-[var(--surface-color)] text-[var(--text-primary)] opacity-70 hover:opacity-100 rounded-xl font-bold uppercase tracking-widest flex items-center gap-2 transition-all border border-transparent hover:border-[var(--border-color)] text-xs shadow-lg hover:shadow-xl shadow-black/20"
                                     >
                                         <Icon name="file-export" /> Export
                                     </button>

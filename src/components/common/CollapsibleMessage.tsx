@@ -8,9 +8,10 @@ interface CollapsibleMessageProps {
     message: Message;
     children: React.ReactNode;
     initiallyCollapsed?: boolean;
+    hasCustomBg?: boolean;
 }
 
-export const CollapsibleMessage: React.FC<CollapsibleMessageProps> = ({ message, children, initiallyCollapsed = true }) => {
+export const CollapsibleMessage: React.FC<CollapsibleMessageProps> = ({ message, children, initiallyCollapsed = true, hasCustomBg }) => {
     const { t } = useTranslation();
     const [isCollapsed, setIsCollapsed] = React.useState(initiallyCollapsed);
 
@@ -50,16 +51,16 @@ export const CollapsibleMessage: React.FC<CollapsibleMessageProps> = ({ message,
 
     // Role-specific styling for the collapsed state
     const bgClass = isUser
-        ? 'bg-blue-900/10 border-transparent hover:bg-blue-900/20 hover:border-blue-500/30'
+        ? hasCustomBg ? 'bg-blue-900/60 border-blue-400/40' : 'bg-blue-900/10 border-transparent hover:bg-blue-900/20 hover:border-blue-500/30'
         : isScheduler
             ? (message as any).isScheduledResponse
-                ? 'bg-indigo-950/20 border-transparent hover:bg-indigo-900/30 hover:border-indigo-500/40'
-                : 'bg-orange-950/20 border-transparent hover:bg-orange-900/30 hover:border-orange-500/40'
+                ? hasCustomBg ? 'bg-indigo-950/60 border-indigo-400/40' : 'bg-indigo-950/20 border-transparent hover:bg-indigo-900/30 hover:border-indigo-500/40'
+                : hasCustomBg ? 'bg-orange-950/60 border-orange-400/40' : 'bg-orange-950/20 border-transparent hover:bg-orange-900/30 hover:border-orange-500/40'
             : isSystem
-                ? 'bg-amber-950/10 border-transparent hover:bg-amber-900/20 hover:border-amber-500/30'
-                : 'bg-slate-800/30 border-transparent hover:bg-slate-800/50 hover:border-slate-600/50';
+                ? hasCustomBg ? 'bg-amber-950/60 border-amber-500/40' : 'bg-amber-950/10 border-transparent hover:bg-amber-900/20 hover:border-amber-500/30'
+                : hasCustomBg ? 'bg-slate-900/60 border-slate-700/60' : 'bg-slate-800/30 border-transparent hover:bg-slate-800/50 hover:border-slate-600/50';
 
-    const iconColorClass = isUser ? 'text-blue-400' : (isScheduler ? ((message as any).isScheduledResponse ? 'text-indigo-400' : 'text-orange-400') : (isSystem ? 'text-amber-500' : 'text-slate-500'));
+    const iconColorClass = isUser ? (hasCustomBg ? 'text-blue-300' : 'text-blue-400') : (isScheduler ? ((message as any).isScheduledResponse ? 'text-indigo-400' : 'text-orange-400') : (isSystem ? 'text-amber-500' : 'text-slate-500'));
     const iconName = isUser ? 'user' : (isScheduler ? ((message as any).isScheduledResponse ? 'brain' : 'bell') : (isSystem ? 'shield-alt' : 'brain'));
 
     // Get a plain text summary
@@ -71,7 +72,7 @@ export const CollapsibleMessage: React.FC<CollapsibleMessageProps> = ({ message,
         <div key={message.id} className={`flex ${justifyClass} my-2 w-full`}>
             <div
                 onClick={() => setIsCollapsed(false)}
-                className={`cursor-pointer group flex items-center justify-between gap-3 px-4 py-2 rounded-xl transition-all duration-300 border border-transparent w-full max-w-[350px] min-h-[40px] ${bgClass}`}
+                className={`cursor-pointer group flex items-center justify-between gap-3 px-4 py-2 rounded-xl transition-all duration-300 border border-transparent w-full max-w-[350px] min-h-[40px] shadow-lg ${hasCustomBg ? 'backdrop-blur-xl shadow-black/80' : 'shadow-black/40'} ${bgClass}`}
             >
                 <div className="flex items-center gap-3 overflow-hidden">
                     <div className={`text-[10px] font-bold uppercase tracking-widest flex-shrink-0 ${iconColorClass}`}>
