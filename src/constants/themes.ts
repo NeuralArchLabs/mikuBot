@@ -15,6 +15,7 @@ export interface ThemeColors {
   '--hover-color': string;
   '--sidebar-bg': string;
   '--sidebar-hover': string;
+  '--glass-glow': string;
 }
 
 export const THEMES: Record<string, ThemeColors> = {
@@ -30,6 +31,7 @@ export const THEMES: Record<string, ThemeColors> = {
     '--hover-color': 'rgba(96, 165, 250, 0.1)',
     '--sidebar-bg': 'rgba(15, 23, 42, 0.8)',
     '--sidebar-hover': 'rgba(30, 41, 59, 0.5)',
+    '--glass-glow': 'rgba(6, 182, 212, 0.15)',
   },
   midnight: {
     '--primary-color': '#94a3b8',
@@ -43,19 +45,21 @@ export const THEMES: Record<string, ThemeColors> = {
     '--hover-color': 'rgba(148, 163, 184, 0.1)',
     '--sidebar-bg': 'rgba(2, 6, 17, 0.9)',
     '--sidebar-hover': 'rgba(15, 23, 42, 0.6)',
+    '--glass-glow': 'rgba(59, 130, 246, 0.15)',
   },
   cloud: {
     '--primary-color': '#2563eb', // Blue-600
-    '--secondary-color': '#3b82f6', // Blue-500
+    '--secondary-color': '#06b6d4', // Cyan-500 (Consistent with other accents)
     '--background-color': '#f8fafc', // Slate-50
     '--surface-color': 'rgba(255, 255, 255, 0.9)', 
-    '--text-primary': '#334155', // Slate-700 (Softer than Black)
+    '--text-primary': '#334155', // Slate-700
     '--text-secondary': '#64748b', // Slate-500
     '--accent-color': '#0d9488', // Teal-600
     '--border-color': 'rgba(203, 213, 225, 1)', // Slate-200
     '--hover-color': 'rgba(37, 99, 235, 0.08)',
     '--sidebar-bg': 'rgba(241, 245, 249, 0.95)',
     '--sidebar-hover': 'rgba(226, 232, 240, 0.7)',
+    '--glass-glow': 'rgba(6, 182, 212, 0.15)',
   },
   cyberpunk: {
     '--primary-color': '#d946ef', // Fuchsia-500
@@ -69,6 +73,7 @@ export const THEMES: Record<string, ThemeColors> = {
     '--hover-color': 'rgba(217, 70, 239, 0.1)',
     '--sidebar-bg': 'rgba(26, 16, 61, 0.8)',
     '--sidebar-hover': 'rgba(45, 27, 105, 0.5)',
+    '--glass-glow': 'rgba(217, 70, 239, 0.2)',
   },
   forest: {
     '--primary-color': '#10b981', // Emerald-500
@@ -82,5 +87,6 @@ export const THEMES: Record<string, ThemeColors> = {
     '--hover-color': 'rgba(16, 185, 129, 0.1)',
     '--sidebar-bg': 'rgba(2, 44, 34, 0.8)',
     '--sidebar-hover': 'rgba(6, 78, 59, 0.5)',
+    '--glass-glow': 'rgba(16, 185, 129, 0.2)',
   }
 };

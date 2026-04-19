@@ -67,19 +67,25 @@ const ChatInputControls = React.memo(({
         return () => clearTimeout(timer);
     }, [localInput, globalInput, setGlobalInput]);
 
-    // ✨ DYNAMIC HEIGHT ENGINE v1.0 - Premium Auto-Expansion
+    // ✨ DYNAMIC HEIGHT ENGINE v1.1 - Premium Auto-Expansion with Viewing Guard
     useEffect(() => {
         const textarea = inputRef.current;
         if (textarea) {
-            // Reset height to calculate correctly
-            textarea.style.height = 'auto';
-            const newHeight = Math.min(textarea.scrollHeight, 200);
-            textarea.style.height = `${newHeight}px`;
-            
-            // Toggle scrollbar only when reaching max height
-            textarea.style.overflowY = textarea.scrollHeight > 200 ? 'auto' : 'hidden';
+            if (isViewing) {
+                // Force minimum height during analysis to prevent UI takeover
+                textarea.style.height = '50px';
+                textarea.style.overflowY = 'auto';
+            } else {
+                // Reset height to calculate correctly
+                textarea.style.height = 'auto';
+                const newHeight = Math.max(Math.min(textarea.scrollHeight, 200), 50);
+                textarea.style.height = `${newHeight}px`;
+                
+                // Toggle scrollbar only when reaching max height
+                textarea.style.overflowY = textarea.scrollHeight > 200 ? 'auto' : 'hidden';
+            }
         }
-    }, [localInput, inputRef]);
+    }, [localInput, inputRef, isViewing]);
 
     const handleSendWithSync = () => {
         setGlobalInput(localInput); // Ensure store is up to date before sending
@@ -116,7 +122,7 @@ const ChatInputControls = React.memo(({
     return (
         <div className="relative max-w-5xl mx-auto h-[50px]">
             {/* Absolute positioning wrapper to grow UPWARDS without pushing history */}
-            <div className="absolute bottom-0 left-0 right-0 flex flex-col pointer-events-none">
+            <div className="absolute bottom-0 left-0 right-0 flex flex-col pointer-events-none z-50">
                 {/* Attachments Preview (Left) - Non-interactive area should allow click-through if needed, but buttons inside should work */}
                 <div className="flex items-end pointer-events-auto">
                 {/* Attachments Preview (Left) */}
@@ -191,10 +197,10 @@ const ChatInputControls = React.memo(({
                         onChange={(e) => setLocalInput(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder={isRecording ? (partialText || t('chat.placeholders.recording')) : (agentMode === 'agent' ? t('chat.placeholders.agent') : t('chat.placeholders.idle'))}
-                        className={`w-full bg-slate-900/80 backdrop-blur-xl border rounded-xl py-3.5 px-4 text-slate-200 font-mono text-sm placeholder-slate-600 focus:ring-1 outline-none resize-none min-h-[50px] transition-[border-color,box-shadow] duration-300 custom-scrollbar ${isRecording
-                            ? 'border-emerald-500/50 ring-1 ring-emerald-500/20 pr-32'
-                            : 'border-slate-800/60 focus:ring-cyan-500/30 focus:border-cyan-500/40 pr-16 shadow-[0_10px_30px_-5px_rgba(0,0,0,0.5)]'
-                            }`}
+                        className={`w-full bg-slate-900/80 backdrop-blur-xl border rounded-xl py-3.5 px-4 text-slate-200 font-mono text-sm placeholder-slate-600 focus:ring-1 outline-none resize-none min-h-[50px] transition-[border-color,box-shadow,padding-right] duration-300 chat-input-scrollbar ${isRecording
+                            ? 'border-emerald-500/50 ring-1 ring-emerald-500/20'
+                            : 'border-slate-800/60 focus:ring-cyan-500/30 focus:border-cyan-500/40 shadow-[0_10px_30px_-5px_rgba(0,0,0,0.5)]'
+                            } pr-12`}
                         rows={1}
                         disabled={isViewing}
                         style={{ opacity: isViewing ? 0.4 : 1 }}

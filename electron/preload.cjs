@@ -132,5 +132,9 @@ contextBridge.exposeInMainWorld('electron', {
     sendMenuAction: (action) => ipcRenderer.send('menu-action-trigger', action),
 
     // Trigger standard menu roles (undo, redo, etc.)
-    sendMenuRole: (role) => ipcRenderer.send('menu-role-trigger', role)
+    sendMenuRole: (role) => ipcRenderer.send('menu-role-trigger', role),
+
+    // Backgrounds
+    getBackgrounds: () => ipcRenderer.invoke('get-backgrounds'),
+    readBackground: (filename) => ipcRenderer.invoke('read-background', filename)
 });

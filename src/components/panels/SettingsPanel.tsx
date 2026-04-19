@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import './SettingsPanel.css';
 import { neuralScheduler } from '../../services';
@@ -78,6 +79,7 @@ export const SettingsPanel = ({
     const [searxenaStatus, setSearxenaStatus] = useState<{ installed: boolean, envReady: boolean, running: boolean }>({ installed: false, envReady: false, running: false });
     const [startingSearxena, setStartingSearxena] = useState(false);
     const [updatingSearxena, setUpdatingSearxena] = useState(false);
+    const [showBackgroundGallery, setShowBackgroundGallery] = useState(false);
 
     const onSyncModelArchitectures = () => {
         onTestConnection(config.provider === 'ollama' ? 'ollama' : config.provider);
@@ -280,13 +282,13 @@ export const SettingsPanel = ({
                     )}
 
                     {settingsTab === 'skills' && (
-                        <div className="grid grid-cols-2 lg:flex lg:flex-row lg:items-center bg-[var(--surface-color)] p-1.5 md:p-2 xl:p-3 rounded-2xl border border-[var(--border-color)] shadow-xl flex-shrink-0 w-full lg:w-auto animate-in fade-in slide-in-from-top-1 duration-700 gap-1.5 xl:gap-3 transition-all duration-500 ease-in-out">
+                        <div className="grid grid-cols-2 lg:flex lg:flex-row lg:items-center bg-[var(--surface-color)] p-1.5 md:p-2 xl:p-3 rounded-2xl border border-transparent hover:border-[var(--border-color)] shadow-xl flex-shrink-0 w-full lg:w-auto animate-in fade-in slide-in-from-top-1 duration-700 gap-1.5 xl:gap-3 transition-all duration-500 ease-in-out">
                              <button
                                 onClick={() => setShowSkillsBlueprints(!showSkillsBlueprints)}
-                                className={`w-full lg:w-11 min-[1150px]:w-auto h-11 xl:h-auto py-3 px-3 lg:px-4 xl:px-6 rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-widest transition-all duration-500 ease-in-out flex items-center justify-center gap-2 border hover:scale-105 active:scale-95 ${
+                                className={`w-full lg:w-11 min-[1150px]:w-auto h-11 xl:h-auto py-3 px-3 lg:px-4 xl:px-6 rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-widest transition-all duration-500 ease-in-out flex items-center justify-center gap-2 border hover:scale-105 active:scale-95 shadow-md ${
                                     showSkillsBlueprints 
                                     ? 'bg-cyan-500 text-black border-transparent shadow-[0_0_20px_rgba(6,182,212,0.4)]' 
-                                    : 'bg-[var(--hover-color)] text-[var(--text-secondary)] border-transparent hover:bg-[var(--surface-color)] hover:text-[var(--text-primary)] hover:border-[var(--border-color)]'
+                                    : 'bg-[var(--hover-color)] text-[var(--text-secondary)] border-transparent hover:bg-[var(--surface-color)] hover:text-[var(--text-primary)] hover:border-[var(--border-color)] hover:shadow-cyan-900/10'
                                 }`}
                                 title={t('settings.actions.new_directive')}
                             >
@@ -295,7 +297,7 @@ export const SettingsPanel = ({
                             </button>
                              <button
                                 onClick={onSaveGlobal}
-                                className="btn-halo w-full lg:w-11 min-[1150px]:w-auto h-11 xl:h-auto py-3 px-3 lg:px-4 xl:px-6 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-widest transition-all duration-500 ease-in-out shadow-[0_0_30px_rgba(6,182,212,0.3)] flex items-center justify-center gap-2 border border-transparent hover:border-cyan-500/40 hover:scale-105 active:scale-95 group/sync"
+                                className="btn-halo w-full lg:w-11 min-[1150px]:w-auto h-11 xl:h-auto py-3 px-3 lg:px-4 xl:px-6 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-widest transition-all duration-500 ease-in-out shadow-lg shadow-cyan-900/40 hover:shadow-[0_0_40px_rgba(6,182,212,0.4)] flex items-center justify-center gap-2 border !border-transparent hover:!border-cyan-500/40 hover:scale-105 active:scale-95 group/sync focus:outline-none"
                                 title={t('settings.actions.save_sync')}
                             >
                                 <Icon name="sync" className="group-hover/sync:rotate-180 transition-transform duration-500" />
@@ -449,7 +451,6 @@ export const SettingsPanel = ({
                                                 title="Font"
                                             />
                                         </div>
-
                                         <div>
                                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block ml-1">{t('settings.appearance.chat_bg', 'Chat Background URL')}</label>
                                             <div className="flex gap-2">
@@ -460,14 +461,22 @@ export const SettingsPanel = ({
                                                     placeholder="https://example.com/image.jpg"
                                                     className="flex-1 bg-[var(--surface-color)] border border-[var(--border-color)] rounded-xl px-4 py-3 text-xs text-[var(--text-primary)] font-mono focus:outline-none focus:ring-1 focus:ring-cyan-500/50 transition-all shadow-inner"
                                                 />
+                                                <button
+                                                    onClick={() => setShowBackgroundGallery(true)}
+                                                    className="px-4 h-10 rounded-xl bg-blue-500/25 hover:bg-blue-500/35 text-blue-500 text-[10px] font-black uppercase tracking-widest transition-all border !border-transparent hover:!border-blue-500/30 flex items-center gap-2 focus:outline-none"
+                                                    title={t('settings.appearance.open_gallery_desc')}
+                                                >
+                                                    <Icon name="images" />
+                                                    <span>{t('settings.appearance.backgrounds', 'Fondos')}</span>
+                                                </button>
                                                 {config.chatBackgroundImage && (
                                                     <button 
                                                         onClick={() => updateConfig('chatBackgroundImage', '')}
-                                                        className="w-10 h-10 rounded-xl flex items-center justify-center transition-all bg-red-500/10 hover:bg-red-500/20 text-red-500"
+                                                        className="w-10 h-10 rounded-xl flex items-center justify-center transition-all bg-red-500/25 hover:bg-red-500/35 text-red-500 border !border-transparent hover:!border-red-500/30 focus:outline-none"
                                                         title={t('common.clear', 'Clear Background')}
                                                         aria-label={t('common.clear', 'Clear Background')}
                                                     >
-                                                        <Icon name="times" />
+                                                        <Icon name="times"/>
                                                     </button>
                                                 )}
                                             </div>
@@ -1671,7 +1680,165 @@ export const SettingsPanel = ({
 
                     </div>
                 )}
+                
+                {/* Background Gallery Modal */}
+                <BackgroundGalleryModal 
+                    isOpen={showBackgroundGallery}
+                    onClose={() => setShowBackgroundGallery(false)}
+                    onSelect={(url) => updateConfig('chatBackgroundImage', url)}
+                    currentBackground={config.chatBackgroundImage}
+                />
             </div>
         </div>
+    );
+};
+
+// ── Background Gallery Modal Component ──────────────────────────────
+const BackgroundGalleryModal = ({ 
+    isOpen, 
+    onClose, 
+    onSelect, 
+    currentBackground 
+}: { 
+    isOpen: boolean; 
+    onClose: () => void; 
+    onSelect: (url: string) => void; 
+    currentBackground?: string;
+}) => {
+    const [backgrounds, setBackgrounds] = useState<{ name: string; url: string | null }[]>([]);
+    const [loading, setLoading] = useState(true);
+    const { t } = useTranslation();
+
+    useEffect(() => {
+        if (!isOpen) return;
+        
+        const loadBgs = async () => {
+            setLoading(true);
+            try {
+                const res = await (window as any).electron?.getBackgrounds();
+                if (res?.ok) {
+                    // For dev environment or packaged app, the main process now returns URLs if possible
+                    // but we still ensure we have them.
+                    const bgsWithUrls = await Promise.all(res.backgrounds.map(async (bg: any) => {
+                        if (bg.url) return bg;
+                        // Backup for dev mode: read file data
+                        const readRes = await (window as any).electron?.readBackground(bg.name);
+                        return { ...bg, url: readRes?.ok ? readRes.data : null };
+                    }));
+                    setBackgrounds(bgsWithUrls);
+                }
+            } catch (e) {
+                console.error("Error loading backgrounds:", e);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadBgs();
+    }, [isOpen]);
+
+    if (!isOpen) return null;
+
+    return createPortal(
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 md:p-8">
+            {/* Backdrop */}
+            <div 
+                className="absolute inset-0 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-500" 
+                onClick={onClose}
+            />
+            
+            {/* Modal Content */}
+            <div className="relative w-full max-w-5xl h-full max-h-[85vh] bg-slate-900/90 border border-white/10 rounded-[32px] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-500">
+                {/* Header */}
+                <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between shrink-0">
+                    <div>
+                        <h2 className="text-xl font-black text-white tracking-tight uppercase flex items-center gap-3">
+                            <Icon name="images" className="text-cyan-400" />
+                            {t('settings.appearance.backgrounds', 'Fondos Disponibles')}
+                        </h2>
+                        <p className="text-[10px] text-slate-400 font-bold tracking-widest uppercase mt-1">
+                            {t('settings.appearance.open_gallery_desc')}
+                        </p>
+                    </div>
+                    <button 
+                        onClick={onClose}
+                        className="w-10 h-10 rounded-full bg-transparent hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-all"
+                        title={t('common.close', 'Cerrar')}
+                        aria-label={t('common.close', 'Cerrar')}
+                    >
+                        <Icon name="times" />
+                    </button>
+                </div>
+
+                {/* Gallery Grid */}
+                <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                    {loading ? (
+                        <div className="h-full flex flex-col items-center justify-center gap-4">
+                            <div className="w-12 h-12 border-4 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin" />
+                            <span className="text-xs font-black text-cyan-500/50 uppercase tracking-[0.2em] animate-pulse">Sincronizando Galería...</span>
+                        </div>
+                    ) : backgrounds.length === 0 ? (
+                        <div className="h-full flex flex-col items-center justify-center text-slate-500 gap-4">
+                            <Icon name="image" className="text-5xl opacity-20" />
+                            <p className="text-xs font-bold uppercase tracking-widest italic">No se encontraron imágenes en la carpeta de fondos</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            {backgrounds.map((bg) => (
+                                <div 
+                                    key={bg.name}
+                                    onClick={() => {
+                                        if (bg.url) {
+                                            onSelect(bg.url);
+                                            onClose();
+                                        }
+                                    }}
+                                    className={`group relative aspect-video rounded-2xl overflow-hidden cursor-pointer border-2 transition-all duration-500 hover:scale-[1.02] active:scale-95 shadow-lg ${
+                                        currentBackground === bg.url 
+                                            ? 'border-cyan-500 shadow-cyan-500/20' 
+                                            : 'border-white/5 hover:border-white/20'
+                                    }`}
+                                    title={bg.name}
+                                >
+                                    {bg.url ? (
+                                        <img 
+                                            src={bg.url} 
+                                            alt={bg.name}
+                                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                                            loading="lazy"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full bg-slate-800 flex items-center justify-center">
+                                            <Icon name="spinner" className="animate-spin text-slate-600" />
+                                        </div>
+                                    )}
+                                    
+                                    {/* Overlay */}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
+                                        <span className="text-[10px] font-black text-white truncate drop-shadow-md">
+                                            {bg.name}
+                                        </span>
+                                    </div>
+                                    
+                                    {/* Selected Indicator */}
+                                    {currentBackground === bg.url && (
+                                        <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-cyan-500 text-white flex items-center justify-center shadow-lg animate-in zoom-in duration-300">
+                                            <Icon name="check" className="text-[10px]" />
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                
+                {/* Footer */}
+                <div className="px-8 py-4 bg-slate-950/50 border-t border-white/5 text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em] flex items-center gap-3">
+                    <Icon name="info-circle" className="text-slate-600" />
+                    Las imágenes se cargan desde la carpeta de instalación (@ROOT/backgrounds)
+                </div>
+            </div>
+        </div>,
+        document.body
     );
 };

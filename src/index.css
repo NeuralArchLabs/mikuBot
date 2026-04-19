@@ -98,30 +98,49 @@ body, html {
 }
 
 .custom-scrollbar::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 6px;
+  height: 6px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
-  margin: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(71, 85, 105, 0.4);
-  border-radius: 20px;
-  border: 3px solid transparent;
-  background-clip: padding-box;
+  background: rgba(71, 85, 105, 0.3);
+  border-radius: 10px;
   transition: background 0.3s ease;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(96, 165, 250, 0.6);
+  background: rgba(71, 85, 105, 0.6);
   border: 2px solid transparent;
 }
+/* Specialized Scrollbar for Chat Input - No arrows to avoid clipping with rounded corners */
+.chat-input-scrollbar::-webkit-scrollbar {
+  width: 12px; /* Increased to allow for 'padding' border */
+}
 
-.custom-scrollbar::-webkit-scrollbar-thumb:active {
-  background: rgba(96, 165, 250, 0.8);
+.chat-input-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 8px 0; /* Creates vertical spacing at ends */
+}
+
+.chat-input-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.2);
+  background-clip: padding-box;
+  border: 4px solid transparent; /* Acts as margin from edges */
+  border-radius: 12px;
+}
+
+.chat-input-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.4);
+  background-clip: padding-box;
+  border: 4px solid transparent;
+}
+
+.chat-input-scrollbar::-webkit-scrollbar-button {
+  display: none;
 }
 
 /* Markdown Styles overrides (Tailwind typography plugin usage recommended instead but keeping existing custom styles) */
@@ -2350,32 +2369,10 @@ body, html {
 :root {
   --neon-cyan: #06b6d4;
   --neon-blue: #3b82f6;
-  --panel-bg: rgba(15, 23, 42, 0.65);
+  --panel-bg: var(--surface-color);
   --border-glass: rgba(255, 255, 255, 0.08);
-  --glass-glow: rgba(59, 130, 246, 0.15);
 }
 
-.premium-panel {
-  background: var(--panel-bg);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 
-    0 4px 20px rgba(0, 0, 0, 0.1),
-    inset 0 0 1px 1px rgba(255, 255, 255, 0.01);
-  border-radius: 1.5rem;
-  transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
-}
-
-.premium-panel:hover, .premium-panel:focus-within {
-  border-color: rgba(96, 165, 250, 0.4);
-  box-shadow: 
-    0 0 40px rgba(59, 130, 246, 0.1),
-    inset 0 0 0px 1px rgba(255, 255, 255, 0.1);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
-  background: rgba(15, 23, 42, 0.75);
-}
 
 .premium-card {
   --pc-color: rgba(96, 165, 250, 0.5);
@@ -2422,9 +2419,9 @@ body, html {
 }
 
 .premium-card:hover, .premium-card.active {
-  background: rgba(30, 41, 59, 0.45);
+  background: var(--surface-color);
   border-color: var(--pc-color);
-  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5), 0 0 20px var(--pc-glow);
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1), 0 0 20px var(--pc-glow);
   transform: translateY(-2px);
 }
 
@@ -2447,12 +2444,12 @@ body, html {
 }
 
 .premium-input {
-  background: rgba(0, 0, 0, 0.2) !important;
-  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  background: var(--hover-color) !important;
+  border: 1px solid var(--border-color) !important;
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1) !important;
-  color: #e2e8f0 !important;
+  color: var(--text-primary) !important;
 }
 
 /* Specific styling for Select elements to fix visibility issues */
@@ -2565,34 +2562,33 @@ select.premium-input option {
 }
 
 .premium-panel {
-  background: var(--panel-bg);
+  background: var(--surface-color);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.05); /* Very faint border */
+  border: 1px solid var(--border-color);
   box-shadow: 
     0 4px 20px rgba(0, 0, 0, 0.1),
     inset 0 0 1px 1px rgba(255, 255, 255, 0.01);
   border-radius: 1.5rem;
   transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
-  /* Force isolation on blurred panels to prevent composite bleed */
   transform: translateZ(0);
   backface-visibility: hidden;
 }
 
 .premium-panel:hover, .premium-panel:focus-within {
-  border-color: rgba(96, 165, 250, 0.3);
+  border-color: var(--secondary-color);
   box-shadow: 
-    0 0 40px rgba(59, 130, 246, 0.05),
+    0 0 40px var(--glass-glow),
     inset 0 0 0px 1px rgba(255, 255, 255, 0.05);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
-  background: rgba(15, 23, 42, 0.75);
+  background: var(--surface-color);
 }
 
 .premium-card {
   position: relative;
-  background: rgba(30, 41, 59, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.02);
+  background: var(--hover-color);
+  border: 1px solid var(--border-color);
   border-radius: 1.25rem;
   transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
   overflow: hidden;
@@ -2928,7 +2924,6 @@ select.premium-input option {
 .stream-paragraph-enter {
   animation: stream-paragraph-enter 0.35s ease-out forwards;
 }
-
 /* ── Freeze Renderer Animations During Streaming ─────────── */
 /* All post-streaming animations (blockquote typewriter, code fade-in,  */
 /* divider, mermaid) stay frozen at their first frame. The signature    */
@@ -2940,6 +2935,15 @@ select.premium-input option {
 .markdown-body.is-streaming .mermaid {
   animation: none !important;
   opacity: 0;
+}
+
+/* ── Panel Styling ────────────────────────────────────────── */
+.premium-panel {
+    background-color: var(--surface-color);
+}
+
+.skills-panel-description {
+    color: var(--text-secondary);
 }
 
 /* ── Cloud Theme (Light Mode) Refinements ─────────────────────────── */

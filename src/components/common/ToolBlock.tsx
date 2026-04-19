@@ -347,7 +347,7 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
                             <div className="text-[9px] text-slate-600 uppercase tracking-widest font-bold flex items-center gap-1">
                                 <IconComp name="stream" /> {t('common.execution_log')}
                             </div>
-                            <div className="tool-block-id text-[10px] text-[var(--text-secondary)] font-mono leading-relaxed bg-black/20 p-2 rounded-lg border border-white/5">
+                            <div className="tool-block-id text-[10px] text-[var(--text-secondary)] font-mono leading-relaxed bg-black/50 p-2 rounded-lg border border-white/5">
                                 <span className="opacity-60">{t('common.status')}:</span> <span className={isSuccess ? (isNeuralSkill ? 'text-cyan-400' : 'text-emerald-400') : hasError ? 'text-rose-400' : ''}>{isSuccess ? t('common.status_success') : hasError ? t('common.status_error') : t('common.status_pending')}</span><br />
                                 <span className="opacity-60">{t('common.executed')}:</span> {endTime || startTime}<br />
                                 <span className="opacity-60">ID:</span> {toolCall.id}
@@ -358,7 +358,7 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
                             <div className="text-[9px] text-slate-600 uppercase tracking-widest font-bold flex items-center gap-1">
                                 <IconComp name="code" /> {t('common.arguments')}
                             </div>
-                            <pre className="custom-scrollbar overflow-y-auto max-h-32 p-3 bg-black/20 rounded-lg text-[10px] whitespace-pre-wrap break-all text-[var(--text-primary)] opacity-80 border border-white/5 font-mono">
+                            <pre className="custom-scrollbar overflow-y-auto max-h-32 p-3 bg-black/50 rounded-lg text-[10px] whitespace-pre-wrap break-all text-[var(--text-primary)] opacity-80 border border-white/5 font-mono">
                                 {JSON.stringify(toolCall.function.arguments, null, 2)}
                             </pre>
                         </div>
@@ -375,7 +375,7 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
                                         </div>
                                     )}
                                 </div>
-                                <pre className={`custom-scrollbar overflow-y-auto max-h-60 p-3 bg-black/20 rounded-lg text-[10px] whitespace-pre-wrap break-all border transition-colors duration-500 font-mono ${isSuccess ? (isNeuralSkill ? 'text-cyan-400 border-cyan-500/20' : 'text-emerald-400 border-emerald-500/20') : 'text-rose-400 border-rose-500/20'}`}>
+                                <pre className={`custom-scrollbar overflow-y-auto max-h-60 p-3 bg-black/50 rounded-lg text-[10px] whitespace-pre-wrap break-all border transition-colors duration-500 font-mono ${isSuccess ? (isNeuralSkill ? 'text-cyan-400 border-cyan-500/20' : 'text-emerald-400 border-emerald-500/20') : 'text-rose-400 border-rose-500/20'}`}>
                                     {JSON.stringify(result.data || result.error, null, 2)}
                                     {!isSuccess && hasError && <span className="block mt-2 text-rose-400 italic font-sans">{t('common.system_exception')}</span>}
                                 </pre>

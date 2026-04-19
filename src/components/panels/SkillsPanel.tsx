@@ -214,29 +214,29 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
 
         return (
             <div className="h-full flex flex-col overflow-hidden animate-in fade-in duration-700">
-                <div className="flex items-center justify-between border-b border-slate-800/50 bg-slate-950/20 px-2 lg:px-6 shrink-0 relative">
+                <div className="flex items-center justify-between border-b border-[var(--border-color)] bg-[var(--hover-color)] px-2 lg:px-6 shrink-0 relative">
                     <div className="flex">
                         <button
                             onClick={() => setEditMode('config')}
-                            className={`px-4 lg:px-6 py-4 text-[11px] lg:text-xs font-bold uppercase tracking-[0.15em] transition-all relative z-10 ${editMode === 'config' ? 'text-cyan-400' : 'text-slate-500 hover:text-slate-300'
+                            className={`px-4 lg:px-6 py-4 text-[11px] lg:text-xs font-bold uppercase tracking-[0.15em] transition-all relative z-10 focus:outline-none ${editMode === 'config' ? 'text-cyan-500' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                                 }`}
                         >
                             {t('skills.properties')}
-                            {editMode === 'config' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-500 shadow-[0_0_10px_#06b6d4] animate-in fade-in duration-500" />}
+                            {editMode === 'config' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-500 shadow-[0_0_100px_#06b6d4] animate-in fade-in duration-500" />}
                         </button>
                         <button
                             onClick={() => setEditMode('code')}
-                            className={`px-4 lg:px-6 py-4 text-[11px] lg:text-xs font-bold uppercase tracking-[0.15em] transition-all relative z-10 ${editMode === 'code' ? 'text-cyan-400' : 'text-slate-500 hover:text-slate-300'
+                            className={`px-4 lg:px-6 py-4 text-[11px] lg:text-xs font-bold uppercase tracking-[0.15em] transition-all relative z-10 focus:outline-none ${editMode === 'code' ? 'text-cyan-500' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                                 }`}
                         >
                             {t('skills.neural_logic')}
-                            {editMode === 'code' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-500 shadow-[0_0_10px_#06b6d4] animate-in fade-in duration-500" />}
+                            {editMode === 'code' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-500 shadow-[0_0_100px_#06b6d4] animate-in fade-in duration-500" />}
                         </button>
                     </div>
 
                     <button
                         onClick={() => handleDeleteSkill(currentSkill.__folderName)}
-                        className="w-8 h-8 lg:w-9 lg:h-9 rounded-xl bg-transparent text-slate-500 hover:bg-rose-500/20 hover:text-rose-400 border border-transparent hover:border-rose-500/20 transition-all flex items-center justify-center group/del"
+                        className="w-8 h-8 lg:w-9 lg:h-9 rounded-xl bg-transparent text-[var(--text-secondary)] hover:bg-rose-500/20 hover:text-rose-400 border border-transparent hover:border-rose-500/20 transition-all flex items-center justify-center group/del"
                         title={t('skills.delete_btn')}
                     >
                         <Icon name="trash-alt" className="text-xs lg:text-[13px] group-hover/del:scale-110 transition-transform" />
@@ -247,17 +247,17 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                     {editMode === 'config' && (
                         <div className="animate-in fade-in slide-in-from-left-4 duration-500">
                             <div className="hidden lg:flex items-center gap-4 mb-8">
-                                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center text-3xl text-cyan-400 border border-slate-700/50 shadow-2xl shrink-0">
+                                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[var(--surface-color)] to-[var(--hover-color)] flex items-center justify-center text-3xl text-cyan-500 border border-[var(--border-color)] shadow-xl shrink-0">
                                     <Icon name={currentSkill.name.includes('gmail') ? 'envelope' : 'puzzle-piece'} />
                                 </div>
                                     <div className="flex items-center gap-2">
-                                        <Icon name="robot" className="text-cyan-400/80 mr-1" />
-                                        <h3 className="text-lg font-semibold text-white uppercase tracking-wide truncate leading-none">{currentSkill.name}</h3>
+                                        <Icon name="robot" className="text-cyan-500/80 mr-1" />
+                                        <h3 className="text-lg font-semibold text-[var(--text-primary)] uppercase tracking-wide truncate leading-none">{currentSkill.name}</h3>
                                     </div>
-                                    <p className="text-slate-500 text-xs mt-2 line-clamp-2 font-normal">{currentSkill.description}</p>
+                                    <p className="text-[var(--text-secondary)] text-[11px] lg:text-xs mt-2 line-clamp-2 font-medium leading-relaxed">{currentSkill.description}</p>
                             </div>
 
-                            <div className="hidden lg:block h-px bg-gradient-to-r from-slate-800/50 via-slate-700 to-slate-800/50 mb-8" />
+                            <div className="hidden lg:block h-px bg-gradient-to-r from-transparent via-[var(--border-color)] to-transparent mb-8" />
 
                             <div className="space-y-6 lg:space-y-8">
                                 {currentSkill.name === 'gmail_imap' ? (
@@ -273,7 +273,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                                     placeholder="your@email.com"
                                                     value={skillConfig.email || ''}
                                                     onChange={(e) => handleUpdateSkillConfig('gmail_imap', 'email', e.target.value)}
-                                                    className="w-full premium-input rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none transition-all placeholder:text-slate-700"
+                                                    className="w-full premium-input rounded-xl px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none transition-all placeholder:text-[var(--text-secondary)]/30"
                                                 />
                                         </div>
                                         <div className="space-y-3">
@@ -287,7 +287,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                                     placeholder="••••••••••••"
                                                     value={skillConfig.app_password || ''}
                                                     onChange={(e) => handleUpdateSkillConfig('gmail_imap', 'app_password', e.target.value)}
-                                                    className="w-full premium-input rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none transition-all placeholder:text-slate-700"
+                                                    className="w-full premium-input rounded-xl px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none transition-all placeholder:text-[var(--text-secondary)]/30"
                                                 />
                                         </div>
                                     </>
@@ -336,7 +336,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                 value={editorContent}
                                 onChange={(e) => setEditorContent(e.target.value)}
                                 placeholder="// Awaiting instructions..."
-                                className="flex-1 premium-input rounded-xl lg:rounded-2xl p-5 font-mono text-[11px] lg:text-sm text-slate-300 focus:outline-none resize-none custom-scrollbar shadow-2xl"
+                                className="flex-1 premium-input rounded-xl lg:rounded-2xl p-5 font-mono text-[11px] lg:text-sm text-[var(--text-primary)] focus:outline-none resize-none custom-scrollbar shadow-2xl"
                                 spellCheck={false}
                             />
                         </div>
@@ -352,8 +352,8 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
             <div className="flex-1 overflow-y-auto lg:overflow-hidden w-full lg:flex lg:flex-row p-3 lg:p-1.5 xl:p-8 gap-2 xl:gap-6 relative custom-scrollbar">
                 {/* Blueprints Overlay */}
                 {showBlueprints && (
-                    <div className="fixed inset-0 z-[1000] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
-                        <div className="bg-slate-900 border border-slate-800 p-8 lg:p-10 rounded-3xl max-w-3xl w-full shadow-[0_0_100px_rgba(0,0,0,0.8)] animate-fade-scale overflow-y-auto max-h-[90vh]">
+                    <div className="fixed inset-0 z-[1000] bg-[var(--background-color)]/90 backdrop-blur-md flex items-center justify-center p-4">
+                        <div className="bg-[var(--surface-color)] border border-[var(--border-color)] p-8 lg:p-10 rounded-3xl max-w-3xl w-full shadow-[0_0_100px_rgba(0,0,0,0.5)] animate-fade-scale overflow-y-auto max-h-[90vh]">
                             {!namingSkill ? (
                                 <>
                                     <div className="flex items-center justify-between mb-8 lg:mb-10">
@@ -377,7 +377,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                                     setNamingSkill(bp);
                                                     setNewSkillName(bp.manifest.name);
                                                 }}
-                                                className="p-6 lg:p-8 bg-slate-800/20 hover:bg-slate-800/40 border border-slate-700/30 hover:border-cyan-500/50 rounded-3xl text-left transition-all group relative overflow-hidden"
+                                                className="p-6 lg:p-8 bg-[var(--hover-color)] hover:bg-[var(--surface-color)] border border-[var(--border-color)] hover:border-cyan-500/50 rounded-3xl text-left transition-all group relative overflow-hidden"
                                             >
                                                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                                                     <Icon name={bp.icon} className="text-6xl" />
@@ -430,7 +430,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
 
                 {/* Vertical Skills List */}
                 <div className="w-full lg:w-52 xl:w-72 shrink-0 flex flex-col gap-3 lg:gap-2 xl:gap-4 lg:pr-2 xl:pr-4 lg:overflow-y-auto custom-scrollbar">
-                    <h3 className="text-[11px] font-semibold text-slate-600 uppercase tracking-[0.3em] px-4 mb-2">{t('skills.repository')}</h3>
+                    <h3 className="text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-[0.3em] px-4 mb-2">{t('skills.repository')}</h3>
                     {loading ? (
                         <div className="space-y-4">
                             {[1, 2, 3].map(i => <div key={i} className="w-full h-20 bg-slate-900/50 animate-pulse rounded-2xl border border-slate-800/30" />)}
@@ -451,8 +451,8 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                                     <Icon name={skill.name.includes('gmail') ? 'envelope' : skill.name.includes('search') ? 'globe' : 'terminal'} />
                                                 </div>
                                                 <div className="flex flex-col min-w-0 flex-1 pr-10">
-                                                    <span className={`font-semibold text-xs uppercase tracking-tight truncate transition-colors duration-500 ${activeSkill === skill.name ? 'text-white' : 'text-slate-400'}`}>{skill.name}</span>
-                                                    <span className="text-[9px] text-slate-600 font-medium uppercase tracking-widest mt-0.5 truncate">{skill.__folderName}</span>
+                                                    <span className={`font-semibold text-xs uppercase tracking-tight truncate transition-colors duration-500 ${activeSkill === skill.name ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}>{skill.name}</span>
+                                                    <span className="text-[9px] text-[var(--text-secondary)] opacity-60 font-medium uppercase tracking-widest mt-0.5 truncate">{skill.__folderName}</span>
                                                 </div>
                                             </div>
                                             {/* Subtle background glow for active */}

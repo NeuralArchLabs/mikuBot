@@ -41,6 +41,7 @@
         "new": "Nuevo",
         "import": "Importar",
         "export": "Exportar",
+        "clear": "Limpiar",
         "spanish": "Español",
         "english": "Inglés",
         "chinese": "Chino",
@@ -278,7 +279,9 @@
             "theme": "Tema del Sistema",
             "theme_desc": "Cambia la vibración visual de tu asistente",
             "chat_font": "Tipografía del Chat",
-            "chat_bg": "Imagen de Fondo (URL)"
+            "chat_bg": "Imagen de Fondo (URL)",
+            "backgrounds": "Fondos",
+            "open_gallery_desc": "Explora y selecciona imágenes de fondo locales"
         },
         "tabs": {
             "core": "Core System",

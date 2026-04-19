@@ -42,6 +42,32 @@ function startLocalServer(distPath) {
             // Decode URI components (e.g. %20 -> space)
             urlPath = decodeURIComponent(urlPath);
 
+            // ── Background Images Support ─────────────────────────────────────
+            // Serve images from the workspace backgrounds folder
+            if (urlPath.startsWith('/backgrounds/')) {
+                try {
+                    const workspace = getCurrentWorkspacePath();
+                    const bgRoot = path.join(workspace, 'backgrounds');
+                    const relPath = urlPath.replace('/backgrounds/', '');
+                    const bgPath = path.join(bgRoot, relPath);
+
+                    // Security: prevent path traversal precisely
+                    if (bgPath.startsWith(bgRoot) && fs.existsSync(bgPath) && !fs.statSync(bgPath).isDirectory()) {
+                        const ext = path.extname(bgPath).toLowerCase();
+                        const contentType = MIME_TYPES[ext] || 'image/jpeg';
+                        res.writeHead(200, { 
+                            'Content-Type': contentType,
+                            'Cache-Control': 'public, max-age=86400',
+                            'Access-Control-Allow-Origin': '*' 
+                        });
+                        res.end(fs.readFileSync(bgPath));
+                        return;
+                    }
+                } catch (e) {
+                    console.error('[Local Server] Background serve error:', e.message);
+                }
+            }
+
             const filePath = path.join(distPath, urlPath);
 
             // Security: prevent path traversal
@@ -1753,7 +1779,7 @@ ipcMain.handle('setup-onboarding', async (event, { targetPath, cleanInstall }) =
     try {
         if (cleanInstall && fs.existsSync(targetPath)) {
             // Backup before wipe? For now just wipe essential folders if user said clean
-            const foldersToWipe = ['core', 'commands', 'workspace', 'library', 'sessions'];
+            const foldersToWipe = ['core', 'commands', 'workspace', 'library', 'sessions', 'backgrounds'];
             for (const f of foldersToWipe) {
                 const fp = path.join(targetPath, f);
                 if (fs.existsSync(fp)) fs.rmSync(fp, { recursive: true, force: true });
@@ -1765,7 +1791,7 @@ ipcMain.handle('setup-onboarding', async (event, { targetPath, cleanInstall }) =
             }
         }
 
-        const folders = ['core', 'commands', 'workspace', 'library', 'sessions'];
+        const folders = ['core', 'commands', 'workspace', 'library', 'sessions', 'backgrounds'];
         if (!fs.existsSync(targetPath)) {
             fs.mkdirSync(targetPath, { recursive: true });
         }
@@ -1783,17 +1809,14 @@ ipcMain.handle('setup-onboarding', async (event, { targetPath, cleanInstall }) =
         // Populate @TOOLS (commands) from app internal resources
         // coreBasePath: Internal engine templates, modes, and skills
         const coreBasePath = path.join(resourcesPath, 'core', 'base');
+        const backgroundsBasePath = path.join(resourcesPath, 'backgrounds');
         
         // targetFolders: Folders in the user's workspace to be populated
-        // Note: @CORE is intentionally left empty (reserved for Soul/User state)
-        // Note: @TOOLS (commands) receives the static engine files
         const workspaceCommandsPath = path.join(targetPath, 'commands');
+        const workspaceBackgroundsPath = path.join(targetPath, 'backgrounds');
 
         if (fs.existsSync(coreBasePath)) {
             console.log('[Setup] Seeding static engine files to @TOOLS from:', coreBasePath);
-            
-            // Seed @TOOLS in workspace (Common skills, blueprints, MODES.md, etc.)
-            // We skip 'blueprints/templates' because they are system resources used only during onboarding.
             fs.cpSync(coreBasePath, workspaceCommandsPath, { 
                 recursive: true, 
                 overwrite: cleanInstall,
@@ -1802,10 +1825,14 @@ ipcMain.handle('setup-onboarding', async (event, { targetPath, cleanInstall }) =
                     return !normalizedSrc.includes('blueprints/templates');
                 }
             });
-            
-            console.log('[Setup] Static engine files (@TOOLS) seeded successfully.');
-        } else {
-            console.warn('[Setup] Internal core/base not found. Seeding skipped.');
+        }
+
+        if (fs.existsSync(backgroundsBasePath)) {
+            console.log('[Setup] Seeding background images from:', backgroundsBasePath);
+            fs.cpSync(backgroundsBasePath, workspaceBackgroundsPath, {
+                recursive: true,
+                overwrite: cleanInstall
+            });
         }
 
         return { ok: true };
@@ -2472,6 +2499,60 @@ ipcMain.handle('fs-delete-file', async (event, { folderPath, filename }) => {
         return { ok: true };
     } catch (error) {
         console.error('[Main Process] fs-delete-file error:', error.message);
+        return { ok: false, error: error.message };
+    }
+});
+
+// ── Backgrounds Management ───────────────────────────────────────────
+ipcMain.handle('get-backgrounds', async () => {
+    try {
+        const workspace = getCurrentWorkspacePath();
+        const bgPath = path.join(workspace, 'backgrounds');
+        
+        // Ensure folder exists
+        if (!fs.existsSync(bgPath)) {
+            fs.mkdirSync(bgPath, { recursive: true });
+            
+            // Try to seed from app resources if empty (failsafe)
+            const backgroundsBasePath = path.join(resourcesPath, 'backgrounds');
+            if (fs.existsSync(backgroundsBasePath)) {
+                fs.cpSync(backgroundsBasePath, bgPath, { recursive: true });
+            }
+        }
+
+        const files = fs.readdirSync(bgPath).filter(f => {
+            const ext = path.extname(f).toLowerCase();
+            return ['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext);
+        });
+
+        // Map to metadata for the UI
+        const backgrounds = files.map(file => ({
+            name: file,
+            // In dev, we'll need to use read-background to get actual data
+            // In production, we can use the local server at /backgrounds/
+            url: app.isPackaged ? `http://localhost:${localServerPort}/backgrounds/${file}` : null
+        }));
+
+        return { ok: true, backgrounds };
+    } catch (error) {
+        console.error('[Main Process] get-backgrounds error:', error.message);
+        return { ok: false, error: error.message };
+    }
+});
+
+ipcMain.handle('read-background', async (event, filename) => {
+    try {
+        const workspace = getCurrentWorkspacePath();
+        const bgPath = path.join(workspace, 'backgrounds', filename);
+        
+        if (fs.existsSync(bgPath)) {
+            const buffer = fs.readFileSync(bgPath);
+            const ext = path.extname(filename).toLowerCase();
+            const contentType = MIME_TYPES[ext] || 'image/jpeg';
+            return { ok: true, data: `data:${contentType};base64,${buffer.toString('base64')}` };
+        }
+        return { ok: false, error: 'File not found' };
+    } catch (error) {
         return { ok: false, error: error.message };
     }
 });
