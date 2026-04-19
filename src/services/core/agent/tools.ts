@@ -351,41 +351,9 @@ export async function executeToolCall(
                     };
                 }
 
-                // Fallback to external APIs only if SearXena is NOT available at all
-                if (config.tavilyApiKey) {
-                    try {
-                        const data = await safeFetch('https://api.tavily.com/search', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                api_key: config.tavilyApiKey,
-                                query: args.query,
-                                search_depth: args.search_depth || 'basic',
-                                include_answer: true,
-                            })
-                        });
-                        return { success: true, data };
-                    } catch (e) {
-                        console.error("Tavily failed, trying Brave...", e);
-                    }
-                }
-
-                if (config.braveApiKey) {
-                    try {
-                        const data = await safeFetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(args.query)}`, {
-                            headers: {
-                                'Accept': 'application/json',
-                                'X-Subscription-Token': config.braveApiKey
-                            }
-                        });
-                        return { success: true, data };
-                    } catch (e) {
-                        return { success: false, error: `Brave Search Error: ${e instanceof Error ? e.message : String(e)}` };
-                    }
-                }
-
-                return { success: false, error: `No external Search API available. Add an API Key (Tavily/Brave) in Settings, or ensure SearXena is installed and running.` };
+                return { success: false, error: `No Search API available. Ensure SearXena is installed and running.` };
             }
+
 
             case 'read_url': {
                 if (!args.url) {
@@ -404,27 +372,9 @@ export async function executeToolCall(
                     }
                 }
 
-                if (!config.tavilyApiKey) {
-                    return { success: false, error: 'Tavily API Key not found. Please add it in Settings, or ensure the internal Python engine is ready.' };
-                }
-                try {
-                    const data = await safeFetch('https://api.tavily.com/extract', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            api_key: config.tavilyApiKey,
-                            urls: [args.url]
-                        })
-                    });
-                    const finalData = data.results?.[0] || data;
-                    if (finalData.success === false) {
-                        return { success: false, error: finalData.error || 'Failed to extract content from URL.' };
-                    }
-                    return { success: true, data: finalData };
-                } catch (e) {
-                    return { success: false, error: `Read URL Error: ${e instanceof Error ? e.message : String(e)}` };
-                }
+                return { success: false, error: 'Internal Python engine is ready, but native extraction failed. No external fallback available.' };
             }
+
 
             case 'send_telegram_message': {
                 const token = config.telegramBotToken;

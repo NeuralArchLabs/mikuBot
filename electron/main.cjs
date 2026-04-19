@@ -322,23 +322,45 @@ function decryptValue(val) {
     }
 }
 
-function encryptApiKeys(apiKeys) {
-    if (!apiKeys) return apiKeys;
-    const encrypted = { ...apiKeys };
-    for (const key of Object.keys(encrypted)) {
-        encrypted[key] = encryptValue(encrypted[key]);
+function processVault(obj, action = 'encrypt') {
+    if (!obj || typeof obj !== 'object' || !safeStorage.isEncryptionAvailable()) return false;
+    
+    let changed = false;
+    const sensitiveKeyPatterns = ['apiKey', 'api_key', 'token', 'password', 'secret', 'email', 'chatid', 'key'];
+    
+    for (const key of Object.keys(obj)) {
+        const val = obj[key];
+        const keyLower = key.toLowerCase();
+        const isSensitiveKey = sensitiveKeyPatterns.some(pattern => keyLower.includes(pattern.toLowerCase()));
+        
+        if (isSensitiveKey) {
+            if (typeof val === 'string') {
+                const processed = action === 'encrypt' ? encryptValue(val) : decryptValue(val);
+                if (processed !== val) {
+                    obj[key] = processed;
+                    changed = true;
+                }
+            } else if (typeof val === 'object' && val !== null) {
+                for (const subKey of Object.keys(val)) {
+                    if (typeof val[subKey] === 'string') {
+                        const processed = action === 'encrypt' ? encryptValue(val[subKey]) : decryptValue(val[subKey]);
+                        if (processed !== val[subKey]) {
+                            val[subKey] = processed;
+                            changed = true;
+                        }
+                    } else if (typeof val[subKey] === 'object' && val[subKey] !== null) {
+                        if (processVault(val[subKey], action)) changed = true;
+                    }
+                }
+            }
+        } else if (typeof val === 'object' && val !== null) {
+             if (processVault(val, action)) changed = true;
+        }
     }
-    return encrypted;
+    return changed;
 }
 
-function decryptApiKeys(apiKeys) {
-    if (!apiKeys) return apiKeys;
-    const decrypted = { ...apiKeys };
-    for (const key of Object.keys(decrypted)) {
-        decrypted[key] = decryptValue(decrypted[key]);
-    }
-    return decrypted;
-}
+
 
 
 // Global path state
@@ -1127,16 +1149,12 @@ ipcMain.handle('save-settings', async (event, settings) => {
         console.log('Saving settings to:', configPath);
 
         // Vault Protection: Encrypt sensitive keys before disk persistence
+        // Vault Protection: Encrypt sensitive fields before writing
         const protectedSettings = JSON.parse(JSON.stringify(settings));
-        if (protectedSettings.config?.apiKeys) {
-            protectedSettings.config.apiKeys = encryptApiKeys(protectedSettings.config.apiKeys);
+        if (protectedSettings.config) {
+            processVault(protectedSettings.config, 'encrypt');
         }
-        if (protectedSettings.config?.telegramBotToken) {
-            protectedSettings.config.telegramBotToken = encryptValue(protectedSettings.config.telegramBotToken);
-        }
-        if (protectedSettings.config?.telegramChatId) {
-            protectedSettings.config.telegramChatId = encryptValue(protectedSettings.config.telegramChatId);
-        }
+
 
         const result = safeWriteJSON(configPath, protectedSettings);
         if (!result.ok) throw new Error(result.error);
@@ -1173,16 +1191,25 @@ ipcMain.handle('load-settings', async () => {
             const data = fs.readFileSync(configPath, 'utf8');
             settings = JSON.parse(data);
             
-            // Vault Decryption: Ensure frontend receives clean keys
-            if (settings.config?.apiKeys) {
-                settings.config.apiKeys = decryptApiKeys(settings.config.apiKeys);
+            // EXPERIENCIA FLUIDA: detect plain-text keys and encrypt them immediately
+            if (settings.config) {
+                // We test if encryption is needed
+                const migrationCopy = JSON.parse(JSON.stringify(settings.config));
+                const wasMigrated = processVault(migrationCopy, 'encrypt');
+                
+                if (wasMigrated) {
+                    console.log('[Vault] Plain-text keys detected. Upgrading config.json to encrypted format...');
+                    const result = safeWriteJSON(configPath, { ...settings, config: migrationCopy });
+                    if (result.ok) {
+                        settings.config = migrationCopy;
+                    }
+                }
+                
+                // Vault Decryption: ensure frontend receives clean (decrypted) keys
+                processVault(settings.config, 'decrypt');
             }
-            if (settings.config?.telegramBotToken) {
-                settings.config.telegramBotToken = decryptValue(settings.config.telegramBotToken);
-            }
-            if (settings.config?.telegramChatId) {
-                settings.config.telegramChatId = decryptValue(settings.config.telegramChatId);
-            }
+
+
         } else {
             console.log('[Main Process] No config.json found at target path. Providing defaults.');
         }
@@ -2526,12 +2553,14 @@ ipcMain.handle('get-backgrounds', async () => {
         });
 
         // Map to metadata for the UI
-        const backgrounds = files.map(file => ({
-            name: file,
-            // In dev, we'll need to use read-background to get actual data
-            // In production, we can use the local server at /backgrounds/
-            url: app.isPackaged ? `http://localhost:${localServerPort}/backgrounds/${file}` : null
-        }));
+        const backgrounds = files.map(file => {
+            const absolutePath = path.join(bgPath, file).replace(/\\/g, '/');
+            return {
+                name: file,
+                // Unified protocol: Works in both dev and production without local server overhead
+                url: `local:///${absolutePath}`
+            };
+        });
 
         return { ok: true, backgrounds };
     } catch (error) {
@@ -3000,6 +3029,8 @@ ipcMain.on('menu-role-trigger', (event, role) => {
 
 // ── Window Management ────────────────────────────────────────────────
 function createWindow() {
+    console.log(`[Main Process] SafeStorage encryption available: ${safeStorage.isEncryptionAvailable()}`);
+
     mainWin = new BrowserWindow({
         width: 1200,
         height: 800,
@@ -3134,9 +3165,11 @@ if (!gotTheLock) {
 
     app.whenReady().then(async () => {
         // Register local file protocol for custom user assets (like backgrounds)
+        // Optimized for Windows paths and high-performance direct disk access
         require('electron').protocol.registerFileProtocol('local', (request, callback) => {
-            const url = request.url.replace(/^local:\/\//, '');
+            const url = request.url.replace(/^local:\/\/\/?/, '');
             try {
+                // Decode URI components safely and return sanitized absolute path
                 return callback(decodeURIComponent(url));
             } catch (error) {
                 return callback(url);

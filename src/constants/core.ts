@@ -46,9 +46,8 @@ export const DEFAULT_CONFIG: AppConfig = {
     apiKeys: { groq: '', gemini: '', ollama: '', zai: '' },
     ollamaUrl: 'http://localhost:11434',
     temperature: 0.7,
-    tavilyApiKey: '',
-    braveApiKey: '',
     telegramBotToken: '',
+
     telegramChatId: '',
     folderNames: { core: '', extra: '', workSpace: '', tools: '' },
     folderPaths: { core: '', extra: '', workSpace: '', tools: '' },

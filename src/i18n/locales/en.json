@@ -339,7 +339,9 @@
             "chat_id": "Allowed Chat ID (Admin)",
             "chat_id_placeholder": "Your numeric Chat ID"
         },
+
         "vosk": {
+
             "title": "Vosk Recognition Engine",
             "manage_title": "Voice Model Management",
             "manage_desc": "Download and select offline voice recognition models to process your voice messages.",

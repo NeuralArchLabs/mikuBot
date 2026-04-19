@@ -36,9 +36,8 @@ export interface AppConfig {
     apiKeys: Record<Provider, string>;
     ollamaUrl: string;
     temperature: number;
-    tavilyApiKey: string;
-    braveApiKey: string;
     telegramBotToken: string;
+
     telegramChatId: string;
     folderNames?: {
         core: string;

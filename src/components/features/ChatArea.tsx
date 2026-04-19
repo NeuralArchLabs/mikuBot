@@ -1208,7 +1208,6 @@ export const ChatArea = ({
                         })(),
                         backgroundSize: 'cover',
                         backgroundPosition: 'center',
-                        backgroundAttachment: 'fixed'
                     }}
                 />
             )}

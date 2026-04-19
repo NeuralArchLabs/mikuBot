@@ -1176,9 +1176,6 @@ export const SettingsPanel = ({
                                 </div>
                             </div>
 
-                            <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-
-                            {/* Vosk Recognition Engine Section */}
                             <div className="space-y-4 pt-4 md:pt-6">
                                 <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
                                     <Icon name="microphone" className="text-emerald-400" /> {t('settings.vosk.title')}
@@ -1717,15 +1714,9 @@ const BackgroundGalleryModal = ({
             try {
                 const res = await (window as any).electron?.getBackgrounds();
                 if (res?.ok) {
-                    // For dev environment or packaged app, the main process now returns URLs if possible
-                    // but we still ensure we have them.
-                    const bgsWithUrls = await Promise.all(res.backgrounds.map(async (bg: any) => {
-                        if (bg.url) return bg;
-                        // Backup for dev mode: read file data
-                        const readRes = await (window as any).electron?.readBackground(bg.name);
-                        return { ...bg, url: readRes?.ok ? readRes.data : null };
-                    }));
-                    setBackgrounds(bgsWithUrls);
+                    // Efficiency Update: Main process now returns direct 'local://' URLs
+                    // for high-performance lazy loading without memory-heavy Base64.
+                    setBackgrounds(res.backgrounds);
                 }
             } catch (e) {
                 console.error("Error loading backgrounds:", e);
@@ -1748,7 +1739,7 @@ const BackgroundGalleryModal = ({
             />
             
             {/* Modal Content */}
-            <div className="relative w-full max-w-5xl h-full max-h-[85vh] bg-slate-900/90 border border-white/10 rounded-[32px] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-500">
+            <div className="relative w-full max-w-5xl h-full max-h-[85vh] bg-slate-900/90 border border-transparent hover:border-white/10 rounded-[32px] shadow-2xl overflow-hidden flex flex-col transition-colors duration-500 animate-in zoom-in-95 duration-500">
                 {/* Header */}
                 <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between shrink-0">
                     <div>
@@ -1796,7 +1787,7 @@ const BackgroundGalleryModal = ({
                                     className={`group relative aspect-video rounded-2xl overflow-hidden cursor-pointer border-2 transition-all duration-500 hover:scale-[1.02] active:scale-95 shadow-lg ${
                                         currentBackground === bg.url 
                                             ? 'border-cyan-500 shadow-cyan-500/20' 
-                                            : 'border-white/5 hover:border-white/20'
+                                            : 'border-transparent hover:border-white/20'
                                     }`}
                                     title={bg.name}
                                 >

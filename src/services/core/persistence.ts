@@ -131,6 +131,7 @@ export const persistence = {
         URL.revokeObjectURL(url);
     },
 
+
     // ── Sessions ─────────────────────────────────────────────────────
     async getSessions(): Promise<SessionMetadata[]> {
         if (!electron) return [];
