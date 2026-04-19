@@ -1,3 +1,18 @@
+## [2.3.2] - 2026-04-19
+### Added
+- **🎭 Multidimensional Themes System**: Complete overhaul of the application's visual engine. Introduced 5 premium themes: `Miku` (Default), `Cloud` (Atmospheric Light), `Midnight` (Deep Blue), `Cyberpunk` (Neon/Fuchsia), and `Forest` (Emerald/Amber).
+- **🛡️ Neural Credential Vault**: Enhanced security with the `processVault` system. API keys are now automatically managed and encrypted at rest, ensuring the "Sovereign Privacy" protocol across all providers.
+- **🖼️ High-Performance Atmospheric Backgrounds**: Switched to native `local://` protocol for background image loading, eliminating memory overhead and rendering latency. Added a dynamic background gallery for deep customization.
+- **⚡ Proactive Automation Presets**: Integrated 10 high-value automation templates in the Scheduler (Heartbeat, News Radar, Social Pulse, etc.) with localized support for ES, EN, and ZH.
+- **💎 Premium UI Fidelity**:
+    - Unified blue iconography across the Scheduler and navigation panels.
+    - Implemented a "Ghost-like" interaction state for task action buttons (translucent idle, solid hover).
+    - Refined TitleBar height (36px) and added deep atmospheric shadows for improved structural depth.
+    - Integrated the high-fidelity successful execution "strobe" animation for Neural Skill triggering.
+- **🧠 Advanced Agent Logic**:
+    - Implemented a universal, depth-aware HTML tag protection system to prevent renderer regressions while maintaining support for complex HTML structures.
+    - Standardized system tools classification as "Core Tools" to distinguish them from dynamic Neural Skills.
+
 ## [2.3.1] - 2026-04-14
 ### Added
 - **Append-Only Streaming Renderer**: Eliminated chat bubble flickering during LLM streaming. The renderer now uses `insertAdjacentHTML` to append complete paragraphs to the DOM without touching existing content — zero re-renders, zero flicker.

@@ -2,7 +2,7 @@
 
 <img src="./public/mikuBotICON.png" width="120" style="border-radius: 24px" alt="mikuBot Icon" />
 
-# 🌟 mikuBot v2.3.0 — The Sovereign Persistence Update
+# 🌟 mikuBot v2.3.2 — The Atmosphere & Themes Update
 
 ![Estado](https://img.shields.io/badge/Estado-Estable-green.svg?style=for-the-badge)
 ![Plataforma](https://img.shields.io/badge/Plataforma-Windows_10%2F11-0078D4.svg?style=for-the-badge&logo=windows)
@@ -18,8 +18,8 @@
 
 <br/>
 
-<a href="https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.3.0/mikuBot-Setup-2.3.0.exe">
-  <img src="https://img.shields.io/badge/DESCARGAR_ÚLTIMA_VERSIÓN-v2.3.0-60A5FA?style=for-the-badge&logo=windows&logoColor=white" height="40" />
+<a href="https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.3.2/mikuBot-Setup-2.3.2.exe">
+  <img src="https://img.shields.io/badge/DESCARGAR_ÚLTIMA_VERSIÓN-v2.3.2-60A5FA?style=for-the-badge&logo=windows&logoColor=white" height="40" />
 </a>
 
 <br/>
@@ -39,6 +39,8 @@ Un agente y asistente de IA dirigido al público general. Diseñado como una alt
 *   **Onboarding y Personalización Profunda:** Cuenta con un proceso de configuración inicial que te guía paso a paso. Desde el primer momento, puedes nutrir al asistente con toda la información que desees que sepa sobre ti, lo que permite un nivel de personalización absoluto para que el sistema entienda exactamente tu contexto, tus necesidades y cómo ayudarte de forma hiperespecífica.
 *   **Autonomía y Modos de Operación:** Cuenta con un Modo Chat y un Modo Agente enfocados en diferentes tipos de asistencia, pero ambos con ejecución nativa de herramientas en el sistema. Puedes elegir entre un modo *completamente autónomo*, un *modo seguro* (requiere autorización previa a la ejecución), y la creación de **tareas programadas** para autonomía total.
 *   **Ejecución Persistente y Multi-sesión (Studio Elite):** Miku ya no se detiene al cambiar de rama neural. Los agentes pueden completar tareas complejas de forma autónoma en segundo plano mientras interactúas con otras sesiones, manteniendo un enlace persistente y visualmente reactivo que te notifica el estado de procesos en otras ramas.
+*   **Temas Multidimensionales (Atmosphere Engine):** Personalización visual absoluta con 5 temas premium (`Miku`, `Cloud`, `Midnight`, `Cyberpunk`, `Forest`). Cada tema adapta toda la interfaz para proporcionar una experiencia inmersiva que se ajusta a tu entorno de trabajo.
+*   **Bóveda Neural de Credenciales:** Tus claves API ahora están protegidas por el sistema `processVault`, que las encripta automáticamente en reposo. Seguridad soberana sin intervención manual.
 *   **Librería de Contexto:** Un módulo que permite crear, almacenar y tener disponibles protocolos y documentos para referenciarlos, revisarlos, mejorarlos o aplicarlos con el asistente en cualquier momento.
 *   **mikuBot Markdown Engine (Studio Elite):** mikuBot integra un motor de renderizado de grado profesional diseñado para la soberanía tecnológica y la precisión técnica. Esta suite "Studio Elite" redefine la interacción visual:
     *   **Renderizado Científico de Grado Profesional (LaTeX):** Motor de alta precisión para matemáticas complejas ($$ y $), integrales, matrices y constantes físicas. Convierte a mikuBot en una herramienta de reporte técnico indispensable para investigadores y estudiantes.
@@ -47,7 +49,7 @@ Un agente y asistente de IA dirigido al público general. Diseñado como una alt
     *   **Canvas Cinético y Progresivo:** Sistema de animaciones orgánicas y tipografía dinámica que sincroniza el revelado de información con el pensamiento real del asistente, proporcionando una experiencia viva y reactiva.
     *   **Integridad de Documentación (Protection Pipeline):** Pipeline de 3 fases que garantiza que imágenes, links y bloques de código anidados mantengan su estructura perfecta, independientemente de la complejidad del flujo de datos de IA.
 *   **Edición Neural (Cortex & Command Editors):** mikuBot incluye editores especializados para modificar directamente las instrucciones y el conocimiento base del asistente. Aunque puedes ajustar estos archivos en cualquier momento para una personalización técnica, **se recomienda seguir el proceso del Onboarding Wizard** para obtener resultados óptimos. Archivos críticos como `MODES.md` dictan los protocolos de operación del agente y su manipulación manual requiere precaución para mantener la estabilidad del sistema.
-*   **Voz y Conectividad 24/7:** Incluye reconocimiento de voz nativo *out of the box* (vía Vosk) en inglés y español para dictado y reconocimiento de mensajes. Además, permite vincularse fácilmente con Telegram (vía BotFather) para operar 24/7 y mantener una comunicación permanente y eficiente.
+*   **Voz, Conectividad y Fondos Pro:** Incluye reconocimiento de voz nativo (Vosk) y vinculación con Telegram. Además, incorpora una **Galería de Fondos Atmosféricos** con carga de alto rendimiento mediante protocolo `local://` para una personalización sin latencia.
 *   **Soporte Multilingüe al 100% (ES/EN/ZH):** A diferencia de otras alternativas en el mercado que suelen estar limitadas a un solo idioma, mikuBot está **completamente traducida y optimizada** para funcionar plenamente en **Español, Inglés y Chino**. Desde la interfaz hasta el razonamiento del agente, el sistema ofrece una experiencia nativa y fluida en los tres idiomas, dándonos una superioridad técnica y de uso global.
 *   **Portabilidad y Respaldo:** Permite el volcado completo de memoria en un archivo comprimido para respaldar todo tu asistente, incluyendo sesiones, personalizaciones, memoria, *skills* y claves de acceso.
 *   **Enfoque Windows-First:** Programado en Electron para escalabilidad, pero enfocado 100% en Windows para una perfecta integración nativa con **searXena**, sin planes a corto plazo para ser porteado a otros sistemas.

@@ -2,7 +2,7 @@
 
 <img src="./public/mikuBotICON.png" width="120" style="border-radius: 24px" alt="mikuBot Icon" />
 
-# 🌟 mikuBot v2.3.0 — The Sovereign Persistence Update
+# 🌟 mikuBot v2.3.2 — 大气与主题更新 (The Atmosphere & Themes Update)
 
 ![状态](https://img.shields.io/badge/状态-稳定-green.svg?style=for-the-badge)
 ![平台](https://img.shields.io/badge/平台-Windows_10%2F11-0078D4.svg?style=for-the-badge&logo=windows)
@@ -18,8 +18,8 @@
 
 <br/>
 
-<a href="https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.3.0/mikuBot-Setup-2.3.0.exe">
-  <img src="https://img.shields.io/badge/下载最新版本-v2.3.0-60A5FA?style=for-the-badge&logo=windows&logoColor=white" height="40" />
+<a href="https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.3.2/mikuBot-Setup-2.3.2.exe">
+  <img src="https://img.shields.io/badge/下载最新版本-v2.3.2-60A5FA?style=for-the-badge&logo=windows&logoColor=white" height="40" />
 </a>
 
 <br/>
@@ -39,6 +39,8 @@
 *   **深度入门和个性化：** 具有引导您逐步进行初始配置的过程。从第一刻起，您就可以向助手提供您想让它了解的关于您的所有信息，实现绝对个性化。
 *   **自主和操作模式：** 具有专注于不同类型辅助的聊天模式和代理模式，均具有原生工具执行功能。在*完全自主*模式、*安全模式*（需要事先授权）以及创建用于完全自主的**计划任务**之间进行选择。
 *   **持久的多会话执行 (Studio Elite)：** Miku 在切换神经分支时不再停止。代理可以在后台自主完成复杂任务，同时您与其他会话交互，保持持久的反应式链接通知您其他分支的处理状态。
+*   **多维主题系统 (Atmosphere Engine)：** 5 款预置的精美主题（`Miku`、`Cloud`、`Midnight`、`Cyberpunk`、`Forest`）带来绝对的视觉个性化。每个主题都能完美适配整个界面，为您打造专属的沉浸式工作环境。
+*   **神经凭据保险库：** 您的 API 密钥现在由 `processVault` 系统保护，自动进行静态加密。无需手动干预即可实现主权级安全。
 *   **上下文库：** 一个允许您创建、存储和引用协议和文档的模块，以便随时与助手一起审查、改进或应用。
 *   **mikuBot Markdown Engine (Studio Elite):** mikuBot 集成了一个专业级渲染引擎，专为技术主权和技术精确度而设计。此 "Studio Elite" 套件重新定义了视觉交互：
     *   **专业级科学渲染 (LaTeX):** 针对复杂数学公式 ($$ 和 $)、微积分、矩阵和物理常数的高精度引擎。为研究人员和学生提供出版级的技术报告能力。
@@ -46,7 +48,7 @@
     *   **结构化知识管理 (提示框):** 通用 Obsidian 风格支持 (`> [!TYPE]`)，用于组织指令、日志和协议，具有 14+ 种反应式样式和同步打字动画。
     *   **动力学与渐进式画布:** 有机动画系统和动态排版，将信息揭示与助手的实时推理同步，提供“活的”界面体验。
     *   **文档完整性 (保护管道):** 3 阶段管道，确保图像、链接和嵌套代码块无论 AI 数据流复杂度如何，都能保持完美的结构完整性。
-*   **语音和 24/7 连接：** 包括开箱即用的原生语音识别（通过 Vosk）英语和西班牙语。此外，它允许通过 Telegram（通过 BotFather）轻松链接，以 24/7 全天候运行。
+*   **语音、連接与专业背景：** 包括开箱即用的原生语音识别（Vosk）。此外，新增 **大气背景图库**，通过 `local://` 协议实现高性能加载，支持零延迟的背景自定义。还支持通过 Telegram (via BotFather) 全天候运行。
 *   **100% 多语言支持 (中/英/西)：** 与市场上其他通常仅限于单一语言的替代方案不同，mikuBot **经过完全翻译和优化**，可在**中文、英语和西班牙语**中完美运行。从界面到代理的推理，系统在所有三种语言中都提供原生且流畅的体验，赋予我们技术上的优越性和全球适用性。
 *   **便携性和备份：** 允许将完整内存转储到压缩文件中，以备份所有内容，包括会话、个性化、内存、*技能*和访问密钥。
 *   **Windows 优先：** 在 Electron 中编程以实现可扩展性，但 100% 专注于 Windows，与 **searXena** 实现完美的本地集成，短期内没有移植到其他系统的计划。
