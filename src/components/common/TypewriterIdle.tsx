@@ -13,6 +13,8 @@ interface TypewriterIdleProps {
     hasCustomBg?: boolean;
 }
 
+type Phase = 'typing-sig' | 'holding-sig' | 'deleting-sig' | 'pause' | 'typing-final' | 'idle';
+
 export const TypewriterIdle = ({ hasCustomBg }: TypewriterIdleProps) => {
     const [displayText, setDisplayText] = useState('');
     const [phase, setPhase] = useState<Phase>('typing-sig');

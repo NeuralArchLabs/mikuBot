@@ -51,7 +51,11 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "MikuCentral",
-      "include": "installer.nsh"
+      "include": "installer.nsh",
+      "installerLanguages": ["en_US", "es", "zh_CN"],
+      "warningsAsErrors": false,
+      "multiLanguageInstaller": true,
+      "displayLanguageSelector": true
     },
     "icon": "public/mikuBotICON.png"
   },
