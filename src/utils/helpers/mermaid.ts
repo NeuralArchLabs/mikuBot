@@ -77,7 +77,7 @@ const MERMAID_CONFIG = {
     securityLevel: 'loose' as const,
     suppressErrorRendering: true,
     darkMode: true,
-    fontFamily: 'JetBrains Mono, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+    fontFamily: '"Outfit", sans-serif',
     htmlLabels: true,
     flowchart: { htmlLabels: true, useMaxWidth: true },
     sequence: { htmlLabels: true, useMaxWidth: true },
@@ -216,7 +216,8 @@ const MERMAID_CONFIG = {
             white-space: normal !important; 
             overflow-wrap: break-word !important; 
             word-break: break-word !important;
-            max-width: 200px;
+            padding: 0 4px !important;
+            font-family: "Outfit", sans-serif !important;
         }
         
         /* Ensure foreignObject content doesn't get clipped prematurely */
