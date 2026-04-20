@@ -222,7 +222,7 @@ const ChatInputControls = React.memo(({
                         onClick={toggleRecording}
                         className={`absolute bottom-2.5 right-2 w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300 ${isRecording
                             ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/40'
-                            : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                            : 'text-[var(--text-secondary)] hover:bg-[var(--hover-color)] hover:text-[var(--text-primary)]'
                             }`}
                         title={isRecording ? t('chat.actions.stop_record') : t('chat.actions.record')}
                     >
@@ -904,8 +904,6 @@ export const ChatArea = ({
             setIsAnchoring(false);
             lockedScrollTopRef.current = null;
             lockTargetRef.current = null;
-            lastMessageIdRef.current = lastMsg.id;
-            return;
         }
 
         lastMessageIdRef.current = lastMsg.id;
@@ -919,7 +917,7 @@ export const ChatArea = ({
 
             // 🎯 Use lock target if set (for block-aware locking after tools), otherwise use message element
             const targetEl = lockTargetRef.current
-                ? document.getElementById(lockTargetRef.current)
+                ? (document.getElementById(lockTargetRef.current) || document.getElementById(`msg-${lastMsg.id}`))
                 : document.getElementById(`msg-${lastMsg.id}`);
             if (!targetEl) return;
 
@@ -1248,7 +1246,7 @@ export const ChatArea = ({
                         const isPriority = index >= messages.length - 4 || priorityIndices.includes(index) || msg.isStreaming || isLast;
 
                         const MessageContent = (
-                            <div id={`msg-${msg.id}`} className={`flex group relative w-full ${msg.role === 'user' ? 'justify-center lg:justify-end'
+                            <div className={`flex group relative w-full ${msg.role === 'user' ? 'justify-center lg:justify-end'
                                 : msg.role === 'system' ? 'justify-center'
                                     : 'justify-center lg:justify-start'
                                 }`}>
@@ -1448,9 +1446,9 @@ export const ChatArea = ({
                         }
 
                         return (
-                            <React.Fragment key={`msg-system-${msg.id}-${index}`}>
+                            <div id={`msg-${msg.id}`} key={`msg-system-${msg.id}-${index}`}>
                                 {MessageContent}
-                            </React.Fragment>
+                            </div>
                         );
                     })}
 
@@ -1554,7 +1552,7 @@ export const ChatArea = ({
                                 ? 'bg-slate-200/30 hover:bg-slate-200/60 hover:border-slate-300/50 text-slate-600 hover:text-slate-800 shadow-sm' 
                                 : 'bg-slate-900/40 backdrop-blur-md hover:bg-slate-900/80 hover:text-slate-100 hover:border-slate-700 text-slate-300 shadow-lg'
                               } active:scale-95 leading-normal`
-                            : "flex items-center justify-center gap-1.5 px-2 h-6 min-w-[70px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border border-transparent transition-all duration-300 bg-slate-800/80 hover:bg-slate-800 hover:text-slate-300 hover:border-slate-700 active:scale-95 text-slate-500 hover:text-slate-300 leading-normal opacity-80 hover:opacity-100"
+                            : "flex items-center justify-center gap-1.5 px-2 h-6 min-w-[70px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border border-transparent transition-all duration-300 bg-[var(--surface-color)] hover:bg-[var(--hover-color)] hover:text-[var(--text-primary)] hover:border-[var(--border-color)] active:scale-95 text-[var(--text-secondary)] leading-normal opacity-80 hover:opacity-100"
                         }
                         title={t('chat.actions.toggle_mode')}
                     >

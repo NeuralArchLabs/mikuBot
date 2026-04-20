@@ -529,10 +529,10 @@ export const ModernSelect = ({
                 onClick={() => setIsOpen(!isOpen)}
                 className={`w-full bg-[var(--surface-color)] border border-[var(--border-color)] hover:border-[var(--primary-color)]/30 rounded-2xl px-8 py-4 text-xs text-[var(--text-primary)] outline-none transition-all font-black flex items-center justify-between shadow-inner group backdrop-blur-md`}
             >
-                <span className="flex-grow text-center truncate px-2 group-hover:text-blue-400 transition-colors">{activeOption ? activeOption.label : placeholder}</span>
+                <span className="flex-grow text-center truncate px-2 group-hover:text-[var(--primary-color)] transition-colors">{activeOption ? activeOption.label : placeholder}</span>
                 <Icon 
                     name={isOpen ? 'times' : (iconVariant === 'plus' ? 'plus' : 'chevron-down')} 
-                    className={`text-slate-600 text-[10px] ml-2 transition-all ${isOpen ? 'duration-500 transform rotate-90 scale-125 text-blue-500 opacity-100' : 'duration-200 rotate-0 scale-100 opacity-60'}`} 
+                    className={`text-slate-600 text-[10px] ml-2 transition-all ${isOpen ? 'duration-500 transform rotate-90 scale-125 text-[var(--primary-color)] opacity-100' : 'duration-200 rotate-0 scale-100 opacity-60'}`} 
                 />
             </button>
             {isOpen && createPortal(
@@ -551,7 +551,7 @@ export const ModernSelect = ({
                             width: `${containerRef.current?.getBoundingClientRect().width || 0}px`,
                             pointerEvents: 'auto'
                         }}
-                        className={`bg-slate-900/98 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-xl shadow-black/80 z-[9999] py-2 overflow-hidden animate-premium`}
+                        className={`bg-[var(--surface-color)] backdrop-blur-3xl border border-[var(--border-color)] rounded-2xl shadow-xl shadow-black/80 z-[9999] py-2 overflow-hidden animate-premium`}
                     >
                         <div className="max-h-[220px] overflow-y-auto custom-scrollbar mr-2 ml-1 py-1">
                             {options.length === 0 && (
@@ -561,7 +561,7 @@ export const ModernSelect = ({
                                 const isCustom = opt.value === 'CUSTOM' || opt.isCustom;
                                 return (
                                     <React.Fragment key={opt.value}>
-                                        {isCustom && idx > 0 && <div className="h-px bg-white/5 mx-6 my-2 mb-3" />}
+                                        {isCustom && idx > 0 && <div className="h-px bg-[var(--border-color)] mx-6 my-2 mb-3 opacity-30" />}
                                         <div
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -570,11 +570,11 @@ export const ModernSelect = ({
                                             }}
                                             className={`px-6 py-2.5 mx-1 rounded-xl text-[10px] font-black tracking-widest cursor-pointer transition-all ${
                                                 value === opt.value 
-                                                    ? 'bg-blue-600/20 text-blue-400 shadow-lg' 
+                                                    ? 'bg-[var(--primary-color)]/20 text-[var(--primary-color)] shadow-lg' 
                                                     : isCustom 
-                                                        ? 'text-slate-600 hover:bg-white/5 hover:text-slate-300' 
-                                                        : 'text-slate-400 hover:bg-white/5 hover:text-white'
-                                            } ${isCustom ? 'italic bg-white/5' : ''} ${opt.className || (opt.style?.fontFamily ? '' : 'uppercase')}`}
+                                                        ? 'text-[var(--text-secondary)] hover:bg-[var(--hover-color)] hover:text-[var(--text-primary)]' 
+                                                        : 'text-[var(--text-secondary)] hover:bg-[var(--hover-color)] hover:text-[var(--text-primary)]'
+                                            } ${isCustom ? 'italic opacity-60' : ''} ${opt.className || (opt.style?.fontFamily ? '' : 'uppercase')}`}
                                             style={opt.style}
                                         >
                                             {isCustom && !opt.label.toLowerCase().includes('personal') ? `✨ ${opt.label}` : opt.label}

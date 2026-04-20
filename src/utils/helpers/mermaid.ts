@@ -78,6 +78,9 @@ const MERMAID_CONFIG = {
     suppressErrorRendering: true,
     darkMode: true,
     fontFamily: 'JetBrains Mono, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+    htmlLabels: true,
+    flowchart: { htmlLabels: true, useMaxWidth: true },
+    sequence: { htmlLabels: true, useMaxWidth: true },
     themeVariables: {
         // ── Core palette ──
         darkMode: true,
@@ -207,6 +210,19 @@ const MERMAID_CONFIG = {
         .node .label, .node .nodeLabel { color: #e2e8f0; fill: #e2e8f0; }
         .cluster-label .nodeLabel { fill: #e2e8f0; }
         .label text, .label tspan { fill: #e2e8f0 !important; }
+        
+        /* 📝 TEXT WRAPPING ENGINE */
+        .nodeLabel, .label div, .label span, .label foreignObject { 
+            white-space: normal !important; 
+            overflow-wrap: break-word !important; 
+            word-break: break-word !important;
+            max-width: 200px;
+        }
+        
+        /* Ensure foreignObject content doesn't get clipped prematurely */
+        div ForeignObject, foreignObject div {
+            overflow: visible !important;
+        }
     `,
 };
 

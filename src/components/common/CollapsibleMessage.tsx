@@ -37,17 +37,22 @@ export const CollapsibleMessage: React.FC<CollapsibleMessageProps> = ({ message,
 
     if (!isCollapsed) {
         return (
-            <div className="relative group w-full">
+            <div id={`msg-${message.id}`} className="relative group w-full">
                 {children}
                 
                 {/* Bottom Action Group: Hide & Copy */}
                 <div className={`absolute -bottom-2.5 ${buttonPositionClass} flex ${isUser ? 'flex-row-reverse' : 'flex-row'} items-center gap-1.5 z-20 invisible opacity-0 group-hover:visible group-hover:opacity-100 focus-within:visible focus-within:opacity-100 transition-all duration-300 pointer-events-none group-hover:pointer-events-auto`}>
                     <button
                         onClick={() => setIsCollapsed(true)}
-                        className="bg-slate-800 border border-slate-700 text-slate-400 hover:text-white px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider shadow-lg flex items-center gap-1 transition-colors"
+                        className="px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider shadow-lg flex items-center gap-1 transition-all hover:scale-105 active:scale-95 border hover:bg-[var(--hover-color)]"
+                        style={{ 
+                            backgroundColor: 'var(--surface-color)', 
+                            borderColor: 'var(--border-color)',
+                            color: 'var(--text-primary)'
+                        }}
                         title="Collapse message"
                     >
-                        <Icon name="compress-alt" /> {t('chat.actions.hide')}
+                        <Icon name="compress-alt" className="group-hover:text-[var(--primary-color)]" /> {t('chat.actions.hide')}
                     </button>
                     
                     {!isSystem && !isScheduler && (
@@ -58,9 +63,14 @@ export const CollapsibleMessage: React.FC<CollapsibleMessageProps> = ({ message,
                                 setCopySuccess(true);
                                 setTimeout(() => setCopySuccess(false), 2000);
                             }}
-                            className="bg-slate-800 border border-slate-700 text-blue-400 hover:text-blue-300 px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider shadow-lg flex items-center gap-1 transition-colors"
+                            className="px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider shadow-lg flex items-center gap-1 transition-all hover:scale-105 active:scale-95 border hover:bg-[var(--hover-color)]"
+                            style={{ 
+                                backgroundColor: 'var(--surface-color)', 
+                                borderColor: 'var(--border-color)',
+                                color: copySuccess ? 'var(--primary-color)' : 'var(--text-secondary)'
+                            }}
                         >
-                            <Icon name={copySuccess ? "check" : "copy"} /> {copySuccess ? t('chat.actions.copied') : t('chat.actions.copy')}
+                            <Icon name={copySuccess ? "check" : "copy"} className={copySuccess ? 'text-[var(--primary-color)]' : ''} /> {copySuccess ? t('chat.actions.copied') : t('chat.actions.copy')}
                         </button>
                     )}
                 </div>
@@ -90,7 +100,7 @@ export const CollapsibleMessage: React.FC<CollapsibleMessageProps> = ({ message,
         : message.blocks?.find(b => b.type === 'text' || b.type === 'thought')?.content.substring(0, 80).replace(/[\n\r]/g, ' ') || 'Process Executed...';
 
     return (
-        <div key={message.id} className={`flex ${justifyClass} my-2 w-full`}>
+        <div id={`msg-${message.id}`} className={`flex ${justifyClass} my-2 w-full`}>
             <div
                 onClick={() => setIsCollapsed(false)}
                 className={`cursor-pointer group flex items-center justify-between gap-3 px-4 py-2 rounded-xl transition-all duration-300 border border-transparent w-full max-w-[350px] min-h-[40px] shadow-lg ${hasCustomBg ? 'backdrop-blur-xl shadow-black/80' : 'shadow-black/40'} ${bgClass}`}

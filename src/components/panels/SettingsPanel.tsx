@@ -253,7 +253,7 @@ export const SettingsPanel = ({
                         <div className="grid grid-cols-2 lg:flex lg:flex-row lg:items-center gap-2 md:gap-2 bg-[var(--surface-color)] p-1.5 md:p-2 rounded-2xl border border-transparent shadow-xl flex-shrink-0 w-full lg:w-auto animate-in fade-in slide-in-from-top-1 duration-700">
                             <button
                                 onClick={onLoadConfig}
-                                className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-[var(--hover-color)] hover:bg-cyan-600/20 text-cyan-400 rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-cyan-900/10 transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-transparent hover:border-cyan-500/40 whitespace-nowrap"
+                                className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-[var(--hover-color)] hover:bg-[var(--primary-color)]/20 text-[var(--primary-color)] rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-[var(--primary-color)]/10 transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-transparent hover:border-[var(--primary-color)]/40 whitespace-nowrap"
                                 title={t('settings.actions.load')}
                             >
                                 <Icon name="download" className="text-sm xl:text-base flex-shrink-0" /> <span className="inline lg:hidden min-[1150px]:inline">{t('settings.actions.load')}</span>
@@ -274,7 +274,7 @@ export const SettingsPanel = ({
                             </button>
                             <button
                                 onClick={onSaveGlobal}
-                                className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-gradient-to-br from-indigo-600/80 to-blue-700/80 hover:from-indigo-500 hover:to-blue-600 text-white rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-blue-900/30 transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-transparent hover:border-cyan-400/50 whitespace-nowrap"
+                                className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-gradient-to-br from-[var(--primary-color)]/80 to-[var(--secondary-color)]/80 hover:from-[var(--primary-color)] hover:to-[var(--secondary-color)] text-white rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-[var(--primary-color)]/30 transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-transparent hover:border-[var(--primary-color)]/50 whitespace-nowrap"
                             >
                                 <Icon name="save" className="text-sm xl:text-base flex-shrink-0" /> <span className="inline lg:hidden min-[1150px]:inline">{t('settings.actions.save')}</span>
                             </button>
@@ -346,7 +346,7 @@ export const SettingsPanel = ({
                                             onClick={() => updateConfig('language', lang.id)}
                                             className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
                                                 (config.language || 'es') === lang.id
-                                                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40'
+                                                ? 'bg-[var(--primary-color)] text-white shadow-lg shadow-[var(--primary-color)]/40'
                                                 : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
                                             }`}
                                         >
@@ -362,7 +362,7 @@ export const SettingsPanel = ({
                         {/* Appearance Section */}
                         <div className="space-y-4">
                             <label className="text-sm font-black text-[var(--text-primary)] uppercase tracking-[0.2em] flex items-center gap-2">
-                                <Icon name="palette" className="text-cyan-400" /> {t('settings.appearance.title', 'Appearance')}
+                                <Icon name="palette" className="text-[var(--primary-color)]" /> {t('settings.appearance.title', 'Appearance')}
                             </label>
 
                             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -394,7 +394,7 @@ export const SettingsPanel = ({
                                                     onClick={() => updateConfig('theme', id)}
                                                     className={`group relative flex-1 xl:flex-initial flex flex-col items-center justify-center gap-2 p-3 sm:p-4 xl:p-2 rounded-2xl xl:rounded-xl transition-all duration-500 border-2 min-h-[90px] sm:min-h-[110px] xl:min-h-0 xl:min-w-[68px] max-w-[160px] xl:max-w-none ${
                                                         (config.theme || 'miku') === id
-                                                        ? 'bg-white/10 border-cyan-400 shadow-[0_0_25px_-5px_rgba(6,182,212,0.3)] scale-[1.02] xl:scale-100'
+                                                        ? 'bg-white/10 border-[var(--primary-color)] shadow-[0_0_25px_-5px_rgba(6,182,212,0.3)] scale-[1.02] xl:scale-100'
                                                         : 'bg-black/20 border-transparent hover:bg-white/5 hover:border-white/10'
                                                     }`}
                                                 >
@@ -410,12 +410,12 @@ export const SettingsPanel = ({
                                                         />
                                                     </div>
                                                     <span className={`text-[8px] sm:text-[10px] xl:text-[9px] font-black uppercase tracking-[0.15em] xl:tracking-tighter ${
-                                                        (config.theme || 'miku') === id ? 'text-cyan-400' : 'text-slate-500 group-hover:text-slate-300'
+                                                        (config.theme || 'miku') === id ? 'text-[var(--primary-color)]' : 'text-slate-500 group-hover:text-slate-300'
                                                     }`}>
                                                         {id}
                                                     </span>
                                                     {(config.theme || 'miku') === id && (
-                                                        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-8 h-1 bg-cyan-400 rounded-full blur-[1px]" />
+                                                        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-8 h-1 bg-[var(--primary-color)] rounded-full blur-[1px]" />
                                                     )}
                                                 </button>
                                             );
@@ -466,7 +466,7 @@ export const SettingsPanel = ({
                                                 />
                                                 <button
                                                     onClick={() => setShowBackgroundGallery(true)}
-                                                    className="px-4 h-10 rounded-xl bg-blue-500/25 hover:bg-blue-500/35 text-blue-500 text-[10px] font-black uppercase tracking-widest transition-all border !border-transparent hover:!border-blue-500/30 flex items-center gap-2 focus:outline-none"
+                                                    className="px-4 h-10 rounded-xl bg-[var(--primary-color)]/10 hover:bg-[var(--primary-color)]/20 text-[var(--primary-color)] text-[10px] font-black uppercase tracking-widest transition-all border !border-transparent hover:!border-[var(--primary-color)]/30 flex items-center gap-2 focus:outline-none"
                                                     title={t('settings.appearance.open_gallery_desc')}
                                                 >
                                                     <Icon name="images" />
@@ -494,7 +494,7 @@ export const SettingsPanel = ({
                         {/* Knowledge Base Section */}
                         <div className="space-y-3">
                             <label className="text-sm font-black text-[var(--text-primary)] uppercase tracking-[0.2em] flex items-center gap-2">
-                                <Icon name="database" className="text-blue-500" /> {t('settings.pathways.title')}
+                                <Icon name="database" className="text-[var(--primary-color)]" /> {t('settings.pathways.title')}
                             </label>
                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4">
                                 {/* WorkSpace */}
@@ -695,6 +695,7 @@ export const SettingsPanel = ({
                                             </div>
                                             <button
                                                 onClick={onSyncModelArchitectures}
+                                                disabled={loadingModels[config.chatProvider || 'gemini'] || connectionStatus === 'testing'}
                                                 title={t('settings.orchestration.sync')}
                                                 className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all shadow-md border premium-emphasis bg-[var(--surface-color)] text-[var(--text-secondary)] border-[var(--border-color)] hover:bg-[var(--hover-color)] hover:text-[var(--text-primary)] active:scale-95 group/sync overflow-hidden`}
                                             >
@@ -788,7 +789,7 @@ export const SettingsPanel = ({
                                                 onClick={() => onTestConnection(config.agentProvider)}
                                                 disabled={loadingModels[config.agentProvider || 'groq'] || loadingModels[config.provider] || connectionStatus === 'testing'}
                                                 title={t('settings.orchestration.sync')}
-                                                className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all shadow-md border premium-emphasis bg-slate-800/80 text-slate-400 border-white/5 hover:bg-slate-700 hover:text-white active:scale-95 group/sync overflow-hidden`}
+                                                className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all shadow-md border premium-emphasis bg-[var(--surface-color)] text-[var(--text-secondary)] border-[var(--border-color)] hover:bg-[var(--hover-color)] hover:text-[var(--text-primary)] active:scale-95 group/sync overflow-hidden`}
                                             >
                                                 <Icon
                                                     name="sync"
@@ -888,7 +889,7 @@ export const SettingsPanel = ({
                                                 onClick={() => onTestConnection(config.visionProvider)}
                                                 disabled={loadingModels[config.visionProvider || 'gemini'] || connectionStatus === 'testing'}
                                                 title={t('settings.orchestration.sync')}
-                                                className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all shadow-md border premium-emphasis bg-slate-800/80 text-slate-400 border-white/5 hover:bg-slate-700 hover:text-white active:scale-95 group/v-sync overflow-hidden`}
+                                                className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all shadow-md border premium-emphasis bg-[var(--surface-color)] text-[var(--text-secondary)] border-[var(--border-color)] hover:bg-[var(--hover-color)] hover:text-[var(--text-primary)] active:scale-95 group/v-sync overflow-hidden`}
                                             >
                                                 <Icon
                                                     name="sync"
@@ -1070,7 +1071,7 @@ export const SettingsPanel = ({
 
                                         <div className="flex-1 flex flex-col justify-center">
                                             <div className="relative flex items-center group">
-                                                <div className="absolute left-6 text-slate-500 group-hover:text-blue-300 flex items-center justify-center z-10 transition-colors">
+                                                <div className="absolute left-6 text-slate-500 group-hover:text-[var(--primary-color)] flex items-center justify-center z-10 transition-colors">
                                                     <Icon name={editingProvider === 'ollama' ? 'link' : 'key'} />
                                                 </div>
                                                 <input
@@ -1090,7 +1091,7 @@ export const SettingsPanel = ({
                                                         }
                                                     }}
                                                     placeholder={editingProvider === 'ollama' ? "http://localhost:11434" : t('settings.security.key_placeholder', { provider: PROVIDERS[editingProvider].name })}
-                                                    className="w-full premium-input rounded-xl pl-14 pr-16 py-3.5 text-blue-200 font-mono text-xs text-center focus:outline-none transition-all placeholder:text-slate-600 placeholder:tracking-wider placeholder:text-center"
+                                                    className="w-full premium-input rounded-xl pl-14 pr-16 py-3.5 text-[var(--primary-color)] font-mono text-xs text-center focus:outline-none transition-all placeholder:text-slate-600 placeholder:tracking-wider placeholder:text-center"
                                                 />
                                                 <div className="absolute right-4 flex items-center gap-1">
                                                     {editingProvider !== 'ollama' && (
@@ -1111,7 +1112,7 @@ export const SettingsPanel = ({
                                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                                                         <Icon name="thermometer-half" /> {t('settings.security.temp_label')}
                                                     </label>
-                                                    <span className="bg-slate-800 text-blue-400 font-mono text-xs font-bold px-2 py-1 rounded-md border border-slate-700">
+                                                    <span className="bg-slate-800 text-[var(--primary-color)] font-mono text-xs font-bold px-2 py-1 rounded-md border border-slate-700">
                                                         {config.temperature.toFixed(1)}
                                                     </span>
                                                 </div>
@@ -1123,7 +1124,7 @@ export const SettingsPanel = ({
                                                     value={config.temperature}
                                                     onChange={(e) => updateConfig('temperature', parseFloat(e.target.value))}
                                                     title="Adjust Inference Temperature"
-                                                    className="w-full h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer accent-blue-500"
+                                                    className="w-full h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer accent-[var(--primary-color)]"
                                                 />
                                                 <div className="flex justify-between text-[9px] text-slate-600 font-bold uppercase tracking-wider px-1">
                                                     <span>{t('settings.security.temp_precise')}</span>
@@ -1478,7 +1479,7 @@ export const SettingsPanel = ({
                                         {/* Auto Launch */}
                                         <div className="flex items-center justify-between p-4 bg-black/20 rounded-2xl border border-transparent hover:border-blue-500/20 transition-all group/sw">
                                             <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-transparent group-hover/sw:border-blue-500/30 text-blue-400 flex items-center justify-center premium-transition">
+                                                <div className="w-10 h-10 rounded-xl bg-[var(--primary-color)]/10 border border-transparent group-hover/sw:border-[var(--primary-color)]/30 text-[var(--primary-color)] flex items-center justify-center premium-transition">
                                                     <Icon name="rocket" />
                                                 </div>
                                                 <div>
@@ -1488,7 +1489,7 @@ export const SettingsPanel = ({
                                             </div>
                                             <button
                                                 onClick={() => updateConfig('autoLaunch', !config.autoLaunch)}
-                                                className={`premium-switch w-12 h-6 rounded-full relative ${config.autoLaunch ? 'bg-blue-600' : 'bg-slate-700'}`}
+                                                className={`premium-switch w-12 h-6 rounded-full relative ${config.autoLaunch ? 'bg-[var(--primary-color)]' : 'bg-slate-700'}`}
                                                 title={config.autoLaunch ? "Desactivar inicio con Windows" : "Activar inicio con Windows"}
                                             >
                                                 <div className={`premium-switch-knob absolute top-1 w-4 h-4 rounded-full bg-white shadow-md ${config.autoLaunch ? 'left-7' : 'left-1'}`} />
@@ -1498,7 +1499,7 @@ export const SettingsPanel = ({
                                         {/* Minimize to Tray */}
                                         <div className="flex items-center justify-between p-4 bg-black/20 rounded-2xl border border-transparent hover:border-indigo-500/20 transition-all group/sw">
                                             <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-transparent group-hover/sw:border-indigo-500/30 text-indigo-400 flex items-center justify-center premium-transition">
+                                                <div className="w-10 h-10 rounded-xl bg-[var(--secondary-color)]/10 border border-transparent group-hover/sw:border-[var(--secondary-color)]/30 text-[var(--secondary-color)] flex items-center justify-center premium-transition">
                                                     <Icon name="window-minimize" />
                                                 </div>
                                                 <div>
@@ -1508,7 +1509,7 @@ export const SettingsPanel = ({
                                             </div>
                                             <button
                                                 onClick={() => updateConfig('minimizeToTray', !config.minimizeToTray)}
-                                                className={`premium-switch w-12 h-6 rounded-full relative ${config.minimizeToTray ? 'bg-indigo-600' : 'bg-slate-700'}`}
+                                                className={`premium-switch w-12 h-6 rounded-full relative ${config.minimizeToTray ? 'bg-[var(--secondary-color)]' : 'bg-slate-700'}`}
                                                 title={config.minimizeToTray ? "Desactivar minimizado a bandeja" : "Activar minimizado a bandeja"}
                                             >
                                                 <div className={`premium-switch-knob absolute top-1 w-4 h-4 rounded-full bg-white shadow-md ${config.minimizeToTray ? 'left-7' : 'left-1'}`} />

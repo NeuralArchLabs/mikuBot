@@ -126,10 +126,11 @@ export const TitleBar: React.FC<TitleBarProps> = ({ activeTab }) => {
                                         <button
                                             key={option.label}
                                             onClick={() => handleAction(option.action, option.role)}
-                                            className="w-full text-left px-5 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-white transition-colors flex items-center justify-between group"
+                                            className="w-full text-left px-5 py-2 text-xs transition-colors flex items-center justify-between group hover:bg-[var(--hover-color)]"
+                                            style={{ color: 'var(--text-primary)' }}
                                         >
-                                            <span>{option.label}</span>
-                                            {option.submenu && <Icon name="chevron-right" className="text-[10px] opacity-50" />}
+                                            <span className="group-hover:text-[var(--primary-color)] transition-colors">{option.label}</span>
+                                            {option.submenu && <Icon name="chevron-right" className="text-[10px] opacity-50 group-hover:text-[var(--primary-color)]" />}
                                         </button>
                                     )
                                 ))}
