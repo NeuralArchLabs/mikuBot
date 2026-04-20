@@ -484,9 +484,10 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
     html = html.replace(emojiCalloutRegex, (_match, emoji: string, rest: string) => {
         const type = EMOJI_CALLOUT_MAP[emoji];
         if (!type) return _match;
-        const title = rest.replace(/\*+/g, '').replace(/[:：]\s*$/, '').trim();
+        const title = rest.replace(/[:：]\s*$/, '').trim();
         return `> [!${type}]${title ? ' ' + title : ''}`;
     });
+
 
     // Fase B: Keyword-based detection (English + Chinese, no emoji required)
     const KEYWORD_CALLOUT_MAP: Record<string, string> = {
@@ -611,7 +612,9 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
             'CHECK': 'callout_check', 'ABSTRACT': 'callout_abstract',
         };
         const localizedDefault = CALLOUT_I18N_KEYS[typeUp] ? i18n.t(`common.${CALLOUT_I18N_KEYS[typeUp]}`) : typeUp;
-        const displayTitle = title ? title.replace(/^[>\s]+/, '').trim() : (localizedDefault !== `common.${CALLOUT_I18N_KEYS[typeUp]}` ? localizedDefault : typeUp);
+        const rawTitle = title ? title.replace(/^[>\s]+/, '').trim() : (localizedDefault !== `common.${CALLOUT_I18N_KEYS[typeUp]}` ? localizedDefault : typeUp);
+        const displayTitle = processInlineMarkdown(rawTitle);
+
         const isCollapsible = !!collapseSign;
         const isOpen = collapseSign === '+';
 
@@ -683,9 +686,11 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
             
         const isExternal = url.startsWith('http');
         const icon = isExternal ? '<i class="fas fa-external-link-alt text-[10px] ml-1 opacity-50 group-hover:opacity-100"></i>' : '';
-        pieces.push(`<a href="${url}" target="_blank" rel="noopener noreferrer" class="group inline-flex items-baseline text-cyan-400 hover:text-cyan-300 font-bold underline underline-offset-4 decoration-cyan-500/30 hover:decoration-cyan-400/60 transition mx-0.5">${text}${icon}</a>`);
+        const processedText = processInlineMarkdown(text);
+        pieces.push(`<a href="${url}" target="_blank" rel="noopener noreferrer" class="group inline-flex items-baseline text-cyan-400 hover:text-cyan-300 font-bold underline underline-offset-4 decoration-cyan-500/30 hover:decoration-cyan-400/60 transition mx-0.5">${processedText}${icon}</a>`);
         return id;
     });
+
 
     html = html
         .replace(/<span\s*([^>]*?)>/gi, '‹span $1›')
@@ -803,11 +808,13 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
     // 13a. Footnote definitions [^1]: 
     html = html.replace(/^\[\^([^\]]+)\]:\s+(.*)$/gm, (match, label, content) => {
         const id = `__BLOCK_${pieces.length}__`;
+        const processedContent = processInlineMarkdown(content);
         pieces.push(`<div class="text-[11px] text-slate-400/80 mt-1.5 flex gap-2 items-baseline leading-relaxed italic group/fn">`
              + `<span class="text-cyan-400 font-mono text-[10px] min-w-[15px] text-left opacity-70">${label}</span>`
-             + `<span class="flex-1 text-slate-400/70 antialiased font-medium opacity-90">${content}</span></div>`);
+             + `<span class="flex-1 text-slate-400/70 antialiased font-medium opacity-90">${processedContent}</span></div>`);
         return `\n${id}\n`;
     });
+
 
     // 13b. Footnote references [^1] (Must be before generic superscript)
     html = html.replace(/\[\^([^\]\n]+?)\]/g, (match, label) => {
