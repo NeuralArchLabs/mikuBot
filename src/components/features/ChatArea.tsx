@@ -1248,7 +1248,7 @@ export const ChatArea = ({
                         const isPriority = index >= messages.length - 4 || priorityIndices.includes(index) || msg.isStreaming || isLast;
 
                         const MessageContent = (
-                            <div id={`msg-${msg.id}`} className={`flex group relative w-full isolation-isolate ${msg.role === 'user' ? 'justify-center lg:justify-end'
+                            <div id={`msg-${msg.id}`} className={`flex group relative w-full ${msg.role === 'user' ? 'justify-center lg:justify-end'
                                 : msg.role === 'system' ? 'justify-center'
                                     : 'justify-center lg:justify-start'
                                 }`}>
@@ -1262,13 +1262,13 @@ export const ChatArea = ({
                                         <MarkdownRenderer content={msg.text} />
                                     </div>
                                 ) : (
-                                    <div className={`relative w-auto max-w-[95%] lg:max-w-[90%] p-5 sm:px-8 sm:py-6 break-words message-pop-in rounded-[32px] isolation-isolate ${msg.role === 'user' ? 'rounded-br-none' : 'rounded-bl-none lg:ml-6'}`}>
+                                    <div className={`relative w-auto max-w-[95%] lg:max-w-[90%] p-5 sm:px-8 sm:py-6 break-words message-pop-in rounded-[32px] ${msg.role === 'user' ? 'rounded-br-none' : 'rounded-bl-none lg:ml-6'}`}>
                                         
                                         {/* --- Layer 1: Shadow Isolation --- */}
-                                        <div className={`absolute inset-0 z-0 rounded-[inherit] pointer-events-none transform-gpu backface-hidden ${msg.role === 'user' ? 'shadow-[0_15px_35px_-10px_rgba(0,0,0,0.6)]' : 'shadow-[0_10px_25px_-3px_rgba(0,0,0,0.9)]'}`} />
+                                        <div className={`absolute inset-0 z-0 rounded-[inherit] pointer-events-none ${msg.role === 'user' ? 'shadow-[0_15px_35px_-10px_rgba(0,0,0,0.6)]' : 'shadow-[0_10px_25px_-3px_rgba(0,0,0,0.9)]'}`} />
 
                                         {/* --- Layer 2: Glass Backdrop --- */}
-                                        <div className={`absolute inset-0 z-0 rounded-[inherit] pointer-events-none backdrop-blur-md transform-gpu backface-hidden ${
+                                        <div className={`absolute inset-0 z-0 rounded-[inherit] pointer-events-none backdrop-blur-md ${
                                             msg.role === 'user' 
                                                 ? 'bg-blue-900/75' 
                                                 : (config.theme === 'cloud' 

@@ -14,6 +14,7 @@ interface CollapsibleMessageProps {
 export const CollapsibleMessage: React.FC<CollapsibleMessageProps> = ({ message, children, initiallyCollapsed = true, hasCustomBg }) => {
     const { t } = useTranslation();
     const [isCollapsed, setIsCollapsed] = React.useState(initiallyCollapsed);
+    const [copySuccess, setCopySuccess] = React.useState(false);
 
     // Sync with prop to ensure auto-collapse works as chat progresses
     React.useEffect(() => {
@@ -32,22 +33,42 @@ export const CollapsibleMessage: React.FC<CollapsibleMessageProps> = ({ message,
         ? 'right-2' // User: Right side
         : (isSystem || isScheduler)
             ? 'left-1/2 -translate-x-1/2' // System/Scheduler: Center
-            : 'left-2'; // Assistant: Left side
+            : 'left-9'; // Assistant: Micro-adjusted (was left-11)
 
     if (!isCollapsed) {
         return (
             <div className="relative group w-full">
                 {children}
-                <button
-                    onClick={() => setIsCollapsed(true)}
-                    className={`absolute -bottom-2 ${buttonPositionClass} bg-slate-800 border border-slate-700 text-slate-400 hover:text-white px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider shadow-lg flex items-center gap-1 z-20 invisible opacity-0 group-hover:visible group-hover:opacity-100 focus:visible focus:opacity-100 transition-opacity duration-300 pointer-events-none group-hover:pointer-events-auto transform-gpu`}
-                    title="Collapse message"
-                >
-                    <Icon name="compress-alt" /> {t('chat.actions.hide')}
-                </button>
+                
+                {/* Bottom Action Group: Hide & Copy */}
+                <div className={`absolute -bottom-2.5 ${buttonPositionClass} flex ${isUser ? 'flex-row-reverse' : 'flex-row'} items-center gap-1.5 z-20 invisible opacity-0 group-hover:visible group-hover:opacity-100 focus-within:visible focus-within:opacity-100 transition-all duration-300 pointer-events-none group-hover:pointer-events-auto`}>
+                    <button
+                        onClick={() => setIsCollapsed(true)}
+                        className="bg-slate-800 border border-slate-700 text-slate-400 hover:text-white px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider shadow-lg flex items-center gap-1 transition-colors"
+                        title="Collapse message"
+                    >
+                        <Icon name="compress-alt" /> {t('chat.actions.hide')}
+                    </button>
+                    
+                    {!isSystem && !isScheduler && (
+                        <button
+                            onClick={() => {
+                                const textToCopy = message.text || message.blocks?.find(b => b.type === 'text')?.content || '';
+                                navigator.clipboard.writeText(textToCopy);
+                                setCopySuccess(true);
+                                setTimeout(() => setCopySuccess(false), 2000);
+                            }}
+                            className="bg-slate-800 border border-slate-700 text-blue-400 hover:text-blue-300 px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider shadow-lg flex items-center gap-1 transition-colors"
+                        >
+                            <Icon name={copySuccess ? "check" : "copy"} /> {copySuccess ? t('chat.actions.copied') : t('chat.actions.copy')}
+                        </button>
+                    )}
+                </div>
             </div>
         );
     }
+
+
 
     // Role-specific styling for the collapsed state
     const bgClass = isUser
