@@ -278,7 +278,10 @@
             "chat_font": "Chat Typography",
             "chat_bg": "Background Image (URL)",
             "backgrounds": "Backgrounds",
-            "open_gallery_desc": "Select a local background image from your workspace"
+            "open_gallery_desc": "Select a local background image from your workspace",
+            "gallery_sync": "Syncing Gallery...",
+            "gallery_empty": "No images found in the backgrounds folder",
+            "gallery_footer_hint": "Images are loaded from the installation folder (@ROOT/backgrounds)"
         },
         "tabs": {
             "core": "Core System",

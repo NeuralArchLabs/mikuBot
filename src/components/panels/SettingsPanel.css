@@ -22,3 +22,55 @@
 .xena-text-base {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   BORDER REFINEMENT (SETTINGS PANEL)
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Suppress persistent borders/outlines on all themes except 'cloud' */
+.settings-panel-content:not(.theme-cloud) .premium-card,
+.settings-panel-content:not(.theme-cloud) .premium-input,
+.settings-panel-content:not(.theme-cloud) .ModernSelect button,
+.settings-panel-content:not(.theme-cloud) input,
+.settings-panel-content:not(.theme-cloud) .border,
+.settings-panel-content:not(.theme-cloud) .border-white\/5,
+.settings-panel-content:not(.theme-cloud) .border-\[var\(--border-color\)\] {
+    border-color: transparent !important;
+}
+
+/* Add depth via shadows to main containers when borders are hidden */
+.settings-panel-content:not(.theme-cloud) .premium-card,
+.settings-panel-content:not(.theme-cloud) .premium-panel {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2), inset 0 0 1px 1px rgba(255, 255, 255, 0.03) !important;
+}
+
+/* Restore borders ONLY on individual hover/focus, not parent hover */
+.settings-panel-content:not(.theme-cloud) .premium-card:hover,
+.settings-panel-content:not(.theme-cloud) .premium-card.active,
+.settings-panel-content:not(.theme-cloud) .premium-input:focus,
+.settings-panel-content:not(.theme-cloud) .premium-input:hover,
+.settings-panel-content:not(.theme-cloud) .ModernSelect button:hover,
+.settings-panel-content:not(.theme-cloud) input:focus,
+.settings-panel-content:not(.theme-cloud) input:hover,
+.settings-panel-content:not(.theme-cloud) .border:hover,
+.settings-panel-content:not(.theme-cloud) .border-white\/5:hover,
+.settings-panel-content:not(.theme-cloud) .border-\[var\(--border-color\)\]:hover {
+    border-color: var(--border-color) !important;
+    transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1) !important;
+}
+
+/* Specific restoration for premium card effects */
+.settings-panel-content:not(.theme-cloud) .premium-card:hover,
+.settings-panel-content:not(.theme-cloud) .premium-card.active {
+    border-color: var(--pc-color, var(--primary-color)) !important;
+    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1), 0 0 20px var(--pc-glow, var(--glass-glow)) !important;
+    transform: translateY(-2px);
+}
+
+/* Ensure 'Cloud' theme remains high-contrast as requested */
+.settings-panel-content.theme-cloud .premium-card {
+    border-color: var(--border-color) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+}
+
+

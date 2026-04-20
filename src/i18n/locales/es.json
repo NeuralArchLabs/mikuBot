@@ -281,7 +281,10 @@
             "chat_font": "Tipografía del Chat",
             "chat_bg": "Imagen de Fondo (URL)",
             "backgrounds": "Fondos",
-            "open_gallery_desc": "Explora y selecciona imágenes de fondo locales"
+            "open_gallery_desc": "Explora y selecciona imágenes de fondo locales",
+            "gallery_sync": "Sincronizando Galería...",
+            "gallery_empty": "No se encontraron imágenes en la carpeta de fondos",
+            "gallery_footer_hint": "Las imágenes se cargan desde la carpeta de instalación (@ROOT/backgrounds)"
         },
         "tabs": {
             "core": "Core System",

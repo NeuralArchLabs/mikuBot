@@ -79,14 +79,14 @@ export const THEMES: Record<string, ThemeColors> = {
     '--primary-color': '#10b981', // Emerald-500
     '--secondary-color': '#84cc16', // Lime-500
     '--background-color': '#064e3b', // Emerald-900
-    '--surface-color': 'rgba(2, 44, 34, 0.9)',
+    '--surface-color': 'rgba(6, 78, 59, 0.6)', 
     '--text-primary': '#ecfdf5',
     '--text-secondary': '#fbbf24', // Amber-400
     '--accent-color': '#fbbf24',
     '--border-color': 'rgba(16, 185, 129, 0.2)',
     '--hover-color': 'rgba(16, 185, 129, 0.1)',
-    '--sidebar-bg': 'rgba(2, 44, 34, 0.8)',
-    '--sidebar-hover': 'rgba(6, 78, 59, 0.5)',
+    '--sidebar-bg': 'rgba(2, 44, 34, 0.85)',
+    '--sidebar-hover': 'rgba(16, 185, 129, 0.1)',
     '--glass-glow': 'rgba(16, 185, 129, 0.2)',
   }
 };

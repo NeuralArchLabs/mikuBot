@@ -200,7 +200,7 @@ export const SettingsPanel = ({
     const currentProvider = PROVIDERS[config.provider];
 
     return (
-        <div className={`flex-1 ${settingsTab === 'skills' ? 'lg:overflow-hidden pb-2' : 'overflow-y-auto pb-6'} p-3 md:p-6 pt-4 md:pt-6 custom-scrollbar relative`} onScroll={handleScroll}>
+        <div className={`settings-panel-content theme-${config.theme} flex-1 ${settingsTab === 'skills' ? 'lg:overflow-hidden pb-2' : 'overflow-y-auto pb-6'} p-3 md:p-6 pt-4 md:pt-6 custom-scrollbar relative`} onScroll={handleScroll}>
             {/* Subdued ambient glow background */}
             <div className="absolute top-0 left-1/4 w-1/2 h-96 bg-[var(--primary-color)] opacity-[0.07] blur-[120px] pointer-events-none rounded-full transform-gpu" />
             <div className="absolute bottom-0 right-1/4 w-1/3 h-64 bg-purple-600/05 blur-[100px] pointer-events-none rounded-full transform-gpu" />
@@ -298,10 +298,10 @@ export const SettingsPanel = ({
                              <button
                                 onClick={onSaveGlobal}
                                 className="btn-halo w-full lg:w-11 min-[1150px]:w-auto h-11 xl:h-auto py-3 px-3 lg:px-4 xl:px-6 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-widest transition-all duration-500 ease-in-out shadow-lg shadow-cyan-900/40 hover:shadow-[0_0_40px_rgba(6,182,212,0.4)] flex items-center justify-center gap-2 border !border-transparent hover:!border-cyan-500/40 hover:scale-105 active:scale-95 group/sync focus:outline-none"
-                                title={t('settings.actions.save_sync')}
+                                title={t('settings.actions.save')}
                             >
-                                <Icon name="sync" className="group-hover/sync:rotate-180 transition-transform duration-500" />
-                                <span className="inline lg:hidden min-[1150px]:inline transition-all duration-500">{t('settings.actions.save_sync')}</span>
+                                <Icon name="save" className="group-hover/sync:animate-pulse" />
+                                <span className="inline lg:hidden min-[1150px]:inline transition-all duration-500">{t('settings.actions.save')}</span>
                             </button>
                         </div>
                     )}
@@ -373,7 +373,7 @@ export const SettingsPanel = ({
                                         <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{t('settings.appearance.theme_desc', 'Change the visual vibe of your assistant')}</div>
                                     </div>
                                     
-                                    <div className="flex flex-nowrap items-center justify-between gap-1 sm:gap-2 overflow-x-auto lg:overflow-x-visible pb-2 scrollbar-hide">
+                                    <div className="flex flex-row items-center justify-between gap-2 sm:gap-3 w-full">
                                         {Object.entries(THEMES).map(([id, themeData]) => {
                                             let gradient = `linear-gradient(135deg, ${themeData['--primary-color']}, ${themeData['--secondary-color']}, ${themeData['--background-color']})`;
                                             
@@ -392,16 +392,16 @@ export const SettingsPanel = ({
                                                 <button
                                                     key={id}
                                                     onClick={() => updateConfig('theme', id)}
-                                                    className={`group relative flex flex-col items-center gap-1.5 p-1.5 sm:p-2 rounded-xl transition-all border-2 shrink-0 min-w-[52px] sm:min-w-[68px] ${
+                                                    className={`group relative flex-1 xl:flex-initial flex flex-col items-center justify-center gap-2 p-3 sm:p-4 xl:p-2 rounded-2xl xl:rounded-xl transition-all duration-500 border-2 min-h-[90px] sm:min-h-[110px] xl:min-h-0 xl:min-w-[68px] max-w-[160px] xl:max-w-none ${
                                                         (config.theme || 'miku') === id
-                                                        ? 'bg-white/10 border-cyan-400 shadow-lg shadow-cyan-900/20'
-                                                        : 'bg-black/20 border-transparent hover:bg-white/5'
+                                                        ? 'bg-white/10 border-cyan-400 shadow-[0_0_25px_-5px_rgba(6,182,212,0.3)] scale-[1.02] xl:scale-100'
+                                                        : 'bg-black/20 border-transparent hover:bg-white/5 hover:border-white/10'
                                                     }`}
                                                 >
                                                     <div 
-                                                        className="w-8 h-8 sm:w-12 sm:h-12 rounded-full border border-white/10 relative overflow-hidden transform-gpu group-hover:scale-110 transition-all duration-500 shadow-xl"
+                                                        className="w-10 h-10 sm:w-14 sm:h-14 xl:w-12 xl:h-12 rounded-full border border-white/10 relative overflow-hidden transform-gpu group-hover:scale-110 transition-all duration-500 shadow-xl"
                                                         style={{ 
-                                                            boxShadow: `0 10px 20px -5px ${themeData['--primary-color']}80`
+                                                            boxShadow: `0 10px 25px -5px ${themeData['--primary-color']}80`
                                                         }}
                                                     >
                                                         <div 
@@ -409,11 +409,14 @@ export const SettingsPanel = ({
                                                             style={{ background: gradient }}
                                                         />
                                                     </div>
-                                                    <span className={`text-[7px] sm:text-[9px] font-black uppercase tracking-tighter ${
+                                                    <span className={`text-[8px] sm:text-[10px] xl:text-[9px] font-black uppercase tracking-[0.15em] xl:tracking-tighter ${
                                                         (config.theme || 'miku') === id ? 'text-cyan-400' : 'text-slate-500 group-hover:text-slate-300'
                                                     }`}>
                                                         {id}
                                                     </span>
+                                                    {(config.theme || 'miku') === id && (
+                                                        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-8 h-1 bg-cyan-400 rounded-full blur-[1px]" />
+                                                    )}
                                                 </button>
                                             );
                                         })}
@@ -1287,12 +1290,12 @@ export const SettingsPanel = ({
                                                     {t('settings.searxena.desc')}
                                                 </p>
                                                 
-                                                <div className="flex flex-wrap items-center gap-3 pt-2">
+                                                <div className="flex flex-wrap items-center gap-3 pt-2 relative z-20">
                                                     <a 
                                                         href="http://127.0.0.1:8000" 
                                                         target="_blank" 
                                                         rel="noopener noreferrer"
-                                                        className="inline-flex items-center gap-2 text-[10px] font-black text-slate-300 hover:text-white px-5 py-2.5 rounded-xl border border-white/5 hover:border-indigo-500/40 transition-all uppercase tracking-widest bg-white/5 hover:bg-white/10 premium-button"
+                                                        className="inline-flex items-center gap-2 text-[10px] font-black text-slate-300 hover:text-white px-5 py-2.5 rounded-xl border border-white/5 hover:border-indigo-500/40 transition-all uppercase tracking-widest bg-white/5 hover:bg-white/10 premium-button outline-none"
                                                     >
                                                         <Icon name="external-link-alt" />
                                                         {t('settings.searxena.open')}
@@ -1323,16 +1326,16 @@ export const SettingsPanel = ({
                                                 </div>
 
                                                 {/* Mascot Layer - Centered in the spacer without pushing layout */}
-                                                <div 
-                                                    className="absolute inset-0 flex items-center justify-center lg:justify-start cursor-pointer select-none z-10"
-                                                    onClick={() => {
-                                                        if (!isWaving) {
-                                                            setIsWaving(true);
-                                                            setTimeout(() => setIsWaving(false), 1200);
-                                                        }
-                                                    }}
-                                                >
-                                                    <div className="w-28 h-28 md:w-32 md:h-32 opacity-15 group-hover:opacity-100 group-hover:scale-110 transition-all duration-1000 relative">
+                                                <div className="absolute inset-0 flex items-center justify-center lg:justify-start select-none pointer-events-none z-10">
+                                                    <div 
+                                                        className="w-28 h-28 md:w-32 md:h-32 opacity-15 group-hover:opacity-100 group-hover:scale-110 transition-all duration-1000 relative pointer-events-auto cursor-pointer"
+                                                        onClick={() => {
+                                                            if (!isWaving) {
+                                                                setIsWaving(true);
+                                                                setTimeout(() => setIsWaving(false), 1200);
+                                                            }
+                                                        }}
+                                                    >
                                                         <svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" className="w-full h-full filter drop-shadow-[0_0_20px_rgba(129,140,248,0.2)]">
                                                             <g transform="translate(80, 80)">
                                                                 <text x="0" y="-2" textAnchor="middle" dominantBaseline="central" fontSize="52" fontWeight="700" fill="url(#ozenGrad)"
@@ -1766,12 +1769,12 @@ const BackgroundGalleryModal = ({
                     {loading ? (
                         <div className="h-full flex flex-col items-center justify-center gap-4">
                             <div className="w-12 h-12 border-4 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin" />
-                            <span className="text-xs font-black text-cyan-500/50 uppercase tracking-[0.2em] animate-pulse">Sincronizando Galería...</span>
+                            <span className="text-xs font-black text-cyan-500/50 uppercase tracking-[0.2em] animate-pulse">{t('settings.appearance.gallery_sync', 'Sincronizando Galería...')}</span>
                         </div>
                     ) : backgrounds.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center text-slate-500 gap-4">
                             <Icon name="image" className="text-5xl opacity-20" />
-                            <p className="text-xs font-bold uppercase tracking-widest italic">No se encontraron imágenes en la carpeta de fondos</p>
+                            <p className="text-xs font-bold uppercase tracking-widest italic">{t('settings.appearance.gallery_empty', 'No se encontraron imágenes en la carpeta de fondos')}</p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -1826,7 +1829,7 @@ const BackgroundGalleryModal = ({
                 {/* Footer */}
                 <div className="px-8 py-4 bg-slate-950/50 border-t border-white/5 text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em] flex items-center gap-3">
                     <Icon name="info-circle" className="text-slate-600" />
-                    Las imágenes se cargan desde la carpeta de instalación (@ROOT/backgrounds)
+                    {t('settings.appearance.gallery_footer_hint', 'Las imágenes se cargan desde la carpeta de instalación (@ROOT/backgrounds)')}
                 </div>
             </div>
         </div>,
