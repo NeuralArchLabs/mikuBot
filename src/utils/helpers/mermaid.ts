@@ -204,6 +204,7 @@ const MERMAID_CONFIG = {
         tagLabelColor: '#e2e8f0',
         tagLabelBackground: '#6366f1',
         tagLabelBorder: '#4f46e5',
+        nodePadding: 20,
     },
     // Injected CSS for auto-contrast: any node/element with a light inline fill gets dark text
     themeCSS: `
@@ -211,12 +212,26 @@ const MERMAID_CONFIG = {
         .cluster-label .nodeLabel { fill: #e2e8f0; }
         .label text, .label tspan { fill: #e2e8f0 !important; }
         
-        /* 📝 TEXT WRAPPING ENGINE */
-        .nodeLabel, .label div, .label span, .label foreignObject { 
-            white-space: normal !important; 
-            overflow-wrap: break-word !important; 
-            word-break: break-word !important;
-            padding: 0 4px !important;
+        /* 📝 NODE LABEL ENGINE (Fixes character truncation) */
+        .node .label, .node .nodeLabel, .nodeLabel { 
+            white-space: nowrap !important; 
+            overflow-wrap: normal !important; 
+            word-break: normal !important;
+            padding: 0 8px !important;
+            font-family: "Outfit", sans-serif !important;
+            text-rendering: optimizeLegibility !important;
+            -webkit-font-smoothing: antialiased !important;
+        }
+
+        /* 📝 EDGE LABEL ENGINE (Fixes misalignment/glitches) */
+        .edgeLabel .label, .edgeLabel span, .edgeLabel div {
+            padding: 0 !important;
+            white-space: nowrap !important;
+            text-align: center !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: auto !important;
             font-family: "Outfit", sans-serif !important;
         }
         
