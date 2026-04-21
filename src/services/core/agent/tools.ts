@@ -560,7 +560,8 @@ export async function executeToolCall(
                                 const execution = await (window as any).electron.executeSkill({
                                     toolsPath: config.folderPaths.tools,
                                     skillName: name,
-                                    args: args
+                                    args: args,
+                                    lang: config.language
                                 });
                                 if (execution.ok) {
                                     return { success: true, data: execution.data };

@@ -25,6 +25,55 @@ def get_workspace_root():
 
 MEMORY_ROOT = os.path.join(get_workspace_root(), "memory")
 INDEX_PATH  = os.path.join(MEMORY_ROOT, "index.json")
+LANG        = os.environ.get("MIKU_LANGUAGE", "en").split("-")[0].lower()
+
+# ─────────────────────────────────────────────────────────────────────────────
+# I18N MESSAGES
+# ─────────────────────────────────────────────────────────────────────────────
+MESSAGES = {
+    "en": {
+        "init": "Neural Memory Structure deployed. The synaptic tree is now ready.",
+        "synapse": "Memory '{id}' has been successfully consolidated.",
+        "recall": "I have recalled {count} relevant memories.",
+        "recall_empty": "No relevant memories found in the current cognitive path.",
+        "link": "Semantic edge established: {from_id} ──[{relation}]──► {to_id}",
+        "refresh": "Memory '{id}' has been updated and synchronized.",
+        "amnesia": "Memory '{id}' and its semantic associations have been pruned.",
+        "nexus": "Neural Nexus map generated successfully.",
+        "error_query": "A search query or Memory ID is required for this operation.",
+        "error_not_found": "The requested memory could not be located in the index."
+    },
+    "es": {
+        "init": "Estructura de Memoria Neural desplegada. El árbol sináptico está listo.",
+        "synapse": "La memoria '{id}' ha sido consolidada con éxito.",
+        "recall": "He recordado {count} memorias relevantes.",
+        "recall_empty": "No se han encontrado memorias relevantes en la ruta cognitiva actual.",
+        "link": "Enlace semántico establecido: {from_id} ──[{relation}]──► {to_id}",
+        "refresh": "La memoria '{id}' ha sido actualizada y sincronizada.",
+        "amnesia": "La memoria '{id}' y sus asociaciones semánticas han sido podadas.",
+        "nexus": "Mapa del Nexus Neural generado con éxito.",
+        "error_query": "Se requiere una consulta o ID de Memoria para esta operación.",
+        "error_not_found": "No se ha podido localizar la memoria solicitada en el índice."
+    },
+    "zh": {
+        "init": "神经记忆结构已部署。突触树现已就绪。",
+        "synapse": "记忆 '{id}' 已成功巩固。",
+        "recall": "我已经回想起 {count} 条相关的记忆。",
+        "recall_empty": "在当前的认知路径中未找到相关的记忆。",
+        "link": "语义连接已建立：{from_id} ──[{relation}]──► {to_id}",
+        "refresh": "记忆 '{id}' 已更新并同步。",
+        "amnesia": "记忆 '{id}' 及其语义关联已被修剪。",
+        "nexus": "神经枢纽图谱已成功生成。",
+        "error_query": "此操作需要查询字符串或记忆 ID。",
+        "error_not_found": "在索引中未找到请求的记忆。"
+    }
+}
+
+def _t(key, **kwargs):
+    lang_msgs = MESSAGES.get(LANG, MESSAGES["en"])
+    msg = lang_msgs.get(key, MESSAGES["en"].get(key, ""))
+    return msg.format(**kwargs)
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SEMANTIC MEMORY TREE  v2
@@ -353,8 +402,9 @@ def command_init():
         save_index({"memories": {}, "graph": {}})
     return {
         "success": True,
-        "message": "Memory semantic tree deployed.",
+        "message": _t("init"),
         "path": MEMORY_ROOT,
+
         "categories": list(MEMORY_TREE.keys()),
         "hint": (
             "Commands: synapse (create), recall (search+graph), "
@@ -371,7 +421,8 @@ def command_synapse(category, subcategory, data, tags, linked_to=None):
     linked_to: list of {"id": "mem_xxx", "relation": "expands|same_topic|..."}.
     """
     if not data:
-        return {"success": False, "error": "No content provided."}
+        return {"success": False, "error": _t("error_query")}
+
     category    = category    or "Knowledge"
     subcategory = subcategory or "Facts_Trivia"
     tags        = tags        or []
@@ -451,8 +502,9 @@ def command_synapse(category, subcategory, data, tags, linked_to=None):
 
     result = {
         "success":    True,
-        "message":    f"Memory '{mem_id}' stored.",
+        "message":    _t("synapse", id=mem_id),
         "memory_id":  mem_id,
+
         "filepath":   rel_path,
         "tags":       tags,
         "links_created": [l["id"] for l in valid_links],
@@ -467,7 +519,8 @@ def command_synapse(category, subcategory, data, tags, linked_to=None):
 # ─────────────────────────────────────────────────────────────────────────────
 def command_recall(query, depth=2):
     if not query:
-        return {"success": False, "error": "Query is required."}
+        return {"success": False, "error": _t("error_query")}
+
 
     index_data   = load_index()
     query_clean  = _clean_text(query)
@@ -486,11 +539,12 @@ def command_recall(query, depth=2):
     if not top:
         return {
             "success": True, 
-            "message": "No memories found.", 
+            "message": _t("recall_empty"), 
             "results": [], 
             "graph_neighbors": [],
             "debug_path": INDEX_PATH
         }
+
 
     # Enrich results
     enriched = []
@@ -554,10 +608,12 @@ def command_recall(query, depth=2):
 
     return {
         "success":           True,
+        "message":           _t("recall", count=len(enriched)),
         "results":           enriched,
         "related_memories":  all_connections[:8],
         "graph_depth_used":  depth,
     }
+
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -585,8 +641,9 @@ def command_link(from_id, to_id, relation):
 
     return {
         "success":  True,
-        "message":  f"Semantic link created: {from_id} ──[{relation}]──► {to_id}",
+        "message":  _t("link", from_id=from_id, relation=relation, to_id=to_id),
         "from_id":  from_id,
+
         "relation": relation,
         "to_id":    to_id,
     }
@@ -597,9 +654,10 @@ def command_link(from_id, to_id, relation):
 # ─────────────────────────────────────────────────────────────────────────────
 def command_refresh(query, data, tags=None):
     if not query:
-        return {"success": False, "error": "Provide memory ID or search query."}
+        return {"success": False, "error": _t("error_query")}
     if not data:
         return {"success": False, "error": "Provide new 'data' content."}
+
 
     index_data = load_index()
     target_id = None
@@ -612,7 +670,8 @@ def command_refresh(query, data, tags=None):
             target_id = res["results"][0]["id"]
 
     if not target_id or target_id not in index_data["memories"]:
-        return {"success": False, "error": "Memory not found."}
+        return {"success": False, "error": _t("error_not_found")}
+
 
     mem      = index_data["memories"][target_id]
     filepath = os.path.join(MEMORY_ROOT, mem["filepath"])
@@ -653,8 +712,9 @@ def command_refresh(query, data, tags=None):
 
     return {
         "success":    True,
-        "message":    f"Memory '{target_id}' refreshed.",
+        "message":    _t("refresh", id=target_id),
         "memory_id":  target_id,
+
         "updated_at": now,
     }
 
@@ -664,7 +724,8 @@ def command_refresh(query, data, tags=None):
 # ─────────────────────────────────────────────────────────────────────────────
 def command_amnesia(query):
     if not query:
-        return {"success": False, "error": "Provide memory ID or search query."}
+        return {"success": False, "error": _t("error_query")}
+
 
     index_data = load_index()
     target_id  = None
@@ -677,7 +738,8 @@ def command_amnesia(query):
             target_id = res["results"][0]["id"]
 
     if not target_id or target_id not in index_data["memories"]:
-        return {"success": False, "error": "Memory not found."}
+        return {"success": False, "error": _t("error_not_found")}
+
 
     mem = index_data["memories"][target_id]
     try:
@@ -696,7 +758,8 @@ def command_amnesia(query):
         edges[:] = [e for e in edges if e["to"] != target_id]
 
     save_index(index_data)
-    return {"success": True, "message": f"Memory '{target_id}' and its graph edges removed."}
+    return {"success": True, "message": _t("amnesia", id=target_id)}
+
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -732,7 +795,9 @@ def command_nexus():
 
     return {
         "success":          True,
+        "message":          _t("nexus"),
         "total_memories":   total,
+
         "stale_memories":   stale,
         "semantic_edges":   total_edges,
         "tree":             tree,

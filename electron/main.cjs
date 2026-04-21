@@ -2341,7 +2341,7 @@ ipcMain.handle('list-blueprints', async (event, { toolsPath, corePath, lang }) =
     }
 });
 
-ipcMain.handle('execute-skill', async (event, { toolsPath, skillName, args }) => {
+ipcMain.handle('execute-skill', async (event, { toolsPath, skillName, args, lang }) => {
     try {
         if (!toolsPath || !skillName) return { ok: false, error: 'Missing parameters' };
 
@@ -2390,7 +2390,7 @@ ipcMain.handle('execute-skill', async (event, { toolsPath, skillName, args }) =>
 
             // Security: Use execFile to avoid shell injection
             return new Promise((resolve) => {
-                const env = { ...process.env, MIKU_WORKSPACE_ROOT: getCurrentWorkspacePath() };
+                const env = { ...process.env, MIKU_WORKSPACE_ROOT: getCurrentWorkspacePath(), MIKU_LANGUAGE: lang || 'en' };
                 execFile(pythonExe, [entryFile, JSON.stringify(args)], { env }, (error, stdout, stderr) => {
                     if (error) {
                         console.error(`[Main Process] Skill execution error (${skillName}):`, error.message);
@@ -2409,7 +2409,7 @@ ipcMain.handle('execute-skill', async (event, { toolsPath, skillName, args }) =>
             const { execFile } = require('child_process');
             
             return new Promise((resolve) => {
-                const env = { ...process.env, MIKU_WORKSPACE_ROOT: getCurrentWorkspacePath() };
+                const env = { ...process.env, MIKU_WORKSPACE_ROOT: getCurrentWorkspacePath(), MIKU_LANGUAGE: lang || 'en' };
                 // Using execFile for zero shell overhead & security
                 execFile(nodeBinary, [entryFile, JSON.stringify(args)], { env }, (error, stdout, stderr) => {
                     if (error) {
