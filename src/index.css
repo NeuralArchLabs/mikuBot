@@ -585,6 +585,7 @@ body, html {
   max-width: 100%;
   height: auto !important;
   text-align: center; /* Center labels inside SVG nodes if they support it */
+  font-family: var(--chat-font) !important;
 }
 .mermaid[data-processed="true"] {
   overflow-x: auto;
@@ -592,6 +593,7 @@ body, html {
   hyphens: none !important;
   -webkit-hyphens: none !important;
   -moz-hyphens: none !important;
+  text-justify: none !important;
 }
 
 /* Think Block */

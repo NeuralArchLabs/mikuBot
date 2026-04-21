@@ -103,7 +103,7 @@ const MERMAID_CONFIG = {
         // ── Flowchart ──
         clusterBkg: 'rgba(30, 41, 59, 0.7)',
         clusterBorder: '#334155',
-        titleColor: '#06b6d4',
+        titleColor: 'transparent',
         edgeLabelBackground: '#0f172a',
         defaultLinkColor: '#22d3ee',
 
@@ -205,38 +205,103 @@ const MERMAID_CONFIG = {
         tagLabelBackground: '#6366f1',
         tagLabelBorder: '#4f46e5',
         nodePadding: 20,
+        clusterPadding: 35,
     },
-    // Injected CSS for auto-contrast: any node/element with a light inline fill gets dark text
+    // Injected CSS for auto-contrast and layout fixes
     themeCSS: `
-        .node .label, .node .nodeLabel { color: #e2e8f0; fill: #e2e8f0; }
-        .cluster-label .nodeLabel { fill: #e2e8f0; }
-        .label text, .label tspan { fill: #e2e8f0 !important; }
-        
-        /* 📝 NODE LABEL ENGINE (Fixes character truncation) */
-        .node .label, .node .nodeLabel, .nodeLabel { 
-            white-space: nowrap !important; 
-            overflow-wrap: normal !important; 
-            word-break: normal !important;
-            padding: 0 8px !important;
+        /* 🎨 CORE RESET: Prevent global markdown styles from leaking into the SVG */
+        text, tspan, span, div, .nodeLabel {
             font-family: "Outfit", sans-serif !important;
-            text-rendering: optimizeLegibility !important;
-            -webkit-font-smoothing: antialiased !important;
+            line-height: 1 !important;
         }
 
-        /* 📝 EDGE LABEL ENGINE (Fixes misalignment/glitches) */
-        .edgeLabel .label, .edgeLabel span, .edgeLabel div {
-            padding: 0 !important;
+        .node .label, .node .nodeLabel { color: #e2e8f0; fill: #e2e8f0; }
+        
+        /* 👻 GHOST PREVENTION: Total Annihilation of native artifacts */
+        .cluster-label, .subgraph-title, .cluster-label-bg {
+            visibility: hidden !important;
+        }
+        
+        /* 📝 RE-ENABLE ONLY OUR STYLED LABELS */
+        .cluster-label .nodeLabel, .cluster-label span, .cluster-label div,
+        .subgraph-title .nodeLabel, .subgraph-title span, .subgraph-title div { 
+            visibility: visible !important;
+            display: inline-block !important;
+            fill: #06b6d4 !important;
+            color: #06b6d4 !important;
+            font-weight: 800 !important;
+            font-size: 13px !important;
+            letter-spacing: 0.05em !important;
+            text-transform: uppercase !important;
+            opacity: 1 !important;
+            white-space: nowrap !important;
+            padding: 4px 10px !important;
+            line-height: 1.2 !important;
+        }
+        
+        /* Specific suppression of native SVG parts that create phantom pixels */
+        .cluster-label rect, .cluster-label text, .cluster-label tspan, 
+        .subgraph-title rect, .subgraph-title text, .subgraph-title tspan,
+        .cluster-label-bg, .label-bg {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+        }
+        
+        .label text, .label tspan { fill: #e2e8f0 !important; vertical-align: middle !important; }
+
+        /* 📝 NODE LABEL ENGINE: Robust Multi-Viewport Centering */
+        .node .label, .node .nodeLabel, .nodeLabel { 
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-align: center !important;
+            white-space: nowrap !important; 
+            padding: 0 12px !important;
+            line-height: normal !important;
+            margin: 0 !important;
+            vertical-align: middle !important;
+            
+            /* Baseline nudge for Chat View (Safe Vertical Nudge) */
+            margin-top: -3px !important;
+        }
+        
+        /* Fullscreen View: Reset Nudge (Absolute Center) */
+        #mermaid-fullscreen-content .node .nodeLabel {
+            margin-top: 0 !important;
+        }
+        
+        .nodeLabel * { margin: 0 !important; padding: 0 !important; display: inline !important; }
+        
+        /* Ensure descenders aren't clipped while keeping ghost residue hidden */
+        foreignObject { overflow: visible !important; }
+
+        /* 📝 EDGE LABEL ENGINE: Fixes misalignment/glitches & hides empty "ghost" pills */
+        [class^="edgeLabel"] .label, [class^="edgeLabel"] span, [class^="edgeLabel"] div {
+            padding: 2px 6px !important;
             white-space: nowrap !important;
             text-align: center !important;
             display: inline-flex !important;
             align-items: center !important;
             justify-content: center !important;
             width: auto !important;
-            font-family: "Outfit", sans-serif !important;
+            background-color: #0f172a !important;
+            border-radius: 4px;
+            color: #e2e8f0 !important;
+            font-size: 11px !important;
+            line-height: 1 !important;
+        }
+        [class^="edgeLabel"] span:empty, [class^="edgeLabel"] div:empty, [class^="edgeLabel"] .label:empty {
+            display: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 0 !important;
+            height: 0 !important;
+            opacity: 0 !important;
         }
         
         /* Ensure foreignObject content doesn't get clipped prematurely */
-        div ForeignObject, foreignObject div {
+        div ForeignObject, foreignObject div, foreignObject span {
             overflow: visible !important;
         }
     `,
@@ -363,6 +428,16 @@ function openMermaidFullscreen(svgSource: string) {
     // Make SVG properly visible and sized for the viewport
     const svgEl = svgWrapper.querySelector('svg');
     if (svgEl) {
+        // 👻 GHOST CLEANUP: Surgically remove phantom artifacts from the cloned SVG
+        // This is done in JS instead of CSS to avoid broad rules that destroy node structure
+        svgEl.querySelectorAll('.label-bg, .cluster-label-bg').forEach(el => el.remove());
+        svgEl.querySelectorAll('.edgeLabel rect').forEach(el => el.remove());
+        svgEl.querySelectorAll('[class^="edgeLabel"]').forEach(el => {
+            // Remove empty edgeLabel containers (the "ghost pill")
+            const text = el.textContent?.trim();
+            if (!text) el.remove();
+        });
+
         // Preserve viewBox for proper scaling; remove hardcoded width/height
         const vb = svgEl.getAttribute('viewBox');
         if (!vb) {
