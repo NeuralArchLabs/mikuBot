@@ -308,10 +308,18 @@ const MERMAID_CONFIG = {
 };
 
 /**
- * 🎨 PRE-PROCESS: Auto-inject `color` into Mermaid `style` directives
- * When a light fill is detected without an explicit color, adds dark text color.
+ * 🎨 PRE-PROCESS: Sanitize and optimize Mermaid source code before rendering.
+ * 1. Converts literal \n line breaks to diagram-type-appropriate separators:
+ *    - `timeline` diagrams: converts \n to ` : ` (native Mermaid multi-entry syntax).
+ *    - All other diagrams (flowchart, sequence, etc.): converts \n to `<br/>` for htmlLabels.
+ * 2. Auto-injects `color` into `style` directives where light fills are detected.
  */
 function autoContrastMermaidCode(code: string): string {
+    // 1. Line Break Normalization — context-aware
+    const isTimeline = /^\s*timeline\b/i.test(code);
+    const lineBreakReplacement = isTimeline ? ' : ' : '<br/>';
+    let processed = code.replace(/\\{1,2}n/g, lineBreakReplacement);
+
     const parseHex = (h: string): [number,number,number] | null => {
         h = h.replace('#', '');
         if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
@@ -323,7 +331,7 @@ function autoContrastMermaidCode(code: string): string {
         return 0.2126*f(r) + 0.7152*f(g) + 0.0722*f(b);
     };
 
-    return code.replace(
+    return processed.replace(
         /^(\s*style\s+\S+\s+.*?fill\s*:\s*)(#[0-9a-fA-F]{3,6})(.*?)$/gm,
         (match, prefix, fillColor, suffix) => {
             // Don't add color if already specified

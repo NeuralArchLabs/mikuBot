@@ -277,7 +277,7 @@
         "appearance": {
             "title": "Apariencia y Temas",
             "theme": "Tema del Sistema",
-            "theme_desc": "Cambia la vibración visual de tu asistente",
+            "theme_desc": "Cambia la vibra visual de tu asistente",
             "chat_font": "Tipografía del Chat",
             "chat_bg": "Imagen de Fondo (URL)",
             "backgrounds": "Fondos",
@@ -348,9 +348,7 @@
             "chat_id": "Chat ID Permitido (Admin)",
             "chat_id_placeholder": "Tu ID numérico de Chat"
         },
-
         "vosk": {
-
             "title": "Motor de Reconocimiento Vosk",
             "manage_title": "Gestión de Modelos Vocales",
             "manage_desc": "Descarga y selecciona modelos de reconocimiento de voz offline para procesar tus mensajes de voz.",
