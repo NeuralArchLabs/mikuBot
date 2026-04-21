@@ -525,7 +525,7 @@ export const SettingsPanel = ({
                                             <div className="text-[11px] md:text-[9px] lg:text-[8px] xl:text-[9px] font-bold uppercase tracking-widest text-emerald-500/80 truncate transition-all">{t('settings.pathways.workspace_desc')}</div>
                                         </div>
                                     </div>
-                                    <div className="text-xs font-mono text-[var(--text-secondary)] mb-3 truncate bg-[var(--hover-color)] p-3 rounded-xl border border-[var(--border-color)] leading-relaxed" title={workSpacePathName}>
+                                    <div className="text-xs font-mono text-[var(--text-secondary)] mb-5 truncate bg-[var(--hover-color)] p-3 rounded-xl border border-[var(--border-color)] leading-relaxed" title={workSpacePathName}>
                                         {workSpacePathName || "Not configured"}
                                     </div>
                                     <button
@@ -533,7 +533,7 @@ export const SettingsPanel = ({
                                         disabled={syncing}
                                         className="w-full py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase flex items-center justify-center gap-2 border premium-button premium-emphasis premium-emerald text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20"
                                     >
-                                        {syncing ? <Icon name="sync fa-spin" /> : <Icon name="folder-open" />} {t('settings.pathways.select')}
+                                        {syncing ? <Icon name="sync fa-spin" /> : <Icon name="folder-plus" />} {t('settings.pathways.select')}
                                     </button>
                                 </div>
                                  
@@ -573,7 +573,7 @@ export const SettingsPanel = ({
                                         disabled={syncing}
                                         className="w-full py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase flex items-center justify-center gap-2 border premium-button premium-emphasis premium-indigo text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20"
                                     >
-                                        {syncing ? <Icon name="sync fa-spin" /> : <Icon name="folder-open" />} {t('settings.pathways.select')}
+                                        {syncing ? <Icon name="sync fa-spin" /> : <Icon name="folder-plus" />} {t('settings.pathways.select')}
                                     </button>
                                 </div>
 
@@ -653,7 +653,7 @@ export const SettingsPanel = ({
                                         disabled={syncing}
                                         className="w-full py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase flex items-center justify-center gap-2 border premium-button premium-emphasis premium-amber text-amber-500 bg-amber-500/10 hover:bg-amber-500/20"
                                     >
-                                        {syncing ? <Icon name="sync fa-spin" /> : <Icon name="folder-open" />} {t('settings.pathways.select')}
+                                        {syncing ? <Icon name="sync fa-spin" /> : <Icon name="folder-plus" />} {t('settings.pathways.select')}
                                     </button>
                                 </div>
                             </div>

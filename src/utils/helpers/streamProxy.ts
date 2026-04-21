@@ -15,6 +15,7 @@ interface StreamProxyOptions {
     model: string;
     body: any;
     ollamaUrl?: string;
+    overrideUrl?: string; // Used by OOP providers for endpoint fallback
     onChunk: (rawChunk: string) => void;
     abortSignal?: AbortSignal;
 }
@@ -85,6 +86,7 @@ export async function streamViaProxy(options: StreamProxyOptions): Promise<void>
             model: options.model,
             body: options.body,
             ollamaUrl: options.ollamaUrl,
+            overrideUrl: options.overrideUrl,
             streamId,
         }).then((result: any) => {
             if (!result.ok && !resolved) {

@@ -141,12 +141,13 @@ export abstract class ModelProvider {
         };
     }
 
-    protected async streamProxy(provider: string, body: any, useSSE: boolean = true): Promise<ProviderResponse> {
+    protected async streamProxy(provider: string, body: any, useSSE: boolean = true, overrideUrl?: string): Promise<ProviderResponse> {
         const streamState = { buffer: '' };
         await streamViaProxy({
             provider,
             model: this.options.config.model,
             body,
+            overrideUrl,
             abortSignal: this.options.abortSignal,
             onChunk: (raw) => {
                 this.handleStreamRaw(raw, streamState, useSSE);
@@ -323,13 +324,50 @@ export class ZAIProvider extends ModelProvider {
             max_tokens: this.options.config.maxOutputTokens || 128000,
             tools: this.options.useTools ? this.options.tools : undefined
         };
-        const baseUrl = 'https://api.z.ai/api/coding/paas/v4/chat/completions';
-        if (this.options.isElectronProxy) {
-            return this.streamProxy('zai', body);
-        } else {
-            const headers = { 'Authorization': `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' };
-            return this.streamFetch(baseUrl, headers, body);
+
+        const endpoints = [
+            'https://api.z.ai/api/coding/paas/v4/chat/completions', // Primary (Coding Plan)
+            'https://api.z.ai/api/paas/v4/chat/completions'         // Fallback (General/Pay-as-you-go plan)
+        ];
+
+        let lastError: any;
+
+        for (let i = 0; i < endpoints.length; i++) {
+            const url = endpoints[i];
+            try {
+                if (this.options.isElectronProxy) {
+                    return await this.streamProxy('zai', body, true, url);
+                } else {
+                    const headers = { 'Authorization': `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' };
+                    return await this.streamFetch(url, headers, body);
+                }
+            } catch (err: any) {
+                lastError = err;
+                const msg = (err.message || '').toLowerCase();
+                
+                // If it's the last endpoint, we must throw the error
+                if (i === endpoints.length - 1) throw err;
+                
+                // Only fallback on specific environment/quota related errors:
+                // 1113 = ZAI specific insufficient balance
+                // 429 = Rate limit or quota exhausted
+                // 501, 404 = Endpoint doesn't exist or not implemented
+                // 401 = Unauthorized (some plans reject keys at specific endpoints)
+                if (msg.includes('1113') || msg.includes('429') || msg.includes('501') || msg.includes('404') || msg.includes('401')) {
+                    console.warn(`[ZAIProvider] Endpoint ${url} failed to authenticate or execute (${msg}). Falling back to alternative endpoint...`);
+                    // Reset memory accumulation for the retry
+                    this.fullContent = '';
+                    this.fullReasoning = '';
+                    this.toolCallsDeltas = [];
+                    continue;
+                }
+                
+                // For all other errors (like network failures), throw immediately
+                throw err;
+            }
         }
+        
+        throw lastError;
     }
 }
 
@@ -397,7 +435,8 @@ export class OllamaProvider extends ModelProvider {
  */
 export class GeminiProvider extends ModelProvider {
     supportsNativeTools(): boolean {
-        return !this.options.config.model.toLowerCase().includes('gemma');
+        // Modern Gemini and Gemma models provided through the API all support native structuring now.
+        return true;
     }
 
     protected serializeMessages(messages: any[]): any[] {
@@ -486,15 +525,30 @@ export class GeminiProvider extends ModelProvider {
                 // GEMINI ACCUMULATION FIX: The API sometimes sends previously sent parts in same list.
                 // We only append if these parts are actually new OR if we manage it by index.
                 // Simple approach: only take the text part if it's not already the suffix of our content
-                if (part.text) {
+                // Depending on the backend version, Gemini either uses `part.thought = true` + `part.text = "inner thoughts"` 
+                // OR `part.thought = "inner thoughts"` directly.
+                const isThoughtPart = part.thought === true;
+
+                if (isThoughtPart) {
+                    // It's a thought block, capture its text into reasoning if it exists
+                    if (part.text && !this.fullReasoning.endsWith(part.text)) {
+                        this.fullReasoning += part.text;
+                    }
+                } else if (part.text) {
+                    // Normal text block
                     if (!this.fullContent.endsWith(part.text)) {
                         this.fullContent += part.text;
                     }
                 }
-                if (part.thought || part.thought_content) {
-                    const t = (part.thought || part.thought_content);
-                    if (!this.fullReasoning.endsWith(t)) {
-                        this.fullReasoning += t;
+
+                // Fallback for older/alternate Gemini versions that pass string directly
+                if (typeof part.thought === 'string') {
+                    if (!this.fullReasoning.endsWith(part.thought)) {
+                        this.fullReasoning += part.thought;
+                    }
+                } else if (typeof part.thought_content === 'string') {
+                    if (!this.fullReasoning.endsWith(part.thought_content)) {
+                        this.fullReasoning += part.thought_content;
                     }
                 }
                 if (part.functionCall) {
@@ -527,20 +581,17 @@ export class GeminiProvider extends ModelProvider {
         const contents = this.serializeMessages(messages);
         const historyHasTools = contents.some((c: any) => c.parts.some((p: any) => p.functionCall || p.functionResponse));
 
-        const makeRequest = async (forceNoJson: boolean = false) => {
+        const makeRequest = async () => {
             // Reset accumulation for retry
             this.fullContent = '';
             this.fullReasoning = '';
             this.toolCallsDeltas = [];
-
-            const useJsonMode = !isThinkingModel && !forceNoJson;
             
             const body: any = {
                 contents,
                 generationConfig: {
                     temperature: this.options.config.temperature ?? 0.7,
                     maxOutputTokens: this.options.config.maxOutputTokens || 128000, 
-                    responseMimeType: useJsonMode ? 'application/json' : 'text/plain',
                     thinkingConfig: isThinkingModel ? { include_thoughts: true } : undefined
                 },
                 systemInstruction: !isGemma ? { parts: [{ text: systemPromptContent }] } : undefined,
@@ -557,18 +608,7 @@ export class GeminiProvider extends ModelProvider {
             }
         };
 
-        try {
-            return await makeRequest(false);
-        } catch (error: any) {
-            const errorMsg = (error?.message || '').toLowerCase();
-            const isJsonError = errorMsg.includes('json mode') || errorMsg.includes('400');
-            
-            if (isJsonError && !isThinkingModel) {
-                console.warn(`[GeminiProvider] JSON Mode rejected by model. Falling back to text extraction...`);
-                return await makeRequest(true);
-            }
-            throw error;
-        }
+        return await makeRequest();
     }
 }
 

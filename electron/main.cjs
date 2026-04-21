@@ -579,7 +579,15 @@ function getApiKeys() {
             const raw = fs.readFileSync(configPath, 'utf8');
             const parsed = JSON.parse(raw);
             const keys = parsed.config?.apiKeys || {};
-            return decryptApiKeys(keys);
+            // Decrypt every key in the object directly.
+            // We don't use processVault here because provider names (zai, groq) 
+            // don't match the "sensitive" filter, but we know this object ONLY contains keys.
+            for (const k of Object.keys(keys)) {
+                if (typeof keys[k] === 'string') {
+                    keys[k] = decryptValue(keys[k]);
+                }
+            }
+            return keys;
         }
     } catch (e) {
         console.error('[Main Process] Failed to read API keys:', e.message);
@@ -733,7 +741,7 @@ function streamOllamaRequest(url, body, streamId, sender, timeoutMs) {
     });
 }
 
-ipcMain.handle('api-stream', async (event, { provider, model, body, ollamaUrl, streamId }) => {
+ipcMain.handle('api-stream', async (event, { provider, model, body, ollamaUrl, overrideUrl, streamId }) => {
     const sender = event.sender;
     const keys = getApiKeys();
     // Use longer timeout for Ollama (30 minutes) as local models can take a while to load
@@ -759,7 +767,7 @@ ipcMain.handle('api-stream', async (event, { provider, model, body, ollamaUrl, s
         } else if (provider === 'zai') {
             const zaiKey = keys.zai;
             if (!zaiKey) return { ok: false, error: 'Z.AI API key not configured.' };
-            url = 'https://api.z.ai/api/coding/paas/v4/chat/completions';
+            url = overrideUrl || 'https://api.z.ai/api/coding/paas/v4/chat/completions';
             headers = {
                 'Authorization': `Bearer ${zaiKey}`,
                 'Content-Type': 'application/json',

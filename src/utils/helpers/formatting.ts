@@ -346,6 +346,13 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                     // Convert markdown tables using existing converter
                     inner = convertTablesToHtml(inner);
 
+                    // Convert inline markdown (bold, italic, code, links) on plain text lines
+                    inner = inner.split('\n').map(line => {
+                        // Skip lines with HTML tags or __BLOCK_X__ placeholders (avoids destroying them)
+                        if (/<[a-z]/i.test(line) || /__BLOCK_\d+__/.test(line)) return line;
+                        return processInlineMarkdown(line);
+                    }).join('\n');
+
                     fullTagContent = openTag + inner + closeTag;
                 }
             }
@@ -612,23 +619,40 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
             'CHECK': 'callout_check', 'ABSTRACT': 'callout_abstract',
         };
         const localizedDefault = CALLOUT_I18N_KEYS[typeUp] ? i18n.t(`common.${CALLOUT_I18N_KEYS[typeUp]}`) : typeUp;
-        const rawTitle = title ? title.replace(/^[>\s]+/, '').trim() : (localizedDefault !== `common.${CALLOUT_I18N_KEYS[typeUp]}` ? localizedDefault : typeUp);
-        const displayTitle = processInlineMarkdown(rawTitle);
+        // The type badge is ALWAYS the localized type name (short, uppercase, tracked)
+        const typeBadgeLabel = (localizedDefault !== `common.${CALLOUT_I18N_KEYS[typeUp]}`) ? localizedDefault : typeUp;
+        // User title is what the model added after the [!TYPE] — can be a whole sentence
+        const rawUserTitle = title ? title.replace(/^[>\s]+/, '').trim() : '';
+        const displayTitle = rawUserTitle ? processInlineMarkdown(rawUserTitle) : '';
 
         const isCollapsible = !!collapseSign;
         const isOpen = collapseSign === '+';
 
-        const bodyHtml = content ? `<div class="text-md font-medium text-slate-300 ${isCollapsible ? 'mt-3 pt-3 border-t border-white/5' : 'leading-relaxed'} child-content typing-content">${toHtml(content, isStreaming)}</div>` : '';
+        // If no body but model crammed a long sentence into the title, move it to body
+        const longTitleAsBody = !content && rawUserTitle.length > 40 ? rawUserTitle : '';
+        const effectiveBody = longTitleAsBody || content;
+        const effectiveTitle = longTitleAsBody ? '' : displayTitle;
+        const bodyHtml = effectiveBody ? `<div class="text-md font-medium text-slate-300 ${isCollapsible ? 'mt-3 pt-3 border-t border-white/5' : 'leading-relaxed'} child-content typing-content">${toHtml(effectiveBody, isStreaming)}</div>` : '';
+        // Short user title (≤40 chars) shown inline with badge; longer text always goes to body
+        const userTitleSpan = effectiveTitle ? ` <span class="text-sm font-semibold normal-case tracking-normal leading-snug">${effectiveTitle}</span>` : '';
         
         if (isCollapsible) {
             const extra = isStreaming ? 'data-animated="true"' : '';
             pieces.push(`<details ${extra} class="group/callout border-l-[3px] ${s.border} bg-black/8 backdrop-blur-md ${s.glow || ''} shadow-xl pl-6 pr-4 py-3.5 my-5 rounded-r-xl overflow-hidden transition duration-300 select-none cursor-pointer border-y border-y-transparent border-r border-r-transparent hover:border-y-white/10 hover:border-r-white/10" ${isOpen ? 'open' : ''}>`
-                + `<summary class="flex items-center gap-3 font-black text-[13px] uppercase tracking-[0.2em] ${s.color} non-typing outline-none list-none text-left">`
-                + `<span class="group-open/callout:rotate-90 transition-transform duration-300">▶</span> <span class="text-lg">${s.icon}</span> ${displayTitle}</summary>${bodyHtml}</details>`);
+                + `<summary class="flex items-center gap-3 ${s.color} non-typing outline-none list-none text-left">`
+                + `<span class="group-open/callout:rotate-90 transition-transform duration-300 font-black text-[11px]">▶</span>`
+                + `<span class="text-lg">${s.icon}</span>`
+                + `<span class="font-black text-[11px] uppercase tracking-[0.2em] opacity-80">${typeBadgeLabel}</span>`
+                + `${userTitleSpan}`
+                + `</summary>${bodyHtml}</details>`);
         } else {
             const extra = isStreaming ? 'data-animated="true"' : '';
             pieces.push(`<blockquote ${extra} class="border-l-[3px] ${s.border} bg-black/8 backdrop-blur-md ${s.glow || ''} shadow-xl pl-6 pr-4 py-3.5 my-5 rounded-r-xl overflow-hidden border-y border-y-transparent border-r border-r-transparent" data-type="admonition">`
-                + `<div class="flex items-center gap-3 mb-3 font-black text-[13px] uppercase tracking-[0.2em] ${s.color} non-typing"><span class="text-lg">${s.icon}</span> ${displayTitle}</div>${bodyHtml}</blockquote>`);
+                + `<div class="flex items-center gap-3 mb-3 ${s.color} non-typing">`
+                + `<span class="text-lg flex-shrink-0">${s.icon}</span>`
+                + `<span class="font-black text-[11px] uppercase tracking-[0.2em] opacity-80 flex-shrink-0">${typeBadgeLabel}</span>`
+                + `${userTitleSpan}`
+                + `</div>${bodyHtml}</blockquote>`);
         }
         
         const remainder = bodyLines.slice(actualBody.length).join('\n');
@@ -1766,8 +1790,17 @@ function convertMathToHtml(math: string): string {
     html = html.replace(/\\hat\{([^}]*)\}/g, '<span class="inline-flex flex-col items-center"><span>^</span><span class="mt-[-1em]">$1</span></span>');
     html = html.replace(/\\vec\{([^}]*)\}/g, '<span class="inline-flex flex-col items-center"><span>→</span><span class="mt-[-1em]">$1</span></span>');
     html = html.replace(/\\mathbf\{([^}]*)\}/g, '<span class="font-bold">$1</span>');
+    html = html.replace(/\\textbf\{([^}]*)\}/g, '<span class="font-bold">$1</span>');
+    html = html.replace(/\\textit\{([^}]*)\}/g, '<span class="italic">$1</span>');
+    html = html.replace(/\\underline\{([^}]*)\}/g, '<span class="underline">$1</span>');
+    html = html.replace(/\\overline\{([^}]*)\}/g, '<span class="border-t border-current">$1</span>');
+    
     // Catch any remaining \text{} that weren't handled in 3g (e.g. nested contexts)
     html = html.replace(/\\text\{([^}]*)\}/g, '<span class="font-sans not-italic opacity-80">$1</span>');
+
+    // Remove sizing, spacing, and layout commands that are either unsupported or handled implicitly by our wrapper
+    html = html.replace(/\\(displaystyle|textstyle|scriptstyle|scriptscriptstyle|normalsize|Large|large|LARGE|huge|Huge|small|tiny)/g, '');
+    html = html.replace(/\\([hv]space|rule)\{[^}]*\}/g, '');
 
     // 8. Final cleanup: remove stray braces that were used for LaTeX grouping
     html = html.replace(/(?<!\\)[{}]/g, '');
