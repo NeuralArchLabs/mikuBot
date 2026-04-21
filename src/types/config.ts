@@ -63,14 +63,6 @@ export interface AppConfig {
     // Personality / Context variables (for Template Hydration)
     userName?: string;
     assistantAlias?: string;
-    tone?: string;
-    technicalSkill?: string;
-    currentGoal?: string;
-    autonomyMode?: string;
-    userContextDump?: string;
-    verbosity?: string;
-    humorLevel?: string;
-    customRules?: string;
     // Appearance
     theme?: string;
     chatBackgroundImage?: string;

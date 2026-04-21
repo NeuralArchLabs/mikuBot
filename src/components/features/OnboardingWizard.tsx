@@ -179,13 +179,11 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                 ? contextList.map(c => `- ${c}`).join('\n')
                 : t('onboarding.protocol.no_context');
 
-            const nextConfig = {
+            const nextConfig: AppConfig = {
                 ...config,
                 isConfigured: true,
                 telegramBotToken, telegramChatId,
-                userName, assistantAlias, tone: userTone, technicalSkill: technicalLevel,
-                currentGoal, autonomyMode, userContextDump: formattedContext,
-                verbosity, humorLevel, customRules: formattedRules,
+                userName, assistantAlias,
                 folderPaths: {
                     core: cleanPath + '/core',
                     tools: cleanPath + '/commands',
@@ -455,43 +453,69 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                             <div className="grid grid-cols-2 gap-6">
                                 <div className="space-y-4">
                                     <label className="text-[10px] font-black text-slate-500 uppercase block text-center tracking-[0.5em]">{t('onboarding.personality.verbosity')}</label>
-                                    <ModernSelect
-                                        value={verbosity}
-                                        onChange={(val) => {
-                                            if (val === 'CUSTOM') setVerbosity('custom');
-                                            else setVerbosity(val);
-                                        }}
-                                        placeholder={t('onboarding.personality.verbosity')}
-                                        iconVariant="plus"
-                                        dropDirection="up"
-                                        options={[
-                                            { value: t('onboarding.personality.verbosity_concise'), label: t('onboarding.personality.verbosity_concise') },
-                                            { value: t('onboarding.personality.verbosity_medium'), label: t('onboarding.personality.verbosity_medium') },
-                                            { value: t('onboarding.personality.verbosity_detailed'), label: t('onboarding.personality.verbosity_detailed') },
-                                            { value: 'CUSTOM', label: t('common.custom') }
-                                        ]}
-                                    />
-                                    {verbosity === 'custom' && setVerbosity(t('onboarding.personality.verbosity_example'))}
+                                    {!VERBOSITY_KEYS.map(k => t(`onboarding.personality.${k}`)).includes(verbosity) && verbosity !== '' ? (
+                                        <div className="relative animate-premium">
+                                            <input 
+                                                title={t('onboarding.personality.verbosity')} 
+                                                placeholder={t('onboarding.personality.verbosity_example')} 
+                                                value={verbosity} 
+                                                onChange={(e)=>setVerbosity(e.target.value)} 
+                                                autoFocus 
+                                                className="w-full bg-slate-950/70 border-2 border-transparent hover:border-blue-500/30 focus:border-blue-500/50 rounded-2xl px-6 py-4 text-xs text-white outline-none transition-all font-black text-center shadow-inner" 
+                                            />
+                                            <button onClick={()=>setVerbosity(t('onboarding.personality.verbosity_medium'))} className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center border border-white/10 transition-all">×</button>
+                                        </div>
+                                    ) : (
+                                        <ModernSelect
+                                            value={verbosity}
+                                            onChange={(val) => {
+                                                if (val === 'CUSTOM') setVerbosity(t('onboarding.personality.verbosity_example'));
+                                                else setVerbosity(val);
+                                            }}
+                                            placeholder={t('onboarding.personality.verbosity')}
+                                            iconVariant="plus"
+                                            dropDirection="up"
+                                            options={[
+                                                { value: t('onboarding.personality.verbosity_concise'), label: t('onboarding.personality.verbosity_concise') },
+                                                { value: t('onboarding.personality.verbosity_medium'), label: t('onboarding.personality.verbosity_medium') },
+                                                { value: t('onboarding.personality.verbosity_detailed'), label: t('onboarding.personality.verbosity_detailed') },
+                                                { value: 'CUSTOM', label: t('common.custom') }
+                                            ]}
+                                        />
+                                    )}
                                 </div>
                                 <div className="space-y-4">
                                     <label className="text-[10px] font-black text-slate-500 uppercase block text-center tracking-[0.5em]">{t('onboarding.personality.humor')}</label>
-                                    <ModernSelect
-                                        value={humorLevel}
-                                        onChange={(val) => {
-                                            if (val === 'CUSTOM') setHumorLevel('custom');
-                                            else setHumorLevel(val);
-                                        }}
-                                        placeholder={t('onboarding.personality.humor')}
-                                        iconVariant="plus"
-                                        dropDirection="up"
-                                        options={[
-                                            { value: t('onboarding.personality.humor_none'), label: t('onboarding.personality.humor_none') },
-                                            { value: t('onboarding.personality.humor_low'), label: t('onboarding.personality.humor_low') },
-                                            { value: t('onboarding.personality.humor_high'), label: t('onboarding.personality.humor_high') },
-                                            { value: 'CUSTOM', label: t('common.custom') }
-                                        ]}
-                                    />
-                                    {humorLevel === 'custom' && setHumorLevel(t('onboarding.personality.humor_example'))}
+                                    {!HUMOR_KEYS.map(k => t(`onboarding.personality.${k}`)).includes(humorLevel) && humorLevel !== '' ? (
+                                        <div className="relative animate-premium">
+                                            <input 
+                                                title={t('onboarding.personality.humor')} 
+                                                placeholder={t('onboarding.personality.humor_example')} 
+                                                value={humorLevel} 
+                                                onChange={(e)=>setHumorLevel(e.target.value)} 
+                                                autoFocus 
+                                                className="w-full bg-slate-950/70 border-2 border-transparent hover:border-blue-500/30 focus:border-blue-500/50 rounded-2xl px-6 py-4 text-xs text-white outline-none transition-all font-black text-center shadow-inner" 
+                                            />
+                                            <button onClick={()=>setHumorLevel(t('onboarding.personality.humor_low'))} className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center border border-white/10 transition-all">×</button>
+                                        </div>
+                                    ) : (
+                                        <ModernSelect
+                                            value={humorLevel}
+                                            onChange={(val) => {
+                                                if (val === 'CUSTOM') setHumorLevel(t('onboarding.personality.humor_example'));
+                                                else setHumorLevel(val);
+                                            }}
+                                            placeholder={t('onboarding.personality.humor')}
+                                            iconVariant="plus"
+                                            dropDirection="up"
+                                            options={[
+                                                { value: t('onboarding.personality.humor_none'), label: t('onboarding.personality.humor_none') },
+                                                { value: t('onboarding.personality.humor_low'), label: t('onboarding.personality.humor_low') },
+                                                { value: t('onboarding.personality.humor_high'), label: t('onboarding.personality.humor_high') },
+                                                { value: 'CUSTOM', label: t('common.custom') }
+                                            ]}
+                                        />
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -554,7 +578,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                                     <ModernSelect
                                         value={currentGoal}
                                         onChange={(val) => {
-                                            if (val === 'CUSTOM') setCurrentGoal('custom');
+                                            if (val === 'CUSTOM') setCurrentGoal(t('onboarding.status.goal_example'));
                                             else setCurrentGoal(val);
                                         }}
                                         placeholder={t('onboarding.status.goal_placeholder')}
@@ -566,7 +590,6 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                                         ]}
                                     />
                                 )}
-                                {currentGoal === 'custom' && setCurrentGoal(t('onboarding.status.goal_example'))}
                             </div>
                         </div>
                     )}

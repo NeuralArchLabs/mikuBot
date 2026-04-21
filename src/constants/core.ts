@@ -57,14 +57,6 @@ export const DEFAULT_CONFIG: AppConfig = {
     // Personality defaults
     userName: '',
     assistantAlias: 'mikuBot',
-    tone: 'Profesional y amigable',
-    technicalSkill: 'Intermedio',
-    currentGoal: 'Asistencia general',
-    autonomyMode: 'Semi-autónomo',
-    userContextDump: '',
-    verbosity: 'Medio',
-    humorLevel: 'Bajo',
-    customRules: ''
 };
 
 export const AGENT_TOOLS: ToolDefinition[] = [
