@@ -480,8 +480,9 @@ body, html {
 
 /* ── Rule A: Dark text on background containers without standalone color ── */
 /* Matches elements with "background" in style but NO standalone "color:" property.
-   Specificity: 0,6,0 — beats existing inherit rules (0,2,1) on the parent element. */
-.markdown-body [style*="background"]:not([style*=" color:"]):not([style*=";color:"]):not([style*="; color:"]):not([style^="color:"]) {
+   Specificity: 0,6,0 — beats existing inherit rules (0,2,1) on the parent element.
+   Surgical Fix: Excludes rgba() and transparent backgrounds as they are typically used for dark-mode UI overlays. */
+.markdown-body [style*="background"]:not([style*=" color:"]):not([style*=";color:"]):not([style*="; color:"]):not([style^="color:"]):not([style*="rgba("]):not([style*="transparent"]) {
   color: #1e293b;
 }
 
@@ -496,7 +497,7 @@ body, html {
   color: inherit;
 }
 
-/* Children of styled containers inherit color correctly */
+/* Children of styled containers inherit color correctly if not specified */
 .markdown-body [style*="background"] th,
 .markdown-body [style*="background"] td,
 .markdown-body [style*="background"] strong,

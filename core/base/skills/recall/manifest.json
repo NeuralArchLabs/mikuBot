@@ -1,0 +1,76 @@
+{
+    "name": "recall",
+    "description": "Persistent semantic memory system. Stores, searches and connects memories across a categorized knowledge base. Uses a bidirectional typed graph for rich semantic relationships between memories. Expands on the static USER/SOUL core files with dynamic, evolving personal knowledge.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "command": {
+                "type": "string",
+                "description": "Operation to execute.",
+                "enum": ["init", "synapse", "recall", "refresh", "amnesia", "link", "nexus"]
+            },
+            "category": {
+                "type": "string",
+                "description": "Top-level cognitive model. Self_Model (internal evolution, growth, calibrations), User_Model (user profile, projects, social, routines, psychology), Semantic_Memory (external knowledge, places, facts).",
+                "enum": ["Self_Model", "User_Model", "Semantic_Memory"],
+                "default": "Semantic_Memory"
+            },
+            "subcategory": {
+                "type": "string",
+                "description": "Subcategory path (can be nested with '/'). E.g. 'People/Family/Siblings', 'Lifestyle/Health/Mental_Wellbeing', 'Beliefs/Opinions/Technology'.",
+                "default": "General"
+            },
+            "data": {
+                "type": "string",
+                "description": "Memory content. Use rich Markdown. For 'synapse' (create) and 'refresh' (update)."
+            },
+            "query": {
+                "type": "string",
+                "description": "Search string or memory ID. Used by: recall, refresh, amnesia."
+            },
+            "tags": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Semantic tags. Critical for cross-category discovery. Use specific, meaningful terms. E.g. ['anxiety', 'music', 'coping']."
+            },
+            "linked_to": {
+                "type": "array",
+                "description": "Explicit semantic links to existing memories. Creates typed bidirectional graph edges. Use during 'synapse'.",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "id":       { "type": "string", "description": "Target memory ID (mem_xxxxxxxx)." },
+                        "relation": {
+                            "type": "string",
+                            "description": "Edge type describing the semantic relationship.",
+                            "enum": ["influences", "caused_by", "same_topic", "contradicts", "expands", "related_to"]
+                        }
+                    },
+                    "required": ["id", "relation"]
+                }
+            },
+            "from_id": {
+                "type": "string",
+                "description": "Source memory ID for the 'link' command."
+            },
+            "to_id": {
+                "type": "string",
+                "description": "Target memory ID for the 'link' command."
+            },
+            "relation": {
+                "type": "string",
+                "description": "Edge type for the 'link' command.",
+                "enum": ["influences", "caused_by", "same_topic", "contradicts", "expands", "related_to"],
+                "default": "related_to"
+            },
+            "depth": {
+                "type": "integer",
+                "description": "Graph traversal depth for 'recall'. 1 = direct neighbors only, 2 = two hops (default), 3 = broad exploration.",
+                "default": 2
+            }
+        },
+        "required": ["command"]
+    },
+    "runtime": "python",
+    "entry": "main.py"
+}

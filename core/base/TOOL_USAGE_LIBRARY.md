@@ -261,3 +261,89 @@ This file contains valid JSON code snippets for each tool. The system extracts t
   "arguments": {}
 }
 ```
+
+## [recall — init]
+```json
+{
+  "name": "recall",
+  "arguments": {
+    "command": "init"
+  }
+}
+```
+
+## [recall — synapse]
+```json
+{
+  "name": "recall",
+  "arguments": {
+    "command": "synapse",
+    "category": "Emotions",
+    "subcategory": "Coping_Strategies",
+    "data": "User calms down before stressful events by listening to classical music for 10 minutes.",
+    "tags": ["anxiety", "music", "coping", "stress"],
+    "linked_to": [
+      { "id": "mem_xxxxxxxx", "relation": "caused_by" }
+    ]
+  }
+}
+```
+
+## [recall — recall]
+```json
+{
+  "name": "recall",
+  "arguments": {
+    "command": "recall",
+    "query": "how does the user handle stress",
+    "depth": 2
+  }
+}
+```
+
+## [recall — refresh]
+```json
+{
+  "name": "recall",
+  "arguments": {
+    "command": "refresh",
+    "query": "mem_xxxxxxxx",
+    "data": "Updated content with new information learned.",
+    "tags": ["updated", "tag"]
+  }
+}
+```
+
+## [recall — amnesia]
+```json
+{
+  "name": "recall",
+  "arguments": {
+    "command": "amnesia",
+    "query": "mem_xxxxxxxx"
+  }
+}
+```
+
+## [recall — link]
+```json
+{
+  "name": "recall",
+  "arguments": {
+    "command": "link",
+    "from_id": "mem_xxxxxxxx",
+    "to_id": "mem_yyyyyyyy",
+    "relation": "expands"
+  }
+}
+```
+
+## [recall — nexus]
+```json
+{
+  "name": "recall",
+  "arguments": {
+    "command": "nexus"
+  }
+}
+```

@@ -2390,7 +2390,8 @@ ipcMain.handle('execute-skill', async (event, { toolsPath, skillName, args }) =>
 
             // Security: Use execFile to avoid shell injection
             return new Promise((resolve) => {
-                execFile(pythonExe, [entryFile, JSON.stringify(args)], (error, stdout, stderr) => {
+                const env = { ...process.env, MIKU_WORKSPACE_ROOT: getCurrentWorkspacePath() };
+                execFile(pythonExe, [entryFile, JSON.stringify(args)], { env }, (error, stdout, stderr) => {
                     if (error) {
                         console.error(`[Main Process] Skill execution error (${skillName}):`, error.message);
                         return resolve({ ok: false, error: error.message, stderr });
@@ -2408,11 +2409,9 @@ ipcMain.handle('execute-skill', async (event, { toolsPath, skillName, args }) =>
             const { execFile } = require('child_process');
             
             return new Promise((resolve) => {
-                // Determine if we should use electron or just node
-                const nodeBinary = process.platform === 'win32' ? 'node.exe' : 'node';
-                
+                const env = { ...process.env, MIKU_WORKSPACE_ROOT: getCurrentWorkspacePath() };
                 // Using execFile for zero shell overhead & security
-                execFile(nodeBinary, [entryFile, JSON.stringify(args)], (error, stdout, stderr) => {
+                execFile(nodeBinary, [entryFile, JSON.stringify(args)], { env }, (error, stdout, stderr) => {
                     if (error) {
                         console.error(`[Main Process] Skill execution error (${skillName}):`, error.message);
                         return resolve({ ok: false, error: error.message, stderr });
