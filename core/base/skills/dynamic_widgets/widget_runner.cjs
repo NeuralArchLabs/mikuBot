@@ -77,9 +77,10 @@ app.whenReady().then(() => {
                 const childRadius = mainContainer ? window.getComputedStyle(mainContainer).borderRadius : '0px';
                 const hasOwnRadius = childRadius && childRadius !== '0px' && !childRadius.startsWith('0px 0px');
 
-                // No-drag for interactive elements
+                // Aggressive no-drag for interactive elements and their children to prevent clicks from becoming window drags
+                const noDragTags = 'button, input, textarea, select, a, label, [role="button"], [onclick], fieldset, legend, details, summary, .btn, .button, .clickable, [class*="btn"], [class*="item"], [class*="card"], [class*="link"]';
                 const s = document.createElement('style');
-                s.textContent = 'button,input,textarea,select,a,label,[role="button"]{-webkit-app-region:no-drag!important}';
+                s.textContent = noDragTags + ', ' + noDragTags.split(',').map(t => t.trim() + ' *').join(',') + '{ -webkit-app-region: no-drag !important; }';
                 document.head.appendChild(s);
 
                 if (hasOwnRadius) {
