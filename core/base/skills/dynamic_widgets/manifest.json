@@ -1,0 +1,41 @@
+{
+    "name": "dynamic_widgets",
+    "description": "Comprehensive tool to create, launch, read, update, list, and delete Dynamic Widgets (independent frameless neural micro-applications). Also opens the Widgets Manager UI.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "action": {
+                "type": "string",
+                "enum": ["create", "launch", "delete", "list", "open_manager", "read_code", "update_code"],
+                "description": "The action to perform."
+            },
+            "widget_id": {
+                "type": "string",
+                "description": "Unique identifier for the widget (letters, numbers, hyphens only). Required for create, launch, delete, read_code, and update_code."
+            },
+            "width": {
+                "type": "number",
+                "description": "Width of the widget in pixels (used only if action=create)."
+            },
+            "height": {
+                "type": "number",
+                "description": "Height of the widget in pixels (used only if action=create)."
+            },
+            "html_content": {
+                "type": "string",
+                "description": "Complete HTML+CSS+JS code for the widget (used only if action=create or action=update_code)."
+            },
+            "always_on_top": {
+                "type": "boolean",
+                "description": "Whether the widget should float above all other windows (used only if action=create)."
+            },
+            "description": {
+                "type": "string",
+                "description": "A brief, human-readable summary of what the widget does, shown in the Manager UI (used only if action=create)."
+            }
+        },
+        "required": ["action"]
+    },
+    "runtime": "python",
+    "entry": "main.py"
+}

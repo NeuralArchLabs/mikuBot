@@ -6,6 +6,23 @@ const fs = require('fs');
 const { Readable } = require('stream');
 const http = require('http');
 
+// --- DYNAMIC WIDGETS HOOK (Production App Support) ---
+// This hooks catches widget spawns when running as a compiled MikuCentral.exe
+const corePathDir = app.isPackaged ? path.join(process.resourcesPath, 'core') : path.join(__dirname, '../core');
+const dwIndex = process.argv.indexOf('--dynamic-widget');
+if (dwIndex !== -1 && process.argv.length > dwIndex + 1) {
+    process.argv[2] = process.argv[dwIndex + 1]; // Pass html path
+    require(path.join(corePathDir, 'base/skills/dynamic_widgets/widget_runner.cjs'));
+    return; // Halt main MikuCentral boot, just run the widget.
+}
+const dwManagerIndex = process.argv.indexOf('--dynamic-widget-manager');
+if (dwManagerIndex !== -1 && process.argv.length > dwManagerIndex + 1) {
+    process.argv[2] = process.argv[dwManagerIndex + 1]; // Pass widgets directory
+    require(path.join(corePathDir, 'base/skills/dynamic_widgets/manager_runner.cjs'));
+    return; // Halt main MikuCentral boot, just run the manager.
+}
+// ----------------------------------------------------
+
 // ── Local Production Server ──────────────────────────────────────────
 // In production, we serve the app via a local HTTP server to provide a
 // valid http:// origin. This is required because external services like

@@ -292,12 +292,34 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                         </div>
                                     </>
                                 ) : (
-                                    <div className="flex flex-col items-center justify-center py-10 opacity-60">
-                                        <Icon name="sliders-h" className="text-4xl text-slate-800 mb-4" />
-                                        <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">{t('skills.automatic_title')}</h5>
-                                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-700 max-w-[180px] text-center leading-relaxed">
-                                            {t('skills.automatic_desc')}
-                                        </p>
+                                    <div className="flex flex-col items-center justify-center py-10">
+                                        <div className="opacity-60 flex flex-col items-center">
+                                            <Icon name="sliders-h" className="text-4xl text-slate-800 mb-4" />
+                                            <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">{t('skills.automatic_title')}</h5>
+                                            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-700 max-w-[180px] text-center leading-relaxed mb-6">
+                                                {t('skills.automatic_desc')}
+                                            </p>
+                                        </div>
+
+                                        {currentSkill.__folderName === 'dynamic_widgets' && (
+                                            <div className="flex w-full items-center justify-center mt-2 animate-in slide-in-from-bottom-4 duration-700 fade-in">
+                                                <button 
+                                                    onClick={async () => {
+                                                        if ((window as any).electron?.executeSkill && config.folderPaths?.tools) {
+                                                            await (window as any).electron.executeSkill({
+                                                                toolsPath: config.folderPaths.tools,
+                                                                skillName: currentSkill.__folderName,
+                                                                args: { action: 'open_manager' }
+                                                            });
+                                                        }
+                                                    }}
+                                                    className="px-6 py-3.5 border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500 hover:text-black font-bold uppercase tracking-[0.2em] text-[10px] rounded-2xl transition-all duration-300 flex items-center gap-3 group shadow-[0_0_20px_-5px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_0_rgba(6,182,212,0.5)]"
+                                                >
+                                                    <Icon name="external-link-alt" className="text-sm group-hover:scale-125 group-hover:-translate-y-0.5 transition-all duration-300" />
+                                                    Open Widget Manager
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
