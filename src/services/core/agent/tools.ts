@@ -307,14 +307,7 @@ export async function executeToolCall(
                 return { success: false, error: 'Metrics not available.' };
             }
 
-            case 'get_git_info': {
-                if ((window as any).electron?.getGitInfo) {
-                    const result = await (window as any).electron.getGitInfo();
-                    if (result.ok) return { success: true, data: result.info };
-                    return { success: false, error: result.error };
-                }
-                return { success: false, error: 'Git info not available.' };
-            }
+
 
             case 'web_search': {
                 if (!args.query) {

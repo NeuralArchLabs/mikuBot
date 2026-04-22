@@ -215,7 +215,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
             }
         }
     },
-// git_info removed as it is redundant with run_console
+
     {
         type: 'function',
         function: {
