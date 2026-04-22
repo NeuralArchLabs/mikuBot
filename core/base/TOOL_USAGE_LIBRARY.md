@@ -254,11 +254,19 @@ This file contains valid JSON code snippets for each tool. The system extracts t
 }
 ```
 
-## [get_git_info]
+## [dynamic_widgets]
 ```json
 {
-  "name": "get_git_info",
-  "arguments": {}
+  "name": "dynamic_widgets",
+  "arguments": {
+    "action": "create",
+    "widget_id": "crypto-ticker",
+    "description": "Visual real-time Bitcoin price tracker with glowing aesthetics.",
+    "html_content": "<html>...</html>",
+    "width": 400,
+    "height": 150,
+    "always_on_top": true
+  }
 }
 ```
 

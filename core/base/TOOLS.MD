@@ -112,9 +112,6 @@ Perform bulk file operations (copy, move, delete) using glob patterns.
 ### `get_system_metrics`
 Get real-time OS metrics (CPU, Memory, Uptime, Hostname).
 
-### `get_git_info`
-Get repository status, branch name, and modified files count.
-
 ## 🛰️ Research Hierarchy (Tiers 1-4)
 
 ### Tier 1: `web_search` [Base Tool]
@@ -152,6 +149,7 @@ Modular skills installed in `@TOOLS/skills/`:
 - **`list_available_skills`**: Auto-discovery of new installed skills.
 - **`gmail_imap`**: Basic email reading and management via IMAP.
 - **`miku_clock`**: Time management and personalized greetings.
+- **`dynamic_widgets`**: Advanced tool to create, launch, and manage neural micro-apps (exclusive frameless windows).
 - **`recall`**: Persistent semantic memory. Store, retrieve, and connect anything worth remembering across sessions.
 
 ## 🔮 Memory Protocol (`recall` skill)
