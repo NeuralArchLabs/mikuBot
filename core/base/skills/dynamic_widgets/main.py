@@ -32,13 +32,24 @@ def get_widgets_dir():
 
 def get_app_executable():
     root = get_workspace_root()
-    
-    # 1. Production Package Native App Check
+
+    # 1. Production Package: check resources/ (exe next to core/)
     prod_exe = os.path.join(root, "MikuCentral.exe")
     if os.path.exists(prod_exe):
         return prod_exe
-        
-    # 2. Local Dev Check
+
+    # 2. Production Package: check parent of resources/ (exe one level above)
+    parent_exe = os.path.join(os.path.dirname(root), "MikuCentral.exe")
+    if os.path.exists(parent_exe):
+        return parent_exe
+
+    # 3. macOS .app bundle
+    if sys.platform == 'darwin':
+        macos_exe = os.path.join(os.path.dirname(root), "MikuCentral.app")
+        if os.path.exists(macos_exe):
+            return macos_exe
+
+    # 4. Local Dev Check
     if sys.platform == 'win32':
         return os.path.join(root, "node_modules", "electron", "dist", "electron.exe")
     elif sys.platform == 'darwin':

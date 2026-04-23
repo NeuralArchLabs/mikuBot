@@ -1,6 +1,16 @@
-const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
+
+function getAppIcon() {
+    var iconPath = app.isPackaged
+        ? path.join(process.resourcesPath, 'app.asar', 'dist', 'mikuBotICON.png')
+        : path.join(__dirname, '..', '..', '..', '..', 'public', 'mikuBotICON.png');
+    if (!fs.existsSync(iconPath)) return null;
+    var icon = nativeImage.createFromPath(iconPath);
+    if (icon.isEmpty()) return null;
+    return icon.resize({ width: 256, height: 256, quality: 'best' });
+}
 
 const widgetsDir = process.argv[2];
 if (!widgetsDir) {
@@ -16,6 +26,7 @@ app.whenReady().then(() => {
         height: 600,
         frame: false,
         backgroundColor: '#0a0a0a',
+        icon: getAppIcon(),
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false
