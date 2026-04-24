@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Icon } from './Common';
 import { useTranslation } from 'react-i18next';
 
@@ -55,8 +56,8 @@ export const SystemDialog = ({ config }: SystemDialogProps) => {
 
     const positionClasses = isRight ? 'justify-center xl:justify-end xl:pr-12' : isLeft ? 'justify-center xl:justify-start xl:pl-12' : 'justify-center';
 
-    return (
-        <div className={`fixed inset-0 z-[200] flex items-center p-4 transition-opacity duration-300 ${isClosing ? 'opacity-0' : 'opacity-100'} ${positionClasses}`}>
+    return createPortal(
+        <div className={`fixed inset-0 z-[1000] flex items-center p-4 transition-opacity duration-300 ${isClosing ? 'opacity-0' : 'opacity-100'} ${positionClasses}`}>
             <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={() => isAlert ? handleClose(true) : handleClose(false)} />
 
             <div className={`relative w-full max-w-sm bg-slate-900 border border-slate-700 shadow-2xl rounded-2xl overflow-hidden flex flex-col ${isClosing ? exitAnim : enterAnim}`}>
@@ -93,6 +94,7 @@ export const SystemDialog = ({ config }: SystemDialogProps) => {
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };

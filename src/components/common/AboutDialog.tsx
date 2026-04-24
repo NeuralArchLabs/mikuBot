@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Icon } from './Common';
 import { useTranslation } from 'react-i18next';
 import { APP_VERSION } from '../../constants';
@@ -33,8 +34,8 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({ isOpen, onClose }) => 
         onClose();
     };
 
-    return (
-        <div className={`fixed inset-0 z-[200] flex items-center justify-center p-4 transition-opacity duration-300 ${isClosing ? 'opacity-0' : 'opacity-100'}`}>
+    return createPortal(
+        <div className={`fixed inset-0 z-[900] flex items-center justify-center p-4 transition-opacity duration-300 ${isClosing ? 'opacity-0' : 'opacity-100'}`}>
             <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={handleClose} />
 
             <div className={`relative w-full max-w-md bg-[#1e293b] border border-slate-700/60 shadow-[0_0_50px_-12px_rgba(34,211,238,0.15)] rounded-2xl overflow-hidden flex flex-col ${isClosing ? 'animate-macos-shrink-bottom' : 'animate-macos-expand-bottom'}`}>
@@ -82,11 +83,11 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({ isOpen, onClose }) => 
                         </div>
                         <div className="flex justify-between">
                             <span>{t('about.security_layer')}:</span>
-                            <span className="text-rose-400">Neural Sandbox</span>
+                            <span className="text-rose-400">{t('about.security_sandbox')}</span>
                         </div>
                         <div className="flex justify-between">
                             <span>{t('about.python_runtime')}:</span>
-                            <span className="text-blue-400">Python 3.11 (Internal)</span>
+                            <span className="text-blue-400">{t('about.python_runtime_internal')}</span>
                         </div>
                     </div>
                 </div>
@@ -101,6 +102,7 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({ isOpen, onClose }) => 
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };

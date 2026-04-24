@@ -89,7 +89,7 @@ const CronBuilder = ({ value, onChange, t }: { value: string, onChange: (v: stri
                     onClick={() => setMode(m => m === 'visual' ? 'raw' : 'visual')} 
                     className="text-[9px] text-cyan-500 hover:text-cyan-400 transition-colors uppercase tracking-wider font-bold"
                 >
-                    {mode === 'visual' ? t('scheduler.cron.advanced', 'Modo Avanzado (Raw)') : t('scheduler.cron.visual', 'Modo Visual')}
+                    {mode === 'visual' ? t('scheduler.cron.advanced') : t('scheduler.cron.visual')}
                 </button>
             </div>
             
@@ -107,7 +107,7 @@ const CronBuilder = ({ value, onChange, t }: { value: string, onChange: (v: stri
                 <div className="bg-slate-900/80 border border-white/10 rounded-xl p-5 flex flex-col justify-center gap-5 grow min-h-[100px]">
                     <div className="grid grid-cols-2 gap-4">
                         <SelectField
-                            label="Minuto"
+                            label={t('scheduler.cron_builder.min_label')}
                             value={parts[0]}
                             onChange={v => updatePart(0, v)}
                             options={[
@@ -120,7 +120,7 @@ const CronBuilder = ({ value, onChange, t }: { value: string, onChange: (v: stri
                             ]}
                         />
                         <SelectField
-                            label="Hora"
+                            label={t('scheduler.cron_builder.hor_label')}
                             value={parts[1]}
                             onChange={v => updatePart(1, v)}
                             options={[
@@ -135,7 +135,7 @@ const CronBuilder = ({ value, onChange, t }: { value: string, onChange: (v: stri
                     </div>
                     <div className="grid grid-cols-3 gap-4">
                         <SelectField
-                            label="Día (Mes)"
+                            label={t('scheduler.cron_builder.day_label')}
                             value={parts[2]}
                             onChange={v => updatePart(2, v)}
                             options={[
@@ -144,23 +144,23 @@ const CronBuilder = ({ value, onChange, t }: { value: string, onChange: (v: stri
                             ]}
                         />
                         <SelectField
-                            label="Mes"
+                            label={t('scheduler.cron_builder.month_label')}
                             value={parts[3]}
                             onChange={v => updatePart(3, v)}
                             options={[
                                 { val: '*', label: '*' },
-                                ...['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'].map((m, i) => ({ val: (i+1).toString(), label: (i+1).toString() + ` (${m})` }))
+                                ...((t('scheduler.cron_builder.months', { returnObjects: true }) as string[]) || []).map((m, i) => ({ val: (i + 1).toString(), label: (i + 1).toString() + ` (${m})` }))
                             ]}
                         />
                         <SelectField
-                            label="Día (Sem)"
+                            label={t('scheduler.cron_builder.weekday_label')}
                             value={parts[4]}
                             onChange={v => updatePart(4, v)}
                             options={[
                                 { val: '*', label: '*' },
-                                { val: '1-5', label: 'Lun-Vie' },
-                                { val: '0,6', label: 'Sab-Dom' },
-                                ...['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'].map((m, i) => ({ val: i.toString(), label: i.toString() + ` (${m})` }))
+                                { val: '1-5', label: t('scheduler.cron_builder.mon_fri') },
+                                { val: '0,6', label: t('scheduler.cron_builder.sat_sun') },
+                                ...((t('scheduler.cron_builder.weekdays', { returnObjects: true }) as string[]) || []).map((m, i) => ({ val: i.toString(), label: i.toString() + ` (${m})` }))
                             ]}
                         />
                     </div>
@@ -566,14 +566,14 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
                                 <div className="mt-4 px-4 py-3.5 bg-black/20 border border-white/5 rounded-xl grow flex items-center">
                                     {form.scheduleType === 'interval' && (
                                         <p className="text-[10.5px] text-slate-400 font-medium leading-relaxed">
-                                            <strong className="text-cyan-400 font-bold uppercase tracking-widest block mb-1">{t('scheduler.type_desc.interval_title', 'Intervalo')}:</strong> 
+                                            <strong className="text-cyan-400 font-bold uppercase tracking-widest block mb-1">{t('scheduler.type_desc.interval_title')}:</strong> 
                                             {t('scheduler.type_desc.interval_desc', 'Configura la tarea para que se repita continuamente cada cierto número de minutos. Ideal para comprobaciones y monitoreo recurrente.')}
                                         </p>
                                     )}
                                     {form.scheduleType === 'cron' && (
                                         <div className="flex flex-col justify-center gap-1.5 w-full">
                                             <p className="text-[10px] text-slate-400 font-medium leading-tight mb-0.5">
-                                                <strong className="text-cyan-400 font-bold uppercase tracking-widest text-[10.5px] mr-1.5">{t('scheduler.type_desc.cron_title', 'Programación Cron')}:</strong> 
+                                                <strong className="text-cyan-400 font-bold uppercase tracking-widest text-[10.5px] mr-1.5">{t('scheduler.type_desc.cron_title')}:</strong> 
                                                 {t('scheduler.type_desc.cron_desc', 'Formato de 5 parámetros de tiempo:')}
                                             </p>
                                             <div className="grid grid-cols-1 sm:grid-cols-[1.5fr_1fr] gap-x-2 gap-y-1.5 text-[10px] text-slate-500 font-mono leading-tight pl-1 mt-1 max-w-full">
@@ -587,7 +587,7 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
                                     )}
                                     {form.scheduleType === 'once' && (
                                         <p className="text-[10.5px] text-slate-400 font-medium leading-relaxed">
-                                            <strong className="text-cyan-400 font-bold uppercase tracking-widest block mb-1">{t('scheduler.type_desc.once_title', 'Una Sola Vez')}:</strong> 
+                                            <strong className="text-cyan-400 font-bold uppercase tracking-widest block mb-1">{t('scheduler.type_desc.once_title')}:</strong> 
                                             {t('scheduler.type_desc.once_desc', 'Configura la tarea para que se ejecute una única vez en un instante temporal exacto (Fecha/Hora particular). No se repetirá posteriormente.')}
                                         </p>
                                     )}
@@ -620,8 +620,8 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
                                                 <button 
                                                     onClick={(e) => { e.preventDefault(); setForm(f => ({ ...f, schedule: Math.max(1, parseInt(f.schedule || '30') - 1).toString() })) }}
                                                     className="h-[52px] w-14 flex items-center justify-center text-slate-500 hover:text-red-400 hover:bg-red-500/5 transition-all border-r border-white/10 shrink-0 group/dec"
-                                                    title={t('common.decrease', 'Disminuir')}
-                                                    aria-label="Disminuir intervalo"
+                                                    title={t('common.decrease')}
+                                                    aria-label={t('common.decrease')}
                                                 >
                                                     <Icon name="minus" className="text-[10px] group-hover/dec:scale-125 transition-transform" />
                                                 </button>
@@ -636,13 +636,13 @@ export const SchedulerTab = ({ config, askAlert }: SchedulerTabProps) => {
                                                         onChange={e => setForm({ ...form, schedule: e.target.value })}
                                                         className="w-full bg-transparent text-center text-[18px] font-black text-cyan-400 font-mono focus:outline-none placeholder-slate-600/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none leading-none pt-1"
                                                     />
-                                                    <span className="text-[7px] font-black uppercase tracking-[0.2em] text-cyan-500/40 -mt-0.5">{t('scheduler.type_desc.minutes', 'Minutos')}</span>
+                                                    <span className="text-[7px] font-black uppercase tracking-[0.2em] text-cyan-500/40 -mt-0.5">{t('scheduler.type_desc.minutes')}</span>
                                                 </div>
                                                 <button 
                                                     onClick={(e) => { e.preventDefault(); setForm(f => ({ ...f, schedule: (parseInt(f.schedule || '30') + 1).toString() })) }}
                                                     className="h-[52px] w-14 flex items-center justify-center text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/5 transition-all border-l border-white/10 shrink-0 group/inc"
-                                                    title={t('common.increase', 'Aumentar')}
-                                                    aria-label="Aumentar intervalo"
+                                                    title={t('common.increase')}
+                                                    aria-label={t('common.increase')}
                                                 >
                                                     <Icon name="plus" className="text-[10px] group-hover/inc:scale-125 transition-transform" />
                                                 </button>

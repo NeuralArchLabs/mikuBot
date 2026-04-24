@@ -76,7 +76,19 @@
         "no_folder_configured": "No hay carpeta configurada para \"{{target}}\". Selecciona una en Configuración.",
         "subsystems_online": "¡Subsistemas Neuronales en Línea!\n\nEnlaces restaurados automáticamente a través del marco interno.",
         "aborted_execution": "Ejecución Abortada",
-        "denied_execution": "Ejecución Denegada"
+        "denied_execution": "Ejecución Denegada",
+        "untitled_session": "Sesión sin título",
+        "no_active_history": "No se encontró historial activo",
+        "delete_session_confirm": "¿Eliminar esta sesión?",
+        "manage_sessions_desc": "Gestiona, carga y ramifica estados de conversación",
+        "ollama_error": "⚠️ Error Ollama ({{url}}): {{error}}",
+        "invalid_session_file": "❌ Error: El archivo no contiene una sesión de Miku válida.",
+        "user": "Usuario",
+        "not_configured": "No configurado",
+        "internal_defaults": "Predeterminados Internos",
+        "no_links": "Sin Enlaces",
+        "decrease": "Disminuir",
+        "increase": "Aumentar"
     },
     "tools": {
         "metrics_summary": "Métricas del sistema obtenidas: {{platform}} [CPU: {{cpu}}%, RAM: {{ram}}]",
@@ -626,13 +638,17 @@
         }
     },
     "scheduler": {
-        "title": "Neural Tasks",
+        "title": "Tareas Neuronales",
         "subtitle": "Automatiza tareas repetitivas y mantenimiento del sistema",
-        "add_btn": "AÑADIR NUEVA TAREA",
+        "add_btn": "Añadir Nueva Tarea",
         "save_btn": "Guardar Tarea",
         "cancel_btn": "Cancelar",
         "save_changes": "Guardar Cambios",
         "create_task": "Crear Tarea",
+        "cron": {
+            "advanced": "Modo Avanzado (Raw)",
+            "visual": "Modo Visual"
+        },
         "fields": {
             "name": "Nombre de la Tarea",
             "name_placeholder": "ej: Resumen Matutino",
@@ -732,22 +748,18 @@
         },
         "type_desc": {
             "interval_title": "Intervalo",
-            "interval_desc": "Configura la tarea para que se repita continuamente cada cierto número de minutos. Ideal para comprobaciones y monitoreo recurrente (ej. cada 30 mins).",
+            "interval_desc": "Configura la tarea para que se repita continuamente cada cierto número de minutos. Ideal para comprobaciones y monitoreo recurrente (ej: cada 30 minutos).",
             "cron_title": "Programación Cron",
             "cron_desc": "Formato de 5 parámetros de tiempo:",
             "once_title": "Una Sola Vez",
             "once_desc": "Configura la tarea para que se ejecute una única vez en un instante temporal exacto (Fecha/Hora particular). No se repetirá posteriormente.",
             "minutes": "Minutos"
         },
-        "alerts": {
-            "telegram_incomplete_title": "⚠️ [Telegram Incompleto]",
-            "telegram_incomplete_desc": "Para usar Telegram como canal de entrega en tus tareas programadas, debes configurar tu 'Bot Token' y 'Chat ID' en la pestaña Core System de los ajustes de mikuCentral."
-        },
         "cron_builder": {
             "min_label": "Minuto",
             "min_desc": "¿En qué minuto?",
             "hor_label": "Hora",
-            "hor_desc": "¿hora del día?",
+            "hor_desc": "¿A qué hora del día?",
             "day_label": "Día (Mes)",
             "day_desc": "¿Qué día del mes?",
             "month_label": "Mes",
@@ -794,7 +806,9 @@
         "python_runtime": "Motor de Ejecución",
         "audio_engine": "Motor de Audio",
         "vosk_url": "https://alphacephei.com/vosk/",
-        "security_layer": "Capa de Seguridad"
+        "security_layer": "Capa de Seguridad",
+        "security_sandbox": "Neural Sandbox",
+        "python_runtime_internal": "Python 3.11 (Interno)"
     },
     "skills": {
         "repository": "Repositorio Sináptico",
@@ -817,7 +831,13 @@
         "app_password": "App Password (Contraseña de Aplicación)",
         "error_loading": "Error al cargar habilidades neuronales.",
         "error_creating": "Error en el pipeline de creación de habilidades.",
-        "error_saving": "Error al guardar archivos de habilidades, verifica permisos."
+        "error_saving": "Error al guardar archivos de habilidades, verifica permisos.",
+        "widget_manager_title": "Widget Manager",
+        "widget_manager_back": "Volver a Skill",
+        "widget_launch": "Inicializar Elemento",
+        "widget_delete_confirm": "Un componente neural sera borrado permanentemente. Proceder?",
+        "widget_empty_title": "Sin Neural Widgets",
+        "widget_empty_desc": "Pide a Miku que genere un nuevo widget para comenzar."
     },
     "dialogs": {
         "voice_model_downloaded": "✅ Modelo ({{lang}}) descargado y extraído correctamente.",

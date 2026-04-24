@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppConfig } from '../../types';
 import { Icon } from '../common/Common';
+import { THEMES } from '../../constants/themes';
 
 interface SkillsPanelProps {
     config: AppConfig;
@@ -57,6 +58,44 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
     const [blueprints, setBlueprints] = useState<SkillBlueprint[]>([]);
     const [namingSkill, setNamingSkill] = useState<SkillBlueprint | null>(null);
     const [newSkillName, setNewSkillName] = useState('');
+    const [panelHtml, setPanelHtml] = useState<string | null>(null);
+    const rawPanelRef = useRef<string | null>(null);
+    const panelIframeRef = useRef<HTMLIFrameElement>(null);
+
+    const injectTheme = (html: string, themeName: string): string => {
+        const theme = THEMES[themeName];
+        if (!theme) return html;
+        const isLight = themeName === 'cloud';
+        const vars = [
+            `--bg-color:${theme['--background-color']}`,
+            `--surface-color:${theme['--surface-color']}`,
+            `--surface-hover:${theme['--hover-color']}`,
+            `--surface-border:${theme['--border-color']}`,
+            `--surface-border-hover:${theme['--primary-color']}66`,
+            `--primary:${theme['--primary-color']}`,
+            `--primary-glow:${theme['--glass-glow']}`,
+            `--secondary:${theme['--secondary-color']}`,
+            `--text-main:${theme['--text-primary']}`,
+            `--text-muted:${theme['--text-secondary']}`,
+            `--icon-gradient-a:${theme['--primary-color']}1a`,
+            `--icon-gradient-b:${theme['--secondary-color']}1a`,
+            `--icon-border:${theme['--primary-color']}33`,
+            `--card-divider:${isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.04)'}`,
+            `--shadow-color:${isLight ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.25)'}`,
+            `--btn-text:${isLight ? '#fff' : '#000'}`,
+            `--title-from:${theme['--primary-color']}`,
+            `--title-to:${theme['--secondary-color']}`,
+            `--glow-a:${theme['--glass-glow']}`,
+            `--glow-b:${theme['--hover-color']}`,
+        ].join(';');
+        return html.replace('<!--THEME_INJECTION-->', `<style>:root{${vars}}</style>`);
+    };
+
+    useEffect(() => {
+        if (rawPanelRef.current) {
+            setPanelHtml(injectTheme(rawPanelRef.current, config.theme || 'miku'));
+        }
+    }, [config.theme]);
 
     useEffect(() => {
         const loadBlueprints = async () => {
@@ -209,8 +248,99 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
         }
     };
 
+    const handleOpenPanel = async (skill: Skill) => {
+        if (!(window as any).electron || !config.folderPaths?.tools) return;
+        const panelFile = (skill as any).panel;
+        if (!panelFile) return;
+        let html: string | null = null;
+        try {
+            const filePath = `skills/${skill.__folderName}/${panelFile}`;
+            const content = toolsFiles[filePath];
+            if (content) {
+                html = content;
+            } else {
+                const res = await (window as any).electron.executeSkill({
+                    toolsPath: config.folderPaths.tools,
+                    skillName: skill.__folderName,
+                    args: { action: '__read_panel__', __file: panelFile }
+                });
+                if (res?.ok && res?.data?.html_content) {
+                    html = res.data.html_content;
+                }
+            }
+        } catch {
+            try {
+                const fsRes = await (window as any).electron?.fsReadFile?.({
+                    filePath: `${config.folderPaths.tools}/skills/${skill.__folderName}/${panelFile}`
+                });
+                if (fsRes?.ok && fsRes?.content) html = fsRes.content;
+            } catch {}
+        }
+        if (html) {
+            rawPanelRef.current = html;
+            setPanelHtml(injectTheme(html, config.theme || 'miku'));
+        }
+    };
+
+    useEffect(() => {
+        const handler = async (e: MessageEvent) => {
+            if (e.data?.type === 'skill-action' && config.folderPaths?.tools && currentSkill) {
+                const args = { ...e.data.args };
+                delete args._reqId;
+                const res = await (window as any).electron.executeSkill({
+                    toolsPath: config.folderPaths.tools,
+                    skillName: currentSkill.__folderName,
+                    args
+                });
+                panelIframeRef.current?.contentWindow?.postMessage({
+                    type: 'skill-response',
+                    _reqId: e.data.args?._reqId,
+                    data: res
+                }, '*');
+            }
+            if (e.data?.type === 'skill-panel-close') {
+                rawPanelRef.current = null;
+                setPanelHtml(null);
+            }
+        };
+        window.addEventListener('message', handler);
+        return () => window.removeEventListener('message', handler);
+    }, [config.folderPaths?.tools, currentSkill]);
+
+    const handleClosePanel = () => {
+        if (panelIframeRef.current?.contentWindow) {
+            panelIframeRef.current.contentWindow.postMessage({ type: 'skill-panel-cleanup' }, '*');
+        }
+        rawPanelRef.current = null;
+        setPanelHtml(null);
+    };
+
     const renderEditorContent = () => {
         if (!currentSkill) return null;
+
+        if (panelHtml !== null) {
+            return (
+                <div className="flex-1 min-h-0 flex flex-col overflow-hidden animate-in fade-in duration-500">
+                    <div className="shrink-0 flex items-center gap-3 px-3 lg:px-6 py-2.5 lg:py-3 border-b border-[var(--border-color)] bg-[var(--hover-color)]">
+                        <button
+                            onClick={handleClosePanel}
+                            className="w-8 h-8 lg:w-9 lg:h-9 rounded-xl bg-transparent text-[var(--text-secondary)] hover:bg-white/5 hover:text-[var(--text-primary)] border border-transparent hover:border-[var(--border-color)] transition-all flex items-center justify-center"
+                        >
+                            <Icon name="arrow-left" className="text-xs lg:text-sm" />
+                        </button>
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                        <iframe
+                            ref={panelIframeRef}
+                            srcDoc={panelHtml}
+                            className="w-full h-full border-0"
+                            sandbox="allow-scripts allow-same-origin allow-popups"
+                            title="Skill Panel"
+                        />
+                    </div>
+                </div>
+            );
+        }
 
         return (
             <div className="h-full flex flex-col overflow-hidden animate-in fade-in duration-700">
@@ -301,22 +431,14 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                             </p>
                                         </div>
 
-                                        {currentSkill.__folderName === 'dynamic_widgets' && (
+                                        {(currentSkill as any).panel && (
                                             <div className="flex w-full items-center justify-center mt-2 animate-in slide-in-from-bottom-4 duration-700 fade-in">
-                                                <button 
-                                                    onClick={async () => {
-                                                        if ((window as any).electron?.executeSkill && config.folderPaths?.tools) {
-                                                            await (window as any).electron.executeSkill({
-                                                                toolsPath: config.folderPaths.tools,
-                                                                skillName: currentSkill.__folderName,
-                                                                args: { action: 'open_manager' }
-                                                            });
-                                                        }
-                                                    }}
+                                                <button
+                                                    onClick={() => handleOpenPanel(currentSkill)}
                                                     className="px-6 py-3.5 border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500 hover:text-black font-bold uppercase tracking-[0.2em] text-[10px] rounded-2xl transition-all duration-300 flex items-center gap-3 group shadow-[0_0_20px_-5px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_0_rgba(6,182,212,0.5)]"
                                                 >
-                                                    <Icon name="external-link-alt" className="text-sm group-hover:scale-125 group-hover:-translate-y-0.5 transition-all duration-300" />
-                                                    Open Widget Manager
+                                                    <Icon name={(currentSkill as any).panelIcon || 'external-link-alt'} className="text-sm group-hover:scale-125 group-hover:-translate-y-0.5 transition-all duration-300" />
+                                                    {(currentSkill as any).panelLabel || t('skills.widget_launch')}
                                                 </button>
                                             </div>
                                         )}
@@ -350,14 +472,14 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                     disabled={isSavingCode}
                                     className="px-4 py-2 bg-cyan-600/20 border border-transparent hover:border-cyan-500/40 text-cyan-400 rounded-xl text-[10px] lg:text-xs font-bold uppercase tracking-widest hover:bg-cyan-600/30 transition-all flex items-center gap-2 group"
                                 >
-                                    {isSavingCode ? <Icon name="circle-notch" className="animate-spin" /> : <Icon name="cloud-upload-alt" className="group-hover:translate-y-[-2px] transition-transform" />}
-                                    Commit
+                                    {isSavingCode ? <Icon name="circle-notch" className="animate-spin" /> : <Icon name="cloud-upload-alt" className="group-hover:translate-x-[-2px] transition-transform" />}
+                                    {t('common.save')}
                                 </button>
                             </div>
                             <textarea
                                 value={editorContent}
                                 onChange={(e) => setEditorContent(e.target.value)}
-                                placeholder="// Awaiting instructions..."
+                                placeholder={t('editor.placeholder')}
                                 className="flex-1 premium-input rounded-xl lg:rounded-2xl p-5 font-mono text-[11px] lg:text-sm text-[var(--text-primary)] focus:outline-none resize-none custom-scrollbar shadow-2xl"
                                 spellCheck={false}
                             />
@@ -386,7 +508,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                         <button
                                             onClick={() => setShowBlueprints(false)}
                                             className="text-slate-500 hover:text-white p-3 hover:bg-white/5 rounded-full transition-all"
-                                            title="Close blueprints overlay"
+                                            title={t('common.close')}
                                         >
                                             <Icon name="times" className="text-xl" />
                                         </button>
@@ -464,9 +586,9 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                 <div key={skill.name} className="flex flex-col gap-2">
                                     <div className="relative">
                                         <button
-                                            onClick={() => setActiveSkill(skill.name === activeSkill && window.innerWidth < 1024 ? null : skill.name)}
+                                            onClick={() => { setActiveSkill(skill.name === activeSkill && window.innerWidth < 1024 ? null : skill.name); handleClosePanel(); }}
                                             className={`w-full p-4 lg:p-2.5 xl:p-4 rounded-2xl flex items-center text-left border group relative overflow-hidden premium-card premium-cyan transition-all duration-500 ${activeSkill === skill.name ? 'active border-cyan-500/40 shadow-glow-cyan ring-1 ring-cyan-400/20' : 'text-slate-400 opacity-70'} ${isDisabled ? 'opacity-30' : ''}`}
-                                            title={`Select ${skill.name} skill`}
+                                            title={skill.name}
                                         >
                                             <div className="flex items-center gap-3 min-w-0 relative z-10 w-full">
                                                 <div className={`p-2.5 rounded-xl text-base shrink-0 transition-all duration-500 ${activeSkill === skill.name ? 'bg-cyan-500 text-black scale-110 shadow-[0_0_15px_rgba(6,182,212,0.5)]' : 'bg-slate-800 text-slate-400 group-hover:text-slate-200'}`}>
@@ -493,7 +615,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                                         : [...current, skill.name];
                                                     updateConfig({ disabledSkills: updated });
                                                 }}
-                                                title={isDisabled ? `Enable ${skill.name}` : `Disable ${skill.name}`}
+                                                title={isDisabled ? t('scheduler.actions.enable') : t('scheduler.actions.pause')}
                                             >
                                             <div className={`w-9 h-5 rounded-full transition-all duration-300 relative ${isDisabled ? 'bg-slate-700' : 'bg-cyan-500/60 shadow-[0_0_8px_rgba(6,182,212,0.3)]'}`}>
                                                 <div className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${isDisabled ? 'left-0.5 bg-slate-500' : 'left-[18px] bg-cyan-300 shadow-[0_0_6px_rgba(6,182,212,0.5)]'}`} />
@@ -504,7 +626,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
 
                                     {/* Inline Editor with Premium Animation */}
                                     {activeSkill === skill.name && (
-                                        <div className="lg:hidden bg-slate-900/40 border border-slate-800/50 rounded-3xl overflow-hidden animate-in fade-in zoom-in-95 slide-in-from-top-4 duration-500 shadow-2xl mb-4">
+                                        <div className="lg:hidden min-h-[60vh] flex flex-col bg-slate-900/40 border border-slate-800/50 rounded-3xl overflow-hidden animate-in fade-in zoom-in-95 slide-in-from-top-4 duration-500 shadow-2xl mb-4">
                                             {renderEditorContent()}
                                         </div>
                                     )}

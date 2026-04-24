@@ -141,7 +141,7 @@ function positionControls() {
         ctrlWindowRight.setPosition(wx + ww + 3, wy + 4);
     }
     if (ctrlWindowLeft && !ctrlWindowLeft.isDestroyed()) {
-        ctrlWindowLeft.setPosition(wx - 38, wy + 4);
+        ctrlWindowLeft.setPosition(wx - 37, wy + 4);
     }
 }
 
@@ -161,7 +161,7 @@ app.whenReady().then(async () => {
         frame: false,
         resizable: true,
         show: false,
-        alwaysOnTop: true,
+        alwaysOnTop: config.alwaysOnTop !== false,
         icon: appIcon,
         webPreferences: {
             nodeIntegration: true,
@@ -227,46 +227,52 @@ app.whenReady().then(async () => {
                     if (finalArea > maxArea) { maxArea = finalArea; mainContainer = el; }
                 });
 
-                const childRadius = mainContainer ? window.getComputedStyle(mainContainer).borderRadius : '0px';
-                const hasOwnRadius = childRadius && childRadius !== '0px' && !childRadius.startsWith('0px 0px');
+                function hasRadius(v){if(!v)return false;var m=v.match(/[\\d.]+/g);return m?m.some(function(n){return parseFloat(n)>0}):false}
+                var bodyHasRadius=hasRadius(bodyCS.borderRadius);
+                var mainHasRadius=mainContainer?hasRadius(window.getComputedStyle(mainContainer).borderRadius):false;
 
-                if (hasOwnRadius) {
-                    if (mainContainer) {
-                        const childCS = window.getComputedStyle(mainContainer);
-                        const childBg = childCS.backgroundColor;
-                        if (!childBg || childBg === 'rgba(0, 0, 0, 0)' || childBg === 'transparent') {
-                            if (finalBg) mainContainer.style.setProperty('background-color', finalBg, 'important');
-                        }
-                        if (!childCS.backgroundImage || childCS.backgroundImage === 'none') {
-                            if (finalImg) mainContainer.style.setProperty('background-image', finalImg, 'important');
-                        }
+                if(bodyHasRadius){
+                    document.documentElement.style.setProperty('background','transparent','important');
+                    document.documentElement.style.setProperty('margin','0','important');
+                    document.body.style.setProperty('margin','0','important');
+                    document.body.style.setProperty('overflow','hidden','important');
+                }else if(mainHasRadius){
+                    document.documentElement.style.setProperty('background','transparent','important');
+                    document.documentElement.style.setProperty('margin','0','important');
+                    document.body.style.setProperty('background','transparent','important');
+                    document.body.style.setProperty('margin','0','important');
+                    document.body.style.setProperty('height','auto','important');
+                    document.body.style.setProperty('min-height','0','important');
+                    mainContainer.style.setProperty('box-shadow','none','important');
+                    var tCS=window.getComputedStyle(mainContainer);
+                    var tHasBg=(tCS.backgroundColor&&tCS.backgroundColor!=='rgba(0, 0, 0, 0)'&&tCS.backgroundColor!=='transparent')||(tCS.backgroundImage&&tCS.backgroundImage!=='none');
+                    if(!tHasBg){
+                        if(finalBg)mainContainer.style.setProperty('background-color',finalBg,'important');
+                        if(finalImg)mainContainer.style.setProperty('background-image',finalImg,'important');
                     }
-                    document.body.style.setProperty('background', 'transparent', 'important');
-                    document.body.style.setProperty('margin', '0', 'important');
-                } else {
-                    const wrapper = document.createElement('div');
-                    wrapper.id = '__miku_widget_frame__';
-                    wrapper.style.borderRadius = '12px';
-                    wrapper.style.overflow = 'hidden';
-                    wrapper.style.transform = 'translateZ(0)';
-                    wrapper.style.width = '100%';
-                    wrapper.style.minHeight = document.body.offsetHeight + 'px';
-                    wrapper.style.position = 'relative';
-                    wrapper.style.boxSizing = 'border-box';
-                    wrapper.style.display = bodyCS.display;
-                    if (bodyCS.display === 'flex' || bodyCS.display === 'inline-flex') {
-                        wrapper.style.flexDirection = bodyCS.flexDirection;
-                        wrapper.style.alignItems = bodyCS.alignItems;
-                        wrapper.style.justifyContent = bodyCS.justifyContent;
-                        wrapper.style.flexWrap = bodyCS.flexWrap;
+                }else{
+                    var wrapper=document.createElement('div');
+                    wrapper.id='__miku_widget_frame__';
+                    wrapper.style.borderRadius='12px';
+                    wrapper.style.overflow='hidden';
+                    wrapper.style.width='100%';
+                    wrapper.style.minHeight=document.body.offsetHeight+'px';
+                    wrapper.style.position='relative';
+                    wrapper.style.boxSizing='border-box';
+                    wrapper.style.display=bodyCS.display;
+                    if(bodyCS.display==='flex'||bodyCS.display==='inline-flex'){
+                        wrapper.style.flexDirection=bodyCS.flexDirection;
+                        wrapper.style.alignItems=bodyCS.alignItems;
+                        wrapper.style.justifyContent=bodyCS.justifyContent;
+                        wrapper.style.flexWrap=bodyCS.flexWrap;
                     }
-                    if (finalBg) wrapper.style.backgroundColor = finalBg;
-                    if (finalImg) wrapper.style.backgroundImage = finalImg;
-                    while (document.body.firstChild) wrapper.appendChild(document.body.firstChild);
+                    if(finalBg)wrapper.style.backgroundColor=finalBg;
+                    if(finalImg)wrapper.style.backgroundImage=finalImg;
+                    while(document.body.firstChild)wrapper.appendChild(document.body.firstChild);
                     document.body.appendChild(wrapper);
-                    document.body.style.setProperty('background', 'transparent', 'important');
-                    document.body.style.setProperty('margin', '0', 'important');
-                    document.body.style.setProperty('padding', '0', 'important');
+                    document.body.style.setProperty('background','transparent','important');
+                    document.body.style.setProperty('margin','0','important');
+                    document.body.style.setProperty('padding','0','important');
                 }
 
                 setTimeout(function() {
@@ -296,7 +302,7 @@ app.whenReady().then(async () => {
                 transparent: true,
                 frame: false,
                 resizable: false,
-                alwaysOnTop: true,
+                alwaysOnTop: config.alwaysOnTop !== false,
                 hasShadow: false,
                 skipTaskbar: true,
                 focusable: false,
@@ -318,6 +324,20 @@ app.whenReady().then(async () => {
             ctrlWindowLeft.show();
 
             positionControls();
+
+            // Re-measure after async content loads (e.g., weather APIs)
+            setTimeout(function() {
+                if (!mainWindow || mainWindow.isDestroyed()) return;
+                mainWindow.webContents.executeJavaScript('new Promise(function(r){setTimeout(function(){var x=0,y=0;document.querySelectorAll("*").forEach(function(e){var b=e.getBoundingClientRect();if(b.bottom>y)y=b.bottom;if(b.right>x)x=b.right});r([x,y])},50)})').then(function(res) {
+                    if (!mainWindow || mainWindow.isDestroyed()) return;
+                    var w = Math.max(config.width || 300, res[0]);
+                    var h = Math.max(config.height || 300, res[1]);
+                    mainWindow.setContentSize(w, h);
+                    if (ctrlWindowRight && !ctrlWindowRight.isDestroyed()) ctrlWindowRight.setSize(34, Math.max(h, 92));
+                    if (ctrlWindowLeft && !ctrlWindowLeft.isDestroyed()) ctrlWindowLeft.setSize(34, Math.max(h, 92));
+                    positionControls();
+                }).catch(function(){});
+            }, 2500);
         }).catch(function() {
             if (mainWindow && !mainWindow.isDestroyed()) {
                 mainWindow.setResizable(false);
@@ -329,11 +349,15 @@ app.whenReady().then(async () => {
     // Keep controls synced with widget position
     mainWindow.on('move', function() { positionControls(); });
 
-    // IPC: move both windows together
+    // IPC: move widget and controls together in one step
     ipcMain.on('widget-move', function(event, delta) {
         if (!mainWindow || mainWindow.isDestroyed()) return;
         var pos = mainWindow.getPosition();
-        mainWindow.setPosition(pos[0] + delta.dx, pos[1] + delta.dy);
+        var nx = pos[0] + delta.dx, ny = pos[1] + delta.dy;
+        mainWindow.setPosition(nx, ny);
+        var sz = mainWindow.getSize();
+        if (ctrlWindowRight && !ctrlWindowRight.isDestroyed()) ctrlWindowRight.setPosition(nx + sz[0] + 3, ny + 4);
+        if (ctrlWindowLeft && !ctrlWindowLeft.isDestroyed()) ctrlWindowLeft.setPosition(nx - 37, ny + 4);
     });
 
     // IPC: minimize widget (controls auto-hide as child of parent)

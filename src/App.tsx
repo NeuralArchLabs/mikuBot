@@ -1141,7 +1141,7 @@ export const App = () => {
             console.error(`[App] Connection Test Failed for ${providerToTest}:`, error);
             setConnectionStatus('error');
             if (providerToTest === 'ollama') {
-                await askAlert(`⚠️ Error Ollama (${state.config.ollamaUrl}): ${error instanceof Error ? error.message : String(error)}`);
+                await askAlert(t('common.ollama_error', { url: state.config.ollamaUrl, error: error instanceof Error ? error.message : String(error) }));
             }
         } finally {
             setLoadingModels(prev => ({ ...prev, [providerToTest]: false }));

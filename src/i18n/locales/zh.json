@@ -74,7 +74,19 @@
         "rewind_confirm": "将对话回溯到此点？所有后续消息都将丢失。",
         "config_import_success": "神经引擎：配置已成功导入并同步。",
         "no_folder_configured": "未为 \"{{target}}\" 配置文件夹。请在设置中选择一个。",
-        "subsystems_online": "神经子系统已上线！\n\n通过内部框架自动恢复连接。"
+        "subsystems_online": "神经子系统已上线！\n\n通过内部框架自动恢复连接。",
+        "untitled_session": "未命名会话",
+        "no_active_history": "未发现活动历史",
+        "delete_session_confirm": "删除此会话？",
+        "manage_sessions_desc": "管理、加载和分支对话状态",
+        "ollama_error": "⚠️ Ollama 错误 ({{url}}): {{error}}",
+        "invalid_session_file": "❌ 错误：该文件不包含有效的 Miku 会话。",
+        "user": "用户",
+        "not_configured": "未配置",
+        "internal_defaults": "内部默认值",
+        "no_links": "无链接",
+        "decrease": "减少",
+        "increase": "增加"
     },
     "tools": {
         "metrics_summary": "获取系统指标：{{platform}} [CPU: {{cpu}}%, RAM: {{ram}}]",
@@ -732,7 +744,11 @@
             "month_label": "月",
             "month_desc": "在哪个月份？",
             "weekday_label": "日 (周)",
-            "weekday_desc": "在一周中的哪一天？"
+            "weekday_desc": "在一周中的哪一天？",
+            "months": ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"],
+            "weekdays": ["日", "一", "二", "三", "四", "五", "六"],
+            "mon_fri": "周一至周五",
+            "sat_sun": "周六至周日"
         }
     },
     "titlebar": {
@@ -773,7 +789,9 @@
         "python_runtime": "运行引擎",
         "audio_engine": "音频引擎",
         "vosk_url": "https://alphacephei.com/vosk/",
-        "security_layer": "安全层"
+        "security_layer": "安全层",
+        "security_sandbox": "神经沙箱",
+        "python_runtime_internal": "Python 3.11 (内部)"
     },
     "skills": {
         "repository": "突触仓库",
@@ -796,7 +814,13 @@
         "app_password": "应用密码",
         "error_loading": "加载神经技能时出错。",
         "error_creating": "技能创建管道出错。",
-        "error_saving": "保存技能文件失败，请检查权限。"
+        "error_saving": "保存技能文件失败，请检查权限。",
+        "widget_manager_title": "Widget Manager",
+        "widget_manager_back": "Back to Skill",
+        "widget_launch": "Initialize Element",
+        "widget_delete_confirm": "A neural component will be permanently erased. Proceed?",
+        "widget_empty_title": "No Neural Widgets",
+        "widget_empty_desc": "Ask Miku to generate a new widget to get started."
     },
     "dialogs": {
         "backup_success": "✅ 备份已创建\n\n文件已保存至：\n{{path}}",

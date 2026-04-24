@@ -93,15 +93,26 @@ def main():
             files = [f for f in os.listdir(widgets_dir) if f.endswith('.html')]
             result = []
             for f in files:
-                filepath = os.path.join(widgets_dir, f)
-                try:
-                    with open(filepath, 'r', encoding='utf-8') as file:
-                        content = file.read()
-                        # Extract some basic config if we stored it as comments or just return name
-                        result.append(f.replace('.html', ''))
-                except:
-                    result.append(f.replace('.html', ''))
-                    
+                widget_id = f.replace('.html', '')
+                config_path = os.path.join(widgets_dir, f"{widget_id}.json")
+                description = "HTML Component"
+                width = 300
+                height = 300
+                if os.path.exists(config_path):
+                    try:
+                        with open(config_path, 'r', encoding='utf-8') as cf:
+                            cfg = json.load(cf)
+                            description = cfg.get('description', description)
+                            width = cfg.get('width', width)
+                            height = cfg.get('height', height)
+                    except:
+                        pass
+                result.append({
+                    "id": widget_id,
+                    "description": description,
+                    "width": width,
+                    "height": height
+                })
             print(json.dumps({"status": "success", "widgets": result}))
             return
             
@@ -170,12 +181,6 @@ def main():
             print(json.dumps({"status": "success", "message": f"Widget {widget_id} launched.", "pid": pid}))
             return
             
-        elif action == "open_manager":
-            cmd = [get_app_executable(), '--dynamic-widget-manager', widgets_dir]
-            pid = spawn_detached(cmd)
-            print(json.dumps({"status": "success", "message": "Widget Manager started.", "pid": pid}))
-            return
-
         elif action == "read_code":
             if not widget_id:
                 print(json.dumps({"error": "widget_id is required."}))

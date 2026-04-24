@@ -383,7 +383,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                 </div>
                                 <div>
                                     <h2 className="text-lg font-bold text-white tracking-wider">{t('sidebar.tooltips.sessions')}</h2>
-                                    <p className="text-xs text-slate-500">Manage, load and branch conversation states</p>
+                                    <p className="text-xs text-slate-500">{t('common.manage_sessions_desc')}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">

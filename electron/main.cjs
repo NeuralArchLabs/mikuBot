@@ -15,12 +15,6 @@ if (dwIndex !== -1 && process.argv.length > dwIndex + 1) {
     require(path.join(corePathDir, 'base/skills/dynamic_widgets/widget_runner.cjs'));
     return; // Halt main MikuCentral boot, just run the widget.
 }
-const dwManagerIndex = process.argv.indexOf('--dynamic-widget-manager');
-if (dwManagerIndex !== -1 && process.argv.length > dwManagerIndex + 1) {
-    process.argv[2] = process.argv[dwManagerIndex + 1]; // Pass widgets directory
-    require(path.join(corePathDir, 'base/skills/dynamic_widgets/manager_runner.cjs'));
-    return; // Halt main MikuCentral boot, just run the manager.
-}
 // ----------------------------------------------------
 
 // ── Local Production Server ──────────────────────────────────────────

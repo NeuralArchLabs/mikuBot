@@ -1,12 +1,15 @@
 {
     "name": "dynamic_widgets",
-    "description": "Comprehensive tool to create, launch, read, update, list, and delete Dynamic Widgets (independent frameless neural micro-applications). Also opens the Widgets Manager UI.",
+    "description": "Comprehensive tool to create, launch, read, update, list, and delete Dynamic Widgets (independent frameless neural micro-applications).",
+    "panel": "panel.html",
+    "panelLabel": "Open Widget Manager",
+    "panelIcon": "th-large",
     "parameters": {
         "type": "object",
         "properties": {
             "action": {
                 "type": "string",
-                "enum": ["create", "launch", "delete", "list", "open_manager", "read_code", "update_code"],
+                "enum": ["create", "launch", "delete", "list", "read_code", "update_code"],
                 "description": "The action to perform."
             },
             "widget_id": {

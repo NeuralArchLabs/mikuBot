@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { SessionMetadata } from '../../types';
 import { persistence } from '../../services';
 import { Icon } from '../common/Common';
+import { useTranslation } from 'react-i18next';
 
 interface SessionListProps {
     sessions: SessionMetadata[];
@@ -19,6 +20,7 @@ interface SessionListProps {
 }
 
 export const SessionList = React.memo(({ sessions, loading, currentSessionId, onSelect, onDelete, onNew, onExport, onImport, onExpand, isModal, askConfirm, hideList }: SessionListProps) => {
+    const { t } = useTranslation();
 
     return (
         <div className="flex flex-col h-full">
@@ -33,12 +35,12 @@ export const SessionList = React.memo(({ sessions, loading, currentSessionId, on
                                 title="Expand Sessions Viewer"
                             >
                                 <Icon name="history" className="text-[9px] opacity-30 group-hover:opacity-100 group-hover:scale-110" />
-                                Neural Sessions
+                                {t('sidebar.tooltips.sessions')}
                             </button>
                         ) : (
                             <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-[0.18em] flex items-center gap-1.5">
                                 <Icon name="history" className="text-[9px] opacity-30" />
-                                Neural Sessions
+                                {t('sidebar.tooltips.sessions')}
                             </label>
                         )}
                         {!hideList && (
@@ -72,7 +74,7 @@ export const SessionList = React.memo(({ sessions, loading, currentSessionId, on
                     </div>
                 ) : sessions.length === 0 ? (
                     <div className="text-center py-8 border border-dashed border-slate-800 rounded-xl bg-slate-900/30">
-                        <p className={`${isModal ? 'text-sm' : 'text-[10px]'} text-slate-600`}>No active history found</p>
+                        <p className={`${isModal ? 'text-sm' : 'text-[10px]'} text-slate-600`}>{t('common.no_active_history')}</p>
                     </div>
                 ) : (
                     <>
@@ -92,7 +94,7 @@ export const SessionList = React.memo(({ sessions, loading, currentSessionId, on
                                     >
                                         <div className="flex items-center gap-3 w-full">
                                             <div className={`w-2 h-2 rounded-full shrink-0 ${isActive ? 'bg-blue-400 shadow-glow' : 'bg-slate-700'}`} />
-                                            <div className="text-sm font-medium truncate flex-1">{ss.title || 'Untitled Session'}</div>
+                                            <div className="text-sm font-medium truncate flex-1">{ss.title || t('common.untitled_session')}</div>
                                         </div>
     
                                         <div className="flex items-center justify-between pl-5 w-full">
@@ -111,7 +113,7 @@ export const SessionList = React.memo(({ sessions, loading, currentSessionId, on
                                                 <button
                                                     onClick={async (e) => {
                                                         e.stopPropagation();
-                                                        if (await askConfirm('Delete this session?', 'left')) onDelete(ss.id);
+                                                        if (await askConfirm(t('common.delete_session_confirm'), 'left')) onDelete(ss.id);
                                                     }}
                                                     className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-all"
                                                     title="Delete session"
@@ -140,7 +142,7 @@ export const SessionList = React.memo(({ sessions, loading, currentSessionId, on
                                     {/* Title - Dynamic Padding on Hover */}
                                     <div className="min-w-0 pr-0 group-hover:pr-[54px] transition-all duration-300">
                                         <div className="text-xs font-medium truncate">
-                                            {ss.title || 'Untitled Session'}
+                                            {ss.title || t('common.untitled_session')}
                                         </div>
                                         <div className="session-metadata text-[9px] text-slate-500 font-mono truncate mt-0.5">
                                             {ss.messageCount} msgs • {new Date(ss.lastModified).toLocaleDateString()}
@@ -159,7 +161,7 @@ export const SessionList = React.memo(({ sessions, loading, currentSessionId, on
                                         <button
                                             onClick={async (e) => {
                                                 e.stopPropagation();
-                                                if (await askConfirm('Delete this session?', 'left')) onDelete(ss.id);
+                                                if (await askConfirm(t('common.delete_session_confirm'), 'left')) onDelete(ss.id);
                                             }}
                                             className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-all"
                                             title="Delete session"

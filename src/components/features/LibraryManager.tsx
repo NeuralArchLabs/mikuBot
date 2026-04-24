@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Icon, MarkdownRenderer } from '../common/Common';
 import { useTranslation } from 'react-i18next';
 import { AppConfig } from '../../types';
@@ -192,7 +193,7 @@ export const LibraryManager = ({
 
     if (!isOpen) return null;
 
-    return (
+    return createPortal(
         <div className={`fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-8 transition-opacity duration-300 border-none ${isClosing ? 'opacity-0' : 'opacity-100'}`}>
             <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onClick={handleClose} />
             <div className={`relative bg-slate-900 border border-slate-900 hover:border-pink-500/50 transition-all duration-700 w-full max-w-6xl h-[85vh] shadow-[0_60px_150px_-30px_rgba(0,0,0,1)] hover:shadow-[0_0_50px_-10px_rgba(236,72,153,0.3)] flex flex-col overflow-hidden rounded-[2.5rem] ${isClosing ? 'animate-macos-shrink-bottom' : 'animate-macos-expand-bottom'}`}>
@@ -444,6 +445,7 @@ export const LibraryManager = ({
                     </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };

@@ -76,7 +76,26 @@
         "no_folder_configured": "No folder configured for \"{{target}}\". Select one in Settings.",
         "subsystems_online": "Neural Subsystems Online!\n\nLinkages restored automatically via internal framework.",
         "aborted_execution": "Aborted Execution",
-        "denied_execution": "Execution Denied"
+        "denied_execution": "Execution Denied",
+        "untitled_session": "Untitled Session",
+        "no_active_history": "No active history found",
+        "delete_session_confirm": "Delete this session?",
+        "manage_sessions_desc": "Manage, load and branch conversation states",
+        "ollama_error": "⚠️ Ollama Error ({{url}}): {{error}}",
+        "invalid_session_file": "❌ Error: File does not contain a valid Miku session.",
+        "user": "User",
+        "not_configured": "Not configured",
+        "internal_defaults": "Internal Defaults",
+        "no_links": "No Links",
+        "decrease": "Decrease",
+        "increase": "Increase"
+    },
+    "dialogs": {
+        "setup_complete": "Neural Engine: Setup complete! Source linkages anchored to {{path}}.",
+        "subsystems_online": "Neural Subsystems Online!\n\nLinkages restored automatically via internal framework.",
+        "voice_model_downloaded": "✅ Voice model for {{lang}} downloaded successfully.",
+        "voice_model_error": "❌ Error downloading model: {{error}}",
+        "voice_model_delete_confirm": "Are you sure you want to delete the voice model \"{{name}}\"?"
     },
     "tools": {
         "metrics_summary": "System metrics obtained: {{platform}} [CPU: {{cpu}}%, RAM: {{ram}}]",
@@ -614,11 +633,15 @@
     "scheduler": {
         "title": "Neural Tasks",
         "subtitle": "Automate repetitive tasks and system maintenance",
-        "add_btn": "ADD NEW TASK",
+        "add_btn": "Add New Task",
         "save_btn": "Save Task",
         "cancel_btn": "Cancel",
         "save_changes": "Save Changes",
         "create_task": "Create Task",
+        "cron": {
+            "advanced": "Advanced Mode (Raw)",
+            "visual": "Visual Mode"
+        },
         "fields": {
             "name": "Task Name",
             "name_placeholder": "e.g., Morning Briefing",
@@ -718,28 +741,32 @@
         },
         "type_desc": {
             "interval_title": "Interval",
-            "interval_desc": "Configure the task to repeat continuously every certain number of minutes. Ideal for recurrent checks and monitoring (e.g. every 30 mins).",
-            "cron_title": "Cron Schedule",
-            "cron_desc": "5-parameter time format:",
-            "once_title": "Once",
-            "once_desc": "Configure the task to execute uniquely at an exact temporal instance (specific Date/Time). It will not repeat afterwards.",
+            "interval_desc": "Configure the task to repeat continuously every specific number of minutes. Ideal for periodic checks and monitoring (e.g., every 30 minutes).",
+            "cron_title": "Cron Scheduling",
+            "cron_desc": "5 time parameters format:",
+            "once_title": "One Time",
+            "once_desc": "Configure the task to execute only once at an exact point in time (specific Date/Time). It will not repeat afterwards.",
             "minutes": "Minutes"
-        },
-        "alerts": {
-            "telegram_incomplete_title": "⚠️ [Telegram Incomplete]",
-            "telegram_incomplete_desc": "To use Telegram as a delivery channel for your scheduled tasks, you must configure your 'Bot Token' and 'Chat ID' in the Core System tab of the mikuCentral settings."
         },
         "cron_builder": {
             "min_label": "Minute",
             "min_desc": "At what minute?",
             "hor_label": "Hour",
-            "hor_desc": "Hour of the day?",
+            "hor_desc": "At what hour of the day?",
             "day_label": "Day (Month)",
-            "day_desc": "What day of the month?",
+            "day_desc": "On which day of the month?",
             "month_label": "Month",
             "month_desc": "In which month?",
             "weekday_label": "Day (Week)",
-            "weekday_desc": "Which day of the week?"
+            "weekday_desc": "On which day of the week?",
+            "months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+            "weekdays": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+            "mon_fri": "Mon-Fri",
+            "sat_sun": "Sat-Sun"
+        },
+        "alerts": {
+            "telegram_incomplete_title": "⚠️ [Telegram Incomplete]",
+            "telegram_incomplete_desc": "To use Telegram as a delivery channel for your scheduled tasks, you must configure your 'Bot Token' and 'Chat ID' in the Core System tab of the mikuCentral settings."
         }
     },
     "titlebar": {
@@ -780,7 +807,9 @@
         "python_runtime": "Execution Engine",
         "audio_engine": "Audio Engine",
         "vosk_url": "https://alphacephei.com/vosk/",
-        "security_layer": "Security Layer"
+        "security_layer": "Security Layer",
+        "security_sandbox": "Neural Sandbox",
+        "python_runtime_internal": "Python 3.11 (Internal)"
     },
     "skills": {
         "repository": "Synaptic Repository",
@@ -803,7 +832,13 @@
         "app_password": "App Password",
         "error_loading": "Error loading neural skills.",
         "error_creating": "Error in skill creation pipeline.",
-        "error_saving": "Failed to save skill files, check permissions."
+        "error_saving": "Failed to save skill files, check permissions.",
+        "widget_manager_title": "Widget Manager",
+        "widget_manager_back": "Back to Skill",
+        "widget_launch": "Initialize Element",
+        "widget_delete_confirm": "A neural component will be permanently erased. Proceed?",
+        "widget_empty_title": "No Neural Widgets",
+        "widget_empty_desc": "Ask Miku to generate a new widget to get started."
     },
     "dialogs": {
         "backup_success": "✅ Backup Created\n\nThe file has been saved at:\n{{path}}",

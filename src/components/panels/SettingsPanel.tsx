@@ -200,12 +200,12 @@ export const SettingsPanel = ({
     const currentProvider = PROVIDERS[config.provider];
 
     return (
-        <div className={`settings-panel-content theme-${config.theme} flex-1 ${settingsTab === 'skills' ? 'lg:overflow-hidden pb-2' : 'overflow-y-auto pb-6'} p-3 md:p-6 pt-4 md:pt-6 custom-scrollbar relative`} onScroll={handleScroll}>
+        <div className={`settings-panel-content theme-${config.theme} flex-1 ${settingsTab === 'skills' ? 'flex flex-col lg:overflow-hidden pb-2' : 'overflow-y-auto pb-6'} p-3 md:p-6 pt-4 md:pt-6 custom-scrollbar relative`} onScroll={handleScroll}>
             {/* Subdued ambient glow background */}
             <div className="absolute top-0 left-1/4 w-1/2 h-96 bg-[var(--primary-color)] opacity-[0.07] blur-[120px] pointer-events-none rounded-full transform-gpu" />
             <div className="absolute bottom-0 right-1/4 w-1/3 h-64 bg-purple-600/05 blur-[100px] pointer-events-none rounded-full transform-gpu" />
 
-            <div className={`mx-auto w-full relative z-10 transition-all duration-700 ease-in-out ${settingsTab === 'skills' ? 'max-w-7xl px-2 lg:px-4 space-y-0' : 'max-w-4xl space-y-6'}`}>
+            <div className={`mx-auto w-full relative z-10 transition-all duration-700 ease-in-out ${settingsTab === 'skills' ? 'flex-1 min-h-0 flex flex-col max-w-7xl px-2 lg:px-4' : 'max-w-4xl space-y-6'}`}>
 
                 {/* ── Shared Macro-Tab Header ─────────────────────────── */}
                 <div className={`flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 relative transition-all duration-500 ease-in-out`}>
@@ -310,7 +310,7 @@ export const SettingsPanel = ({
                 {/* ── Skills Tab ───────────────────────────────────── */}
                 {
                     settingsTab === 'skills' && (
-                        <div className="animate-in fade-in zoom-in-95 duration-200 flex flex-col h-auto lg:h-[calc(100vh-145px)]">
+                        <div className="animate-in fade-in zoom-in-95 duration-200 flex flex-col flex-1 min-h-0">
                             <SkillsPanel
                                 config={config}
                                 toolsFiles={toolsFiles}

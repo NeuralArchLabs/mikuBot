@@ -197,9 +197,9 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                 if (internalRes.ok && internalRes.files) {
                     const templateContent = internalRes.files;
                     const variables: PromptVariables = {
-                        LANGUAGE: i18n.language === 'es' ? 'Español' : i18n.language === 'zh' ? '中文' : 'English',
+                        LANGUAGE: i18n.language === 'es' ? t('common.spanish') : i18n.language === 'zh' ? t('common.chinese') : t('common.english'),
                         TONE: userTone, VERBOSITY: verbosity, HUMOR_LEVEL: humorLevel,
-                        USER_NAME: userName || (i18n.language === 'es' ? 'Usuario' : 'User'), ASSISTANT_ALIAS: assistantAlias || 'mikuBot',
+                        USER_NAME: userName || t('common.user'), ASSISTANT_ALIAS: assistantAlias || 'mikuBot',
                         TECHNICAL_SKILL: technicalLevel, CURRENT_GOAL: currentGoal, AUTONOMY_MODE: autonomyMode,
                         USER_CONTEXT_DUMP: formattedContext,
                         CUSTOM_RULES: formattedRules,
