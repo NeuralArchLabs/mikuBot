@@ -844,227 +844,204 @@ export const ChatArea = ({
 
     const isAgentActive = !['idle'].includes(agentStatus.phase) && isLoading && isExecutingThisSession;
     const lastMessageIdRef = React.useRef<string | null>(null);
-    const [isAnchoring, setIsAnchoring] = React.useState(false);
-    const lockedScrollTopRef = React.useRef<number | null>(null);
 
-    // 🎯 LOCK TARGET: When set, syncScroll targets this element instead of the whole message.
-    // Used after tool use to lock on the narrative block rather than the message wrapper.
-    const lockTargetRef = React.useRef<string | null>(null);
+    // ─────────────────────────────────────────────────────────────────────────
+    // 🎯 UNIFIED SCROLL STATE MACHINE
+    // All scroll control lives here as refs — never as useState — to eliminate
+    // async re-render races between competing useEffects.
+    //
+    //  Modes:
+    //   'idle'        — Not streaming. Naive scroll-to-bottom on new messages.
+    //   'tool_active' — A tool_call block is the last block. Follow to bottom freely.
+    //   'locking'     — Narrative appeared after tools (or stream started). Soft-brake:
+    //                   follow bottom but stop once the message top hits the viewport.
+    //   'locked'      — Message top is pinned at viewport top. Hold position on layout shifts.
+    //
+    //  Human interaction (wheel/touch/mousedown) sets mode → 'idle' immediately (sync).
+    // ─────────────────────────────────────────────────────────────────────────
+    type ScrollMode = 'idle' | 'tool_active' | 'locking' | 'locked';
+    const scrollModeRef = React.useRef<ScrollMode>('idle');
+    // The element ID we want to pin at the top of the viewport
+    const lockTargetRef   = React.useRef<string | null>(null);
+    // Track last message to detect turn changes
+    const lastBlocksRef       = React.useRef<any[]>([]);
+    const lastBlockCountRef   = React.useRef(0);
 
-    // 🔧 DYNAMIC BLOCK-AWARE LOCKING: Track blocks to reset lock on new text after tools
-    const lastBlocksRef = React.useRef<any[]>([]);
-    const lastBlockCountRef = React.useRef(0);
-    const lastBlockTypeRef = React.useRef<string | null>(null);
-
-    // [Performance Fix] Scroll Logic — Naive auto-scroll for non-streaming state changes.
-    // GUARD: Skip during streaming or when lock is active — the lock engine handles those cases.
-    useEffect(() => {
-        if (!scrollRef.current || messages.length === 0) return;
-        const lastMsg = messages[messages.length - 1];
-        if (isAnchoring || lastMsg?.isStreaming) return;
-        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }, [messages, isLoading, pendingApproval, agentStatus.phase, scrollRef]);
-
-    // 🖱️ HUMAN INTERACTION SENSORS: Only break the lock on PHYSICAL input
+    // ── HUMAN INTERACTION SENSORS ─────────────────────────────────────────────
+    // Must be set up once and reference the container via ref (not closure over state)
     React.useEffect(() => {
         const container = scrollRef.current;
-        if (!container || messages.length === 0) return;
+        if (!container) return;
 
         const breakLock = () => {
-            const lastMsg = messages[messages.length - 1];
-            // 🛡️ INDESTRUCTIBLE LOCK: Only allow manual release AFTER the stream ends
-            if (isAnchoring && lastMsg && !lastMsg.isStreaming) {
-                setIsAnchoring(false);
-                lockedScrollTopRef.current = null;
+            // Only release during active scroll control — never clobber idle
+            if (scrollModeRef.current === 'locking' || scrollModeRef.current === 'locked') {
+                scrollModeRef.current = 'idle';
+                lockTargetRef.current = null;
             }
         };
 
-        // Listen for actual human intent, ignoring programmatic scrolls
-        container.addEventListener('wheel', breakLock, { passive: true });
+        container.addEventListener('wheel',     breakLock, { passive: true });
         container.addEventListener('touchmove', breakLock, { passive: true });
         container.addEventListener('mousedown', breakLock, { passive: true });
-
+        container.addEventListener('keydown',   breakLock, { passive: true });
         return () => {
-            container.removeEventListener('wheel', breakLock);
+            container.removeEventListener('wheel',     breakLock);
             container.removeEventListener('touchmove', breakLock);
             container.removeEventListener('mousedown', breakLock);
+            container.removeEventListener('keydown',   breakLock);
         };
-    }, [isAnchoring, messages]);
+    }, [sessionId]); // re-bind when the container div is recreated
 
-    // [SCROLL ENGINE] Physical Interaction Lock for Streaming
+    // ── MAIN SCROLL ENGINE ────────────────────────────────────────────────────
     React.useEffect(() => {
         if (!scrollRef.current || messages.length === 0) return;
 
-        const lastMsg = messages[messages.length - 1];
-        const scrollContainer = scrollRef.current;
-        const LOCK_MARGIN = 28; // Standard spacing for icon/header visibility
+        const container    = scrollRef.current;
+        const lastMsg      = messages[messages.length - 1];
+        const currentBlocks = lastMsg.blocks || [];
+        const LOCK_MARGIN  = 28; // px gap between viewport top and locked element
 
-        // 🔄 AUTO-UNLOCK ON NEW TURN: Release lock if it's a completely new message
-        if (isAnchoring && lastMessageIdRef.current && lastMessageIdRef.current !== lastMsg.id) {
-            setIsAnchoring(false);
-            lockedScrollTopRef.current = null;
-            lockTargetRef.current = null;
+        // ── 1. Turn-change detection: always reset on new message ──────────────
+        if (lastMessageIdRef.current && lastMessageIdRef.current !== lastMsg.id) {
+            // New turn arrived — reset state machine and scroll to bottom
+            scrollModeRef.current    = 'idle';
+            lockTargetRef.current    = null;
+            lastBlocksRef.current    = [];
+            lastBlockCountRef.current = 0;
+            container.scrollTop      = container.scrollHeight;
         }
-
         lastMessageIdRef.current = lastMsg.id;
 
-        // --- PHASE 1: Detection & Precision Positioning ---
-        const syncScroll = () => {
-            if (!scrollRef.current) return;
-            const container = scrollRef.current;
-            const lastMsg = messages[messages.length - 1];
-            if (!lastMsg) return;
+        // ── 2. Block-state transition logic (determines scroll mode) ───────────
+        if (lastMsg.isStreaming) {
+            const prevBlocks    = lastBlocksRef.current;
+            const prevBlockCount = lastBlockCountRef.current;
+            const prevBlockLast  = prevBlocks[prevBlocks.length - 1];
 
-            // 🎯 Use lock target if set (for block-aware locking after tools), otherwise use message element
-            const targetEl = lockTargetRef.current
-                ? (document.getElementById(lockTargetRef.current) || document.getElementById(`msg-${lastMsg.id}`))
-                : document.getElementById(`msg-${lastMsg.id}`);
-            if (!targetEl) return;
+            const narrativeTypes = new Set(['answer', 'thought', 'text']);
+            const lastBlock      = currentBlocks[currentBlocks.length - 1];
+            const isToolLast     = lastBlock?.type === 'tool_call';
+            const isNarrativeLast = lastBlock && narrativeTypes.has(lastBlock.type);
 
-            const bannerEl = document.querySelector('.folder-permission-banner');
-            const bannerHeight = bannerEl ? (bannerEl as HTMLElement).offsetHeight : 0;
-            const containerRect = container.getBoundingClientRect();
-            const boundaryTop = containerRect.top + bannerHeight + LOCK_MARGIN;
-
-            // 🎯 BOUNDARY-AWARE CALCULATION: idealScrollTop places the target at boundaryTop
-            const targetRect = targetEl.getBoundingClientRect();
-            const idealScrollTop = container.scrollTop + (targetRect.top - boundaryTop);
-
-            if (isAnchoring) {
-                // 🔒 RECALCULATE FROM DOM: Handles layout shifts (status bar, resize) automatically.
-                // No stored absolute value — we derive the correct position every tick.
-                container.scrollTop = idealScrollTop;
-            } else if (lastMsg.isStreaming) {
-                const blocks = lastMsg.blocks || [];
-                const lastBlock = blocks[blocks.length - 1];
-                const isToolActive = lastBlock?.type === 'tool_call';
-
-                if (isToolActive) {
-                    // 🔧 TOOL MODE: Follow freely to bottom so user sees tool execution
-                    const maxBottom = container.scrollHeight - container.clientHeight;
-                    container.scrollTop = maxBottom;
-                } else {
-                    // 🚀 SOFT-BRAKE FOLLOW: Follow bottom, but never past the ideal lock point
-                    const maxBottom = container.scrollHeight - container.clientHeight;
-                    const nextScroll = Math.min(maxBottom, idealScrollTop);
-
-                    container.scrollTop = nextScroll;
-
-                    // Permanent Lock Engagement: Once we hit the ideal point, cement it
-                    if (nextScroll >= idealScrollTop - 1) {
-                        setIsAnchoring(true);
-                    }
+            // New block added this tick
+            if (currentBlocks.length > prevBlockCount) {
+                if (isToolLast) {
+                    // Tool just appeared → follow freely to bottom
+                    scrollModeRef.current = 'tool_active';
+                    lockTargetRef.current = null;
+                } else if (prevBlockLast?.type === 'tool_call' && isNarrativeLast) {
+                    // Narrative appeared right after a tool → start locking on this block
+                    scrollModeRef.current = 'locking';
+                    lockTargetRef.current = `block-${lastMsg.id}-${currentBlocks.length - 1}`;
+                } else if (scrollModeRef.current === 'idle' && isNarrativeLast) {
+                    // First narrative block, no tools — start locking on the message itself
+                    scrollModeRef.current = 'locking';
+                    lockTargetRef.current = `msg-${lastMsg.id}`;
+                }
+            } else if (currentBlocks.length === prevBlockCount) {
+                // No new block, content just grew
+                if (isToolLast && scrollModeRef.current !== 'tool_active') {
+                    scrollModeRef.current = 'tool_active';
+                    lockTargetRef.current = null;
                 }
             }
+
+            // Save for next render
+            lastBlocksRef.current    = currentBlocks;
+            lastBlockCountRef.current = currentBlocks.length;
+        } else {
+            // Stream ended — automatically release the lock since layout shifts have stopped
+            scrollModeRef.current    = 'idle';
+            lockTargetRef.current    = null;
+            lastBlocksRef.current    = [];
+            lastBlockCountRef.current = 0;
+
+            const { scrollTop, scrollHeight, clientHeight } = container;
+            const isNearBottom = scrollHeight - scrollTop - clientHeight < 200;
+            const isUserMsg    = lastMsg.role === 'user';
+            
+            // Only auto-scroll to bottom if already near the bottom or if the user just sent a message
+            if (isNearBottom || isUserMsg) {
+                container.scrollTop = container.scrollHeight;
+            }
+            return; // No RAFLoop needed for idle
+        }
+
+        // ── 3. RAFLoop: keeps scroll position correct every frame ──────────────
+        const getIdealScrollTop = (): number | null => {
+            const targetId = lockTargetRef.current || `msg-${lastMsg.id}`;
+            const targetEl = document.getElementById(targetId)
+                          || document.getElementById(`msg-${lastMsg.id}`);
+            if (!targetEl) return null;
+
+            const bannerEl   = document.querySelector('.folder-permission-banner');
+            const bannerH    = bannerEl ? (bannerEl as HTMLElement).offsetHeight : 0;
+            const contRect   = container.getBoundingClientRect();
+            const boundaryTop = contRect.top + bannerH + LOCK_MARGIN;
+            const targetRect  = targetEl.getBoundingClientRect();
+            return container.scrollTop + (targetRect.top - boundaryTop);
         };
 
-        if (lastMsg.isStreaming || isAnchoring) {
-            syncScroll();
-            // 🔄 CONTINUOUS LOOP: Keeps correcting during CSS transitions (status bar 0.4s),
-            // layout shifts, and DOM growth. Throttled to ~10fps when not streaming to save CPU.
-            let active = true;
-            let lastTick = 0;
-            const tick = (time: number) => {
-                if (!active) return;
-                const interval = lastMsg.isStreaming ? 0 : 100; // Full speed during streaming, 10fps when locked
-                if (time - lastTick >= interval) {
-                    syncScroll();
-                    lastTick = time;
+        let active   = true;
+        let lastTick = 0;
+
+        const tick = (time: number) => {
+            if (!active || !scrollRef.current) return;
+
+            const mode = scrollModeRef.current;
+
+            // Calculate frame interval: full speed during streaming, 10fps when locked-idle
+            const isStreaming = lastMsg.isStreaming;
+            const interval    = (mode === 'locked' && !isStreaming) ? 100 : 0;
+
+            if (time - lastTick >= interval) {
+                lastTick = time;
+
+                if (mode === 'tool_active') {
+                    // Follow bottom freely
+                    container.scrollTop = container.scrollHeight - container.clientHeight;
+
+                } else if (mode === 'locking') {
+                    const ideal = getIdealScrollTop();
+                    if (ideal === null) {
+                        // Target not in DOM yet — follow bottom until it is
+                        container.scrollTop = container.scrollHeight - container.clientHeight;
+                    } else {
+                        const maxBottom = container.scrollHeight - container.clientHeight;
+                        const next      = Math.min(maxBottom, ideal);
+                        container.scrollTop = next;
+                        // Engage hard lock once we've reached the ideal position
+                        if (next >= ideal - 1) {
+                            scrollModeRef.current = 'locked';
+                        }
+                    }
+
+                } else if (mode === 'locked') {
+                    // Hard lock: correct layout-shift drift
+                    const ideal = getIdealScrollTop();
+                    if (ideal !== null) {
+                        container.scrollTop = ideal;
+                    }
+                    // If stream ended and mode is still locked, keep running at 10fps
+                    // until the user scrolls (breakLock → 'idle')
+                } else {
+                    // idle: nothing to do, exit loop
+                    active = false;
+                    return;
                 }
-                requestAnimationFrame(tick);
-            };
+            }
+            requestAnimationFrame(tick);
+        };
+
+        // Only start loop if we're in an active mode
+        const mode = scrollModeRef.current;
+        if (mode === 'tool_active' || mode === 'locking' || mode === 'locked') {
             const frameId = requestAnimationFrame(tick);
             return () => { active = false; cancelAnimationFrame(frameId); };
         }
 
-        // --- PHASE 3: Standard Auto-scroll (Fallback for User/System) ---
-        const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
-        const isNearBottom = scrollHeight - scrollTop - clientHeight < 200;
-        const isUserMsg = lastMsg.role === 'user';
-
-        if ((isNearBottom || isUserMsg) && !lastMsg.isStreaming) {
-            const timer = setTimeout(() => {
-                if (scrollRef.current) {
-                    scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-                }
-            }, 100);
-            return () => clearTimeout(timer);
-        }
-    }, [messages, agentStatus.phase, pendingApproval, isAnchoring, isAgentActive]);
-
-    // 🔧 DYNAMIC BLOCK-AWARE LOCKING: Detect block transitions during streaming
-    // - When tool_call blocks appear: release lock so user can see tools
-    // - When narrative appears after tools: set lock target, let syncScroll handle lock engagement
-    React.useEffect(() => {
-        if (messages.length === 0 || !scrollRef.current) return;
-
-        const lastMsg = messages[messages.length - 1];
-        const currentBlocks = lastMsg.blocks || [];
-
-        // Skip if no blocks or not an assistant message
-        if (currentBlocks.length === 0 || lastMsg.role !== 'assistant') {
-            lastBlocksRef.current = currentBlocks;
-            lastBlockCountRef.current = currentBlocks.length;
-            return;
-        }
-
-        const prevBlocks = lastBlocksRef.current;
-        const prevBlockCount = lastBlockCountRef.current;
-
-        // Update refs for next comparison
-        lastBlocksRef.current = currentBlocks;
-        lastBlockCountRef.current = currentBlocks.length;
-
-        // 🔧 DETECT: New block added
-        if (currentBlocks.length > prevBlockCount) {
-            const newBlockIndex = currentBlocks.length - 1;
-            const newBlock = currentBlocks[newBlockIndex];
-            const prevLastBlockType = prevBlocks.length > 0 ? prevBlocks[prevBlocks.length - 1]?.type : null;
-
-            const narrativeTypes = ['answer', 'thought', 'text'];
-
-            if (newBlock.type === 'tool_call' && isAnchoring) {
-                // 🔧 TOOL APPEARED: Release lock so user can see tool execution
-                setIsAnchoring(false);
-                lockedScrollTopRef.current = null;
-                lockTargetRef.current = null;
-            }
-
-            if (prevLastBlockType === 'tool_call' && narrativeTypes.includes(newBlock.type)) {
-                // 🔧 NARRATIVE AFTER TOOLS: Release lock, set target to the new narrative block.
-                // syncScroll will follow it and engage lock naturally when it reaches the viewport top.
-                setIsAnchoring(false);
-                lockedScrollTopRef.current = null;
-                lockTargetRef.current = `block-${lastMsg.id}-${newBlockIndex}`;
-            }
-
-            lastBlockTypeRef.current = newBlock.type;
-        }
-
-        // 🔧 DETECT: Content growth in last narrative block after tool_call
-        if (currentBlocks.length === prevBlockCount && prevBlocks.length > 0 && !lockTargetRef.current) {
-            const lastBlock = currentBlocks[currentBlocks.length - 1];
-            const prevLastBlock = prevBlocks[prevBlocks.length - 1];
-
-            const narrativeTypes = ['answer', 'thought', 'text'];
-            const isNarrative = narrativeTypes.includes(lastBlock.type);
-            const prevWasTool = prevBlocks.some(b => b.type === 'tool_call');
-
-            if (isNarrative && prevWasTool && lastBlock.content !== prevLastBlock.content) {
-                const hasSeenThisNarrativeBefore = prevBlocks.some(
-                    (b, i) => i > 0 && prevBlocks[i - 1]?.type === 'tool_call' &&
-                    narrativeTypes.includes(b.type)
-                );
-
-                if (!hasSeenThisNarrativeBefore) {
-                    // Set lock target without engaging lock — syncScroll handles engagement
-                    setIsAnchoring(false);
-                    lockedScrollTopRef.current = null;
-                    lockTargetRef.current = `block-${lastMsg.id}-${currentBlocks.length - 1}`;
-                }
-            }
-        }
-    }, [messages, isAnchoring]);
+    }, [messages, agentStatus.phase, pendingApproval, isAgentActive, scrollRef]);
 
     return (
         <div className="flex-1 flex flex-col h-full relative contain-layout">
