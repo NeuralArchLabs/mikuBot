@@ -103,7 +103,7 @@ export const CollapsibleMessage: React.FC<CollapsibleMessageProps> = ({ message,
         <div id={`msg-${message.id}`} className={`flex ${justifyClass} my-2 w-full`}>
             <div
                 onClick={() => setIsCollapsed(false)}
-                className={`cursor-pointer group flex items-center justify-between gap-3 px-4 py-2 rounded-xl transition-all duration-300 border border-transparent w-full max-w-[350px] min-h-[40px] shadow-lg ${hasCustomBg ? 'backdrop-blur-xl shadow-black/80' : 'shadow-black/40'} ${bgClass}`}
+                className={`cursor-pointer group flex items-center justify-between gap-3 px-4 py-2 rounded-xl transition-all duration-300 border border-transparent w-full max-w-[350px] min-h-[40px] shadow-lg will-change-transform ${hasCustomBg ? 'shadow-black/80' : 'shadow-black/40'} ${bgClass}`}
             >
                 <div className="flex items-center gap-3 overflow-hidden">
                     <div className={`text-[10px] font-bold uppercase tracking-widest flex-shrink-0 ${iconColorClass}`}>

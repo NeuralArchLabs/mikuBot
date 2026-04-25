@@ -1237,31 +1237,16 @@ export const ChatArea = ({
                                         <MarkdownRenderer content={msg.text} />
                                     </div>
                                 ) : (
-                                    <div className={`relative w-auto max-w-[95%] lg:max-w-[90%] p-5 sm:px-8 sm:py-6 break-words message-pop-in rounded-[32px] ${msg.role === 'user' ? 'rounded-br-none' : 'rounded-bl-none lg:ml-6'}`}>
-                                        
-                                        {/* --- Layer 1: Shadow Isolation --- */}
-                                        <div className={`absolute inset-0 z-0 rounded-[inherit] pointer-events-none ${msg.role === 'user' ? 'shadow-[0_15px_35px_-10px_rgba(0,0,0,0.6)]' : 'shadow-[0_10px_25px_-3px_rgba(0,0,0,0.9)]'}`} />
+                                    <div className={`relative w-auto max-w-[95%] lg:max-w-[90%] break-words message-pop-in rounded-[32px] ${
+                                        msg.role === 'user' ? 'rounded-br-none' : 'rounded-bl-none lg:ml-6'
+                                    }`}>
 
-                                        {/* --- Layer 2: Glass Backdrop --- */}
-                                        <div className={`absolute inset-0 z-0 rounded-[inherit] pointer-events-none backdrop-blur-md ${
-                                            msg.role === 'user' 
-                                                ? 'bg-blue-900/75' 
-                                                : (config.theme === 'cloud' 
-                                                    ? 'bg-slate-700/90 shadow-[inset_0_0_20px_rgba(255,255,255,0.02)]' 
-                                                    : (['cyberpunk', 'forest'].includes(config.theme) 
-                                                        ? 'bg-[var(--surface-color)] shadow-[inset_0_0_20px_rgba(255,255,255,0.02)]' 
-                                                        : 'bg-slate-800/90'))
-                                        }`} />
-
-                                        {/* --- Layer 3: Interactive Border --- */}
-                                        <div className={`absolute inset-0 z-0 rounded-[inherit] pointer-events-none border border-transparent transition-colors duration-300 ${msg.role === 'user' ? 'group-hover:border-blue-500/30' : 'group-hover:border-[var(--primary-color)]/30'}`} />
-
-                                        {/* --- Action Bar --- */}
-                                        <div className={`absolute -top-3 ${msg.role === 'user' ? 'right-4' : 'left-4'} flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50`}>
+                                        {/* --- Action Bar (fuera del stacking context del globo) --- */}
+                                        <div className={`absolute -top-3 ${msg.role === 'user' ? 'right-4' : 'left-4'} flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 pointer-events-none group-hover:pointer-events-auto`}>
                                             {msg.role === 'user' && (
                                                 <button
                                                     onClick={() => onRewind(index)}
-                                                    className="bg-slate-800/80 backdrop-blur-sm border border-slate-700/50 text-amber-400 hover:text-amber-300 px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-md"
+                                                    className="bg-slate-900 border border-slate-700/80 text-amber-400 hover:text-amber-300 px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-md"
                                                     title={t('chat.actions.rewind')}
                                                 >
                                                     <Icon name="history" /> {t('chat.actions.rewind')}
@@ -1276,18 +1261,33 @@ export const ChatArea = ({
                                                         btn.innerHTML = t('chat.actions.copied');
                                                         setTimeout(() => btn.innerHTML = origText, 2000);
                                                     }}
-                                                    className="bg-slate-800/80 backdrop-blur-sm border border-slate-700/50 text-blue-400 hover:text-blue-300 px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-md"
+                                                    className="bg-slate-900 border border-slate-700/80 text-blue-400 hover:text-blue-300 px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-md"
                                                 >
                                                     <Icon name="copy" /> {t('chat.actions.copy')}
                                                 </button>
                                             )}
                                         </div>
 
-                                        {/* --- Layer 4: Content --- */}
-                                        <div className={`relative z-10 h-full flex flex-col ${
+                                        {/* --- Fondo del globo: SIN backdrop-blur en ningún caso (causa artefactos de compositing entre globos adyacentes) ---
+                                             La transparencia se logra con el alpha del color, no con blur.
+                                        --- */}
+                                        <div className={`absolute inset-0 rounded-[inherit] pointer-events-none transition-[border-color] duration-300 ${
+                                            msg.role === 'user'
+                                                ? 'bg-blue-950/85 shadow-[0_15px_35px_-10px_rgba(0,0,0,0.55)] border border-blue-700/50 group-hover:border-blue-500/60'
+                                                : (config.theme === 'cloud'
+                                                    ? 'bg-slate-700/90 shadow-[0_10px_25px_-3px_rgba(0,0,0,0.6)] border border-slate-500/40 group-hover:border-slate-400/50'
+                                                    : (['cyberpunk', 'forest'].includes(config.theme)
+                                                        ? 'bg-[var(--surface-color)] shadow-[0_10px_25px_-3px_rgba(0,0,0,0.75)] border border-[var(--border-color)]/50 group-hover:border-[var(--primary-color)]/45'
+                                                        : 'bg-slate-800/90 shadow-[0_10px_25px_-3px_rgba(0,0,0,0.7)] border border-slate-700/45 group-hover:border-[var(--primary-color)]/45'))
+                                        }`} />
+
+                                        {/* --- Contenido (siempre encima del fondo) --- */}
+                                        <div className={`relative p-5 sm:px-8 sm:py-6`}>
+
+                                        <div className={`h-full flex flex-col ${
                                             msg.role === 'user' 
                                                 ? 'text-blue-50' 
-                                                : (config.theme === 'cloud' ? 'text-slate-50' : 'text-slate-50')
+                                                : 'text-slate-50'
                                         }`}>
                                             
                                             <div className="text-[10px] font-bold opacity-30 mb-3 flex items-center justify-between uppercase tracking-[0.2em]">
@@ -1403,6 +1403,7 @@ export const ChatArea = ({
                                                 </div>
                                             )}
                                         </div>
+                                        </div>{/* fin contenedor de contenido */}
                                     </div>
                                 )}
                             </div>
