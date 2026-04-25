@@ -44,8 +44,8 @@ function fixMermaidTextContrastDOM(container: HTMLElement): void {
 
     const DARK = '#1a1a2e';
 
-    // Fix node text
-    svgEl.querySelectorAll('g.node rect, g.node polygon, g.node circle, g.node ellipse, g.node path').forEach(shape => {
+    // Fix node text (flowchart nodes + block-beta blocks)
+    svgEl.querySelectorAll('g.node rect, g.node polygon, g.node circle, g.node ellipse, g.node path, g.block rect').forEach(shape => {
         const fill = shape.getAttribute('fill') || (shape as SVGElement).style?.fill;
         if (fill && isLight(fill)) {
             const group = shape.closest('g.node') || shape.closest('g');
@@ -304,21 +304,219 @@ const MERMAID_CONFIG = {
         div ForeignObject, foreignObject div, foreignObject span {
             overflow: visible !important;
         }
+
+        /* 🧱 BLOCK-BETA: Text visibility — block-beta uses .block class, not .node */
+        g.block text, g.block tspan { fill: #e2e8f0 !important; }
+        g.block foreignObject div, g.block foreignObject span, g.block foreignObject p { 
+            color: #e2e8f0 !important; 
+        }
+        g.block .label { color: #e2e8f0 !important; fill: #e2e8f0 !important; }
     `,
 };
 
 /**
+ * 🛠️ AUTO-HEALER: Fixes common LLM hallucinations in Mermaid syntax before parsing.
+ */
+function healMermaidSyntax(code: string): string {
+    let processed = code;
+
+    // 1. ClassDiagram: Fix missing { } brackets for class definitions
+    if (/^\s*classDiagram\b/i.test(processed)) {
+        const lines = processed.split('\n');
+        const outLines = [];
+        let currentClass = null;
+        let classIndent = 0;
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const trimmed = line.trim();
+            
+            // Detect 'class Name' without braces
+            const classMatch = line.match(/^([ \t]*)class\s+([a-zA-Z0-9_]+)\s*$/);
+            if (classMatch && !line.includes('{')) {
+                if (currentClass) outLines.push(`${' '.repeat(classIndent)}}`);
+                currentClass = classMatch[2];
+                classIndent = classMatch[1].length;
+                outLines.push(`${line} {`);
+                continue;
+            }
+            
+            if (currentClass) {
+                const indentMatch = line.match(/^([ \t]+)/);
+                const currentLineIndent = indentMatch ? indentMatch[1].length : 0;
+                // If dedented or reached another top-level token, close the class
+                if (trimmed !== '' && currentLineIndent <= classIndent) {
+                    outLines.push(`${' '.repeat(classIndent)}}`);
+                    currentClass = null;
+                }
+            }
+            outLines.push(line);
+        }
+        if (currentClass) outLines.push(`${' '.repeat(classIndent)}}`);
+        processed = outLines.join('\n');
+    }
+
+    // 2. Block-Beta: Fix illegal spaces in size definitions (A["Text"]: 2 -> A["Text"]:2)
+    if (/^\s*block-beta\b/i.test(processed)) {
+        processed = processed.replace(/(:\s+)(\d+)(?=\s|$)/g, ':$2');
+    }
+
+    // 3. Sankey-Beta: Fix hallucinated colons, multiple targets, missing values, and accents
+    if (/^\s*sankey-beta\b/i.test(processed)) {
+        // Helper: strip accents from a node name (sankey lexer chokes on á,é,ó,ñ etc)
+        const stripAccents = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        
+        const outLines: string[] = [];
+        const lines = processed.split('\n');
+        for (let line of lines) {
+            const trimmed = line.trim();
+            if (trimmed === '' || trimmed === 'sankey-beta' || trimmed.startsWith('%')) {
+                outLines.push(line);
+                continue;
+            }
+            
+            // If the line uses a colon like "A, B : C" or "A : B, C"
+            if (line.includes(':')) {
+                const [left, right] = line.split(':').map(s => s.trim());
+                const sources = left.split(',').map(s => stripAccents(s.trim()));
+                const targets = right.split(',').map(s => stripAccents(s.trim()));
+                
+                // If it doesn't end with a number, assume default value 10
+                let value = '10';
+                if (targets.length > 0) {
+                    const lastTarget = targets[targets.length - 1];
+                    if (/^\d+(?:\.\d+)?$/.test(lastTarget)) {
+                        value = lastTarget;
+                        targets.pop();
+                    }
+                }
+                
+                // Generate source, target, value for all combinations
+                for (const src of sources) {
+                    for (const tgt of targets) {
+                        if (src && tgt) {
+                            outLines.push(`    ${src}, ${tgt}, ${value}`);
+                        }
+                    }
+                }
+            } else if (line.includes(',')) {
+                // Has commas but no colon. Strip accents from name parts.
+                const parts = trimmed.split(',').map(s => s.trim());
+                const lastPart = parts[parts.length - 1];
+                const isNumericEnd = /^\d+(?:\.\d+)?$/.test(lastPart);
+                const cleanParts = parts.map((p, i) => (i === parts.length - 1 && isNumericEnd) ? p : stripAccents(p));
+                if (!isNumericEnd && parts.length >= 2) {
+                    outLines.push(`    ${cleanParts.join(', ')}, 10`);
+                } else {
+                    outLines.push(`    ${cleanParts.join(', ')}`);
+                }
+            } else {
+                outLines.push(line);
+            }
+        }
+        processed = outLines.join('\n');
+    }
+
+    // 4. ErDiagram: Fix missing { } braces around entity attributes + strip accents
+    // LLMs often write entity attributes without wrapping them in { },
+    // and erDiagram's Jison lexer crashes on accented chars like Í (CATEGORÍA → CATEGORIA)
+    if (/^\s*erDiagram\b/i.test(processed)) {
+        // 4a. Strip accents first (so CATEGORÍA → CATEGORIA before entity detection)
+        processed = processed.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+        // 4b. Wrap bare entity attribute blocks in { }
+        // Attribute type keywords recognized by Mermaid erDiagram grammar
+        const attrType = /^\s+(int|integer|string|varchar|char|text|float|double|decimal|date|datetime|timestamp|bool|boolean|number|bigint|uuid|json|enum)\s+/i;
+        // ER relation markers: ||, o{, |{, }o, }|, --
+        const isRelation = (s: string) => /\|\||\bo\{|\b\|{|}{|\}o|\}\||\s--\s/.test(s);
+        // Entity name: ALL_CAPS or Title_Case word(s) with optional underscores, no attr types, no relations
+        const isEntityName = (s: string) =>
+            /^[A-Z][A-Z0-9_]*$/.test(s.trim()) && !isRelation(s) && !attrType.test(' ' + s.trim());
+
+        const lines = processed.split('\n');
+        const outLines: string[] = [];
+        let inEntity = false;
+        let entityIndent = 0;
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const trimmed = line.trim();
+            const indent = (line.match(/^(\s*)/) ?? ['', ''])[1].length;
+
+            // Skip blank lines and the erDiagram keyword line
+            if (trimmed === '' || trimmed.toLowerCase() === 'erdiagram') {
+                if (inEntity && trimmed === '') {
+                    // Blank line may signal end of entity — look ahead to confirm
+                    const nextNonEmpty = lines.slice(i + 1).find(l => l.trim() !== '');
+                    if (!nextNonEmpty || !attrType.test(nextNonEmpty)) {
+                        outLines.push(`${' '.repeat(entityIndent)}}`);
+                        inEntity = false;
+                    }
+                }
+                outLines.push(line);
+                continue;
+            }
+
+            // If we hit a relation line, close any open entity first
+            if (isRelation(trimmed)) {
+                if (inEntity) {
+                    outLines.push(`${' '.repeat(entityIndent)}}`);
+                    inEntity = false;
+                }
+                outLines.push(line);
+                continue;
+            }
+
+            // Attribute line — belongs to current open entity
+            if (attrType.test(' ' + trimmed)) {
+                outLines.push(line);
+                continue;
+            }
+
+            // Entity name line (no braces already present)
+            if (isEntityName(trimmed) && !line.includes('{') && !line.includes('}')) {
+                if (inEntity) {
+                    outLines.push(`${' '.repeat(entityIndent)}}`);
+                }
+                entityIndent = indent;
+                outLines.push(`${' '.repeat(indent)}${trimmed} {`);
+                inEntity = true;
+                continue;
+            }
+
+            // Line with brace already — entity is properly formed, just track state
+            if (line.includes('{')) inEntity = true;
+            if (line.includes('}')) inEntity = false;
+            outLines.push(line);
+        }
+
+        if (inEntity) outLines.push(`${' '.repeat(entityIndent)}}`);
+        processed = outLines.join('\n');
+    }
+
+    return processed;
+}
+
+/**
  * 🎨 PRE-PROCESS: Sanitize and optimize Mermaid source code before rendering.
- * 1. Converts literal \n line breaks to diagram-type-appropriate separators:
- *    - `timeline` diagrams: converts \n to ` : ` (native Mermaid multi-entry syntax).
- *    - All other diagrams (flowchart, sequence, etc.): converts \n to `<br/>` for htmlLabels.
+ * 1. Converts literal \n line breaks to diagram-type-appropriate separators.
  * 2. Auto-injects `color` into `style` directives where light fills are detected.
+ * 3. Auto-heals common syntax hallucinations.
  */
 function autoContrastMermaidCode(code: string): string {
+    // 0. Heal syntax errors first
+    let processed = healMermaidSyntax(code);
+
     // 1. Line Break Normalization — context-aware
-    const isTimeline = /^\s*timeline\b/i.test(code);
+    const isTimeline = /^\s*timeline\b/i.test(processed);
     const lineBreakReplacement = isTimeline ? ' : ' : '<br/>';
-    let processed = code.replace(/\\{1,2}n/g, lineBreakReplacement);
+    processed = processed.replace(/\\{1,2}n/g, lineBreakReplacement);
+
+    // 2. ASCII normalization for strict Jison lexers (quadrantChart, xychart-beta, erDiagram)
+    // These parsers crash on accented characters (á, ó, ñ, Í) in names/labels
+    if (/^\s*(quadrantChart|xychart-beta|erDiagram)\b/i.test(processed)) {
+        processed = processed.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    }
 
     const parseHex = (h: string): [number,number,number] | null => {
         h = h.replace('#', '');
@@ -601,7 +799,12 @@ function ensureOverlayStyles() {
  * Renders a single mermaid block with smooth expansion and headless calculation.
  */
 export const renderSingleMermaidBlock = async (block: HTMLElement, index: number = 0) => {
-    if (block.getAttribute('data-processed') === 'true') return;
+    const wasProcessed = block.getAttribute('data-processed') === 'true';
+    const hadError = block.getAttribute('data-error') === 'true';
+    // Skip only if previously rendered successfully (no error)
+    if (wasProcessed && !hadError) return;
+    // Clear error flag before retrying
+    if (hadError) block.removeAttribute('data-error');
     
     // Proactive Cleanup: Remove any lingering internal Mermaid error containers
     document.getElementById('mermaid-error-container')?.remove();
@@ -618,7 +821,9 @@ export const renderSingleMermaidBlock = async (block: HTMLElement, index: number
 
     try {
         const content = encoded ? decodeURIComponent(encoded) : (block.textContent || '');
-        if (!content.trim() || content.includes('__HIGHLIGHT_')) return;
+        const normalizedContent = content.replace(/\r\n/g, '\n');
+        
+        if (!normalizedContent.trim() || normalizedContent.includes('__HIGHLIGHT_')) return;
 
         /** 
          * ⚡ CPU YIELDING: Pause for 0ms to unlock main thread
@@ -628,7 +833,7 @@ export const renderSingleMermaidBlock = async (block: HTMLElement, index: number
         mermaid.initialize(MERMAID_CONFIG);
         
         // 🎨 PRE-PROCESS: Auto-inject dark text color for light-filled nodes
-        const processedContent = autoContrastMermaidCode(content.trim());
+        const processedContent = autoContrastMermaidCode(normalizedContent.trim());
         
         // 📡 STEP 1: Headless calculation
         const { svg } = await mermaid.render(id, processedContent);
@@ -687,7 +892,8 @@ export const renderSingleMermaidBlock = async (block: HTMLElement, index: number
             block.innerHTML = ''; // Full clear before showing our error
             block.innerHTML = `<div class="text-rose-500 text-xs italic p-4 bg-rose-500/10 rounded-xl border border-rose-500/20">Syntax Error: ${err instanceof Error ? err.message : 'Invalid Syntax'}</div>`;
             block.classList.remove('opacity-0', 'scale-95', 'blur-sm');
-            block.classList.add('opacity-100', 'scale-100', 'blur-0');
+            block.setAttribute('data-processed', 'true');
+            block.setAttribute('data-error', 'true');
         });
     } finally {
         // 🎙️ RESTORE CONSOLE: Release control
@@ -700,7 +906,8 @@ export const renderSingleMermaidBlock = async (block: HTMLElement, index: number
  * Useful for incremental updates or specific container refreshes.
  */
 export const renderMermaidBlocks = async (container: HTMLElement) => {
-    const blocks = container.querySelectorAll('.mermaid:not([data-processed="true"])');
+    // Include blocks with errors so the healer can retry them
+    const blocks = container.querySelectorAll('.mermaid:not([data-processed="true"]), .mermaid[data-error="true"]');
     if (blocks.length === 0) return;
 
     for (let i = 0; i < blocks.length; i++) {

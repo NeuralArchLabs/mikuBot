@@ -52,7 +52,11 @@
       "createStartMenuShortcut": true,
       "shortcutName": "MikuCentral",
       "include": "installer.nsh",
-      "installerLanguages": ["en_US", "es", "zh_CN"],
+      "installerLanguages": [
+        "en_US",
+        "es",
+        "zh_CN"
+      ],
       "warningsAsErrors": false,
       "multiLanguageInstaller": true,
       "displayLanguageSelector": true
