@@ -292,11 +292,19 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                     skillName: currentSkill.__folderName,
                     args
                 });
-                panelIframeRef.current?.contentWindow?.postMessage({
-                    type: 'skill-response',
-                    _reqId: e.data.args?._reqId,
-                    data: res
-                }, '*');
+                if (e.source) {
+                    (e.source as Window).postMessage({
+                        type: 'skill-response',
+                        _reqId: e.data.args?._reqId,
+                        data: res
+                    }, '*');
+                } else {
+                    panelIframeRef.current?.contentWindow?.postMessage({
+                        type: 'skill-response',
+                        _reqId: e.data.args?._reqId,
+                        data: res
+                    }, '*');
+                }
             }
             if (e.data?.type === 'skill-panel-close') {
                 rawPanelRef.current = null;
@@ -324,6 +332,8 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                     <div className="shrink-0 flex items-center gap-3 px-3 lg:px-6 py-2.5 lg:py-3 border-b border-[var(--border-color)] bg-[var(--hover-color)]">
                         <button
                             onClick={handleClosePanel}
+                            title={t('common.back')}
+                            aria-label={t('common.back')}
                             className="w-8 h-8 lg:w-9 lg:h-9 rounded-xl bg-transparent text-[var(--text-secondary)] hover:bg-white/5 hover:text-[var(--text-primary)] border border-transparent hover:border-[var(--border-color)] transition-all flex items-center justify-center"
                         >
                             <Icon name="arrow-left" className="text-xs lg:text-sm" />
@@ -493,7 +503,10 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
     return (
         <div className="flex-1 overflow-hidden flex flex-col">
             {/* Content Area */}
-            <div className="flex-1 overflow-y-auto lg:overflow-hidden w-full lg:flex lg:flex-row p-3 lg:p-1.5 xl:p-8 gap-2 xl:gap-6 relative custom-scrollbar">
+            <div
+                className="flex-1 overflow-y-auto lg:overflow-hidden w-full lg:flex lg:flex-row p-3 lg:p-1.5 xl:p-8 gap-2 xl:gap-6 relative custom-scrollbar"
+                style={{ mask: 'linear-gradient(to bottom, transparent 0%, black 6%, black 94%, transparent 100%)', WebkitMask: 'linear-gradient(to bottom, transparent 0%, black 6%, black 94%, transparent 100%)' }}
+            >
                 {/* Blueprints Overlay */}
                 {showBlueprints && (
                     <div className="fixed inset-0 z-[1000] bg-[var(--background-color)]/90 backdrop-blur-md flex items-center justify-center p-4">
@@ -587,7 +600,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                     <div className="relative">
                                         <button
                                             onClick={() => { setActiveSkill(skill.name === activeSkill && window.innerWidth < 1024 ? null : skill.name); handleClosePanel(); }}
-                                            className={`w-full p-4 lg:p-2.5 xl:p-4 rounded-2xl flex items-center text-left border group relative !overflow-visible premium-card premium-cyan transition-all duration-500 ${activeSkill === skill.name ? 'active border-cyan-500/40 shadow-glow-cyan ring-1 ring-cyan-400/20' : 'text-slate-400 opacity-70'} ${isDisabled ? 'opacity-30' : ''}`}
+                                            className={`w-full p-4 lg:p-2.5 xl:p-4 rounded-2xl flex items-center text-left border group relative overflow-hidden premium-card premium-cyan transition-all duration-500 ${activeSkill === skill.name ? 'active border-cyan-500/40 shadow-glow-cyan ring-1 ring-cyan-400/20' : 'text-slate-400 opacity-70'} ${isDisabled ? 'opacity-30' : ''}`}
                                             title={skill.name}
                                         >
                                             <div className="flex items-center gap-3 min-w-0 relative z-10 w-full">
@@ -626,7 +639,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
 
                                     {/* Inline Editor with Premium Animation */}
                                     {activeSkill === skill.name && (
-                                        <div className="lg:hidden min-h-[60vh] flex flex-col bg-slate-900/40 border border-slate-800/50 rounded-3xl overflow-hidden animate-in fade-in zoom-in-95 slide-in-from-top-4 duration-500 shadow-2xl mb-4">
+                                        <div className="lg:hidden h-[60vh] flex flex-col bg-slate-900/40 border border-slate-800/50 rounded-3xl overflow-hidden animate-in fade-in zoom-in-95 slide-in-from-top-4 duration-500 shadow-2xl mb-4">
                                             {renderEditorContent()}
                                         </div>
                                     )}

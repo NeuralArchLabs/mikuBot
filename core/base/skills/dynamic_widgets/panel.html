@@ -47,14 +47,8 @@
         ::-webkit-scrollbar-thumb:hover {
             background: linear-gradient(180deg, var(--primary), var(--secondary));
         }
-        body::-webkit-scrollbar-thumb { opacity: 1; }
-
         body {
             font-family: 'Inter', sans-serif;
-            background-color: var(--bg-color);
-            background-image:
-                radial-gradient(circle at 15% 50%, var(--glow-a), transparent 45%),
-                radial-gradient(circle at 85% 30%, var(--glow-b), transparent 45%);
             color: var(--text-main);
             overflow-y: auto;
             height: 100vh;
@@ -62,6 +56,18 @@
             user-select: none;
             scrollbar-width: thin;
             scrollbar-color: var(--primary) transparent;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: -1;
+            background-color: var(--bg-color);
+            background-image:
+                radial-gradient(circle at 15% 50%, var(--glow-a), transparent 45%),
+                radial-gradient(circle at 85% 30%, var(--glow-b), transparent 45%);
+            pointer-events: none;
         }
 
         .container {

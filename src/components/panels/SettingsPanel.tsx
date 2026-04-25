@@ -200,7 +200,7 @@ export const SettingsPanel = ({
     const currentProvider = PROVIDERS[config.provider];
 
     return (
-        <div className={`settings-panel-content theme-${config.theme} flex-1 ${settingsTab === 'skills' ? 'flex flex-col lg:overflow-hidden pb-2' : 'overflow-y-auto pb-6'} p-3 md:p-6 pt-4 md:pt-6 custom-scrollbar relative`} onScroll={handleScroll}>
+        <div className={`settings-panel-content theme-${config.theme} flex-1 ${settingsTab === 'skills' ? 'flex flex-col overflow-hidden pb-2' : 'overflow-y-auto pb-6'} p-3 md:p-6 pt-4 md:pt-6 custom-scrollbar relative`} onScroll={handleScroll}>
             {/* Subdued ambient glow background */}
             <div className="absolute top-0 left-1/4 w-1/2 h-96 bg-[var(--primary-color)] opacity-[0.07] blur-[120px] pointer-events-none rounded-full transform-gpu" />
             <div className="absolute bottom-0 right-1/4 w-1/3 h-64 bg-purple-600/05 blur-[100px] pointer-events-none rounded-full transform-gpu" />
@@ -282,10 +282,10 @@ export const SettingsPanel = ({
                     )}
 
                     {settingsTab === 'skills' && (
-                        <div className="grid grid-cols-2 lg:flex lg:flex-row lg:items-center bg-[var(--surface-color)] p-1.5 md:p-2 xl:p-3 rounded-2xl border border-transparent hover:border-[var(--border-color)] shadow-xl flex-shrink-0 w-full lg:w-auto animate-in fade-in slide-in-from-top-1 duration-700 gap-1.5 xl:gap-3 transition-all duration-500 ease-in-out">
+                        <div className="grid grid-cols-2 lg:flex lg:flex-row lg:items-center bg-[var(--surface-color)] p-1.5 md:p-2 xl:p-3 rounded-2xl border border-transparent hover:border-[var(--border-color)] shadow-xl flex-shrink-0 w-full lg:w-auto animate-in fade-in slide-in-from-top-1 duration-700 gap-1.5 xl:gap-3 transition-all duration-500 ease-in-out overflow-hidden">
                              <button
                                 onClick={() => setShowSkillsBlueprints(!showSkillsBlueprints)}
-                                className={`w-full lg:w-11 min-[1150px]:w-auto h-11 xl:h-auto py-3 px-3 lg:px-4 xl:px-6 rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-widest transition-all duration-500 ease-in-out flex items-center justify-center gap-2 border hover:scale-105 active:scale-95 shadow-md ${
+                                className={`w-full lg:w-11 min-[1150px]:w-auto h-11 xl:h-auto py-3 px-3 lg:px-4 xl:px-6 rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-widest transition-all duration-500 ease-in-out flex items-center justify-center gap-2 border lg:hover:scale-105 lg:active:scale-95 shadow-md ${
                                     showSkillsBlueprints 
                                     ? 'bg-cyan-500 text-black border-transparent shadow-[0_0_20px_rgba(6,182,212,0.4)]' 
                                     : 'bg-[var(--hover-color)] text-[var(--text-secondary)] border-transparent hover:bg-[var(--surface-color)] hover:text-[var(--text-primary)] hover:border-[var(--border-color)] hover:shadow-cyan-900/10'
@@ -297,7 +297,7 @@ export const SettingsPanel = ({
                             </button>
                              <button
                                 onClick={onSaveGlobal}
-                                className="btn-halo w-full lg:w-11 min-[1150px]:w-auto h-11 xl:h-auto py-3 px-3 lg:px-4 xl:px-6 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-widest transition-all duration-500 ease-in-out shadow-lg shadow-cyan-900/40 hover:shadow-[0_0_40px_rgba(6,182,212,0.4)] flex items-center justify-center gap-2 border !border-transparent hover:!border-cyan-500/40 hover:scale-105 active:scale-95 group/sync focus:outline-none"
+                                className="btn-halo w-full lg:w-11 min-[1150px]:w-auto h-11 xl:h-auto py-3 px-3 lg:px-4 xl:px-6 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-widest transition-all duration-500 ease-in-out shadow-lg shadow-cyan-900/40 hover:shadow-[0_0_40px_rgba(6,182,212,0.4)] flex items-center justify-center gap-2 border !border-transparent hover:!border-cyan-500/40 lg:hover:scale-105 lg:active:scale-95 group/sync focus:outline-none"
                                 title={t('settings.actions.save')}
                             >
                                 <Icon name="save" className="group-hover/sync:animate-pulse" />
