@@ -334,7 +334,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                             ref={panelIframeRef}
                             srcDoc={panelHtml}
                             className="w-full h-full border-0"
-                            sandbox="allow-scripts allow-same-origin allow-popups"
+                            sandbox="allow-scripts allow-same-origin allow-popups allow-modals"
                             title="Skill Panel"
                         />
                     </div>
@@ -573,7 +573,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                 )}
 
                 {/* Vertical Skills List */}
-                <div className="w-full lg:w-52 xl:w-72 shrink-0 flex flex-col gap-3 lg:gap-2 xl:gap-4 lg:pr-2 xl:pr-4 lg:overflow-y-auto custom-scrollbar">
+                <div className="w-full lg:w-56 xl:w-76 shrink-0 flex flex-col gap-3 lg:gap-2 xl:gap-4 p-1.5 lg:p-3 xl:p-3 lg:overflow-y-auto custom-scrollbar">
                     <h3 className="text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-[0.3em] px-4 mb-2">{t('skills.repository')}</h3>
                     {loading ? (
                         <div className="space-y-4">
@@ -587,7 +587,7 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                                     <div className="relative">
                                         <button
                                             onClick={() => { setActiveSkill(skill.name === activeSkill && window.innerWidth < 1024 ? null : skill.name); handleClosePanel(); }}
-                                            className={`w-full p-4 lg:p-2.5 xl:p-4 rounded-2xl flex items-center text-left border group relative overflow-hidden premium-card premium-cyan transition-all duration-500 ${activeSkill === skill.name ? 'active border-cyan-500/40 shadow-glow-cyan ring-1 ring-cyan-400/20' : 'text-slate-400 opacity-70'} ${isDisabled ? 'opacity-30' : ''}`}
+                                            className={`w-full p-4 lg:p-2.5 xl:p-4 rounded-2xl flex items-center text-left border group relative !overflow-visible premium-card premium-cyan transition-all duration-500 ${activeSkill === skill.name ? 'active border-cyan-500/40 shadow-glow-cyan ring-1 ring-cyan-400/20' : 'text-slate-400 opacity-70'} ${isDisabled ? 'opacity-30' : ''}`}
                                             title={skill.name}
                                         >
                                             <div className="flex items-center gap-3 min-w-0 relative z-10 w-full">

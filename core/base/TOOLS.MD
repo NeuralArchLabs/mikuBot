@@ -145,10 +145,7 @@ Modular skills installed in `@TOOLS/skills/`:
 - **`api_fetcher`**: Universal HTTP client for REST APIs.
 - **`deep_research`**: Multi-language technical investigation with multi-category audit.
 - **`web_research`**: Content extraction from multiple sources using diverse search categories.
-- **`crypto_tracker`**: Real-time cryptocurrency price tracking.
 - **`list_available_skills`**: Auto-discovery of new installed skills.
-- **`gmail_imap`**: Basic email reading and management via IMAP.
-- **`miku_clock`**: Time management and personalized greetings.
 - **`dynamic_widgets`**: Advanced tool to create, launch, and manage neural micro-apps (exclusive frameless windows).
 - **`recall`**: Persistent semantic memory. Store, retrieve, and connect anything worth remembering across sessions.
 

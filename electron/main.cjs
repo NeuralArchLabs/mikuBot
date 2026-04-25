@@ -157,6 +157,7 @@ let SEARXENA_ENV_READY = false; // Persistent state for SearXena health
 let isSearXenaInstalling = false; // Lock for installation
 let deferWindowShow = false; // Flag to defer window show until installation completes
 const sessionSaveTimers = new Map(); // Debounce map for heavy session saving
+const deletedSessionIds = new Set(); // Guard against late-arriving saves resurrecting deleted sessions
 
 /**
  * Robust App Icon Loader
@@ -1321,6 +1322,12 @@ ipcMain.handle('load-session', async (event, id) => {
 });
 
 ipcMain.handle('save-session', async (event, session) => {
+    // Reject saves for sessions that were recently deleted
+    if (deletedSessionIds.has(session.id)) {
+        console.log(`[Main Process] Skipped save for deleted session ${session.id}`);
+        return { ok: true, skipped: true };
+    }
+
     // Debounce logic: prevent disk thrashing by waiting for 5s of inactivity.
     // We immediately ACK the renderer to avoid "reply was never sent" errors
     // when rapid successive calls cancel previous timers.
@@ -1351,6 +1358,16 @@ ipcMain.handle('save-session', async (event, session) => {
 
 ipcMain.handle('delete-session', async (event, id) => {
     try {
+        // Cancel any pending debounced save for this session
+        if (sessionSaveTimers.has(id)) {
+            clearTimeout(sessionSaveTimers.get(id).timer);
+            sessionSaveTimers.delete(id);
+        }
+
+        // Mark as deleted to prevent late-arriving saves from the renderer
+        deletedSessionIds.add(id);
+        setTimeout(() => deletedSessionIds.delete(id), 10000);
+
         const filePath = path.join(getEffectivePaths().sessions, `${id}.json`);
         if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);

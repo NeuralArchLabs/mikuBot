@@ -621,8 +621,22 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         const localizedDefault = CALLOUT_I18N_KEYS[typeUp] ? i18n.t(`common.${CALLOUT_I18N_KEYS[typeUp]}`) : typeUp;
         // The type badge is ALWAYS the localized type name (short, uppercase, tracked)
         const typeBadgeLabel = (localizedDefault !== `common.${CALLOUT_I18N_KEYS[typeUp]}`) ? localizedDefault : typeUp;
-        // User title is what the model added after the [!TYPE] — can be a whole sentence
-        const rawUserTitle = title ? title.replace(/^[>\s]+/, '').trim() : '';
+        // 🛡️ PARENT-SCOPE TOKEN RESTORATION (defined first — used for both title and body):
+        // The title (group 3) and body can contain __BLOCK_N__ placeholders created by
+        // earlier phases (inline code `...`, HTML protector, etc.) in the PARENT toHtml()
+        // context. Recursive toHtml() calls have their own separate pieces[] and won't
+        // know about parent tokens — they render as literal "BLOCK_N" text.
+        // Restoring here gives child calls clean, original markdown/HTML.
+        const restoreParentTokens = (text: string): string => {
+            return text.replace(/__BLOCK_(\d+)__/g, (m, idxStr) => {
+                const idx = parseInt(idxStr, 10);
+                return (idx >= 0 && idx < pieces.length) ? pieces[idx] : m;
+            });
+        };
+
+        // User title is what the model added after the [!TYPE] — can be a whole sentence.
+        // Restore parent tokens BEFORE processInlineMarkdown so code pills etc. render correctly.
+        const rawUserTitle = restoreParentTokens(title ? title.replace(/^[>\s]+/, '').trim() : '');
         const displayTitle = rawUserTitle ? processInlineMarkdown(rawUserTitle) : '';
 
         const isCollapsible = !!collapseSign;
@@ -632,7 +646,11 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         const longTitleAsBody = !content && rawUserTitle.length > 40 ? rawUserTitle : '';
         const effectiveBody = longTitleAsBody || content;
         const effectiveTitle = longTitleAsBody ? '' : displayTitle;
-        const bodyHtml = effectiveBody ? `<div class="text-md font-medium text-slate-300 ${isCollapsible ? 'mt-3 pt-3 border-t border-white/5' : 'leading-relaxed'} child-content typing-content">${toHtml(effectiveBody, isStreaming)}</div>` : '';
+
+        // Restore parent tokens in body too before passing to recursive toHtml()
+        const restoredBody = restoreParentTokens(effectiveBody);
+
+        const bodyHtml = restoredBody ? `<div class="text-md font-medium text-slate-300 ${isCollapsible ? 'mt-3 pt-3 border-t border-white/5' : 'leading-relaxed'} child-content typing-content">${toHtml(restoredBody, isStreaming)}</div>` : '';
         // Short user title (≤40 chars) shown inline with badge; longer text always goes to body
         const userTitleSpan = effectiveTitle ? ` <span class="text-sm font-semibold normal-case tracking-normal leading-snug">${effectiveTitle}</span>` : '';
         
@@ -665,7 +683,13 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         // Verify at least one real > line exists (not just whitespace)
         if (!/^[ \t]*>/m.test(match)) return match;
         const id = `__BLOCK_${pieces.length}__`;
-        pieces.push(convertBlockquotesToHtml(match, isStreaming));
+        // Restore parent-scope __BLOCK_N__ tokens before passing to blockquote renderer,
+        // since convertBlockquotesToHtml calls toHtml() recursively with its own pieces[].
+        const matchRestored = match.replace(/__BLOCK_(\d+)__/g, (m, idxStr) => {
+            const idx = parseInt(idxStr, 10);
+            return (idx >= 0 && idx < pieces.length) ? pieces[idx] : m;
+        });
+        pieces.push(convertBlockquotesToHtml(matchRestored, isStreaming));
         return `\n${id}\n`;
     });
 

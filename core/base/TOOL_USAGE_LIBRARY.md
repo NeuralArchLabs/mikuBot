@@ -164,18 +164,6 @@ This file contains valid JSON code snippets for each tool. The system extracts t
 }
 ```
 
-
-## [get_crypto_price]
-```json
-{
-  "name": "get_crypto_price",
-  "arguments": {
-    "coin_id": "bitcoin",
-    "vs_currency": "usd"
-  }
-}
-```
-
 ## [add_scheduled_task]
 ```json
 {
@@ -191,34 +179,11 @@ This file contains valid JSON code snippets for each tool. The system extracts t
 }
 ```
 
-## [miku_clock]
-```json
-{
-  "name": "miku_clock",
-  "arguments": {
-    "format": "24h"
-  }
-}
-```
-
 ## [list_available_skills]
 ```json
 {
   "name": "list_available_skills",
   "arguments": {}
-}
-```
-
-## [gmail_imap]
-```json
-{
-  "name": "gmail_imap",
-  "arguments": {
-    "email": "your_email@gmail.com",
-    "app_password": "abcd efgh ijkl mnop",
-    "action": "list",
-    "limit": 5
-  }
 }
 ```
 
