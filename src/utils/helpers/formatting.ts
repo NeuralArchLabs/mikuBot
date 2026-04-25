@@ -1096,7 +1096,7 @@ function renderTable(rows: string[][], alignments: ('left' | 'center' | 'right')
         const borderX = !isLastHeader ? 'border-r border-white/[0.06]' : '';
         const align = alignments[i] || 'left';
         
-        html += `<th class="px-4.5 py-3 text-${align} text-[12px] font-black text-white uppercase tracking-[0.15em] whitespace-nowrap relative ${borderX}">`
+        html += `<th class="px-4.5 py-3 text-${align} text-[12px] font-black text-white uppercase tracking-[0.15em] whitespace-nowrap relative ${borderX} break-normal min-w-[100px]">`
              + `<span class="relative z-10">${cellText}</span>`
              + `<div class="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>`
              + `</th>`;
@@ -1118,7 +1118,7 @@ function renderTable(rows: string[][], alignments: ('left' | 'center' | 'right')
             const textClass = 'text-slate-200 font-normal';
             const borderX = !isLastCol ? 'border-r border-white/[0.04]' : '';
             
-            html += `<td class="px-4.5 py-2.5 text-[13px] text-${align} ${textClass} ${borderX} group-hover/row:text-white transition-colors antialiased relative">`
+            html += `<td class="px-4.5 py-2.5 text-[13px] text-${align} ${textClass} ${borderX} group-hover/row:text-white transition-colors antialiased relative break-normal min-w-[100px]">`
                  + `<span class="relative z-10">${cellText}</span>`
                  + (!isLastRow ? `<div class="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r ${c===0 ? 'from-transparent' : (c===maxCols-1 ? '' : 'via-white/[0.05]')} ${c===maxCols-1 ? 'to-transparent via-white/[0.05]' : ''} pointer-events-none"></div>` : '')
                  + `</td>`;
