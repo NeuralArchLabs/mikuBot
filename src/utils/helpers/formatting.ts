@@ -353,6 +353,10 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                         return processInlineMarkdown(line);
                     }).join('\n');
 
+                    // Convert markdown lists (including task lists) — must run AFTER inline markdown
+                    // so that bold/italic inside list items are already rendered before list wrapping.
+                    inner = convertListsToHtml(inner);
+
                     fullTagContent = openTag + inner + closeTag;
                 }
             }
@@ -1162,8 +1166,11 @@ function processInlineMarkdown(text: string): string {
     result = result.replace(/==([^=\n]+)==/g, '<mark class="bg-[#FC8F35]/15 text-[#fcc18d] px-1 py-0.5 rounded-sm border-b border-[#FC8F35]/30 mx-0.5">$1</mark>');
     // Superscript ^text^
     result = result.replace(/\^([^\^\n]+)\^/g, '<sup class="text-slate-400 text-[0.7em] leading-none">$1</sup>');
-    // Subscript ~text~
-    result = result.replace(/~([^~\n]+)~/g, '<sub class="text-slate-400 text-[0.7em] leading-none">$1</sub>');
+    // Subscript ~text~ — only short scientific subscripts (no spaces, no $, max 15 chars)
+    result = result.replace(/~([^~\n]+)~/g, (match, content) => {
+        if (content.includes('$') || content.includes(' ') || content.length > 15) return match;
+        return `<sub class="text-slate-400 text-[0.7em] leading-none">${content}</sub>`;
+    });
 
     return result;
 }
