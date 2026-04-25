@@ -400,6 +400,35 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
             if (pipes === 1) return false; // Single pipe is usually a table separator
         }
 
+        // ─────────────────────────────────────────────────────────────────────
+        // 🛡️ DOLLAR-SPECIFIC PRE-SIGNAL GUARDS (run before signal check)
+        // These must fire BEFORE math signal detection because expressions like
+        // "$0.12 USD/minuto = ~$7.20 USD/hr" contain "=" which is a math signal,
+        // but are clearly price comparisons — not LaTeX formulas.
+        // ─────────────────────────────────────────────────────────────────────
+        if (isDollar) {
+            // Guard 1: Known currency codes anywhere in the expression
+            if (/\b(USD|MXN|EUR|GBP|JPY|CAD|AUD|CHF|CNY|BTC|ETH|BRL|COP|ARS|PEN)\b/i.test(f)) return false;
+
+            // Guard 2: Rate/unit patterns (price per unit of time or quantity)
+            if (/\/(?:hr|hora|h\b|min|minuto|mes|month|day|d[ií]a|week|semana|a[ñn]o|year|kg|km|mi)\b/i.test(f)) return false;
+
+            // Guard 3: Markdown bold/italic markers inside — it's formatted text, not math
+            if (/\*\*/.test(f) || /\*[^*]/.test(f) || /~~/.test(f)) return false;
+
+            // Guard 4: Multiple natural-language words (≥2 consecutive letter-only words)
+            // Real math uses symbols; price copy uses words like "promedio", "extras", "servicios"
+            const wordMatches = f.match(/\b[a-záéíóúüñA-ZÁÉÍÓÚÜÑ]{3,}\b/g) || [];
+            if (wordMatches.length >= 2) return false;
+
+            // Guard 5: Tilde (~) used as approximation prefix directly before a number/dollar
+            // ($0.12 = ~$7.20 — this is prose, not LaTeX \approx)
+            if (/~\$?\d/.test(f)) return false;
+
+            // Guard 6: Pure currency amount — $digits[, digits][.digits][unit suffix]
+            if (/^[\d,.\s]+(billones|millones|trillones|M|k|m|b|t)?$/i.test(f)) return false;
+        }
+
         // 🛡️ Strong signals: LaTeX commands, common operators, or typical math symbols
         const signals = isDollar 
             ? /[\^\\_=+<>∑∫∏√{}[\]]/.test(f) // Added _ for subscript patterns like k_B
@@ -417,9 +446,6 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         
         // Variable check: Single letters like $x$ or $i$
         if (f.length === 1 && /[a-zA-Z\u0370-\u03ff]/.test(f)) return true;
-        
-        // 🛡️ Currency & Unit Guard: Ignore things like $100, $6.6 billones, $510M
-        if (isDollar && /^[\d,.\s]+(billones|millones|trillones|M|k|m|b|t)?$/i.test(f)) return false;
 
         // Fallback for more complex expressions
         return f.length <= 2 && !/^[\d,.]+$/.test(f);
@@ -851,7 +877,12 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
 
     html = html.replace(/==([^=\n]+)==/g, '<mark class="bg-[#FC8F35]/15 text-[#fcc18d] px-1 py-0.5 rounded-sm border-b border-[#FC8F35]/30 mx-0.5">$1</mark>');
 
-    html = html.replace(/~([^~\n<]+)~/g, '<sub class="text-slate-400 text-[0.7em] leading-none">$1</sub>');
+    html = html.replace(/~([^~\n<]+)~/g, (match, content) => {
+        // 🛡️ SUBSCRIPT GUARD: Real subscripts (H~2~O, CO~2~, x~n~) are short, space-free, and dollar-free.
+        // Long content or content with $ / spaces is prose (e.g. "= ~$7.20 USD/hr (~$128")
+        if (content.includes('$') || content.includes(' ') || content.length > 15) return match;
+        return `<sub class="text-slate-400 text-[0.7em] leading-none">${content}</sub>`;
+    });
 
     // 13a. Footnote definitions [^1]: 
     html = html.replace(/^\[\^([^\]]+)\]:\s+(.*)$/gm, (match, label, content) => {
