@@ -379,8 +379,25 @@ def _get_graph_neighbors(index_data, mem_id, depth=2):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# FOLDER TREE BUILDER
+# FOLDER TREE BUILDER & DYNAMIC SUMMARY
 # ─────────────────────────────────────────────────────────────────────────────
+def _get_dynamic_tree_summary():
+    """Generates a highly compact string of the current memory folder structure."""
+    if not os.path.exists(MEMORY_ROOT):
+        return "Memory structure not initialized."
+    
+    summary = []
+    for top_dir in os.listdir(MEMORY_ROOT):
+        top_path = os.path.join(MEMORY_ROOT, top_dir)
+        if os.path.isdir(top_path):
+            subdirs = [d for d in os.listdir(top_path) if os.path.isdir(os.path.join(top_path, d))]
+            if subdirs:
+                summary.append(f"{top_dir}[{', '.join(subdirs)}]")
+            else:
+                summary.append(f"{top_dir}")
+    
+    return ", ".join(summary) if summary else "Empty structure."
+
 def _build_tree_on_disk(base, tree):
     for key, children in tree.items():
         folder = os.path.join(base, key)
@@ -609,6 +626,7 @@ def command_recall(query, depth=2):
     return {
         "success":           True,
         "message":           _t("recall", count=len(enriched)),
+        "memory_structure":  _get_dynamic_tree_summary(),
         "results":           enriched,
         "related_memories":  all_connections[:8],
         "graph_depth_used":  depth,
@@ -805,6 +823,57 @@ def command_nexus():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# COMMAND: evoke  — browse directories or read specific memory files
+# ─────────────────────────────────────────────────────────────────────────────
+def command_evoke(target):
+    if not target:
+        return {"success": False, "error": "Target path or mem_id required."}
+    
+    # 1. Check if it's a direct mem_id
+    index_data = load_index()
+    if target in index_data.get("memories", {}):
+        mem = index_data["memories"][target]
+        filepath = os.path.join(MEMORY_ROOT, mem["filepath"])
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                content = f.read()
+            return {"success": True, "type": "file", "id": target, "content": content}
+        except Exception as e:
+            return {"success": False, "error": f"Failed to read memory file: {str(e)}"}
+    
+    # 2. Handle as relative path (prevent path traversal)
+    safe_target = target.replace("..", "").strip("\\/")
+    abs_path = os.path.join(MEMORY_ROOT, safe_target)
+    
+    if not os.path.exists(abs_path):
+        return {"success": False, "error": f"Path not found: {target}"}
+        
+    # 2a. Directory listing
+    if os.path.isdir(abs_path):
+        folders = []
+        files = []
+        for item in os.listdir(abs_path):
+            full_path = os.path.join(abs_path, item)
+            if os.path.isdir(full_path):
+                folders.append(item)
+            elif item.endswith('.md'):
+                files.append(item)
+        return {"success": True, "type": "directory", "path": safe_target, "folders": folders, "files": files}
+        
+    # 2b. Direct file reading (if they provided relative path instead of mem_id)
+    elif os.path.isfile(abs_path) and abs_path.endswith('.md'):
+        try:
+            with open(abs_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            return {"success": True, "type": "file", "path": safe_target, "content": content}
+        except Exception as e:
+            return {"success": False, "error": f"Failed to read file: {str(e)}"}
+            
+    else:
+        return {"success": False, "error": "Invalid target type. Must be a directory or .md file."}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # ENTRY POINT
 # ─────────────────────────────────────────────────────────────────────────────
 def main():
@@ -850,11 +919,13 @@ def main():
             )
         elif command == "nexus":
             output = command_nexus()
+        elif command == "evoke":
+            output = command_evoke(target=args.get("target"))
         else:
             output = {
                 "success":  False,
                 "error":    f"Unknown command: '{command}'",
-                "valid":    ["init","synapse","recall","refresh","amnesia","link","nexus"],
+                "valid":    ["init","synapse","recall","refresh","amnesia","link","nexus","evoke"],
             }
 
         # If the system bootstrapped itself, let the user know

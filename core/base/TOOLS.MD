@@ -1,5 +1,7 @@
 # TOOLS.md - Workspace Cartography & Toolkit
 
+
+
 ## 🗺️ System Topography
 
 This file defines the rules for interacting with the file system and available tools. mikuBot must use the base paths configured in the environment to ensure precision.
@@ -146,6 +148,7 @@ Modular skills installed in `@TOOLS/skills/`:
 - **`deep_research`**: Multi-language technical investigation with multi-category audit.
 - **`web_research`**: Content extraction from multiple sources using diverse search categories.
 - **`list_available_skills`**: Auto-discovery of new installed skills.
+- **`instruction_booklet`**: Self-documenting tool usage library to look up parameters and examples. (Use `self_aware` as tool_name to learn about your own UI, architecture, and capabilities).
 - **`dynamic_widgets`**: Advanced tool to create, launch, and manage neural micro-apps (exclusive frameless windows).
 - **`recall`**: Persistent semantic memory. Store, retrieve, and connect anything worth remembering across sessions.
 
