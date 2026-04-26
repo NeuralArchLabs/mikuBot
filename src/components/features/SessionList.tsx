@@ -26,7 +26,7 @@ export const SessionList = React.memo(({ sessions, loading, currentSessionId, on
         <div className="flex flex-col h-full">
             {!isModal && (
                 <div className={`${hideList ? 'mb-0' : 'mb-0'}`}>
-                    <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-3" />
+                    <div className="h-px bg-gradient-to-r from-transparent via-[var(--border-color)] to-transparent mb-3" />
                     <div className="flex items-center justify-between px-1">
                         {onExpand ? (
                             <button
@@ -62,7 +62,7 @@ export const SessionList = React.memo(({ sessions, loading, currentSessionId, on
                             </div>
                         )}
                     </div>
-                    {!hideList && <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mt-3 mb-0" />}
+                    {!hideList && <div className="h-px bg-gradient-to-r from-transparent via-[var(--border-color)] to-transparent mt-3 mb-0" />}
                 </div>
             )}
 

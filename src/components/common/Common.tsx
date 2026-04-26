@@ -69,9 +69,19 @@ class AnimationQueueManager {
                         el.classList.remove('opacity-0', 'scale-95', 'blur-sm');
                         el.classList.add('opacity-100', 'scale-100', 'blur-0', 'is-visible');
                     }
+                    
+                    // 🛡️ NESTED PROTECTION: If this element is a container, force all its nested 
+                    // animated children to their final state to prevent them from staying invisible.
+                    el.querySelectorAll('.code-block-anim, .mermaid, .divider-container, .signature-wrapper').forEach(child => {
+                        const childEl = child as HTMLElement;
+                        childEl.classList.remove('opacity-0', 'scale-95', 'blur-sm');
+                        childEl.classList.add('opacity-100', 'scale-100', 'blur-0', 'is-visible');
+                        childEl.setAttribute('data-animated', 'true');
+                    });
+
                     el.setAttribute('data-animated', 'true');
                     el.removeAttribute('data-enqueued');
-                    console.debug('[AnimationQueue] Task timed out, element snapped to final state.');
+                    console.debug('[AnimationQueue] Task timed out, element and children snapped to final state.');
                 }
             }
         }
@@ -217,8 +227,20 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
                                             lastTime = now;
 
                                             if (cursor >= fullHtml.length) {
-                                                el.innerHTML = fullHtml;
+                                                // To prevent the "flash" of hidden content after typing finishes,
+                                                // we restore the HTML but keep the visible state for elements that were just typed.
+                                                // This satisfies "manten el efecto typewriter" while ensuring everything stays visible.
+                                                const finalHtml = fullHtml.replace(/\bopacity-0\b/g, 'opacity-100 is-visible')
+                                                                          .replace(/\bscale-95\b/g, 'scale-100')
+                                                                          .replace(/\bblur-sm\b/g, 'blur-0');
+                                                el.innerHTML = finalHtml;
                                                 el.classList.remove('is-typing');
+
+                                                // Mark everything as animated so the observer doesn't try to re-animate them
+                                                el.querySelectorAll('.code-block-anim, .mermaid, .divider-container, .signature-wrapper').forEach(child => {
+                                                    child.setAttribute('data-animated', 'true');
+                                                });
+
                                                 el.setAttribute('data-animated', 'true');
                                                 el.removeAttribute('data-enqueued');
                                                 resolve();
@@ -236,7 +258,15 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
                                                     }
                                                     const tagMatch = remaining.match(/^<[^>]+>/);
                                                     if (tagMatch) {
-                                                        currentHtml += tagMatch[0];
+                                                        let tag = tagMatch[0];
+                                                        // ⚡ CROSS-ANIMATION SYNC:
+                                                        // When we encounter a container that should animate (opacity-0), 
+                                                        // we tag it with a timestamp. We will use this to calculate 
+                                                        // a manual fade-in during the typewriter ticks.
+                                                        if (tag.includes('opacity-0') && !tag.includes('data-anim-start')) {
+                                                            tag = tag.replace('>', ` data-anim-start="${performance.now()}">`);
+                                                        }
+                                                        currentHtml += tag;
                                                         cursor += tagMatch[0].length;
                                                         continue;
                                                     }
@@ -247,10 +277,37 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
 
                                             if (typingEl) {
                                                 const isTypingFinished = fullHtml.substring(cursor).replace(/<[^>]+>/g, '').trim() === '';
+                                                
+                                                // ⚡ MANUAL STAGGERED FADE-IN:
+                                                // We process the current HTML to calculate and apply smooth fade/scale/blur 
+                                                // transitions manually based on when each tag was first "typed".
+                                                // This "crosses" the entry animation with the typewriter effect perfectly.
+                                                const currentTime = performance.now();
+                                                const animatedHtml = currentHtml.replace(/(<[^>]+data-anim-start="(\d+\.?\d*)"[^>]*>)/g, (match, fullTag, startTimeStr) => {
+                                                    const startTime = parseFloat(startTimeStr);
+                                                    const elapsed = currentTime - startTime;
+                                                    const DURATION = 650; // ms (slightly slower for premium feel)
+                                                    const progress = Math.min(elapsed / DURATION, 1);
+                                                    
+                                                    // Easing: ease-out cubic
+                                                    const ease = 1 - Math.pow(1 - progress, 3);
+                                                    
+                                                    const opacity = ease;
+                                                    const scale = 0.96 + (0.04 * ease);
+                                                    const blur = 4 * (1 - ease);
+                                                    
+                                                    // Strip the classes and markers, apply as inline style
+                                                    return fullTag.replace(/\bopacity-0\b/g, 'opacity-100')
+                                                                  .replace(/\bscale-95\b/g, 'scale-100')
+                                                                  .replace(/\bblur-sm\b/g, 'blur-0')
+                                                                  .replace(/data-anim-start="[^"]*"/, '')
+                                                                  .replace('>', ` style="opacity: ${opacity}; transform: scale(${scale}); filter: blur(${blur}px); transition: none !important;">`);
+                                                });
+
                                                 if (cursor < fullHtml.length && !isTypingFinished) {
-                                                    typingEl.innerHTML = currentHtml + '<span class="inline-block w-[4px] h-[13px] ml-0.5 bg-cyan-400/80 animate-pulse rounded-sm shadow-[0_0_8px_rgba(34,211,238,0.6)] translate-y-[1px]"></span>';
+                                                    typingEl.innerHTML = animatedHtml + '<span class="inline-block w-[4px] h-[13px] ml-0.5 bg-cyan-400/80 animate-pulse rounded-sm shadow-[0_0_8px_rgba(34,211,238,0.6)] translate-y-[1px]"></span>';
                                                 } else {
-                                                    typingEl.innerHTML = currentHtml;
+                                                    typingEl.innerHTML = animatedHtml;
                                                 }
                                             }
                                             (el as any)._typeRaf = requestAnimationFrame(tickLoop);

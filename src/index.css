@@ -3076,7 +3076,8 @@ select.premium-input option {
 .theme-cloud .text-red-400,
 .theme-cloud .text-red-400\/30,
 .theme-cloud .text-red-400\/60,
-.theme-cloud .text-red-500\/80 {
+.theme-cloud .text-red-500\/80,
+.theme-cloud .hover\:text-red-400:hover {
     color: #b91c1c !important; /* Red-700 */
 }
 

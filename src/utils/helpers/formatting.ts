@@ -163,7 +163,8 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
     // 0. PRE-EXTRACTION: Protect inline and fenced code blocks
     // Multi-fence support (3+ backticks or tildes) for nested code blocks
     // Updated: relax ^ to ^[ \t]* to handle indented code blocks
-    html = html.replace(/^[ \t]*(`{3,}|~{3,})([\w./+#-]*)[\t ]*\n([\s\S]*?)\n[ \t]*\1/gm, (match, fence, lang, code) => {
+    // Updated: Ensure closing fence is on a line by itself to prevent early termination
+    html = html.replace(/^[ \t]*(`{3,}|~{3,})([\w./+#-]*)[\t ]*\n([\s\S]*?)\n[ \t]*\1[ \t]*(?:\n|$)/gm, (match, fence, lang, code) => {
         const id = `__BLOCK_${pieces.length}__`;
         const langClean = lang.toLowerCase().trim();
         const codeTrimmed = code; // Preserve exact content for nested blocks
@@ -711,7 +712,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         
         if (isCollapsible) {
             const extra = isStreaming ? 'data-animated="true"' : '';
-            pieces.push(`<details ${extra} class="group/callout border-l-[3px] ${s.border} bg-black/8 backdrop-blur-md ${s.glow || ''} shadow-xl pl-6 pr-4 py-3.5 my-5 rounded-r-xl overflow-hidden transition duration-300 select-none cursor-pointer border-y border-y-transparent border-r border-r-transparent hover:border-y-white/10 hover:border-r-white/10" ${isOpen ? 'open' : ''}>`
+            pieces.push(`<details ${extra} class="group/callout border-l-[3px] ${s.border} bg-black/8 backdrop-blur-md ${s.glow || ''} shadow-xl pl-6 pr-4 py-3.5 my-5 rounded-r-xl overflow-visible transition duration-300 select-none cursor-pointer border-y border-y-transparent border-r border-r-transparent hover:border-y-white/10 hover:border-r-white/10" ${isOpen ? 'open' : ''}>`
                 + `<summary class="flex items-center gap-3 ${s.color} non-typing outline-none list-none text-left">`
                 + `<span class="group-open/callout:rotate-90 transition-transform duration-300 font-black text-[11px]">▶</span>`
                 + `<span class="text-lg">${s.icon}</span>`
@@ -720,7 +721,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                 + `</summary>${bodyHtml}</details>`);
         } else {
             const extra = isStreaming ? 'data-animated="true"' : '';
-            pieces.push(`<blockquote ${extra} class="border-l-[3px] ${s.border} bg-black/8 backdrop-blur-md ${s.glow || ''} shadow-xl pl-6 pr-4 py-3.5 my-5 rounded-r-xl overflow-hidden border-y border-y-transparent border-r border-r-transparent" data-type="admonition">`
+            pieces.push(`<blockquote ${extra} class="border-l-[3px] ${s.border} bg-black/8 backdrop-blur-md ${s.glow || ''} shadow-xl pl-6 pr-4 py-3.5 my-5 rounded-r-xl overflow-visible border-y border-y-transparent border-r border-r-transparent" data-type="admonition">`
                 + `<div class="flex items-center gap-3 mb-3 ${s.color} non-typing">`
                 + `<span class="text-lg flex-shrink-0">${s.icon}</span>`
                 + `<span class="font-black text-[11px] uppercase tracking-[0.2em] opacity-80 flex-shrink-0">${typeBadgeLabel}</span>`
@@ -1783,7 +1784,15 @@ function highlightCode(code: string, lang: string): string {
     }
 
     // ── Generic fallback (always runs) ──────────────────────────────────────
+    // 1. Fences (3+ backticks/tildes) - Documenting Markdown
+    highlighted = highlighted.replace(/(`{3,}|~{3,})/g, m => addToken(m, 'hl-string'));
+    
+    // 2. Standard Strings
     highlighted = highlighted.replace(/(["'`])(?:(?=(\\?))\2.)*?\1/g, m => addToken(m, 'hl-string'));
+    
+    // 3. Lone backticks or tildes (remaining from odd counts)
+    highlighted = highlighted.replace(/(`|~)/g, m => addToken(m, 'hl-string'));
+
     highlighted = highlighted.replace(/(?<!\uE000)\b(\d+(?:\.\d+)?)\b(?!\uE001)/g, m => addToken(m, 'hl-number'));
     highlighted = highlighted.replace(/(?<!\uE000)\b(true|false|null|undefined|None|True|False|nil|NULL|NaN|Infinity)\b(?!\uE001)/g, m => addToken(m, 'hl-bool'));
     const dedicatedLangs = new Set(['python','py','javascript','typescript','js','ts','jsx','tsx','c','cpp','c++','h','hpp','html','xml','svg','css','scss','less','rust','go','golang','dockerfile','docker','json','jsonc','bash','sh','shell','powershell','ps1','zsh','fish','tree','mermaid','flowchart','graph','gitgraph','erdiagram','mindmap','pie','gantt','sequencediagram','java','kotlin','kt','ruby','rb','php','sql','mysql','postgresql','sqlite','yaml','yml','swift','dart','lua','toml','ini','cfg','env','graphql','gql','proto','protobuf']);

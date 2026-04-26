@@ -194,7 +194,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                             <div className="text-[11px] text-[var(--text-secondary)] font-bold uppercase tracking-[0.2em] leading-tight mt-0.5 opacity-60">v{APP_VERSION}</div>
                         </div>
                         {/* Glowy aesthetic separator (absolute, no displacement) */}
-                        <div className="absolute left-4 right-4 h-px bg-gradient-to-r from-transparent via-[var(--border-color)] to-transparent -bottom-4 pointer-events-none opacity-40">
+                        <div className="absolute left-4 right-4 h-px bg-gradient-to-r from-transparent via-[var(--border-color)] to-transparent -bottom-4 pointer-events-none opacity-40 [.theme-cloud_&]:opacity-100">
                             <div className="absolute inset-0 h-full bg-gradient-to-r from-transparent via-[var(--primary-color)]/10 to-transparent blur-[2px] opacity-50" />
                         </div>
                     </div>
@@ -295,7 +295,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                     </div>
 
                     <div className="flex-1 flex flex-col relative shadow-[0_-10px_15px_-5px_rgba(0,0,0,0.3)] transition-all duration-300 min-h-0">
-                        <div className="h-px bg-gradient-to-r from-transparent via-[var(--border-color)] via-[5%] to-transparent flex-none opacity-40" />
+                        <div className="h-px bg-gradient-to-r from-transparent via-[var(--border-color)] via-[5%] to-transparent flex-none opacity-40 [.theme-cloud_&]:opacity-100" />
                         <div 
                             className={`px-5 py-3 flex-1 flex flex-col min-h-0 ${isCompactMode ? 'hover:bg-[var(--hover-color)] rounded-xl mx-2 my-1' : ''}`}
                         >
@@ -318,7 +318,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                     </button>
                                 )}
                              </div>
-                             <div className="h-px bg-gradient-to-r from-transparent via-[var(--border-color)] via-[5%] to-transparent flex-none opacity-40" />
+                             <div className="h-px bg-gradient-to-r from-transparent via-[var(--border-color)] via-[5%] to-transparent flex-none opacity-40 [.theme-cloud_&]:opacity-100" />
  
                             <div className="flex-1 overflow-y-auto overflow-x-visible custom-scrollbar chat-fade-mask space-y-1 px-4 -mx-4 pt-3 pb-3 min-h-0">
                                     {Object.keys(state.additionalFiles || {}).length === 0 ? (

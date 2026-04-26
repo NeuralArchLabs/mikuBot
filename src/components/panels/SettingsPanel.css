@@ -66,3 +66,15 @@
     box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1), 0 0 20px var(--pc-glow, var(--glass-glow)) !important;
     transform: translateY(-2px);
 }
+
+/* Cloud Theme Specific Contrast Fixes */
+.theme-cloud .cloud-destructive-btn:hover {
+    color: #ffffff !important;
+    background-color: #dc2626 !important;
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3) !important;
+    border-color: transparent !important;
+}
+
+.theme-cloud .group:hover .cloud-factory-title {
+    color: #b91c1c !important; /* Tailwind red-700 */
+}

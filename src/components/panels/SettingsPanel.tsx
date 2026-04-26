@@ -274,7 +274,7 @@ export const SettingsPanel = ({
                             </button>
                             <button
                                 onClick={onSaveGlobal}
-                                className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-gradient-to-br from-[var(--primary-color)]/80 to-[var(--secondary-color)]/80 hover:from-[var(--primary-color)] hover:to-[var(--secondary-color)] text-white rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-[var(--primary-color)]/30 transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border border-transparent hover:border-[var(--primary-color)]/50 whitespace-nowrap"
+                                className="w-full lg:w-11 lg:h-11 min-[1150px]:w-auto min-[1150px]:h-auto py-3 px-3 lg:p-0 min-[1150px]:px-4 min-[1150px]:py-3 bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] hover:brightness-110 text-white rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-[var(--primary-color)]/30 transition-all flex items-center justify-center gap-2 lg:gap-0 min-[1150px]:gap-2 border-0 whitespace-nowrap"
                             >
                                 <Icon name="save" className="text-sm xl:text-base flex-shrink-0" /> <span className="inline lg:hidden min-[1150px]:inline">{t('settings.actions.save')}</span>
                             </button>
@@ -1595,7 +1595,7 @@ export const SettingsPanel = ({
                                             <Icon name="exclamation-triangle" className="text-2xl animate-pulse" />
                                         </div>
                                         <div className="flex flex-col">
-                                            <h3 className="text-base font-black text-red-600 dark:text-red-200 tracking-tight mb-1 transition-colors">{t('settings.factory_reset.title')}</h3>
+                                            <h3 className="text-base font-black text-red-600 dark:text-red-200 tracking-tight mb-1 transition-colors cloud-factory-title">{t('settings.factory_reset.title')}</h3>
                                             <p className="text-[10px] text-red-500/80 dark:text-red-400/30 font-medium leading-relaxed max-w-sm transition-colors">{t('settings.factory_reset.desc')}</p>
                                         </div>
                                     </div>
@@ -1621,7 +1621,7 @@ export const SettingsPanel = ({
                                                 await askAlert(t('dialogs.factory_reset_error', { error: (e as any)?.message }));
                                             }
                                         }}
-                                        className="h-11 px-6 bg-red-500/[0.02] hover:bg-red-500/15 border border-transparent hover:border-red-500/40 text-red-400/80 dark:text-red-400/60 hover:text-red-700 dark:hover:text-red-100 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 shadow-lg hover:shadow-red-500/10 active:scale-95 group/btn"
+                                        className="h-11 px-6 bg-red-500/[0.02] hover:bg-red-500/15 border border-transparent hover:border-red-500/40 text-red-400/80 dark:text-red-400/60 hover:text-red-700 dark:hover:text-red-100 cloud-destructive-btn rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 shadow-lg hover:shadow-red-500/10 active:scale-95 group/btn"
                                     >
                                         <Icon name="redo-alt" className="text-sm group-hover/btn:rotate-[360deg] transition-all duration-700" /> 
                                         {t('settings.reset_btn')}
