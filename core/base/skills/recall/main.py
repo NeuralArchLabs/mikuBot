@@ -382,21 +382,34 @@ def _get_graph_neighbors(index_data, mem_id, depth=2):
 # FOLDER TREE BUILDER & DYNAMIC SUMMARY
 # ─────────────────────────────────────────────────────────────────────────────
 def _get_dynamic_tree_summary():
-    """Generates a highly compact string of the current memory folder structure."""
+    """Generates a highly compact, recursive string of the current memory folder structure."""
     if not os.path.exists(MEMORY_ROOT):
         return "Memory structure not initialized."
-    
-    summary = []
-    for top_dir in os.listdir(MEMORY_ROOT):
-        top_path = os.path.join(MEMORY_ROOT, top_dir)
-        if os.path.isdir(top_path):
-            subdirs = [d for d in os.listdir(top_path) if os.path.isdir(os.path.join(top_path, d))]
-            if subdirs:
-                summary.append(f"{top_dir}[{', '.join(subdirs)}]")
+        
+    def _build_dir_dict(path):
+        tree = {}
+        try:
+            for entry in os.scandir(path):
+                if entry.is_dir() and not entry.name.startswith('.'):
+                    tree[entry.name] = _build_dir_dict(entry.path)
+        except Exception:
+            pass
+        return tree
+
+    def _format_tree(tree):
+        result = []
+        for k in sorted(tree.keys()):
+            v = tree[k]
+            if v:
+                result.append(f"{k}[{_format_tree(v)}]")
             else:
-                summary.append(f"{top_dir}")
+                result.append(k)
+        return ", ".join(result)
+        
+    dir_dict = _build_dir_dict(MEMORY_ROOT)
+    formatted = _format_tree(dir_dict)
     
-    return ", ".join(summary) if summary else "Empty structure."
+    return formatted if formatted else "Empty structure."
 
 def _build_tree_on_disk(base, tree):
     for key, children in tree.items():

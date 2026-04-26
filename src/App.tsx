@@ -265,6 +265,7 @@ export const App = () => {
             id,
             title: newSession.title,
             lastModified: newSession.timestamp,
+            createdAt: newSession.timestamp,
             messageCount: 0
         };
         setSessions(prev => [meta, ...prev]);
@@ -405,10 +406,11 @@ export const App = () => {
             const newId = `session_import_${Date.now()}`;
             const imported: Session = { ...session, id: newId };
             await persistence.saveSession(imported);
-            const meta = {
+            const meta: SessionMetadata = {
                 id: newId,
                 title: imported.title,
                 lastModified: imported.timestamp,
+                createdAt: imported.timestamp,
                 messageCount: imported.messages.length
             };
             setSessions(prev => [meta, ...prev]);

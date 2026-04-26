@@ -61,6 +61,7 @@ export interface SessionMetadata {
     title: string;
     lastModified: number;
     messageCount: number;
+    createdAt?: number;
 }
 
 /** Session */

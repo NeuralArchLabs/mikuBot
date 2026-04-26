@@ -25,7 +25,7 @@ export const SessionList = React.memo(({ sessions, loading, currentSessionId, on
     return (
         <div className="flex flex-col h-full">
             {!isModal && (
-                <div className={`${hideList ? 'mb-0' : 'mb-3'}`}>
+                <div className={`${hideList ? 'mb-0' : 'mb-0'}`}>
                     <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-3" />
                     <div className="flex items-center justify-between px-1">
                         {onExpand ? (
@@ -62,12 +62,12 @@ export const SessionList = React.memo(({ sessions, loading, currentSessionId, on
                             </div>
                         )}
                     </div>
-                    {!hideList && <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mt-3 mb-1" />}
+                    {!hideList && <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mt-3 mb-0" />}
                 </div>
             )}
 
             {!hideList && (
-                <div className={`flex-1 overflow-y-auto overflow-x-visible custom-scrollbar px-4 -mx-4 pt-2 ${isModal ? 'space-y-2' : 'space-y-1'} pb-2 mb-4`}>
+                <div className={`flex-1 overflow-y-auto overflow-x-visible custom-scrollbar chat-fade-mask px-4 -mx-4 pt-0 ${isModal ? 'space-y-2' : 'space-y-1'} pb-0 mb-0`}>
                 {loading && sessions.length === 0 ? (
                     <div className="text-center py-4 text-slate-600 animate-pulse">
                         <Icon name="spinner" className="animate-spin mb-1" />
@@ -78,6 +78,8 @@ export const SessionList = React.memo(({ sessions, loading, currentSessionId, on
                     </div>
                 ) : (
                     <>
+                        {/* Buffer to clear the top fade mask when fully scrolled */}
+                        <div className="h-3 w-full flex-shrink-0" />
                         {sessions.map(ss => {
                             const isActive = currentSessionId === ss.id;
     
@@ -87,7 +89,7 @@ export const SessionList = React.memo(({ sessions, loading, currentSessionId, on
                                     <div
                                         key={ss.id}
                                         className={`group relative flex flex-col gap-1.5 rounded-xl p-4 transition-all duration-300 cursor-pointer border border-transparent ${isActive
-                                            ? 'bg-blue-600/20 text-blue-300 shadow-lg shadow-blue-900/10'
+                                            ? 'bg-blue-600/20 text-blue-300 shadow-lg shadow-blue-900/10 sunken-active'
                                             : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
                                             } hover:border-blue-500/50 hover:shadow-[0_0_20px_-5px_rgba(59,130,246,0.3)]`}
                                         onClick={() => onSelect(ss.id)}
@@ -99,7 +101,7 @@ export const SessionList = React.memo(({ sessions, loading, currentSessionId, on
     
                                         <div className="flex items-center justify-between pl-5 w-full">
                                             <div className="text-[11px] text-slate-500 font-mono truncate">
-                                                {ss.messageCount} messages • {new Date(ss.lastModified).toLocaleDateString()}
+                                                {ss.messageCount} messages • {new Date(ss.createdAt || ss.lastModified).toLocaleDateString()}
                                             </div>
     
                                             <div className="flex items-center gap-2 opacity-100">
@@ -131,7 +133,7 @@ export const SessionList = React.memo(({ sessions, loading, currentSessionId, on
                                 <div
                                     key={ss.id}
                                     className={`session-card session-card-sidebar group relative grid grid-cols-[auto_1fr] gap-x-2.5 items-center rounded-xl p-2.5 transition-all duration-300 cursor-pointer border border-transparent ${isActive
-                                        ? 'bg-blue-600/20 text-blue-300'
+                                        ? 'bg-blue-600/20 text-blue-300 sunken-active'
                                         : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
                                         } hover:border-blue-500/50 hover:shadow-[0_0_15px_-3px_rgba(59,130,246,0.3)]`}
                                     onClick={() => onSelect(ss.id)}
@@ -145,7 +147,7 @@ export const SessionList = React.memo(({ sessions, loading, currentSessionId, on
                                             {ss.title || t('common.untitled_session')}
                                         </div>
                                         <div className="session-metadata text-[9px] text-slate-500 font-mono truncate mt-0.5">
-                                            {ss.messageCount} msgs • {new Date(ss.lastModified).toLocaleDateString()}
+                                            {ss.messageCount} msgs • {new Date(ss.createdAt || ss.lastModified).toLocaleDateString()}
                                         </div>
                                     </div>
     

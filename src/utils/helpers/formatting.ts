@@ -188,8 +188,8 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         const displayLang = langClean || 'code';
 
         const containerClass = isDiagram 
-            ? 'relative group bg-black/35 pt-12 pb-12 px-8 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_15px_45px_rgba(0,0,0,0.65)] transition max-w-full selection:bg-cyan-500/30' 
-            : 'relative group bg-black/35 pt-12 pb-12 px-6 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_15px_45px_rgba(0,0,0,0.65)] backdrop-blur-md transition md:mx-2';
+            ? 'relative group bg-black/45 pt-12 pb-12 px-8 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_15px_45px_rgba(0,0,0,0.65)] max-w-full min-w-0 selection:bg-cyan-500/30' 
+            : 'relative group bg-black/45 pt-12 pb-12 px-6 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_15px_45px_rgba(0,0,0,0.65)] backdrop-blur-md max-w-full min-w-0 md:mx-2';
         
         // Studio Elite Header: Minimal Floating Language Badge
         const studioHeader = `
@@ -205,13 +205,16 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         const copyButton = `<button class="absolute top-3 right-5 text-slate-500/50 hover:text-cyan-400 p-1 opacity-0 group-hover:opacity-100 transition hover:scale-110 active:scale-90 cursor-pointer z-20" title="Copiar Código" data-code="${encodedCode}" onclick="var btn=this,icon=btn.querySelector('i'),code=decodeURIComponent(btn.dataset.code);navigator.clipboard.writeText(code).then(function(){icon.className='fas fa-check text-emerald-400';setTimeout(function(){icon.className='fas fa-clone'},2000)})"><i class="fas fa-clone text-[13px]"></i></button>`;
         
         if (isDiagram) {
-            const finalClass = isStreaming ? `${containerClass} isolate overflow-visible is-visible` : `${containerClass} isolate overflow-visible`;
+            const codeBtnLabel = i18n.t('common.code', { defaultValue: 'Código' });
+            const codeButton = `<button class="absolute top-3 right-14 text-slate-500/50 hover:text-cyan-400 p-1 opacity-0 group-hover:opacity-100 transition hover:scale-110 active:scale-90 cursor-pointer z-20" title="${codeBtnLabel}" onclick="var container=this.closest('.group'); var svg=container.querySelector('.mermaid'); var raw=container.querySelector('.mermaid-raw-code'); if(svg.style.display==='none'){svg.style.display='flex';raw.style.display='none';svg.style.animation='none';svg.offsetHeight;svg.style.animation='slide-up-fade 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards';this.classList.remove('text-cyan-400');this.classList.add('text-slate-500/50');}else{svg.style.display='none';raw.style.display='block';raw.style.animation='none';raw.offsetHeight;raw.style.animation='slide-up-fade 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards';this.classList.remove('text-slate-500/50');this.classList.add('text-cyan-400');}"><i class="fas fa-code text-[13px]"></i></button>`;
+
+            const finalClass = isStreaming ? `${containerClass} isolate overflow-visible is-visible` : `${containerClass} overflow-visible code-block-anim opacity-0 scale-95 transition-all duration-500 ease-in-out will-change-transform transform translate-z-0`;
             const extraAttrs = isStreaming ? 'data-animated="true"' : '';
-            pieces.push(`<div class="${finalClass}" ${extraAttrs}>${studioHeader}${copyButton}<div class="overflow-x-auto w-full px-2 pb-6"><div class="mermaid opacity-0 scale-95 blur-sm transition duration-1000 min-h-[100px] flex items-center justify-center transform-gpu" data-mermaid-src="${encodedCode}"><code class="text-sm shadow-none font-mono leading-relaxed">${highlighted}</code></div></div></div>`);
+            pieces.push(`<div class="${finalClass}" ${extraAttrs}>${studioHeader}${copyButton}${codeButton}<div class="overflow-x-auto w-full px-2 pb-6"><div class="mermaid min-h-[100px] flex items-center justify-center" data-mermaid-src="${encodedCode}"></div><div class="mermaid-raw-code hidden w-full bg-black/20 shadow-[0_3px_12px_rgba(0,0,0,0.3),0_1px_3px_rgba(0,0,0,0.15)] rounded-xl p-5 pb-10 border border-transparent mt-4"><pre class="bg-transparent border-none p-0 m-0" style="background: transparent !important; box-shadow: none !important;"><code class="text-sm shadow-none font-mono leading-relaxed block">${highlighted}</code></pre></div></div></div>`);
         } else {
-            const finalClass = isStreaming ? `${containerClass} isolate overflow-visible is-visible` : `${containerClass} isolate overflow-visible code-block-anim opacity-0 scale-95 blur-sm transition duration-1000 transform-gpu`;
+            const finalClass = isStreaming ? `${containerClass} isolate overflow-visible is-visible` : `${containerClass} overflow-visible code-block-anim opacity-0 scale-95 transition-all duration-500 ease-in-out will-change-transform transform translate-z-0`;
             const extraAttrs = isStreaming ? 'data-animated="true"' : '';
-            pieces.push(`<div class="${finalClass}" ${extraAttrs}>${studioHeader}${copyButton}<div class="overflow-x-auto w-full bg-black/10 rounded-xl p-5 pb-10 border border-transparent"><pre class="bg-transparent border-none p-0 m-0"><code class="text-sm shadow-none font-mono leading-relaxed block">${highlighted}</code></pre></div></div>`);
+            pieces.push(`<div class="${finalClass}" ${extraAttrs}>${studioHeader}${copyButton}<div class="overflow-x-auto w-full bg-black/20 shadow-[0_3px_12px_rgba(0,0,0,0.3),0_1px_3px_rgba(0,0,0,0.15)] rounded-xl p-5 pb-10 border border-transparent"><pre class="bg-transparent border-none p-0 m-0" style="background: transparent !important; box-shadow: none !important;"><code class="text-sm shadow-none font-mono leading-relaxed block">${highlighted}</code></pre></div></div>`);
         }
         return `\n${id}\n`;
     });
@@ -327,9 +330,31 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                 const openTagEnd = fullTagContent.indexOf('>') + 1;
                 const closeTagIdx = fullTagContent.lastIndexOf('</');
                 if (closeTagIdx > openTagEnd) {
-                    const openTag = fullTagContent.substring(0, openTagEnd);
+                    let openTag = fullTagContent.substring(0, openTagEnd);
                     let inner = fullTagContent.substring(openTagEnd, closeTagIdx);
                     const closeTag = fullTagContent.substring(closeTagIdx);
+
+                    // ⚡ RESPONSIVE GRID FIX ⚡
+                    // If the model creates an explicit grid layout, ensure it is responsive and doesn't blow out
+                    if (/display\s*:\s*grid/i.test(openTag)) {
+                        // Strip rigid columns
+                        openTag = openTag.replace(/grid-template-columns\s*:[^"';]+;?/i, '');
+                        
+                        // Add Tailwind responsive grid + max-width limits
+                        if (!openTag.includes('class=')) {
+                            openTag = openTag.replace(/<div/i, '<div class="grid grid-cols-1 lg:grid-cols-2 w-full max-w-full gap-4"');
+                        } else {
+                            openTag = openTag.replace(/class="/i, 'class="grid grid-cols-1 lg:grid-cols-2 w-full max-w-full gap-4 ');
+                        }
+                        
+                        // Prevent CSS Grid Blowout: Add min-w-0 to all immediate child containers
+                        inner = inner.replace(/<div\b([^>]*)>/gi, (match, p1) => {
+                            if (p1.includes('class="')) {
+                                return `<div ${p1.replace(/class="/, 'class="min-w-0 ')}>`;
+                            }
+                            return `<div class="min-w-0"${p1}>`;
+                        });
+                    }
 
                     // Convert markdown headers — only on lines without any '<' (avoids breaking nested HTML)
                     inner = inner.replace(/^(#{1,6})\s+(.+)$/gm, (m, hashes, text) => {
@@ -1562,54 +1587,82 @@ export function formatNumber(num: number, decimals: number = 0): string {
 
 
 /**
+/**
  * Dependency-free minimal syntax highlighter for Mermaid and common languages.
  * Uses a two-pass placeholder system to prevent self-matching inside HTML tags.
  */
 function highlightCode(code: string, lang: string): string {
     if (!code) return '';
 
-    // Step 0: Escape literal $ to avoid misinterpretation
-    let highlighted = code.replace(/\$/g, '‹DOLLAR›');
+    let highlighted = code.replace(/\$/g, '\u2039DOLLAR\u203a');
+    // HTML-escape < and > so they render as text, not as real HTML tags
+    highlighted = highlighted.replace(/&/g, '&amp;');
+    highlighted = highlighted.replace(/</g, '&lt;');
+    highlighted = highlighted.replace(/>/g, '&gt;');
     const tokens: string[] = [];
 
+    // PUA sentinels: cannot be matched by any word/digit/punctuation regex
     const addToken = (content: string, className: string) => {
-        const id = `##TOKEN_${tokens.length}##`;
+        const id = `\uE000${tokens.length}\uE001`;
         tokens.push(`<span class="${className}">${content}</span>`);
         return id;
     };
 
-    // 0. Basic Comments (Single line // or #)
-    // At start of line
-    highlighted = highlighted.replace(/^(\s*)(\/\/|#)(.*)$/gm, (match, space, prefix, content) => 
-        space + addToken(prefix + content, 'text-slate-600 italic font-medium')
-    );
-    // Inline (preceded by space)
-    highlighted = highlighted.replace(/([ \t]+)(\/\/|#)(.*)$/gm, (match, space, prefix, content) => 
-        space + addToken(prefix + content, 'text-slate-600 italic font-medium')
-    );
+    // ── Comments (must run before language handlers) ──────────────────────────
+    // 1. Block comments /* ... */ — for JS, TS, C, C++, CSS, Java, Go, Rust, PHP, etc.
+    const blockCommentLangs = new Set(['javascript','typescript','js','ts','jsx','tsx','c','cpp','c++','h','hpp','css','scss','less','java','kotlin','kt','go','golang','rust','php','swift','dart','sql','mysql','postgresql','sqlite','jsonc']);
+    if (blockCommentLangs.has(lang)) {
+        highlighted = highlighted.replace(/\/\*[\s\S]*?\*\//g, m => addToken(m, 'hl-comment'));
+    }
 
-    if (lang === 'mermaid' || lang === 'flowchart' || lang === 'graph' || lang === 'gitgraph' || lang === 'erdiagram' || lang === 'mindmap' || lang === 'pie' || lang.startsWith('statediagram') || lang === 'gantt' || lang === 'sequencediagram') {
-        // 1. Strings in quotes - (e.g., "Label")
-        highlighted = highlighted.replace(/"([^"]+)"/g, (_, str) => addToken(`"${str}"`, 'text-emerald-400 font-medium'));
+    // 2. HTML/XML comments <!-- ... --> (after HTML-escaping, --> became --&gt;)
+    if (lang === 'html' || lang === 'xml' || lang === 'svg') {
+        highlighted = highlighted.replace(/&lt;!--[\s\S]*?--&gt;/g, m => addToken(m, 'hl-comment'));
+    }
 
-        // 2. Specialized Values (e.g., : 45 in Pie charts or dates in Gantt)
-        highlighted = highlighted.replace(/(:\s*)(\d+(\.\d+)?|[\d\-]{4,})/g, 
-            (_, colon, val) => `${colon}${addToken(val, 'text-amber-400 font-black')}`
-        );
+    // 3. PowerShell block comments <# ... #> (escaped as &lt;# ... #&gt;)
+    if (['powershell','ps1'].includes(lang)) {
+        highlighted = highlighted.replace(/&lt;#[\s\S]*?#&gt;/g, m => addToken(m, 'hl-comment'));
+    }
 
-        // 3. Labels in brackets - (e.g., [Text] or {Text})
-        highlighted = highlighted.replace(/([\[\(\{])([^\]\)\}]*)([\]\)\}])/g, 
-            (_, open, content, close) => `${addToken(open, 'text-slate-500')}${addToken(content, 'text-slate-200 font-semibold')}${addToken(close, 'text-slate-500')}`
-        );
+    // 4. Single-line comments
+    const noHashComment = new Set(['css','scss','less','c','cpp','c++','h','hpp']);
+    if (noHashComment.has(lang)) {
+        // C/C++/CSS: only // (# is a preprocessor directive or hex color)
+        highlighted = highlighted.replace(/^(\s*)(\/\/)(.*)$/gm, (_m, sp, pf, c) => sp + addToken(pf + c, 'hl-comment'));
+        highlighted = highlighted.replace(/([ \t]+)(\/\/)(.*)$/gm, (_m, sp, pf, c) => sp + addToken(pf + c, 'hl-comment'));
+    } else if (lang === 'html' || lang === 'xml' || lang === 'svg') {
+        // HTML: no single-line comments (already handled block above)
+    } else {
+        // All others: // and # — but NOT # preceded by &lt; (PowerShell <# tag)
+        highlighted = highlighted.replace(/^(\s*)(\/\/|(?<!&lt;)#)(.*)$/gm, (_m, sp, pf, c) => sp + addToken(pf + c, 'hl-comment'));
+        highlighted = highlighted.replace(/([ \t]+)(\/\/|(?<!&lt;)#)(.*)$/gm, (_m, sp, pf, c) => sp + addToken(pf + c, 'hl-comment'));
+    }
 
-        // 4. Connectors (Arrows and lines) - Must use escaped versions
-        highlighted = highlighted.replace(/(--&gt;|--|==&gt;|-&gt;|-\.-&gt;|-.-|==|\|o--o\{|\|--\|\{|--o\{|--\|\{|&gt;&gt;)/g, (match) => addToken(match, 'text-cyan-500 font-black drop-shadow-[0_0_5px_rgba(6,182,212,0.4)]'));
+    // 4. SQL -- comments
+    if (lang === 'sql' || lang === 'mysql' || lang === 'postgresql' || lang === 'sqlite') {
+        highlighted = highlighted.replace(/^(\s*)(--\s.*)$/gm, (_m, sp, c) => sp + addToken(c, 'hl-comment'));
+        highlighted = highlighted.replace(/([ \t]+)(--\s.*)$/gm, (_m, sp, c) => sp + addToken(c, 'hl-comment'));
+    }
 
-        // 5. Aliases - (e.g., participant U as User)
-        highlighted = highlighted.replace(/\b(as)\b/g, (match) => addToken(match, 'text-sky-500 italic'));
+    // 5. Python / Lua triple-quote docstrings
+    if (lang === 'python' || lang === 'py') {
+        highlighted = highlighted.replace(/("""[\s\S]*?"""|'''[\s\S]*?''')/g, m => addToken(m, 'hl-comment'));
+    }
 
-        // 6. Keywords
-        // 6a. Main structure types with Icons
+    // 6. Lua -- single-line comments
+    if (lang === 'lua') {
+        highlighted = highlighted.replace(/^(\s*)(--(?!.*\[\[).*)$/gm, (_m, sp, c) => sp + addToken(c, 'hl-comment'));
+        highlighted = highlighted.replace(/([ \t]+)(--(?!.*\[\[).*)$/gm, (_m, sp, c) => sp + addToken(c, 'hl-comment'));
+    }
+
+    // ── Language-specific handlers ──────────────────────────────────────────
+    if (['mermaid','flowchart','graph','gitgraph','erdiagram','mindmap','pie','gantt','sequencediagram'].some(d => lang.startsWith(d))) {
+        highlighted = highlighted.replace(/"([^"]+)"/g, (_, s) => addToken(`"${s}"`, 'hl-string'));
+        highlighted = highlighted.replace(/(:\s*)(\d+(\.\d+)?|[\d\-]{4,})/g, (_, colon, val) => `${colon}${addToken(val, 'hl-number')}`);
+        highlighted = highlighted.replace(/([\[\(\{])([^\]\)\}]*)([\]\)\}])/g, (_, o, c, cl) => `${addToken(o, 'hl-punct')}${addToken(c, 'hl-string')}${addToken(cl, 'hl-punct')}`);
+        highlighted = highlighted.replace(/(--&gt;|--|==&gt;|-&gt;|-\.-&gt;|-.-|==|\|o--o\{|\|--\|\{|--o\{|--\|\{|&gt;&gt;)/g, m => addToken(m, 'hl-keyword'));
+        highlighted = highlighted.replace(/\b(as)\b/g, m => addToken(m, 'hl-type'));
         highlighted = highlighted.replace(/\b(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|stateDiagram-v2|erDiagram|journey|gantt|pie|requirementDiagram|gitGraph|mindmap|root)\b/gi, (match) => {
             const m = match.toLowerCase();
             let icon = 'fa-project-diagram';
@@ -1619,52 +1672,134 @@ function highlightCode(code: string, lang: string): string {
             if (m.includes('git')) icon = 'fa-code-branch';
             if (m.includes('mindmap')) icon = 'fa-brain';
             if (m.includes('er')) icon = 'fa-database';
-
-            return addToken(`<i class="fas ${icon} text-[0.8em] opacity-80 mr-2"></i>${m}`, 'text-cyan-400 font-black uppercase tracking-widest italic text-[0.85em] border-b border-cyan-500/20 pb-0.5');
+            return addToken(`<i class="fas ${icon} text-[0.8em] opacity-80 mr-2"></i>${m}`, 'hl-keyword');
         });
-        
-        // 6b. Block elements & Entities
-        highlighted = highlighted.replace(/\b(participant|actor|subgraph|end|state|note|over|left of|right of|section|title)\b/g, (match) => addToken(match, 'text-indigo-400 font-bold'));
+        highlighted = highlighted.replace(/\b(participant|actor|subgraph|end|state|note|over|left of|right of|section|title)\b/g, m => addToken(m, 'hl-kw-css'));
+        highlighted = highlighted.replace(/\b(branch|checkout|commit|merge|tag|done|active|crit|after|dateFormat|accTitle|accDescr)\b/g, m => addToken(m, 'hl-decorator'));
+        highlighted = highlighted.replace(/\b(TD|LR|BT|RL|TB|int|string|date|float|PK|FK)\b/g, m => addToken(m, 'hl-type'));
 
-        // 6c. GitGraph & Specialized actions
-        highlighted = highlighted.replace(/\b(branch|checkout|commit|merge|tag|done|active|crit|after|dateFormat|accTitle|accDescr)\b/g, (match) => addToken(match, 'text-fuchsia-400/90 font-semibold'));
+    } else if (lang === 'tree' || highlighted.includes('\u251c\u2500\u2500') || highlighted.includes('\u2514\u2500\u2500')) {
+        highlighted = highlighted.replace(/([\u2502\u251c\u2514]\u2500\u2500|[\u2502])/g, m => addToken(m, 'hl-comment'));
+        highlighted = highlighted.replace(/([\w\-_]+\/)/g, m => addToken(`<i class="fas fa-folder" style="color:#f59e0b;margin-right:0.375rem;opacity:0.9"></i>${m}`, 'hl-decorator'));
+        highlighted = highlighted.replace(/([\w\-_]+\.(?:ts|js|json|md|py|css|html|tsx|jsx|env|cjs|mjs|txt|rs|go|rb|php|java|kt|swift|dart|yml|yaml|toml|cfg|ini|sh|bat|ps1|sql|graphql|proto|wasm|zig|nim|lua|r|jl|ex|exs|erl|hs|scala|clj|groovy|pl|pm))/g, m => addToken(`<i class="far fa-file-code" style="color:#60a5fa;margin-right:0.375rem;opacity:0.8"></i>${m}`, 'hl-string'));
 
-        // 7. General identifiers (if not already tokenized)
-        highlighted = highlighted.replace(/\b(TD|LR|BT|RL|TB|int|string|date|float|PK|FK)\b/g, (match) => addToken(match, 'text-slate-400 font-mono text-[0.9em]'));
-    } else if (lang === 'tree' || highlighted.includes('├──') || highlighted.includes('└──')) {
-        // High-end Tree rendering
-        // 1. Convert Tree Lines (ASCII)
-        highlighted = highlighted.replace(/([│├└]──|[│])/g, (match) => addToken(match, 'text-cyan-500/40 font-bold'));
-        
-        // 2. Folders (names ending with / or starting with emoji+space)
-        highlighted = highlighted.replace(/([\w\-_]+\/)/g, (match) => 
-            addToken(`<i class="fas fa-folder text-amber-500/90 mr-1.5"></i>${match}`, 'text-amber-200/90 font-bold')
-        );
+    } else if (lang === 'python' || lang === 'py') {
+        highlighted = highlighted.replace(/\b([a-zA-Z_]\w*)\s*(?=\()/g, m => addToken(m, 'hl-function'));
+        highlighted = highlighted.replace(/\b(def|class|if|elif|else|while|for|in|try|except|finally|with|as|import|from|global|nonlocal|lambda|yield|return|pass|break|continue|raise|assert|del|and|or|not|is)\b/g, m => addToken(m, 'hl-kw-py'));
+        highlighted = highlighted.replace(/\b(self|cls|None|True|False)\b/g, m => addToken(m, 'hl-self'));
+        highlighted = highlighted.replace(/(@[\w\.]+)/g, m => addToken(m, 'hl-decorator'));
+        highlighted = highlighted.replace(/\b(print|len|range|type|int|str|float|list|dict|set|tuple|bool|super|open|input|map|filter|zip|enumerate|sorted|reversed|isinstance|hasattr|getattr|setattr)\b/g, m => addToken(m, 'hl-builtin'));
 
-        // 3. Files (names with extensions)
-        highlighted = highlighted.replace(/([\w\-_]+\.(?:ts|js|json|md|py|css|html|tsx|jsx|env|cjs|mjs|txt))/g, (match) => 
-            addToken(`<i class="far fa-file-code text-blue-400/80 mr-1.5"></i>${match}`, 'text-slate-200')
-        );
+    } else if (['javascript','typescript','js','ts','jsx','tsx'].includes(lang)) {
+        highlighted = highlighted.replace(/\b([a-zA-Z_]\w*)\s*(?=\()/g, m => addToken(m, 'hl-function'));
+        highlighted = highlighted.replace(/\b([a-zA-Z_]\w*)\s*(?=:)/g, m => addToken(m, 'hl-key'));
+        highlighted = highlighted.replace(/\b(const|let|var|function|return|if|else|for|while|import|export|from|class|try|catch|finally|throw|new|this|super|extends|implements|interface|type|enum|await|async|yield|typeof|instanceof|void|delete|debugger|get|set|static|readonly|private|protected|public|abstract|as|of|switch|case|default|break|continue|do)\b/g, m => addToken(m, 'hl-kw-js'));
+        highlighted = highlighted.replace(/\b(any|string|number|boolean|unknown|never|undefined|null|true|false|void|object|symbol|bigint|Array|Promise|Map|Set|Record|Partial|Required|Readonly|Pick|Omit)\b/g, m => addToken(m, 'hl-type'));
+        highlighted = highlighted.replace(/\b(console|document|window|Math|JSON|Object|Array|Date|RegExp|Error|Promise|setTimeout|setInterval|fetch|require|module|exports|process)\b/g, m => addToken(m, 'hl-builtin'));
+
+    } else if (['c','cpp','c++','h','hpp'].includes(lang)) {
+        highlighted = highlighted.replace(/\b([a-zA-Z_]\w*)\s*(?=\()/g, m => addToken(m, 'hl-function'));
+        highlighted = highlighted.replace(/(#\w+)/g, m => addToken(m, 'hl-directive'));
+        highlighted = highlighted.replace(/\b(int|char|float|double|void|long|short|signed|unsigned|struct|union|enum|typedef|const|static|extern|register|volatile|auto|inline|restrict|class|namespace|template|typename|using|public|protected|private|virtual|friend|mutable|explicit|operator|try|catch|throw|new|delete|constexpr|noexcept|nullptr|if|else|for|while|do|switch|case|default|break|continue|return|goto|sizeof)\b/g, m => addToken(m, 'hl-kw-c'));
+        highlighted = highlighted.replace(/\b(std|cout|cin|endl|string|vector|map|set|pair|array|unique_ptr|shared_ptr|size_t|nullptr_t|bool|true|false|NULL|EOF)\b/g, m => addToken(m, 'hl-type'));
+
+    } else if (lang === 'html' || lang === 'xml' || lang === 'svg') {
+        // Match escaped entities &lt; and &gt; since we HTML-escaped above
+        highlighted = highlighted.replace(/(&lt;\/?[a-zA-Z][\w-]*)/g, m => addToken(m, 'hl-tag'));
+        highlighted = highlighted.replace(/(\/?&gt;)/g, m => addToken(m, 'hl-tag'));
+        highlighted = highlighted.replace(/\b([a-z][\w-]*)(?=\s*=)/gi, m => addToken(m, 'hl-attr'));
+
+    } else if (lang === 'css' || lang === 'scss' || lang === 'less') {
+        highlighted = highlighted.replace(/(\.[\w-]+|::?[\w-]+(?:\(.*?\))?)/g, m => addToken(m, 'hl-selector'));
+        highlighted = highlighted.replace(/\b([a-z][\w-]*)\s*(?=\{)/g, m => addToken(m, 'hl-selector'));
+        highlighted = highlighted.replace(/\b([\w-]+)(?=\s*:)/g, m => addToken(m, 'hl-prop'));
+        highlighted = highlighted.replace(/(#[a-fA-F0-9]{3,8})\b/g, m => addToken(m, 'hl-value'));
+        highlighted = highlighted.replace(/\b(!important)\b/g, m => addToken(m, 'hl-directive'));
+
+    } else if (lang === 'rust') {
+        highlighted = highlighted.replace(/\b(pub|mut|impl|match|use|mod|fn|let|struct|enum|trait|type|where|async|await|move|unsafe|static|const|dyn|Self|self|as|in|for|while|loop|if|else|return|break|continue|ref|crate|extern)\b/g, m => addToken(m, 'hl-kw-rust'));
+        highlighted = highlighted.replace(/\b(String|Option|Some|None|Result|Ok|Err|u8|u16|u32|u64|u128|i8|i16|i32|i64|i128|f32|f64|bool|char|usize|isize|str|Vec|Box|Rc|Arc|HashMap|HashSet|BTreeMap|BTreeSet|Cow|Cell|RefCell|Mutex|RwLock)\b/g, m => addToken(m, 'hl-type'));
+
+    } else if (lang === 'go' || lang === 'golang') {
+        highlighted = highlighted.replace(/\b(package|import|func|type|struct|interface|map|chan|go|select|case|default|if|else|switch|for|range|return|defer|panic|recover|var|const|fallthrough|break|continue|goto)\b/g, m => addToken(m, 'hl-kw-go'));
+        highlighted = highlighted.replace(/\b(string|int|int8|int16|int32|int64|uint|uint8|uint16|uint32|uint64|uintptr|byte|rune|float32|float64|complex64|complex128|bool|error|nil|iota|true|false|any)\b/g, m => addToken(m, 'hl-type'));
+
+    } else if (lang === 'java' || lang === 'kotlin' || lang === 'kt') {
+        highlighted = highlighted.replace(/(@[\w.]+)/g, m => addToken(m, 'hl-decorator'));
+        highlighted = highlighted.replace(/\b(abstract|assert|break|case|catch|class|const|continue|default|do|else|enum|extends|final|finally|for|goto|if|implements|import|instanceof|interface|native|new|package|private|protected|public|return|static|strictfp|super|switch|synchronized|this|throw|throws|transient|try|volatile|while|val|var|fun|object|companion|data|sealed|when|is|in|out|suspend|override|open|internal|lateinit)\b/g, m => addToken(m, 'hl-kw-js'));
+        highlighted = highlighted.replace(/\b(void|boolean|byte|char|short|int|long|float|double|String|Integer|Long|Double|Float|Boolean|List|Map|Set|Array|Object|Any|Unit|Nothing|Comparable|Iterable)\b/g, m => addToken(m, 'hl-type'));
+
+    } else if (lang === 'ruby' || lang === 'rb') {
+        highlighted = highlighted.replace(/\b(def|class|module|if|elsif|else|unless|while|until|for|do|end|begin|rescue|ensure|raise|return|yield|require|include|extend|puts|print|nil|true|false|self|super|then|case|when|and|or|not|attr_accessor|attr_reader|attr_writer)\b/g, m => addToken(m, 'hl-kw-rust'));
+        highlighted = highlighted.replace(/(:[a-zA-Z_]\w*)/g, m => addToken(m, 'hl-value'));
+        highlighted = highlighted.replace(/(@\w+)/g, m => addToken(m, 'hl-decorator'));
+
+    } else if (lang === 'php') {
+        highlighted = highlighted.replace(/((&lt;\?php|\?&gt;))/g, m => addToken(m, 'hl-directive'));
+        highlighted = highlighted.replace(/\b(function|class|if|else|elseif|while|for|foreach|do|switch|case|break|continue|return|echo|print|new|try|catch|finally|throw|use|namespace|public|private|protected|static|abstract|interface|extends|implements|const|var|require|include|array|isset|unset|empty|null|true|false)\b/g, m => addToken(m, 'hl-kw-py'));
+        highlighted = highlighted.replace(/(\$[\w]+)/g, m => addToken(m, 'hl-var'));
+
+    } else if (lang === 'sql' || lang === 'mysql' || lang === 'postgresql' || lang === 'sqlite') {
+        highlighted = highlighted.replace(/\b([a-zA-Z_]\w*)\s*(?=\()/g, m => addToken(m, 'hl-function'));
+        highlighted = highlighted.replace(/\b(SELECT|FROM|WHERE|AND|OR|NOT|INSERT|INTO|VALUES|UPDATE|SET|DELETE|CREATE|TABLE|ALTER|DROP|INDEX|JOIN|INNER|LEFT|RIGHT|OUTER|FULL|ON|GROUP|BY|ORDER|ASC|DESC|HAVING|LIMIT|OFFSET|UNION|ALL|AS|DISTINCT|IN|EXISTS|BETWEEN|LIKE|IS|NULL|COUNT|SUM|AVG|MIN|MAX|CASE|WHEN|THEN|ELSE|END|PRIMARY|KEY|FOREIGN|REFERENCES|DEFAULT|CHECK|UNIQUE|VARCHAR|INT|TEXT|BOOLEAN|DATE|TIMESTAMP|FLOAT|DECIMAL|IF|BEGIN|COMMIT|ROLLBACK|GRANT|REVOKE|VIEW|TRIGGER|PROCEDURE|FUNCTION)\b/gi, m => addToken(m, 'hl-keyword'));
+
+    } else if (lang === 'yaml' || lang === 'yml') {
+        highlighted = highlighted.replace(/^([\w][\w.\-]*)(?=\s*:)/gm, m => addToken(m, 'hl-key'));
+        highlighted = highlighted.replace(/(^\s+[\w][\w.\-]*)(?=\s*:)/gm, m => addToken(m, 'hl-prop'));
+
+    } else if (lang === 'swift') {
+        highlighted = highlighted.replace(/\b(import|let|var|func|class|struct|enum|protocol|extension|if|else|guard|switch|case|default|for|in|while|repeat|do|return|break|continue|throw|throws|try|catch|defer|where|is|as|init|deinit|self|Self|super|static|override|mutating|lazy|weak|unowned|inout|typealias|private|fileprivate|internal|public|open)\b/g, m => addToken(m, 'hl-kw-go'));
+        highlighted = highlighted.replace(/\b(Int|String|Double|Float|Bool|Array|Dictionary|Set|Optional|Any|AnyObject|Void|nil|true|false|Character|Data|URL|Error)\b/g, m => addToken(m, 'hl-type'));
+
+    } else if (lang === 'dart') {
+        highlighted = highlighted.replace(/\b(import|export|class|abstract|extends|implements|mixin|with|enum|typedef|void|var|final|const|static|dynamic|late|required|if|else|for|in|while|do|switch|case|default|break|continue|return|throw|try|catch|finally|assert|new|this|super|async|await|yield|get|set|factory)\b/g, m => addToken(m, 'hl-kw-js'));
+        highlighted = highlighted.replace(/\b(int|double|num|String|bool|List|Map|Set|Future|Stream|Null|Object|void|true|false|null)\b/g, m => addToken(m, 'hl-type'));
+
+    } else if (lang === 'lua') {
+        highlighted = highlighted.replace(/\b(and|break|do|else|elseif|end|false|for|function|goto|if|in|local|nil|not|or|repeat|return|then|true|until|while)\b/g, m => addToken(m, 'hl-kw-rust'));
+        highlighted = highlighted.replace(/\b(print|tostring|tonumber|type|pairs|ipairs|next|select|error|pcall|xpcall|require|setmetatable|getmetatable|rawget|rawset|table|string|math|io|os|coroutine)\b/g, m => addToken(m, 'hl-builtin'));
+
     } else if (lang === 'dockerfile' || lang === 'docker') {
-        highlighted = highlighted.replace(/\b(FROM|WORKDIR|COPY|RUN|EXPOSE|CMD|ENV|ARG|ENTRYPOINT|ADD|USER|VOLUME|LABEL|STOPSIGNAL|HEALTHCHECK|SHELL|AS)\b/g, (match) => addToken(match, 'text-cyan-400 font-bold'));
-    } else if (lang === 'json') {
-        // Key highlighting for JSON
-        highlighted = highlighted.replace(/"([^"]+)":/g, (_, key) => `"${addToken(key, 'text-cyan-300')}":`);
+        highlighted = highlighted.replace(/\b(FROM|WORKDIR|COPY|RUN|EXPOSE|CMD|ENV|ARG|ENTRYPOINT|ADD|USER|VOLUME|LABEL|STOPSIGNAL|HEALTHCHECK|SHELL|AS)\b/g, m => addToken(m, 'hl-keyword'));
+
+    } else if (lang === 'json' || lang === 'jsonc') {
+        highlighted = highlighted.replace(/"([^"]+)":/g, (_, key) => `"${addToken(key, 'hl-key')}":`);
+
+    } else if (['bash','sh','shell','powershell','ps1','zsh','fish'].includes(lang)) {
+        highlighted = highlighted.replace(/\b(if|then|else|elif|fi|for|in|do|done|while|until|case|esac|function|local|export|alias|return|break|continue|exit|source|echo|read|set|unset|declare|readonly|shift|trap|eval|exec|test|select)\b/g, m => addToken(m, 'hl-kw-bash'));
+        highlighted = highlighted.replace(/(\$[\w\d_]+|\$\{[\w\d_]+\})/g, m => addToken(m, 'hl-var'));
+
+    } else if (lang === 'toml' || lang === 'ini' || lang === 'cfg' || lang === 'env') {
+        highlighted = highlighted.replace(/^\[([^\]]+)\]/gm, (_, section) => `[${addToken(section, 'hl-keyword')}]`);
+        highlighted = highlighted.replace(/^([\w][\w.\-]*)(?=\s*=)/gm, m => addToken(m, 'hl-key'));
+
+    } else if (lang === 'graphql' || lang === 'gql') {
+        highlighted = highlighted.replace(/\b(type|query|mutation|subscription|input|enum|interface|union|scalar|fragment|on|extend|schema|directive|implements)\b/g, m => addToken(m, 'hl-keyword'));
+        highlighted = highlighted.replace(/\b(String|Int|Float|Boolean|ID|Date|DateTime|JSON|null|true|false)\b/g, m => addToken(m, 'hl-type'));
+
+    } else if (lang === 'proto' || lang === 'protobuf') {
+        highlighted = highlighted.replace(/\b(syntax|message|service|rpc|returns|enum|oneof|map|repeated|optional|required|package|import|option|reserved|extend|extensions)\b/g, m => addToken(m, 'hl-keyword'));
+        highlighted = highlighted.replace(/\b(string|bytes|bool|double|float|int32|int64|uint32|uint64|sint32|sint64|fixed32|fixed64|sfixed32|sfixed64)\b/g, m => addToken(m, 'hl-type'));
     }
 
-    // Default basic highlighting for other languages (numbers, strings, and standard keywords)
-    highlighted = highlighted.replace(/(["'])(?:(?=(\\?))\2.)*?\1/g, (match) => addToken(match, 'text-emerald-400/80'));
-    highlighted = highlighted.replace(/\b(\d+)\b/g, (match) => addToken(match, 'text-amber-400/80'));
-    highlighted = highlighted.replace(/\b(true|false|null|undefined)\b/g, (match) => addToken(match, 'text-rose-400'));
-    highlighted = highlighted.replace(/\b(const|let|var|function|return|if|else|for|while|import|export|from|class|def|try|except|await|async|interface|type|enum|pub|mut|impl|match|use|mod|fn|String|Option|Some|None|Result|Ok|Err)\b/g, (match) => addToken(match, 'text-cyan-400'));
-    highlighted = highlighted.replace(/([\{\}\(\)\[\]\.,;:\+\-\*\/=<>!&|?])/g, (match) => addToken(match, 'text-slate-500'));
+    // ── Generic fallback (always runs) ──────────────────────────────────────
+    highlighted = highlighted.replace(/(["'`])(?:(?=(\\?))\2.)*?\1/g, m => addToken(m, 'hl-string'));
+    highlighted = highlighted.replace(/(?<!\uE000)\b(\d+(?:\.\d+)?)\b(?!\uE001)/g, m => addToken(m, 'hl-number'));
+    highlighted = highlighted.replace(/(?<!\uE000)\b(true|false|null|undefined|None|True|False|nil|NULL|NaN|Infinity)\b(?!\uE001)/g, m => addToken(m, 'hl-bool'));
+    const dedicatedLangs = new Set(['python','py','javascript','typescript','js','ts','jsx','tsx','c','cpp','c++','h','hpp','html','xml','svg','css','scss','less','rust','go','golang','dockerfile','docker','json','jsonc','bash','sh','shell','powershell','ps1','zsh','fish','tree','mermaid','flowchart','graph','gitgraph','erdiagram','mindmap','pie','gantt','sequencediagram','java','kotlin','kt','ruby','rb','php','sql','mysql','postgresql','sqlite','yaml','yml','swift','dart','lua','toml','ini','cfg','env','graphql','gql','proto','protobuf']);
+    if (!dedicatedLangs.has(lang)) {
+        highlighted = highlighted.replace(/(?<!\uE000)\b(const|let|var|function|return|if|else|for|while|import|export|from|class|def|try|except|await|async|interface|type|enum|pub|mut|impl|match|use|mod|fn)\b(?!\uE001)/g, m => addToken(m, 'hl-keyword'));
+    }
+    
+    // Generic Punctuation / Operators (protect HTML entities)
+    highlighted = highlighted.replace(/(&lt;|&gt;|&amp;|[\{\}\(\)\[\]\.,;:\+\-\*\/=!&|?])/g, m => addToken(m, 'hl-punct'));
 
-    // Pass 2: Restore tokens and characters
-    tokens.forEach((html, i) => {
-        highlighted = highlighted.replace(`##TOKEN_${i}##`, html);
-    });
+    // ── Pass 2: Restore tokens in REVERSE order ──────────────────────────────
+    for (let i = tokens.length - 1; i >= 0; i--) {
+        highlighted = highlighted.split(`\uE000${i}\uE001`).join(tokens[i]);
+    }
 
-    highlighted = highlighted.replace(/‹DOLLAR›/g, '$');
+    highlighted = highlighted.replace(/\u2039DOLLAR\u203a/g, '$');
 
     return highlighted;
 }

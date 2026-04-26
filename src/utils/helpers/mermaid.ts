@@ -494,6 +494,21 @@ function healMermaidSyntax(code: string): string {
         processed = outLines.join('\n');
     }
 
+    // 5. GitGraph: Fix missing newlines or missing diagram declaration
+    // 5a. If it starts directly with a git command (no gitgraph at all)
+    if (/^\s*(commit|branch|checkout|merge)\b/i.test(processed)) {
+        processed = `gitGraph\n${processed}`;
+    }
+    // 5b. If it starts with 'gitgraph' (wrong case) or missing newline
+    if (/^\s*gitgraph\b/i.test(processed)) {
+        // Fix capitalization (Mermaid requires exact camelCase 'gitGraph')
+        processed = processed.replace(/^(\s*)gitgraph\b/i, '$1gitGraph');
+        // Fix missing newline if commands follow on the same line
+        if (/^\s*gitGraph[ \t]+(?=\w)/.test(processed)) {
+            processed = processed.replace(/^(\s*gitGraph)[ \t]+/i, '$1\n');
+        }
+    }
+
     return processed;
 }
 
@@ -762,7 +777,7 @@ function attachExpandButton(block: HTMLElement) {
     if (!container || container.querySelector('.mermaid-expand-btn')) return; // Already has button
 
     const expandBtn = document.createElement('button');
-    expandBtn.className = 'mermaid-expand-btn absolute top-3 right-14 text-slate-500/50 hover:text-cyan-400 p-1 opacity-0 group-hover:opacity-100 transition hover:scale-110 active:scale-90 cursor-pointer z-20';
+    expandBtn.className = 'mermaid-expand-btn absolute top-3 right-[92px] text-slate-500/50 hover:text-cyan-400 p-1 opacity-0 group-hover:opacity-100 transition hover:scale-110 active:scale-90 cursor-pointer z-20';
     expandBtn.title = 'Inspeccionar diagrama';
     expandBtn.innerHTML = '<i class="fas fa-expand text-[13px]"></i>';
     expandBtn.addEventListener('click', (e) => {
@@ -859,6 +874,12 @@ export const renderSingleMermaidBlock = async (block: HTMLElement, index: number
             // 🚀 STEP 4: EXECUTE SMOOTH EXPANSION
             block.innerHTML = svg;
             block.style.height = targetHeight + 'px';
+            
+            // Add fade-in to the SVG so it doesn't pop abruptly
+            const renderedSvg = block.querySelector('svg');
+            if (renderedSvg) {
+                renderedSvg.style.animation = 'fade-in-kf 0.6s ease-out forwards';
+            }
 
             // 🎨 STEP 4.5: AUTO-CONTRAST on live DOM (safe, no serialization)
             fixMermaidTextContrastDOM(block);

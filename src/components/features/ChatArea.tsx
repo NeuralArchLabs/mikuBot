@@ -1273,12 +1273,12 @@ export const ChatArea = ({
                                         --- */}
                                         <div className={`absolute inset-0 rounded-[inherit] pointer-events-none transition-[border-color] duration-300 ${
                                             msg.role === 'user'
-                                                ? 'bg-blue-950/85 shadow-[0_15px_35px_-10px_rgba(0,0,0,0.55)] border border-blue-700/50 group-hover:border-blue-500/60'
+                                                ? 'bg-blue-950/85 shadow-[0_15px_35px_-10px_rgba(0,0,0,0.55)] border border-transparent group-hover:border-blue-500/60'
                                                 : (config.theme === 'cloud'
-                                                    ? 'bg-slate-700/90 shadow-[0_10px_25px_-3px_rgba(0,0,0,0.6)] border border-slate-500/40 group-hover:border-slate-400/50'
+                                                    ? 'bg-slate-700/90 shadow-[0_10px_25px_-3px_rgba(0,0,0,0.6)] border border-transparent group-hover:border-slate-400/50'
                                                     : (['cyberpunk', 'forest'].includes(config.theme)
-                                                        ? 'bg-[var(--surface-color)] shadow-[0_10px_25px_-3px_rgba(0,0,0,0.75)] border border-[var(--border-color)]/50 group-hover:border-[var(--primary-color)]/45'
-                                                        : 'bg-slate-800/90 shadow-[0_10px_25px_-3px_rgba(0,0,0,0.7)] border border-slate-700/45 group-hover:border-[var(--primary-color)]/45'))
+                                                        ? 'bg-[var(--surface-color)] shadow-[0_10px_25px_-3px_rgba(0,0,0,0.75)] border border-transparent group-hover:border-[var(--primary-color)]/45'
+                                                        : 'bg-slate-800/90 shadow-[0_10px_25px_-3px_rgba(0,0,0,0.7)] border border-transparent group-hover:border-[var(--primary-color)]/45'))
                                         }`} />
 
                                         {/* --- Contenido (siempre encima del fondo) --- */}

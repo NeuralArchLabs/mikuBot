@@ -278,6 +278,40 @@ body, html {
   word-break: break-word;
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Syntax Highlight Palette
+   These classes are injected at runtime by highlightCode() inside dynamic
+   HTML strings — Tailwind's static scanner never sees them.
+   Scoped under `pre code` for specificity above Tailwind's preflight reset.
+   ───────────────────────────────────────────────────────────────────────── */
+pre code .hl-comment   { color: #64748b !important; font-style: italic; }
+pre code .hl-string    { color: #34d399 !important; }
+pre code .hl-number    { color: #fbbf24 !important; }
+pre code .hl-bool      { color: #f87171 !important; }
+pre code .hl-keyword   { color: #22d3ee !important; }
+pre code .hl-kw-py     { color: #60a5fa !important; font-weight: 700; }
+pre code .hl-kw-js     { color: #facc15 !important; font-weight: 600; }
+pre code .hl-kw-go     { color: #38bdf8 !important; font-weight: 700; }
+pre code .hl-kw-rust   { color: #fb923c !important; font-weight: 700; }
+pre code .hl-kw-c      { color: #60a5fa !important; font-weight: 700; }
+pre code .hl-kw-css    { color: #818cf8 !important; }
+pre code .hl-kw-bash   { color: #34d399 !important; font-weight: 700; }
+pre code .hl-type      { color: #93c5fd !important; font-style: italic; }
+pre code .hl-self      { color: #a5b4fc !important; font-style: italic; }
+pre code .hl-decorator { color: #fcd34d !important; font-style: italic; }
+pre code .hl-tag       { color: #fb923c !important; font-weight: 500; }
+pre code .hl-attr      { color: #fef08a !important; }
+pre code .hl-value     { color: #fbbf24 !important; }
+pre code .hl-selector  { color: #22d3ee !important; font-weight: 700; }
+pre code .hl-prop      { color: #818cf8 !important; }
+pre code .hl-builtin   { color: #f87171 !important; }
+pre code .hl-punct     { color: #64748b !important; }
+pre code .hl-key       { color: #67e8f9 !important; font-weight: 600; }
+pre code .hl-var       { color: #fbbf24 !important; }
+pre code .hl-directive { color: #fb7185 !important; font-weight: 700; }
+
+
+
 .markdown-body blockquote {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
@@ -2519,6 +2553,36 @@ select.premium-input option {
   text-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
+.theme-cloud .tool-block .text-cyan-400 {
+  color: #0369a1 !important; /* sky-700 for better legibility on light background */
+}
+
+.theme-cloud .tool-block .text-emerald-400 {
+  color: #047857 !important; /* emerald-700 */
+}
+
+/* Fix inner block backgrounds for Tool Block in Cloud Theme */
+.theme-cloud .tool-block-content .bg-black\/50 {
+    background-color: rgba(0, 0, 0, 0.03) !important;
+    border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Tinted backgrounds specifically for the Detailed Response block */
+.theme-cloud .tool-block-content .text-cyan-400.bg-black\/50 {
+    background-color: rgba(3, 105, 161, 0.04) !important;
+    border-color: rgba(3, 105, 161, 0.15) !important;
+}
+
+.theme-cloud .tool-block-content .text-emerald-400.bg-black\/50 {
+    background-color: rgba(4, 120, 87, 0.04) !important;
+    border-color: rgba(4, 120, 87, 0.15) !important;
+}
+
+.theme-cloud .tool-block-content .text-rose-400.bg-black\/50 {
+    background-color: rgba(225, 29, 72, 0.04) !important;
+    border-color: rgba(225, 29, 72, 0.15) !important;
+}
+
 .xena-eye, .xena-nose {
   animation-play-state: paused;
 }
@@ -2662,6 +2726,18 @@ select.premium-input option {
 
 .shadow-glow-blue {
   box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+}
+
+.sunken-active {
+  box-shadow: inset 4px 4px 12px rgba(0, 0, 0, 0.35) !important;
+  border-color: transparent !important;
+  background-clip: padding-box !important;
+}
+
+.sunken-active:hover {
+  box-shadow: inset 4px 4px 12px rgba(0, 0, 0, 0.35), 0 0 15px -3px rgba(59, 130, 246, 0.3) !important;
+  border-color: rgba(59, 130, 246, 0.5) !important;
+  background-clip: border-box !important;
 }
 
 /* Scrollbar refinement override */

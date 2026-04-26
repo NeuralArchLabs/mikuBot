@@ -1268,6 +1268,7 @@ ipcMain.handle('get-sessions', async () => {
                         id: session.id,
                         title: session.title,
                         lastModified: fs.statSync(filePath).mtimeMs,
+                        createdAt: session.timestamp || fs.statSync(filePath).birthtimeMs,
                         messageCount: session.messages?.length || 0
                     };
                 } catch (e) {

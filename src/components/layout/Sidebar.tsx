@@ -320,7 +320,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                              </div>
                              <div className="h-px bg-gradient-to-r from-transparent via-[var(--border-color)] via-[5%] to-transparent flex-none opacity-40" />
  
-                            <div className="flex-1 overflow-y-auto overflow-x-visible custom-scrollbar space-y-1 px-4 -mx-4 pt-3 pb-3 min-h-0">
+                            <div className="flex-1 overflow-y-auto overflow-x-visible custom-scrollbar chat-fade-mask space-y-1 px-4 -mx-4 pt-3 pb-3 min-h-0">
                                     {Object.keys(state.additionalFiles || {}).length === 0 ? (
                                         <div className="text-center py-6 px-2 border border-dashed border-[var(--border-color)] rounded-xl bg-[var(--surface-color)]/30">
                                             <p className="text-[9px] text-[var(--text-secondary)] italic">{t('sidebar.footer.no_cortex')}</p>
@@ -340,7 +340,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                                             });
                                                         }}
                                                         className={`w-full text-left px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-[11px] font-mono truncate flex items-center gap-2.5 transition-all duration-300 border border-transparent ${isSelected
-                                                            ? 'bg-blue-600/15 text-blue-300'
+                                                            ? 'bg-blue-600/15 text-blue-300 sunken-active'
                                                             : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--hover-color)]'
                                                             } hover:border-blue-500/50 hover:shadow-[0_0_15px_-3px_rgba(59,130,246,0.3)]`}
                                                     >
