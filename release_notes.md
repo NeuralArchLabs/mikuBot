@@ -8,7 +8,7 @@ We are proud to announce the release of **mikuBot v2.4.0**, a major update that 
 Miku now possesses a persistent "brain" structure. The **Recall** skill allows the agent to maintain a recursive, deep-directory synaptic organization.
 - **Context-Aware Navigation**: Miku can now navigate past interactions and protocols with high precision.
 - **Cross-Session Retrieval**: Knowledge gained in one session can be efficiently retrieved and applied in future ones.
-- **Sovereign Persistence**: All memory is stored locally in your `@CORE/` and `@LIBRARY/` paths.
+- **Sovereign Persistence**: All memory is stored locally in your workspace's native `memory/` structure.
 
 ### 🧩 Dynamic Widgets Framework
 A new modular architecture for neural micro-apps. The workspace is no longer static.
