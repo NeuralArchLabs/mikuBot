@@ -1,14 +1,11 @@
 ## [2.4.0] - 2026-04-29
 ### Added
-- **🧩 Generative Dynamic Widgets**: New modular architecture for neural micro-apps. Miku can now create, launch, and save custom widgets on demand for any specific task.
-- **🧠 Recall Skill (Long-Term Memory)**: Implementation of a persistent semantic memory system. Miku now maintains a recursive, deep-directory synaptic structure for efficient cross-session retrieval and navigation.
-- **🎨 Neural Chat & Rendering Refinement**:
-    - Definitive fix for nested code blocks within blockquotes and complex markdown structures.
-    - Automated Mermaid syntax "healing" for hallucinated syntax normalization (e.g., `gitGraph`).
-    - Improved backdrop-blur effects and fluid transitions within the chat bubbles.
-- **🛠️ Technical Standardisation**:
-    - Unified version v2.4.0 across metadata, config, and installer.
-    - Verified security integrity of the `processVault` system for the new release.
+- **🧩 Generative Dynamic Widgets Framework**: A new modular architecture for neural micro-apps. Miku can now create, launch, and save custom widgets on demand, providing a truly extensible command center.
+- **🧠 Recall Skill (Long-Term Memory Upgrade)**: Significant overhaul of the semantic memory system. Miku now maintains a recursive, deep-directory synaptic structure for efficient cross-session retrieval and persistent context.
+- **✨ High-Fidelity Chat Renderer**:
+    - **Mermaid Syntax Healing**: Implemented an automated normalization layer for Mermaid diagrams to correct AI-generated syntax errors (specifically for `gitGraph` and flowcharts).
+    - **Nested Code Block Integrity**: Fixed rendering regressions for complex nested code blocks within blockquotes and markdown structures.
+    - **Atmospheric Visual Polish**: Refined chat bubble `backdrop-blur` effects and transition animations for a smoother interface experience.
 
 ## [2.3.2] - 2026-04-19
 ### Added
