@@ -53,7 +53,7 @@ const CALLOUT_EMOJI: Record<string, string> = {
     'CAUTION': '⚠️', 'DANGER': '🚨', 'INFO': 'ℹ️', 'SUCCESS': '✅',
     'FAILURE': '❌', 'BUG': '🐛', 'EXAMPLE': '📖', 'QUOTE': '💬',
     'QUESTION': '❓', 'FAQ': '❓', 'SECURITY': '🔒', 'TODO': '📋',
-    'REMEMBER': '📌',
+    'REMEMBER': '📌', 'CHECK': '✅', 'ABSTRACT': '📄',
 };
 
 /** Spanish callout type normalization */
@@ -246,8 +246,16 @@ function formatTelegramTable(lines: string[]): string {
             const isLast = i === headers.length - 1;
             const branch = isLast ? '└──' : '├──';
             const content = row[i] || 'N/A';
-            const cleanContent = content.length > 300 ? content.substring(0, 297) + '...' : content;
-            return `${branch} <i>${escapeTelegramHtml(h)}:</i> ${escapeTelegramHtml(cleanContent)}`;
+            
+            // Apply basic formatting to cell content
+            let formattedContent = content
+                .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+                .replace(/\*(.*?)\*/g, '<i>$1</i>')
+                .replace(/~~(.*?)~~/g, '<s>$1</s>')
+                .replace(/`([^`\n]+)`/g, '<code>$1</code>');
+
+            const cleanContent = formattedContent.length > 600 ? formattedContent.substring(0, 597) + '...' : formattedContent;
+            return `${branch} <i>${escapeTelegramHtml(h)}:</i> ${cleanContent}`;
         }).filter(Boolean).join('\n');
 
         return `${title}\n${details}`;
@@ -261,14 +269,16 @@ function formatTelegramTable(lines: string[]): string {
  */
 function processRawHtmlTags(text: string): string {
     let result = text;
-    let safetyLimit = 500;
+    let safetyLimit = 5000;
 
     // Build regex pattern matching all known HTML tags
-    const tagPattern = new RegExp(`<(${ALL_HTML_TAGS.join('|')})(?=\\s|>|/>)((?:[^>"']|"[^"]*"|'[^']*')*)?>`, 'i');
+    const tagPattern = new RegExp(`<(${ALL_HTML_TAGS.join('|')})(?=\\s|>|/>)((?:[^>"']|"[^"]*"|'[^']*')*)?>`, 'gi');
+    let searchCursor = 0;
 
     while (safetyLimit-- > 0) {
-        const openMatch = result.match(tagPattern);
-        if (!openMatch || openMatch.index === undefined) break;
+        tagPattern.lastIndex = searchCursor;
+        const openMatch = tagPattern.exec(result);
+        if (!openMatch) break;
 
         const startIdx = openMatch.index;
         const tagName = openMatch[1].toLowerCase();
@@ -283,6 +293,7 @@ function processRawHtmlTags(text: string): string {
                 : tagName === 'img' ? extractImgAlt(attrs)
                 : '';
             result = result.substring(0, startIdx) + replacement + result.substring(afterOpen);
+            searchCursor = startIdx + replacement.length;
             continue;
         }
 
@@ -313,52 +324,75 @@ function processRawHtmlTags(text: string): string {
             }
         }
 
-        if (matchEnd === -1) {
+        if (matchEnd === -1 || matchEnd === afterOpen) {
             // No closing tag found — strip the opening tag
             result = result.substring(0, startIdx) + result.substring(afterOpen);
+            searchCursor = startIdx;
             continue;
         }
 
-        // Extract inner content
-        const innerContent = result.substring(afterOpen, matchEnd - `</${tagName}>`.length);
+        // Find the actual closing tag length to be precise (it could have spaces like </div >)
+        const closingTagMatch = result.substring(cursor).match(closeRe);
+        const closingTagLength = closingTagMatch ? closingTagMatch[0].length : `</${tagName}>`.length;
+        let innerContent = result.substring(afterOpen, matchEnd - closingTagLength);
 
         // Map to Telegram equivalent
         const mapping = HTML_TO_TG[tagName];
         const isHeading = HEADING_TAGS.includes(tagName);
+        const isBlock = ['div', 'p', 'section', 'article', 'header', 'footer', 'main', 'aside', 'blockquote', 'details'].includes(tagName);
+
+        if (isBlock || isHeading) {
+            innerContent = innerContent.trim();
+        }
 
         if (mapping) {
             const tgTag = mapping.tgTag;
             const keepAttrs = mapping.keepAttrs;
             let tgAttrs = '';
+            let keepTag = true;
             if (keepAttrs.includes('href')) {
                 const hrefMatch = attrs.match(/href=["']([^"']+)["']/i);
                 if (hrefMatch) {
                     tgAttrs = ` href="${hrefMatch[1]}"`;
                 } else {
                     // <a> without href — strip to text
-                    result = result.substring(0, startIdx) + innerContent + result.substring(matchEnd);
-                    continue;
+                    keepTag = false;
                 }
             }
-            const replacement = `<${tgTag}${tgAttrs}>${innerContent}</${tgTag}>`;
-            result = result.substring(0, startIdx) + replacement + result.substring(matchEnd);
+            if (keepTag) {
+                const openReplacement = `<${tgTag}${tgAttrs}>`;
+                const replacement = `${openReplacement}${innerContent}</${tgTag}>`;
+                result = result.substring(0, startIdx) + replacement + result.substring(matchEnd);
+                searchCursor = startIdx + openReplacement.length;
+            } else {
+                result = result.substring(0, startIdx) + innerContent + result.substring(matchEnd);
+                searchCursor = startIdx;
+            }
         } else if (isHeading) {
             // Headers → bold
-            const replacement = `<b>${innerContent}</b>`;
+            const openReplacement = `<b>`;
+            const replacement = `${openReplacement}${innerContent}</b>`;
             result = result.substring(0, startIdx) + replacement + result.substring(matchEnd);
+            searchCursor = startIdx + openReplacement.length;
         } else if (tagName === 'br') {
             result = result.substring(0, startIdx) + '\n' + result.substring(matchEnd);
+            searchCursor = startIdx + 1;
         } else if (tagName === 'p' || tagName === 'div' || tagName === 'section' || tagName === 'article' || tagName === 'main' || tagName === 'center') {
             // Block containers → keep inner text with newlines
             const replacement = '\n' + innerContent + '\n';
             result = result.substring(0, startIdx) + replacement + result.substring(matchEnd);
+            searchCursor = startIdx + 1;
         } else if (tagName === 'li') {
-            result = result.substring(0, startIdx) + '• ' + innerContent + result.substring(matchEnd);
+            const openReplacement = '• ';
+            result = result.substring(0, startIdx) + openReplacement + innerContent + result.substring(matchEnd);
+            searchCursor = startIdx + openReplacement.length;
         } else if (tagName === 'ul' || tagName === 'ol') {
             result = result.substring(0, startIdx) + innerContent + result.substring(matchEnd);
+            searchCursor = startIdx;
         } else {
             // All other tags: strip tag, keep inner text
             result = result.substring(0, startIdx) + innerContent + result.substring(matchEnd);
+            searchCursor = startIdx;
         }
     }
 
@@ -378,32 +412,73 @@ function extractImgAlt(attrs: string): string {
 }
 
 /**
- * Flattens nested formatting tags: <b><i>text</i></b> → <b>text</b>
- * Telegram does not support nesting different formatting types.
+ * Repairs HTML hierarchy for Telegram:
+ * 1. Ensures strict LIFO (Last In, First Out) tag closing.
+ * 2. Prevents illegal nesting (Telegram doesn't allow any tags inside <code> or <pre>).
+ * 3. Removes identical nested tags (<b><b>text</b></b> -> <b>text</b>).
+ * 4. Ensures all tags are valid Telegram tags.
  */
-function flattenNestedFormatting(text: string): string {
-    const tags = ['b', 'i', 'u', 's', 'code', 'pre', 'blockquote', 'tg-spoiler'];
-    let changed = true;
-    let safety = 50;
-
-    while (changed && safety-- > 0) {
-        changed = false;
-        // Detect <X><Y> where X != Y (different tags nested)
-        for (const outer of tags) {
-            for (const inner of tags) {
-                if (outer === inner) continue;
-                // <outer><inner>text</inner></outer> → <outer>text</outer>
-                const nestedPattern = new RegExp(
-                    `<${outer}>\\s*<${inner}>([\\s\\S]*?)</${inner}>\\s*</${outer}>`, 'gi'
-                );
-                if (nestedPattern.test(text)) {
-                    text = text.replace(nestedPattern, `<${outer}>$1</${outer}>`);
-                    changed = true;
+function flattenNestedFormatting(html: string): string {
+    const validTags = ['b', 'i', 'u', 's', 'code', 'pre', 'blockquote', 'a', 'tg-spoiler'];
+    const stack: string[] = [];
+    let result = '';
+    
+    // Tag regex including attributes for <a> tags
+    const tagRegex = /<\/?([a-z0-9-]+)(?:\s+[^>]*?)?>/gi;
+    let lastIdx = 0;
+    let match;
+    
+    while ((match = tagRegex.exec(html)) !== null) {
+        const fullTag = match[0];
+        const tagName = match[1].toLowerCase();
+        const isClosing = fullTag.startsWith('</');
+        
+        // Add text before the tag
+        result += html.substring(lastIdx, match.index);
+        lastIdx = tagRegex.lastIndex;
+        
+        if (!validTags.includes(tagName)) {
+            continue; // Skip invalid tags
+        }
+        
+        if (isClosing) {
+            // Find matching tag in stack
+            const stackIdx = stack.lastIndexOf(tagName);
+            if (stackIdx !== -1) {
+                // Close everything on top of the matching tag in reverse order
+                while (stack.length > stackIdx) {
+                    const topTag = stack.pop()!;
+                    result += `</${topTag}>`;
                 }
             }
+        } else {
+            // Opening tag
+            
+            // Telegram Rule: No nesting allowed inside <code> or <pre>
+            if (stack.includes('code') || stack.includes('pre')) {
+                continue; 
+            }
+            
+            // Avoid identical nesting: <b><b>...</b></b> -> <b>...</b>
+            if (stack.length > 0 && stack[stack.length - 1] === tagName) {
+                continue;
+            }
+            
+            stack.push(tagName);
+            result += fullTag;
         }
     }
-    return text;
+    
+    // Add remaining text
+    result += html.substring(lastIdx);
+    
+    // Close any tags left on the stack
+    while (stack.length > 0) {
+        const tag = stack.pop();
+        result += `</${tag}>`;
+    }
+    
+    return result;
 }
 
 /**
@@ -426,7 +501,7 @@ function convertTelegramBlockquotes(text: string): string {
     };
 
     for (const line of lines) {
-        const quoteMatch = line.match(/^>\s?(.*)$/);
+        const quoteMatch = line.match(/^[ \t]*>\s?(.*)$/);
         if (quoteMatch) {
             inQuote = true;
             quoteLines.push(quoteMatch[1]);
@@ -461,20 +536,29 @@ function convertTelegramCallouts(text: string): string {
         if (!type) return _match;
         const title = rest.replace(/\*+/g, '').replace(/[:：]\s*$/, '').trim();
         const displayEmoji = CALLOUT_EMOJI[type] || '📌';
-        return `${displayEmoji} <b>${type}${title ? ': ' + escapeTelegramHtml(title) : ''}</b>`;
+        return `${displayEmoji} <b>${type}${title ? ': ' + title : ''}</b>`;
     });
+
 
     // [!TYPE] format (possibly inside blockquotes)
     const calloutTypes = Object.keys(CALLOUT_EMOJI).join('|');
     const calloutRegex = new RegExp(
-        `^(?:>\\s*)?\\[!(${calloutTypes})\\]([\\-\\+])?(?:\\s+(.*))?\\s*$`, 'gim'
+        `^(?:>[ \\t]*)?\\[!(${calloutTypes})\\]([\\-\\+])?(?:[ \\t]+([^\\n]*))?[ \\t]*$`, 'gim'
     );
     text = text.replace(calloutRegex, (_match, type: string, _collapse: string, title: string) => {
         const typeUp = type.toUpperCase();
         const emoji = CALLOUT_EMOJI[typeUp] || '📌';
         const cleanTitle = title ? title.replace(/^[>\s]+/, '').trim() : '';
-        return `${emoji} <b>${typeUp}${cleanTitle ? ': ' + escapeTelegramHtml(cleanTitle) : ''}</b>`;
+
+        return `${emoji} <b>${typeUp}${cleanTitle ? ': ' + cleanTitle : ''}</b>`;
     });
+
+    // Final dedup: Remove cases where the model repeats the callout header immediately after the [!TYPE] conversion
+    // e.g., ⚠️ WARNING \n ⚠️ WARNING: Content -> ⚠️ WARNING \n Content
+    const emojiList = Object.values(CALLOUT_EMOJI).join('|');
+    const typesList = Object.keys(CALLOUT_EMOJI).join('|');
+    const dedupRegex = new RegExp(`(${emojiList})\\s*<b>(${typesList})</b>\\n+(${emojiList})\\s*\\2[:：]?\\s*`, 'gi');
+    text = text.replace(dedupRegex, '$1 <b>$2</b>\n');
 
     return text;
 }
@@ -501,10 +585,15 @@ export class TelegramFormatter implements IFormatter {
         // ── PHASE 0: Normalization ─────────────────────────────────
         let text = formatFinalResponse(rawText);
 
+        // Strip UI-specific formatting remnants
+        text = text.replace(/^\*\[([^\]]+)\]:\s+(.*)$/gm, '');
+        text = text.replace(/‹DOLLAR›/g, '$');
+        text = text.replace(/‹esc-(\d+)›/g, (match, code) => String.fromCharCode(parseInt(code)));
+
         // ── PHASE 1: Pre-Protection Block Extraction ───────────────
         const placeholders: string[] = [];
         const protect = (content: string) => {
-            const id = `__TG_${placeholders.length}__`;
+            const id = `\x00TG_${placeholders.length}\x00`;
             placeholders.push(content);
             return id;
         };
@@ -521,7 +610,11 @@ export class TelegramFormatter implements IFormatter {
                 clean = clean.replace(/"([^"\n]+?)"/g, '$1');
                 clean = clean.replace(/'([^'\n]+?)'/g, '$1');
                 clean = clean.replace(/\s{2,}/g, ' ').trim();
-                return protect(`\n{{ ${clean} }}\n`);
+                
+                // Remove combining seagulls below (U+033C) that render poorly in Telegram
+                clean = clean.replace(/\u033C/g, '');
+                
+                return protect(`{{ ${clean} }}`);
             }
             return match;
         });
@@ -535,7 +628,11 @@ export class TelegramFormatter implements IFormatter {
                 let trail = (trailEmojis || '').replace(/[\uFE0E\uFE0F]/g, '').trim();
                 if (!lead) lead = '✨';
                 if (!trail) trail = '🌸';
-                return protect(`\n{{ ${lead} ${core} ${trail} }}\n`);
+                
+                // Remove combining seagulls below (U+033C) from the core
+                const cleanCore = core.replace(/\u033C/g, '');
+                
+                return protect(`{{ ${lead} ${cleanCore} ${trail} }}`);
             }
         );
 
@@ -543,10 +640,7 @@ export class TelegramFormatter implements IFormatter {
         text = text.replace(/^[ \t]*(`{3,}|~{3,})([\w./+#-]*)[\t ]*\n([\s\S]*?)\n[ \t]*\1/gm, (match, _fence, lang, code) => {
             const langLabel = lang ? `${lang}\n` : '';
             const escapedCode = escapeTelegramHtml(code.trim());
-            // Check if it's a Mermaid diagram
-            if (['mermaid', 'flowchart', 'graph', 'sequenceDiagram', 'gantt', 'pie', 'gitGraph', 'stateDiagram', 'mindmap', 'erDiagram'].some(d => lang.toLowerCase().includes(d))) {
-                return protect(`\n<b>[Diagram]</b>\n`);
-            }
+            // Removed Mermaid replacement to preserve diagram code
             return protect(`\n<pre>${langLabel}${escapedCode}</pre>\n`);
         });
 
@@ -690,6 +784,9 @@ export class TelegramFormatter implements IFormatter {
         text = convertTelegramCallouts(text);
         text = convertTelegramBlockquotes(text);
 
+        // 4n. Definition lists Term \n : Definition
+        text = text.replace(/^([^\n<]+)\n:\s+(.+)$/gm, '<b>$1</b>\n  • $2');
+
         // 4o. Footnotes
         // References [^1] → [1]
         text = text.replace(/\[\^([^\]\n]+?)\]/g, '[$1]');
@@ -708,8 +805,8 @@ export class TelegramFormatter implements IFormatter {
         });
 
         // 4t. Bullet points (last)
-        text = text.replace(/^[\*\-•·]\s+(.*)$/gm, '• $1');
-        text = text.replace(/^(\d+)\.\s+(.*)$/gm, '$1. $2');
+        text = text.replace(/^([ \t]*)[\*\-•·]\s+(.*)$/gm, '$1• $2');
+        text = text.replace(/^([ \t]*)(\d+)\.\s+(.*)$/gm, '$1$2. $3');
 
         // ── PHASE 5: HTML Escaping + Restore Telegram Tags ─────────
         // Escape ALL special chars first
@@ -720,35 +817,41 @@ export class TelegramFormatter implements IFormatter {
 
         // Restore ONLY valid Telegram tags with proper attribute validation
         text = text.replace(
-            new RegExp(`&lt;(\\/)?(${TG_VALID_TAGS.join('|')})([^&]*?)&gt;`, 'g'),
-            (match, slash, tag, attrs) => {
-                if (tag === 'a') {
+            new RegExp(`&lt;(\\/)?(${TG_VALID_TAGS.join('|')})((?:(?!&gt;).)*?)&gt;`, 'gi'),
+            (match, slash, tag, attrsRaw) => {
+                const tagLower = tag.toLowerCase();
+                const attrs = attrsRaw.replace(/&quot;/g, '"');
+                if (tagLower === 'a') {
+                    if (slash) return `</a>`;
                     // <a> must have valid href attribute
-                    const hrefMatch = attrs.match(/^\s*href=["']([^"']+)["']\s*$/);
+                    const hrefMatch = attrs.match(/^\s*href=["']([^"']+)["']\s*$/i);
                     if (hrefMatch) {
-                        return `<${slash ? '/' : ''}${tag} href="${hrefMatch[1]}">`;
+                        return `<a href="${hrefMatch[1]}">`;
                     }
                     // Invalid <a> — strip it but keep inner text (handled by nesting logic)
                     return '';
                 }
-                if (tag === 'tg-emoji') {
+                if (tagLower === 'tg-emoji') {
+                    if (slash) return `</tg-emoji>`;
                     // <tg-emoji emoji-id="...">
-                    const emojiMatch = attrs.match(/^\s*emoji-id=["']([^"']+)["']\s*$/);
+                    const emojiMatch = attrs.match(/^\s*emoji-id=["']([^"']+)["']\s*$/i);
                     if (emojiMatch) {
-                        return `<${slash ? '/' : ''}${tag} emoji-id="${emojiMatch[1]}">`;
+                        return `<tg-emoji emoji-id="${emojiMatch[1]}">`;
                     }
                     return '';
                 }
                 // All other tags: strip attributes
-                return `<${slash ? '/' : ''}${tag}>`;
+                return `<${slash ? '/' : ''}${tagLower}>`;
             }
         );
 
         // ── PHASE 6: Placeholder Restoration ───────────────────────
         // Protected content already has valid Telegram HTML — don't re-escape
-        placeholders.forEach((content, i) => {
-            text = text.replace(`__TG_${i}__`, content);
-        });
+        // Must iterate backwards so outer containers (higher index) are restored
+        // before inner items (lower index) they might contain.
+        for (let i = placeholders.length - 1; i >= 0; i--) {
+            text = text.replace(`\x00TG_${i}\x00`, placeholders[i]);
+        }
 
         // ── PHASE 7: Nesting Flattening Safety Net ─────────────────
         text = flattenNestedFormatting(text);
@@ -757,6 +860,11 @@ export class TelegramFormatter implements IFormatter {
         escapedChars.forEach((char, i) => {
             text = text.replace(`\x00ESC${i}\x00`, char);
         });
+
+        // Clean up excessive blank lines from HTML block stripping
+        text = text.replace(/\n{3,}/g, '\n\n');
+        text = text.replace(/^[ \t]*\n+/gm, '\n'); // Remove lines that only contain spaces
+        text = text.replace(/\n{3,}/g, '\n\n'); // Second pass for safety
 
         return text.trim();
     }
@@ -798,29 +906,40 @@ export class TelegramFormatter implements IFormatter {
 
             let chunk = currentText.substring(0, splitIdx).trim();
 
-            // Ensure no unclosed tags in the chunk
-            const tags = [
-                { open: '<b>', close: '</b>' },
-                { open: '<i>', close: '</i>' },
-                { open: '<u>', close: '</u>' },
-                { open: '<s>', close: '</s>' },
-                { open: '<code>', close: '</code>' },
-                { open: '<pre>', close: '</pre>' },
-                { open: '<blockquote>', close: '</blockquote>' },
-                { open: '<tg-spoiler>', close: '</tg-spoiler>' },
-                { open: '<a ', close: '</a>' },
-            ];
+            // Ensure no unclosed tags in the chunk using a strict stack
+            const openTagsStack: string[] = [];
+            const tagRe = /<\/?(b|i|u|s|code|pre|blockquote|tg-spoiler|a)(?:\s+[^>]*?)?>/gi;
+            let match;
+            while ((match = tagRe.exec(chunk)) !== null) {
+                const fullTag = match[0];
+                const tagName = match[1].toLowerCase();
+                const isClose = fullTag.startsWith('</');
 
-            tags.forEach(t => {
-                const openCount = (chunk.match(new RegExp(t.open.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
-                const closeCount = (chunk.match(new RegExp(t.close.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
-                if (openCount > closeCount) {
-                    chunk += t.close;
+                if (isClose) {
+                    // LIFO closing: find matching tag
+                    const lastIdx = openTagsStack.map(t => t.match(/<([a-z0-9-]+)/i)![1].toLowerCase()).lastIndexOf(tagName);
+                    if (lastIdx !== -1) {
+                        // Close this tag and any tags opened after it (they were malformed anyway if this happens)
+                        openTagsStack.splice(lastIdx); 
+                    }
+                } else {
+                    // Don't stack self-closing or tags already handled
+                    openTagsStack.push(fullTag);
                 }
-            });
+            }
 
+            // Close tags in Chunk 1 (Reverse order)
+            for (let i = openTagsStack.length - 1; i >= 0; i--) {
+                const openTag = openTagsStack[i];
+                const tagName = openTag.match(/<([a-z0-9-]+)/i)![1];
+                chunk += `</${tagName}>`;
+            }
+
+            // Re-open tags in Chunk 2 (Original order)
+            const reOpenPrefix = openTagsStack.join('');
+            
             chunks.push(chunk);
-            currentText = currentText.substring(splitIdx).trim();
+            currentText = reOpenPrefix + currentText.substring(splitIdx).trim();
         }
 
         return chunks;

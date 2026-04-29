@@ -99,15 +99,15 @@ export function formatFinalResponse(rawText: any): string {
     // 6. Heal malformed tables (add generic header if missing)
     formatted = healMalformedTables(formatted);
 
-    // 7. Replace horizontal rules with marker (---, ***, ___)
-    formatted = formatted.replace(/^\s*[-*_]{3,}\s*$/gm, '---DIVIDER---');
+    // 7. Standardize horizontal rules to a consistent format (---)
+    formatted = formatted.replace(/^\s*[-*_]{3,}\s*$/gm, '---');
 
     // 8. Filter leading/trailing dividers (cleaner UI)
-    formatted = formatted.replace(/^\s*---DIVIDER---\s*\n/i, '');
-    formatted = formatted.replace(/\n\s*---DIVIDER---\s*$/i, '');
+    formatted = formatted.replace(/^\s*---\s*\n/i, '');
+    formatted = formatted.replace(/\n\s*---\s*$/i, '');
 
     // 9. Standardize bibliography spacing if the marker was detected
-    formatted = formatted.replace(/---DIVIDER---\s*\n+\*\*🧠 Bibliografía y Contexto:\*\*/g, '---DIVIDER---\n\n**🧠 Bibliografía y Contexto:**');
+    formatted = formatted.replace(/---\s*\n+\*\*🧠 Bibliografía y Contexto:\*\*/g, '---\n\n**🧠 Bibliografía y Contexto:**');
 
     // 10. Defensive Deduplication: Fix massive duplication from AI stream/filtering bugs
     const linesArr = formatted.split('\n');

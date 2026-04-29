@@ -855,6 +855,7 @@
     "factory_reset_rebooting": "♻️ 正在重启应用程序...",
     "factory_reset_error": "❌ 重置时出错：{{error}}",
     "telegram_cancelled": "⚠️ [操作已取消]\n\n尝试向 Telegram 发送消息（例如：计划任务），但缺少凭据。请在设置中配置 'Bot Token' 和 'Chat ID'。",
+    "telegram_busy": "⚠️ [代理忙碌]\n\n系统尝试向 Telegram 发送消息，但代理当前正忙于处理另一项任务。消息未发送。",
     "telegram_error": "⚠️ [Telegram 错误 - 第 {{index}} 部分]\n\n发送消息失败：{{error}}",
     "voice_model_downloaded": "✅ 模型 ({{lang}}) 下载并提取成功。",
     "voice_model_error": "❌ 下载模型时出错：{{error}}",

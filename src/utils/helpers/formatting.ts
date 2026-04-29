@@ -544,73 +544,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
     // 1b. Form/Media/Block Element Protection is now handled by the Universal Protector (Phase 1).
     // The specialized iframe hardening is now integrated or follows below.
 
-    // 1b-2. Emoji Callout Normalization — Convert emoji-based callout headers to [!TYPE] format
-    // Handles AI-generated callouts like: > 💡 **Tip (Sugerencia):** → > [!TIP] Sugerencia
-    const EMOJI_CALLOUT_MAP: Record<string, string> = {
-        '💡': 'TIP', '⚠️': 'WARNING', '📝': 'NOTE', '🔧': 'INFO', '🚨': 'DANGER',
-        '✅': 'SUCCESS', '❌': 'FAILURE', '❓': 'QUESTION', '📖': 'EXAMPLE', '🔒': 'SECURITY',
-        '⏳': 'TODO', '📌': 'REMEMBER', 'ℹ️': 'INFO', '🛡️': 'SECURITY', '🐛': 'BUG',
-        '🔥': 'DANGER', '📢': 'IMPORTANT', '🎯': 'IMPORTANT', '✏️': 'NOTE',
-        '🟢': 'SUCCESS', '🔴': 'DANGER', '🟡': 'WARNING', '🔵': 'INFO',
-        '✓': 'CHECK', '✔': 'CHECK', '☑': 'CHECK', '📋': 'CHECK',
-        '📄': 'ABSTRACT',
-    };
 
-    // Fase A: Emoji-based detection
-    const emojiAlt = Object.keys(EMOJI_CALLOUT_MAP).join('|');
-    const emojiCalloutRegex = new RegExp(`^[ \\t]*>\\s*(${emojiAlt})\\s*(.*)$`, 'gm');
-    html = html.replace(emojiCalloutRegex, (_match, emoji: string, rest: string) => {
-        const type = EMOJI_CALLOUT_MAP[emoji];
-        if (!type) return _match;
-        const title = rest.replace(/[:：]\s*$/, '').trim();
-        return `> [!${type}]${title ? ' ' + title : ''}`;
-    });
-
-
-    // Fase B: Keyword-based detection (English + Chinese, no emoji required)
-    const KEYWORD_CALLOUT_MAP: Record<string, string> = {
-        // English
-        'tip': 'TIP', 'tips': 'TIP', 'suggestion': 'TIP',
-        'warning': 'WARNING', 'warn': 'WARNING', 'attention': 'WARNING',
-        'note': 'NOTE', 'notes': 'NOTE',
-        'info': 'INFO', 'information': 'INFO',
-        'danger': 'DANGER', 'alert': 'DANGER',
-        'success': 'SUCCESS', 'done': 'SUCCESS',
-        'error': 'FAILURE', 'failure': 'FAILURE', 'fail': 'FAILURE',
-        'question': 'QUESTION', 'ask': 'QUESTION',
-        'example': 'EXAMPLE', 'demo': 'EXAMPLE',
-        'security': 'SECURITY', 'secure': 'SECURITY',
-        'todo': 'TODO', 'pending': 'TODO', 'task': 'TODO',
-        'remember': 'REMEMBER',
-        'important': 'IMPORTANT',
-        'caution': 'CAUTION', 'careful': 'CAUTION',
-        'bug': 'BUG', 'issue': 'BUG',
-        'check': 'CHECK', 'checklist': 'CHECK', 'verification': 'CHECK', 'verify': 'CHECK',
-        'abstract': 'ABSTRACT', 'summary': 'ABSTRACT', 'overview': 'ABSTRACT', 'synopsis': 'ABSTRACT',
-        // Chinese
-        '提示': 'TIP', '建议': 'TIP', '小贴士': 'TIP',
-        '警告': 'WARNING', '注意': 'WARNING',
-        '备注': 'NOTE', '笔记': 'NOTE', '注': 'NOTE',
-        '信息': 'INFO', '说明': 'INFO',
-        '危险': 'DANGER', '警报': 'DANGER',
-        '成功': 'SUCCESS', '完成': 'SUCCESS',
-        '错误': 'FAILURE', '失败': 'FAILURE', '报错': 'FAILURE',
-        '问题': 'QUESTION', '疑问': 'QUESTION',
-        '示例': 'EXAMPLE', '例子': 'EXAMPLE', '案例': 'EXAMPLE',
-        '安全': 'SECURITY', '安全提示': 'SECURITY',
-        '待办': 'TODO', '待处理': 'TODO', '待完成': 'TODO',
-        '记住': 'REMEMBER', '牢记': 'REMEMBER', '提醒': 'REMEMBER',
-        '重要': 'IMPORTANT', '关键': 'IMPORTANT',
-        '当心': 'CAUTION', '小心': 'CAUTION',
-        '缺陷': 'BUG', '漏洞': 'BUG',
-    };
-
-    html = html.replace(/^>\s*\*{1,2}\s*([^*\n:：]+?)\s*\*{1,2}\s*[:：]?\s*$/gm, (_match, rawKeyword: string) => {
-        const keyword = rawKeyword.trim().toLowerCase();
-        const type = KEYWORD_CALLOUT_MAP[keyword];
-        if (!type) return _match;
-        return `> [!${type}]`;
-    });
 
     // Fase C: Spanish [!TYPE] normalization — converts Spanish callout types to English
     const SPANISH_CALLOUT_MAP: Record<string, string> = {
@@ -640,7 +574,8 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
     });
 
     // 1c. Universal Admonition Parser — Phase 1
-    html = html.replace(/^[ \t]*(?:>\s*)?\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|DANGER|INFO|SUCCESS|FAILURE|BUG|EXAMPLE|QUOTE|QUESTION|FAQ|SECURITY|TODO|REMEMBER|CHECK|ABSTRACT)\]([\-\+])?(?:[ \t]+(.*))?\s*?\n?((?:(?!(?:[ \t]*>\s*\[!)).*\n?)*)/gim, (match, type, collapseSign, title, body) => {
+    // Matches [!TYPE] or > [!TYPE]. Supports custom types with fallback to INFO style.
+    html = html.replace(/^[ \t]*(?:>\s*)?\[!([A-Z_]+)\]([\-\+])?(?:[ \t]+(.*))?\s*?\n?((?:(?!(?:[ \t]*>\s*\[!)).*\n?)*)/gim, (match, type, collapseSign, title, body) => {
         const id = `__BLOCK_${pieces.length}__`;
         const typeUp = type.toUpperCase();
         
@@ -654,7 +589,23 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
             }
         }
         
-        const content = actualBody.join('\n').trim();
+        const contentRaw = actualBody.join('\n').trim();
+        
+        // Remove redundant leading emoji if it matches the callout type
+        const REDUNDANT_EMOJI_MAP: Record<string, string> = {
+            'TIP': '💡', 'WARNING': '⚠️', 'NOTE': '📝', 'INFO': 'ℹ️', 'DANGER': '🚨',
+            'SUCCESS': '✅', 'FAILURE': '❌', 'QUESTION': '❓', 'EXAMPLE': '📖', 'SECURITY': '🔒',
+            'TODO': '⏳', 'REMEMBER': '📌', 'BUG': '🐛', 'IMPORTANT': '📢', 'CHECK': '☑',
+            'ABSTRACT': '📄'
+        };
+        const redundantEmoji = REDUNDANT_EMOJI_MAP[typeUp];
+        let content = contentRaw;
+        if (redundantEmoji && contentRaw.startsWith(redundantEmoji)) {
+            content = contentRaw.substring(redundantEmoji.length).trim();
+            // Also clean up any leading colon/space that often follows the emoji
+            content = content.replace(/^[:：]\s*/, '');
+        }
+
         const styles: Record<string, { icon: string, color: string, border: string, bg: string, glow?: string }> = {
             'NOTE':      { icon: '<i class="fas fa-info-circle"></i>',      color: 'text-blue-400',    border: 'border-blue-500/70',    bg: 'bg-blue-500/10' },
             'TIP':       { icon: '<i class="fas fa-lightbulb"></i>',        color: 'text-emerald-400', border: 'border-emerald-500/70', bg: 'bg-emerald-500/10' },

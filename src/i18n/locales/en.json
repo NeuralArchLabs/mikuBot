@@ -102,6 +102,7 @@
     "factory_reset_rebooting": "♻️ Restarting application...",
     "factory_reset_error": "❌ Error resetting: {{error}}",
     "telegram_cancelled": "⚠️ [Action Cancelled]\n\nAn attempt was made to send a message to Telegram (e.g., Scheduled Task), but credentials are missing. Configure the 'Bot Token' and 'Chat ID' in settings.",
+    "telegram_busy": "⚠️ [Agent Busy]\n\nThe system attempted to send a message to Telegram, but the agent is currently busy processing another task. The message was not sent.",
     "telegram_error": "⚠️ [Telegram Error - Part {{index}}]\n\nFailed to send message: {{error}}",
     "voice_model_downloaded": "✅ Model ({{lang}}) downloaded and extracted successfully.",
     "voice_model_error": "❌ Error downloading model: {{error}}",

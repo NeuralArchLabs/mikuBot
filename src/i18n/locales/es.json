@@ -846,6 +846,7 @@
   "dialogs": {
     "voice_model_downloaded": "✅ Modelo ({{lang}}) descargado y extraído correctamente.",
     "telegram_cancelled": "⚠️ [Acción Cancelada]\n\nSe intentó enviar un mensaje a Telegram (ej. Tarea Programada), pero faltan las credenciales. Configura el 'Bot Token' y el 'Chat ID' en los ajustes.",
+    "telegram_busy": "⚠️ [Agente Ocupado]\n\nEl sistema intentó enviar un mensaje a Telegram, pero el agente se encuentra actualmente procesando otra tarea. El mensaje no ha sido enviado.",
     "voice_model_error": "❌ Error al descargar modelo: {{error}}",
     "subsystems_online": "✅ ¡Subsistemas Neuronales en Línea!\n\nTu entorno está totalmente vinculado y listo para operar.",
     "telegram_error": "⚠️ [Error de Telegram - Parte {{index}}]\n\nFallo al enviar mensaje: {{error}}",

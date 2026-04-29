@@ -1343,12 +1343,6 @@ To see all your additional enabled skills and their full technical parameters, y
             return;
         }
 
-        const isBusy = useAgentStore.getState().isLoading;
-        if (isBusy) {
-            askAlert(t('dialogs.telegram_busy'));
-            return;
-        }
-
         const chunks = formatTelegramResponse(text);
         
         // Use a simple loop to send chunks sequentially
