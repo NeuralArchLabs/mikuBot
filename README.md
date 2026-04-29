@@ -42,7 +42,7 @@ Un agente y asistente de IA dirigido al público general. Diseñado como una alt
 *   **Temas Multidimensionales (Atmosphere Engine):** Personalización visual absoluta con 5 temas premium (`Miku`, `Cloud`, `Midnight`, `Cyberpunk`, `Forest`). Cada tema adapta toda la interfaz para proporcionar una experiencia inmersiva que se ajusta a tu entorno de trabajo.
 *   **Bóveda Neural de Credenciales:** Tus claves API ahora están protegidas por el sistema `processVault`, que las encripta automáticamente en reposo. Seguridad soberana sin intervención manual.
 *   **Librería de Contexto y Memoria Semántica (Recall):** Un módulo que permite crear, almacenar y tener disponibles protocolos y documentos para referenciarlos. Con la nueva habilidad de **Recall**, Miku mantiene una memoria semántica a largo plazo y una estructura de navegación recursiva para un contexto persistente.
-*   **Dynamic Widgets & Workspace (GridStack):** mikuBot ahora soporta una arquitectura de widgets dinámicos. Personaliza tu centro de mando con micro-apps neurales que puedes redimensionar, mover y organizar mediante un motor de "Smart Grid" que optimiza el espacio automáticamente.
+*   **Generative Dynamic Widgets (Micro-Apps):** mikuBot ahora soporta una arquitectura de widgets generativos. Puedes pedirle al asistente que cree cualquier widget que necesites para una tarea específica; Miku lo programará, lo lanzará en tu espacio de trabajo y lo guardará para sesiones futuras, optimizando el espacio con un motor de "Smart Grid".
 *   **mikuBot Markdown Engine (Studio Elite):** mikuBot integra un motor de renderizado de grado profesional diseñado para la soberanía tecnológica y la precisión técnica. Esta suite "Studio Elite" redefine la interacción visual:
     *   **Renderizado Científico de Grado Profesional (LaTeX):** Motor de alta precisión para matemáticas complejas ($$ y $), integrales, matrices y constantes físicas. Convierte a mikuBot en una herramienta de reporte técnico indispensable para investigadores y estudiantes.
     *   **Arquitectura y Lógica de Datos (Mermaid):** Visualización nativa de diagramas de flujo, GitGraphs y mapas mentales. Elimina la necesidad de herramientas externas al renderizar lógica y arquitectura directamente en el hilo de conversación.
@@ -105,7 +105,9 @@ mikuBot no es solo otro cliente de IA; es un entorno de ejecución agéntica dis
 | **Transparencia** | **Anti-Black Box.** Capacidad de inspeccionar prompts y payloads en tiempo real. | **Caja Negra Parcial.** Lógica interna de prompts oculta tras el CLI. | **Propiedad Cerrada.** Lógica de decisión privada del servidor. |
 | **Idiomas (Soberanía)** | **Universal (ES/EN/ZH).** Paridad absoluta de funciones y razonamiento en los 3 idiomas. | **EN-Centric.** Soporte optimizado casi exclusivamente para el inglés. | **EN-Centric.** Soporte multilingüe limitado. |
 
+
 #### ☁️ Nivel 2: Clientes Web de IA
+
 
 | Característica | 🌐 **mikuBot (Local Gateway)** | 🤖 **ChatGPT / Gemini / Perplexity** |
 | :--- | :--- | :--- |

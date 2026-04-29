@@ -10,10 +10,10 @@ Miku now possesses a persistent "brain" structure. The **Recall** skill allows t
 - **Cross-Session Retrieval**: Knowledge gained in one session can be efficiently retrieved and applied in future ones.
 - **Sovereign Persistence**: All memory is stored locally in your workspace's native `memory/` structure.
 
-### 🧩 Dynamic Widgets Framework
-A new modular architecture for neural micro-apps. The workspace is no longer static.
-- **Neural Command Center**: Load, resize, and reorganize widgets dynamically.
-- **Native Integration**: Widgets communicate directly with the agent's core, providing real-time data visualization and control.
+### 🧩 Generative Dynamic Widgets
+A new modular architecture for neural micro-apps. Miku is no longer limited to pre-defined tools.
+- **Generative Capability**: You can now ask the assistant to create a custom widget for any specific need. Miku will generate the code, launch the widget in your workspace, and save it for future sessions.
+- **Neural Command Center**: Organize your custom-built micro-apps in a high-performance grid layout.
 - **Smart-Fit Layout**: Powered by an improved GridStack implementation that resolves collisions intelligently.
 
 ### 🎨 Premium Interface Synchronization
