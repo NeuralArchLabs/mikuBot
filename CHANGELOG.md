@@ -1,13 +1,14 @@
 ## [2.4.0] - 2026-04-29
 ### Added
-- **🧩 Dynamic Widgets Framework**: A new modular architecture for neural micro-apps. Widgets can now be dynamically loaded, resized, and interacted with in a high-performance grid layout, enabling a truly customizable command center.
-- **🧠 Recall Skill (Long-Term Memory)**: Implementation of a persistent semantic memory system. Miku now maintains a recursive, deep-directory synaptic structure, allowing for efficient cross-session retrieval and "context-aware" navigation of past interactions.
-- **🎯 Smart Grid Layout Engine**: Overhauled the workspace collision logic. Introduced a "Smart-Fit" resolution mechanism that allows widgets to automatically resize to fit available gaps without disrupting the overall layout stability.
-- **🎨 IPC-Synchronized Theme Engine**: Native window controls (minimize, maximize, close) now dynamically synchronize their colors with the active application theme via a dedicated IPC channel between the renderer and main process.
-- **✨ Enhanced Interface Ergonomics**:
-    - Implemented fluid sidebar transitions and high-fidelity fade-in animations for SVG components.
-    - Added automated Mermaid syntax "healing" for complex diagrams (specifically `gitGraph` support).
-    - Refined global layout constraints with a hard-locked 1280x720 minimum window size for interface consistency.
+- **🧩 Generative Dynamic Widgets**: New modular architecture for neural micro-apps. Miku can now create, launch, and save custom widgets on demand for any specific task.
+- **🧠 Recall Skill (Long-Term Memory)**: Implementation of a persistent semantic memory system. Miku now maintains a recursive, deep-directory synaptic structure for efficient cross-session retrieval and navigation.
+- **🎨 Neural Chat & Rendering Refinement**:
+    - Definitive fix for nested code blocks within blockquotes and complex markdown structures.
+    - Automated Mermaid syntax "healing" for hallucinated syntax normalization (e.g., `gitGraph`).
+    - Improved backdrop-blur effects and fluid transitions within the chat bubbles.
+- **🛠️ Technical Standardisation**:
+    - Unified version v2.4.0 across metadata, config, and installer.
+    - Verified security integrity of the `processVault` system for the new release.
 
 ## [2.3.2] - 2026-04-19
 ### Added

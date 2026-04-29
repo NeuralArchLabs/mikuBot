@@ -1,6 +1,6 @@
 # 🌟 mikuBot v2.4.0 — The Memory & Widgets Update
 
-We are proud to announce the release of **mikuBot v2.4.0**, a major update that transforms the application into a truly modular and context-aware neural interface. This release introduces two foundational skills and a complete overhaul of the workspace interaction engine.
+We are proud to announce the release of **mikuBot v2.4.0**, a major update that transforms the application into a truly modular and context-aware neural interface. This release introduces two foundational skills and significant improvements to the neural rendering engine.
 
 ## 🚀 Key Highlights
 
@@ -13,17 +13,15 @@ Miku now possesses a persistent "brain" structure. The **Recall** skill allows t
 ### 🧩 Generative Dynamic Widgets
 A new modular architecture for neural micro-apps. Miku is no longer limited to pre-defined tools.
 - **Generative Capability**: You can now ask the assistant to create a custom widget for any specific need. Miku will generate the code, launch the widget in your workspace, and save it for future sessions.
-- **Neural Command Center**: Organize your custom-built micro-apps in a high-performance grid layout.
-- **Smart-Fit Layout**: Powered by an improved GridStack implementation that resolves collisions intelligently.
+- **Native Integration**: Custom widgets communicate directly with the agent's core, providing real-time data visualization and control.
 
-### 🎨 Premium Interface Synchronization
-- **Theme-Aware Window Controls**: Native title bar buttons (minimize, maximize, close) now dynamically synchronize their colors with the active application theme via IPC.
-- **Fluid Ergonomics**: Enhanced sidebar transitions and locked 1280x720 minimum resolution for interface stability.
-- **Mermaid Logic Healing**: Automated syntax "healing" for complex diagrams (specifically `gitGraph` support).
+### 🎨 Neural Chat Refinement
+- **Mermaid Logic Healing**: Automated syntax "healing" for complex diagrams (specifically `gitGraph` support and hallucinated syntax normalization).
+- **Nested Content Integrity**: Definitive fix for nested code blocks within blockquotes and complex markdown structures.
+- **Visual Polish**: Improved backdrop-blur effects and fluid transitions within the chat interface.
 
 ## 🛠️ Technical Improvements
 - **Version Lock**: Standardized v2.4.0 metadata across `package.json`, `config.ts`, and the installer.
-- **Layout Stability**: Overhauled the workspace collision logic to prevent UI jumps during widget dragging.
 - **Security Audit**: Verified `processVault` integrity for the new release cycle.
 
 ## ⬇️ Download
