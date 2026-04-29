@@ -136,5 +136,8 @@ contextBridge.exposeInMainWorld('electron', {
 
     // Backgrounds
     getBackgrounds: () => ipcRenderer.invoke('get-backgrounds'),
-    readBackground: (filename) => ipcRenderer.invoke('read-background', filename)
+    readBackground: (filename) => ipcRenderer.invoke('read-background', filename),
+
+    // Title Bar
+    updateTitleBar: (overlay) => ipcRenderer.send('update-titlebar', overlay)
 });

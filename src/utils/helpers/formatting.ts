@@ -20,6 +20,8 @@ const EMOJI_MAP: Record<string, string> = {
     arrow_right: '→', arrow_left: '←', arrow_up: '↑', arrow_down: '↓',
     info: 'ℹ️', question: '❓', exclamation: '❗', red_circle: '🔴',
     yellow_circle: '🟡', green_circle: '🟢', blue_circle: '🔵',
+    cherry_blossom: '🌸', blossom: '🌸', flower: '🌸', sparkle: '✨',
+    puzzle: '🧩', jigsaw: '🧩', check_mark: '✅',
 };
 
 /**
@@ -58,17 +60,15 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
 
     // 0. SIGNATURE SHIELD: Protect the assistant's visual signature
     // Pattern: {{ ... }} with typical signature content
-    html = html.replace(/"?\{\{\s*([^\}]+?)\s*\}\}"?/g, (match, signContent) => {
+    // Reinforced: handles broken brackets (like )}, }), single brackets, trailing junk, and surrounding quotes/backticks.
+    html = html.replace(/[`"']*(?:\{\{)\s*([\s\S]+?)\s*(?:\}\}|\)\}|\}\)|[}\)])\s*[)\}]*\s*[`"']*/g, (match, signContent) => {
         if (signContent.includes('≈') || signContent.includes('∫') || signContent.includes('~')) {
             const id = `__BLOCK_${pieces.length}__`;
             let styledInner = signContent.trim();
 
-            // TIER 2: Strip inline backticks/quotes wrapping individual tokens inside the signature.
-            // Handles: `🌸`, `≈̼^.┬.̼^≈‿⟆`, "token", 'token' — removes the wrappers, keeps the content.
-            // SAFE: Only strips matched pairs of backticks/quotes immediately around a token (no spaces inside pair).
-            styledInner = styledInner.replace(/`([^`\n]+?)`/g, '$1');   // `token` → token
-            styledInner = styledInner.replace(/"([^"\n]+?)"/g, '$1');   // "token" → token
-            styledInner = styledInner.replace(/'([^'\n]+?)'/g, '$1');   // 'token' → token
+            // TIER 2: Global cleaning of quotes and backticks that the model might use to "protect" signature tokens.
+            // Safe to strip globally as the core DNA (≈, ┬, etc.) and Emojis never contain these characters.
+            styledInner = styledInner.replace(/[`"']/g, '');
             // Multi-tone typography logic
             styledInner = styledInner.replace(/([≈_∫~⟆\u033c.]+)/g, '<span class="text-cyan-300 drop-shadow-[0_0_5px_rgba(34,211,238,0.8)] font-bold">$1</span>');
             styledInner = styledInner.replace(/([\^‿])/g, '<span class="text-blue-400">$1</span>');
@@ -103,13 +103,13 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
 
     // 0b. SIGNATURE SHIELD — TIER 3: Core Pattern Detector
     // Catches the inner DNA pattern ≈̼^.┬.̼^≈‿⟆ even without {{ }} wrapper.
-    // Handles: backtick-wrapped, quote-wrapped, emoji-preceded/followed, broken outer brackets.
+    // Handles: backtick-wrapped, quote-wrapped, emoji-preceded/followed, broken outer brackets (like )}, }), and trailing junk.
     // SAFE: The pattern is unique enough (Unicode combining chars + box-drawing) to never
     //       false-positive on code, math, tables, or any other markdown construct.
     html = html.replace(
-        // Match optional leading junk (backticks, quotes, `{{`) + optional emojis
-        // + the core pattern + optional emojis + optional trailing junk (`}}`, quotes, backticks)
-        /[`"']*(?:\{\{)?\s*[`"']*\s*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E)*)\s*[`"']*\s*(≈̼\^\.┬\.̼\^≈‿⟆)\s*[`"']*\s*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E)*)\s*[`"']*\s*(?:\}\})?[`"']*/gu,
+        // Match optional leading junk (backticks, quotes, `{{`) + optional emojis/words
+        // + the core pattern + optional emojis/words + optional trailing junk (}}, )}, }), quotes, backticks, stray brackets)
+        /[`"']*(?:\{\{)?\s*[`"']*\s*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E|\w|[:_])*)\s*[`"']*\s*(≈̼\^\.┬\.̼\^≈‿⟆)\s*[`"']*\s*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E|\w|[:_])*)\s*[`"']*\s*(?:\}\}|\)\}|\}\)|[}\)])?\s*[)\}]*\s*[`"']*/gu,
         (fullMatch, leadEmojis, core, trailEmojis) => {
             // Safety: only act if the core unicode pattern is genuinely present
             if (!core || !core.includes('┬')) return fullMatch;
@@ -117,16 +117,31 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
             // Already handled by Tier 1 (full {{ }}) → skip to avoid double render
             if (fullMatch.includes('__BLOCK_')) return fullMatch;
 
-            // Normalize emojis — strip variation selectors for clean detection
-            const normalizeEmoji = (s: string) => s.replace(/[\uFE0E\uFE0F]/g, '').trim();
-            let lead = normalizeEmoji(leadEmojis);
-            let trail = normalizeEmoji(trailEmojis);
+            // Normalize content — strip variation selectors and common junk (quotes, backticks)
+            const normalizeContent = (s: string) => s.replace(/[\uFE0E\uFE0F]/g, '').replace(/[`"']/g, '').trim();
+            let lead = normalizeContent(leadEmojis);
+            let trail = normalizeContent(trailEmojis);
 
-            // Fill missing emojis with generics
+            // TIER 3.5: Handle "words" instead of emojis (fallback system)
+            // If the model writes "sparkles" or "cherry_blossom" instead of the actual emoji.
+            const getEmojiFromWord = (word: string) => {
+                const clean = word.toLowerCase().replace(/[:_]/g, '').trim();
+                return EMOJI_MAP[clean] || null;
+            };
+
+            // If lead/trail are just words (no actual emojis found), try to map them
+            if (lead && !/(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu.test(lead)) {
+                lead = getEmojiFromWord(lead) || lead;
+            }
+            if (trail && !/(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu.test(trail)) {
+                trail = getEmojiFromWord(trail) || trail;
+            }
+
+            // Fill missing or invalid emojis with generics
             const DEFAULT_LEAD = '✨';
             const DEFAULT_TRAIL = '🌸';
-            if (!lead) lead = DEFAULT_LEAD;
-            if (!trail) trail = DEFAULT_TRAIL;
+            if (!lead || !/(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu.test(lead)) lead = DEFAULT_LEAD;
+            if (!trail || !/(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu.test(trail)) trail = DEFAULT_TRAIL;
 
             // Build a canonical signature string to pass through the Tier 1 render path
             const canonical = `${lead} ${core} ${trail}`;

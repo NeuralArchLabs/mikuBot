@@ -35,6 +35,15 @@ export const ThemeManager: React.FC<ThemeManagerProps> = ({ theme = 'miku', chat
     // Add a class for specific theme targeting if needed
     document.body.className = `theme-${theme}`;
 
+    // Update native window controls color (Windows only)
+    if ((window as any).electron?.updateTitleBar && (window as any).electron?.platform === 'win32') {
+      (window as any).electron.updateTitleBar({
+        color: selectedTheme['--background-color'],
+        symbolColor: theme === 'cloud' ? '#334155' : selectedTheme['--text-secondary'],
+        height: 35
+      });
+    }
+
   }, [theme, chatFont]);
 
   return null; // This component doesn't render anything UI-wise

@@ -2,7 +2,7 @@
 
 <img src="./public/mikuBotICON.png" width="120" style="border-radius: 24px" alt="mikuBot Icon" />
 
-# 🌟 mikuBot v2.3.2 — 大气与主题更新 (The Atmosphere & Themes Update)
+# 🌟 mikuBot v2.4.0 — 记忆与组件更新 (The Memory & Widgets Update)
 
 ![状态](https://img.shields.io/badge/状态-稳定-green.svg?style=for-the-badge)
 ![平台](https://img.shields.io/badge/平台-Windows_10%2F11-0078D4.svg?style=for-the-badge&logo=windows)
@@ -18,8 +18,8 @@
 
 <br/>
 
-<a href="https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.3.2/mikuBot-Setup-2.3.2.exe">
-  <img src="https://img.shields.io/badge/下载最新版本-v2.3.2-60A5FA?style=for-the-badge&logo=windows&logoColor=white" height="40" />
+<a href="https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.4.0/mikuBot-Setup-2.4.0.exe">
+  <img src="https://img.shields.io/badge/下载最新版本-v2.4.0-60A5FA?style=for-the-badge&logo=windows&logoColor=white" height="40" />
 </a>
 
 <br/>
@@ -41,7 +41,8 @@
 *   **持久的多会话执行 (Studio Elite)：** Miku 在切换神经分支时不再停止。代理可以在后台自主完成复杂任务，同时您与其他会话交互，保持持久的反应式链接通知您其他分支的处理状态。
 *   **多维主题系统 (Atmosphere Engine)：** 5 款预置的精美主题（`Miku`、`Cloud`、`Midnight`、`Cyberpunk`、`Forest`）带来绝对的视觉个性化。每个主题都能完美适配整个界面，为您打造专属的沉浸式工作环境。
 *   **神经凭据保险库：** 您的 API 密钥现在由 `processVault` 系统保护，自动进行静态加密。无需手动干预即可实现主权级安全。
-*   **上下文库：** 一个允许您创建、存储和引用协议和文档的模块，以便随时与助手一起审查、改进或应用。
+*   **上下文库与语义记忆 (Recall):** 一个允许您创建、存储和引用协议和文档的模块。通过全新的 **Recall** 技能，Miku 现在拥有长期的语义记忆和递归导航结构，实现持久的上下文理解。
+*   **动态组件与工作区 (Dynamic Widgets):** mikuBot 现在支持模块化动态组件架构。通过 "Smart Grid" 引擎自动优化空间，您可以随意调整大小、移动和组织各种神经微应用，定制您的专属指挥中心。
 *   **mikuBot Markdown Engine (Studio Elite):** mikuBot 集成了一个专业级渲染引擎，专为技术主权和技术精确度而设计。此 "Studio Elite" 套件重新定义了视觉交互：
     *   **专业级科学渲染 (LaTeX):** 针对复杂数学公式 ($$ 和 $)、微积分、矩阵和物理常数的高精度引擎。为研究人员和学生提供出版级的技术报告能力。
     *   **架构与数据逻辑 (Mermaid):** 流程图、Git 图和思维导图的原生可视化。通过在聊天线程中直接呈现架构和逻辑，消除了对外部工具的依赖。

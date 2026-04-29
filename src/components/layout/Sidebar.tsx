@@ -373,17 +373,17 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
             {/* Deep Session Modal (Available on Mobile & Desktop) */}
             {sessionModalOpen && createPortal(
                 <div className={`fixed inset-0 z-[120] flex items-center justify-center p-4 transition-opacity duration-300 ${isClosing ? 'opacity-0' : 'opacity-100'}`}>
-                    <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-sm" onClick={handleClose} />
-                    <div className={`relative w-full max-w-2xl premium-panel shadow-2xl flex flex-col overflow-hidden h-[85vh] sm:h-[75vh] ${isClosing ? 'animate-macos-shrink-left' : 'animate-macos-expand-left'}`}>
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={handleClose} />
+                    <div className={`relative w-full max-w-2xl bg-[var(--surface-color)] border border-[var(--border-color)]/30 shadow-2xl flex flex-col overflow-hidden rounded-[24px] h-[85vh] sm:h-[75vh] ${isClosing ? 'animate-macos-shrink-left' : 'animate-macos-expand-left'}`}>
                         {/* Header */}
-                        <div className="h-16 flex items-center justify-between px-6 border-b border-white/5 bg-slate-900/40 backdrop-blur-md">
+                        <div className="h-16 flex items-center justify-between px-6 border-b border-[var(--border-color)]/20 bg-[var(--surface-color)]/60 backdrop-blur-md">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
+                                <div className="w-10 h-10 rounded-lg bg-[var(--primary-color)]/10 text-[var(--primary-color)] flex items-center justify-center border border-[var(--primary-color)]/20">
                                     <Icon name="history" className="text-xl" />
                                 </div>
                                 <div>
-                                    <h2 className="text-lg font-bold text-white tracking-wider">{t('sidebar.tooltips.sessions')}</h2>
-                                    <p className="text-xs text-slate-500">{t('common.manage_sessions_desc')}</p>
+                                    <h2 className="text-lg font-bold text-[var(--text-primary)] tracking-wider">{t('sidebar.tooltips.sessions')}</h2>
+                                    <p className="text-xs text-[var(--text-secondary)]">{t('common.manage_sessions_desc')}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -401,14 +401,14 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                 >
                                     <Icon name="plus" /> {t('common.new')}
                                 </button>
-                                <div className="w-px h-6 bg-slate-800 mx-1" />
-                                <button onClick={handleClose} className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 flex items-center justify-center transition-colors" title={t('sidebar.tooltips.close_manager')}>
+                                <div className="w-px h-6 bg-[var(--border-color)]/20 mx-1" />
+                                <button onClick={handleClose} className="w-8 h-8 rounded-full bg-[var(--hover-color)] hover:bg-[var(--border-color)]/20 text-[var(--text-secondary)] flex items-center justify-center transition-colors" title={t('sidebar.tooltips.close_manager')}>
                                     <Icon name="times" />
                                 </button>
                             </div>
                         </div>
                         {/* Body */}
-                        <div className="flex-1 overflow-hidden flex flex-col min-h-0 bg-slate-950 p-4 sm:p-6 pb-0">
+                        <div className="flex-1 overflow-hidden flex flex-col min-h-0 bg-[var(--background-color)]/30 p-4 sm:p-6 pb-0">
                             <SessionList
                                 sessions={sessions}
                                 loading={loadingSessions}

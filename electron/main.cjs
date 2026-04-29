@@ -3060,6 +3060,16 @@ ipcMain.on('menu-role-trigger', (event, role) => {
     }
 });
 
+ipcMain.on('update-titlebar', (event, overlay) => {
+    if (mainWin) {
+        try {
+            mainWin.setTitleBarOverlay(overlay);
+        } catch (e) {
+            console.error('[Main Process] Failed to update titleBarOverlay:', e.message);
+        }
+    }
+});
+
 // Note: Settings are also checked during 'save-settings'
 // ...
 

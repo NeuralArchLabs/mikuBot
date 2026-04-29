@@ -1,3 +1,14 @@
+## [2.4.0] - 2026-04-29
+### Added
+- **🧩 Dynamic Widgets Framework**: A new modular architecture for neural micro-apps. Widgets can now be dynamically loaded, resized, and interacted with in a high-performance grid layout, enabling a truly customizable command center.
+- **🧠 Recall Skill (Long-Term Memory)**: Implementation of a persistent semantic memory system. Miku now maintains a recursive, deep-directory synaptic structure, allowing for efficient cross-session retrieval and "context-aware" navigation of past interactions.
+- **🎯 Smart Grid Layout Engine**: Overhauled the workspace collision logic. Introduced a "Smart-Fit" resolution mechanism that allows widgets to automatically resize to fit available gaps without disrupting the overall layout stability.
+- **🎨 IPC-Synchronized Theme Engine**: Native window controls (minimize, maximize, close) now dynamically synchronize their colors with the active application theme via a dedicated IPC channel between the renderer and main process.
+- **✨ Enhanced Interface Ergonomics**:
+    - Implemented fluid sidebar transitions and high-fidelity fade-in animations for SVG components.
+    - Added automated Mermaid syntax "healing" for complex diagrams (specifically `gitGraph` support).
+    - Refined global layout constraints with a hard-locked 1280x720 minimum window size for interface consistency.
+
 ## [2.3.2] - 2026-04-19
 ### Added
 - **🎭 Multidimensional Themes System**: Complete overhaul of the application's visual engine. Introduced 5 premium themes: `Miku` (Default), `Cloud` (Atmospheric Light), `Midnight` (Deep Blue), `Cyberpunk` (Neon/Fuchsia), and `Forest` (Emerald/Amber).

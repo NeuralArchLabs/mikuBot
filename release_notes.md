@@ -1,40 +1,33 @@
-# 🚀 mikuBot v2.3.2 — The Atmosphere & Themes Update
+# 🌟 mikuBot v2.4.0 — The Memory & Widgets Update
 
-![Version](https://img.shields.io/badge/version-2.3.2-blue.svg?style=for-the-badge&logo=github) ![Platform](https://img.shields.io/badge/Windows-10%2F11-0078D4.svg?style=for-the-badge&logo=windows) ![Setup](https://img.shields.io/badge/Native_.exe-Setup-brightgreen.svg?style=for-the-badge) ![Status](https://img.shields.io/badge/Status-Stable-orange.svg?style=for-the-badge)
+We are proud to announce the release of **mikuBot v2.4.0**, a major update that transforms the application into a truly modular and context-aware neural interface. This release introduces two foundational skills and a complete overhaul of the workspace interaction engine.
 
-mikuBot reaches a new level of maturity in **v2.3.2**. This release focuses on sensory immersion and deep structural security, introducing a revolutionary theming system and a hardened vault for your most sensitive data.
+## 🚀 Key Highlights
 
----
+### 🧠 Recall Skill (Long-Term Semantic Memory)
+Miku now possesses a persistent "brain" structure. The **Recall** skill allows the agent to maintain a recursive, deep-directory synaptic organization.
+- **Context-Aware Navigation**: Miku can now navigate past interactions and protocols with high precision.
+- **Cross-Session Retrieval**: Knowledge gained in one session can be efficiently retrieved and applied in future ones.
+- **Sovereign Persistence**: All memory is stored locally in your `@CORE/` and `@LIBRARY/` paths.
 
-### ✨ What's New in This Release?
+### 🧩 Dynamic Widgets Framework
+A new modular architecture for neural micro-apps. The workspace is no longer static.
+- **Neural Command Center**: Load, resize, and reorganize widgets dynamically.
+- **Native Integration**: Widgets communicate directly with the agent's core, providing real-time data visualization and control.
+- **Smart-Fit Layout**: Powered by an improved GridStack implementation that resolves collisions intelligently.
 
-*   **🎭 Multidimensional Themes System:** Your assistant, your vibe. We've introduced 5 professionally curated themes: **Miku** (Classic), **Cloud** (Light & Airy), **Midnight** (Deep Stealth), **Cyberpunk** (High-Contrast Neon), and **Forest** (Emerald Stability). Switch between them instantly to match your workspace environment.
-*   **🛡️ Neural Credential Vault:** Security is no longer an option. The new `processVault` system automatically migrates your API keys to an encrypted-at-rest format. No more plain-text keys in your configuration files—just pure, sovereign privacy.
-*   **🖼️ Performance-First Atmospheric Backgrounds:** Enjoy stunning chat backgrounds without the lag. Our new `local://` protocol bypasses browser memory bottlenecks, allowing for instant high-resolution image loading. Explore the new **Background Gallery** to find your perfect atmosphere.
-*   **⚡ Proactive Automation Presets:** The Scheduler is now smarter. We've added **10 localized automation presets** (Heartbeat, News Radar, Social Pulse, etc.) that allow Miku to work for you proactively, even while you're away.
-*   **💎 Premium UI Refinements:** Every pixel counts. From the unified blue iconography and "Ghost-hover" buttons to the deep atmospheric shadows of the 36px TitleBar, the interface feels more premium and responsive than ever.
-*   **🧠 Advanced Robustness:** A new depth-aware HTML protection engine ensures your agents can generate complex layouts without breaking the chat renderer.
+### 🎨 Premium Interface Synchronization
+- **Theme-Aware Window Controls**: Native title bar buttons (minimize, maximize, close) now dynamically synchronize their colors with the active application theme via IPC.
+- **Fluid Ergonomics**: Enhanced sidebar transitions and locked 1280x720 minimum resolution for interface stability.
+- **Mermaid Logic Healing**: Automated syntax "healing" for complex diagrams (specifically `gitGraph` support).
 
----
+## 🛠️ Technical Improvements
+- **Version Lock**: Standardized v2.4.0 metadata across `package.json`, `config.ts`, and the installer.
+- **Layout Stability**: Overhauled the workspace collision logic to prevent UI jumps during widget dragging.
+- **Security Audit**: Verified `processVault` integrity for the new release cycle.
 
-### 📦 How to Update Safely
-
-Simply download the new installer **mikuBot-Setup-2.3.2.exe** from the **Assets** section below and run it. 
-
-> [!IMPORTANT]
-> **Safety First:** The wizard will handle the transition. We recommend running the **Backup** function in the Settings Panel first. This preserves your **Sessions, Configuration, Context Library, and Neural Skills**.
-
-> [!TIP]
-> **Credential Migration:** Upon first launch, Miku will automatically detect your legacy API keys and migrate them to the new **Secure Vault**. You don't need to do anything—it just works!
-
----
-
-### 🧪 Explore the New Vibe!
-
-*   **🎨 Style Check:** Go to Settings > Appearance and try the **Cyberpunk** or **Cloud** themes.
-*   **⏰ Set an Alarm:** Try the "Heartbeat" preset in the Scheduler to have Miku check in with you periodically.
-*   **🔐 Vault Status:** Your API keys in the Settings panel are now managed by the Vault—look for the shield icon!
+## ⬇️ Download
+[Download mikuBot-Setup-2.4.0.exe](https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.4.0/mikuBot-Setup-2.4.0.exe)
 
 ---
-
-*Developed with precision and commitment by **NeuralArchLabs**.*
+*Developed with precision by Neural Arch Labs.*

@@ -827,7 +827,10 @@
       "reset_config": "Reset Global Config",
       "documentation": "Documentation",
       "about": "About mikuBot"
-    }
+    },
+    "minimize": "Minimize",
+    "maximize": "Maximize",
+    "close": "Close"
   },
   "about": {
     "description": "Personal AI assistant for Windows designed to manage files, perform web searches, and automate tasks using agents. It delivers adaptive hyper-customization and technical sovereignty tailored for every user, integrating system tools for private, high-performance assistance. If you are interested in sponsoring mikuBot or NeuralArchLabs, or sharing your user experience, please contact us through our official channels.",

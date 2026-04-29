@@ -27,8 +27,8 @@ ShowInstDetails show
 !macro customHeader
   ; --- Language Strings Definitions ---
   ; Spanish (1034 & 3082)
-  LangString INSTALL_START 1034 "🚀 Iniciando la instalación de MikuCentral v2.3.2"
-  LangString INSTALL_START 3082 "🚀 Iniciando la instalación de MikuCentral v2.3.2"
+  LangString INSTALL_START 1034 "🚀 Iniciando la instalación de MikuCentral v2.4.0"
+  LangString INSTALL_START 3082 "🚀 Iniciando la instalación de MikuCentral v2.4.0"
   LangString INSTALL_SUBTITLE 1034 "🌟 Tu Asistente de IA Personal para Windows"
   LangString INSTALL_SUBTITLE 3082 "🌟 Tu Asistente de IA Personal para Windows"
   LangString TIP_ONBOARDING 1034 "CONSEJO: Al iniciar, el Onboarding te guiará paso a paso."
@@ -77,7 +77,7 @@ ShowInstDetails show
   LangString FINISH 3082 "🎉 Todo listo. Finalizando la copia de archivos..."
 
   ; English (1033)
-  LangString INSTALL_START 1033 "🚀 Starting installation of MikuCentral v2.3.2"
+  LangString INSTALL_START 1033 "🚀 Starting installation of MikuCentral v2.4.0"
   LangString INSTALL_SUBTITLE 1033 "🌟 Your Personal AI Assistant for Windows"
   LangString TIP_ONBOARDING 1033 "TIP: Upon launch, Onboarding will guide you step by step."
   LangString TIP_LEARN 1033 "MikuCentral can learn about you to become hyper-specific."
@@ -104,7 +104,7 @@ ShowInstDetails show
   LangString FINISH 1033 "🎉 Everything ready. Finalizing file copy..."
 
   ; Chinese (2052)
-  LangString INSTALL_START 2052 "🚀 正在启动 MikuCentral v2.3.2 的安装"
+  LangString INSTALL_START 2052 "🚀 正在启动 MikuCentral v2.4.0 的安装"
   LangString INSTALL_SUBTITLE 2052 "🌟 您的 Windows 个人 AI 助手"
   LangString TIP_ONBOARDING 2052 "提示：启动后，新手引导将逐步引导您。"
   LangString TIP_LEARN 2052 "MikuCentral 可以了解您，从而变得极具针对性。"

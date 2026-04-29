@@ -2,7 +2,7 @@
 
 <img src="./public/mikuBotICON.png" width="120" style="border-radius: 24px" alt="mikuBot Icon" />
 
-# 🌟 mikuBot v2.3.2 — The Atmosphere & Themes Update
+# 🌟 mikuBot v2.4.0 — The Memory & Widgets Update
 
 ![Estado](https://img.shields.io/badge/Estado-Estable-green.svg?style=for-the-badge)
 ![Plataforma](https://img.shields.io/badge/Plataforma-Windows_10%2F11-0078D4.svg?style=for-the-badge&logo=windows)
@@ -18,8 +18,8 @@
 
 <br/>
 
-<a href="https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.3.2/mikuBot-Setup-2.3.2.exe">
-  <img src="https://img.shields.io/badge/DESCARGAR_ÚLTIMA_VERSIÓN-v2.3.2-60A5FA?style=for-the-badge&logo=windows&logoColor=white" height="40" />
+<a href="https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.4.0/mikuBot-Setup-2.4.0.exe">
+  <img src="https://img.shields.io/badge/DESCARGAR_ÚLTIMA_VERSIÓN-v2.4.0-60A5FA?style=for-the-badge&logo=windows&logoColor=white" height="40" />
 </a>
 
 <br/>
@@ -41,7 +41,8 @@ Un agente y asistente de IA dirigido al público general. Diseñado como una alt
 *   **Ejecución Persistente y Multi-sesión (Studio Elite):** Miku ya no se detiene al cambiar de rama neural. Los agentes pueden completar tareas complejas de forma autónoma en segundo plano mientras interactúas con otras sesiones, manteniendo un enlace persistente y visualmente reactivo que te notifica el estado de procesos en otras ramas.
 *   **Temas Multidimensionales (Atmosphere Engine):** Personalización visual absoluta con 5 temas premium (`Miku`, `Cloud`, `Midnight`, `Cyberpunk`, `Forest`). Cada tema adapta toda la interfaz para proporcionar una experiencia inmersiva que se ajusta a tu entorno de trabajo.
 *   **Bóveda Neural de Credenciales:** Tus claves API ahora están protegidas por el sistema `processVault`, que las encripta automáticamente en reposo. Seguridad soberana sin intervención manual.
-*   **Librería de Contexto:** Un módulo que permite crear, almacenar y tener disponibles protocolos y documentos para referenciarlos, revisarlos, mejorarlos o aplicarlos con el asistente en cualquier momento.
+*   **Librería de Contexto y Memoria Semántica (Recall):** Un módulo que permite crear, almacenar y tener disponibles protocolos y documentos para referenciarlos. Con la nueva habilidad de **Recall**, Miku mantiene una memoria semántica a largo plazo y una estructura de navegación recursiva para un contexto persistente.
+*   **Dynamic Widgets & Workspace (GridStack):** mikuBot ahora soporta una arquitectura de widgets dinámicos. Personaliza tu centro de mando con micro-apps neurales que puedes redimensionar, mover y organizar mediante un motor de "Smart Grid" que optimiza el espacio automáticamente.
 *   **mikuBot Markdown Engine (Studio Elite):** mikuBot integra un motor de renderizado de grado profesional diseñado para la soberanía tecnológica y la precisión técnica. Esta suite "Studio Elite" redefine la interacción visual:
     *   **Renderizado Científico de Grado Profesional (LaTeX):** Motor de alta precisión para matemáticas complejas ($$ y $), integrales, matrices y constantes físicas. Convierte a mikuBot en una herramienta de reporte técnico indispensable para investigadores y estudiantes.
     *   **Arquitectura y Lógica de Datos (Mermaid):** Visualización nativa de diagramas de flujo, GitGraphs y mapas mentales. Elimina la necesidad de herramientas externas al renderizar lógica y arquitectura directamente en el hilo de conversación.
