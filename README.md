@@ -41,7 +41,8 @@ Un agente y asistente de IA dirigido al público general. Diseñado como una alt
 *   **Ejecución Persistente y Multi-sesión (Studio Elite):** Miku ya no se detiene al cambiar de rama neural. Los agentes pueden completar tareas complejas de forma autónoma en segundo plano mientras interactúas con otras sesiones, manteniendo un enlace persistente y visualmente reactivo que te notifica el estado de procesos en otras ramas.
 *   **Temas Multidimensionales (Atmosphere Engine):** Personalización visual absoluta con 5 temas premium (`Miku`, `Cloud`, `Midnight`, `Cyberpunk`, `Forest`). Cada tema adapta toda la interfaz para proporcionar una experiencia inmersiva que se ajusta a tu entorno de trabajo.
 *   **Bóveda Neural de Credenciales:** Tus claves API ahora están protegidas por el sistema `processVault`, que las encripta automáticamente en reposo. Seguridad soberana sin intervención manual.
-*   **Librería de Contexto y Memoria Semántica (Recall):** Un módulo que permite crear, almacenar y tener disponibles protocolos y documentos para referenciarlos. Con la nueva habilidad de **Recall**, Miku mantiene una memoria semántica a largo plazo y una estructura de navegación recursiva para un contexto persistente.
+*   **Librería de Contexto:** Un módulo especializado para crear, almacenar y gestionar protocolos, documentos técnicos y bases de conocimiento estáticas. Permite que Miku tenga acceso a información de referencia curada para tareas específicas sin contaminar la memoria dinámica.
+*   **Memoria Semántica (Recall Skill):** A diferencia de la librería estática, Recall es una habilidad de memoria a largo plazo autónoma. Miku registra preferencias, detalles del usuario y conceptos clave a través de las sesiones, creando una estructura de navegación recursiva y un modelo de usuario que evoluciona con cada interacción.
 *   **Generative Dynamic Widgets (Micro-Apps):** mikuBot ahora soporta una arquitectura de widgets generativos. Puedes pedirle al asistente que cree cualquier widget que necesites para una tarea específica; Miku lo programará, lo lanzará en tu espacio de trabajo y lo guardará para sesiones futuras.
 *   **mikuBot Markdown Engine (Studio Elite):** mikuBot integra un motor de renderizado de grado profesional diseñado para la soberanía tecnológica y la precisión técnica. Esta suite "Studio Elite" redefine la interacción visual:
     *   **Curación de Sintaxis Mermaid:** Capacidad nativa para corregir y normalizar errores de sintaxis en diagramas generados por la IA (especialmente en `gitGraph`), garantizando que la arquitectura visual siempre se renderice correctamente.
@@ -97,31 +98,31 @@ mikuBot no es solo otro cliente de IA; es un entorno de ejecución agéntica dis
 
 #### 🏛️ Nivel 1: Agentes Autónomos Locales
 
-| Característica / Enfoque | 🌐 **mikuBot (Nuestro Enfoque)** | 🦞 **OpenClaw** | 🧠 **memUBot (NevaMind-AI)** |
-| :--- | :--- | :--- | :--- |
-| **Paradigma e Interfaz** | **App de Escritorio (GUI Premium).** Control visual total del razonamiento y gestión de archivos. | **Daemon Headless / Mensajería.** Se controla a través de WhatsApp, Telegram o la terminal (TUI). | **Bot Empresarial para Equipos.** Integrado principalmente en Slack, Discord o Feishu. |
-| **Ejecución en Windows** | **100% Nativo (`.exe`).** Optimizado para correr directamente sobre el kernel de Windows. | **Requiere WSL2 (Ubuntu).** Depende de un subsistema Linux y scripts bash manuales. | Nativo / Multiplataforma, pero arquitectura pesada de servidores. |
-| **Curva de Aprendizaje** | **Instantánea (Wizard-led).** Instalación y configuración guiada paso a paso para cualquier usuario. | **Alta.** Requiere profundos conocimientos de terminal y entornos Linux. | **Moderada.** Configuración orientada a departamentos de IT y flujos empresariales. |
-| **Razonamiento Visual** | **Neural Flow.** Streaming visual de pensamientos, herramientas y estados en tiempo real. | **Logs de Texto.** Salida cruda de terminal sin representación visual del estado interno. | **Historial Estándar.** Interfaz de chat convencional sin desglose técnico visual. |
-| **Transparencia** | **Anti-Black Box.** Capacidad de inspeccionar prompts y payloads en tiempo real. | **Caja Negra Parcial.** Lógica interna de prompts oculta tras el CLI. | **Propiedad Cerrada.** Lógica de decisión privada del servidor. |
-| **Idiomas (Soberanía)** | **Universal (ES/EN/ZH).** Paridad absoluta de funciones y razonamiento en los 3 idiomas. | **EN-Centric.** Soporte optimizado casi exclusivamente para el inglés. | **EN-Centric.** Soporte multilingüe limitado. |
+| Característica / Enfoque | 🌐 **mikuBot (Nuestro Enfoque)** | 🏛️ **Hermes Agent** | 🦞 **OpenClaw** | 🧠 **memUBot (NevaMind-AI)** |
+| :--- | :--- | :--- | :--- | :--- |
+| **Paradigma e Interfaz** | **App de Escritorio (GUI Premium).** Control visual total del razonamiento y gestión de archivos. | **Always-on / Autonomous.** Asistente persistente que opera 24/7 como un servicio de fondo. | **Daemon Headless / Mensajería.** Se controla a través de WhatsApp, Telegram o la terminal (TUI). | **Bot Empresarial para Equipos.** Integrado principalmente en Slack, Discord o Feishu. |
+| **Ejecución en Windows** | **100% Nativo (`.exe`).** Optimizado para correr directamente sobre el kernel de Windows. | **Server-side / VPS.** Diseñado para infraestructuras auto-hospedadas persistentes. | **Requiere WSL2 (Ubuntu).** Depende de un subsistema Linux y scripts bash manuales. | Nativo / Multiplataforma, pero arquitectura pesada de servidores. |
+| **Curva de Aprendizaje** | **Instantánea (Wizard-led).** Instalación y configuración guiada paso a paso para cualquier usuario. | **Moderada-Alta.** Requiere configurar gateways de mensajería y servidores. | **Alta.** Requiere profundos conocimientos de terminal y entornos Linux. | **Moderada.** Configuración orientada a departamentos de IT y flujos empresariales. |
+| **Aprendizaje / Memoria** | **Dual (Recall + Library).** Memoria semántica de usuario y base de conocimiento curada. | **Bucle de Aprendizaje.** Crea y refina habilidades reutilizables de forma autónoma. | **Basado en Archivos.** Gestión de contexto mediante lectura de archivos locales. | **Historial Empresarial.** Centralización de datos para equipos de trabajo. |
+| **Razonamiento Visual** | **Neural Flow.** Streaming visual de pensamientos, herramientas y estados en tiempo real. | **Logs / Mensajería.** Interacción a través de interfaces de chat externas. | **Logs de Texto.** Salida cruda de terminal sin representación visual del estado interno. | **Historial Estándar.** Interfaz de chat convencional sin desglose técnico visual. |
+| **Idiomas (Soberanía)** | **Universal (ES/EN/ZH).** Paridad absoluta de funciones y razonamiento en los 3 idiomas. | **EN-Centric.** Optimizado para razonamiento y modelos en inglés. | **EN-Centric.** Soporte optimizado casi exclusivamente para el inglés. | **EN-Centric.** Soporte multilingüe limitado. |
 
 
 #### ☁️ Nivel 2: Clientes Web de IA
 
 
-| Característica | 🌐 **mikuBot (Local Gateway)** | 🤖 **ChatGPT / Gemini / Perplexity** |
-| :--- | :--- | :--- |
-| **Acceso a Datos** | **Contexto Profundo.** Acceso directo a tu sistema de archivos (@WORKSPACE) y activos locales. | **Sandbox Web.** Limitado a archivos subidos manualmente o búsqueda web genérica. |
-| **Ejecución de Herramientas**| **Soberanía Total.** Ejecución nativa de Python, SearXena y scripts sin intermediarios. | **Nube Restringida.** Ejecución de código en servidores remotos aislados y limitados. |
-| **Precisión e Información** | **Atención Personalizada.** Prioriza tus archivos y herramientas para evitar suposiciones. | **Propensión al Alucinamiento.** Pueden suponer datos si la búsqueda web es insuficiente. |
-| **Privacidad y Control** | **Tú Eres el Dueño.** Los datos son tuyos; tú eliges el proveedor y qué información compartes. | **Ecosistema Cerrado.** Tus datos suelen usarse para entrenar modelos futuros del proveedor. |
-| **Visualización** | **Studio Elite.** Renderizado científico de LaTeX, Mermaid y Callouts de alta fidelidad. | **Markdown Básico.** Visualización estándar de navegador con poca flexibilidad técnica. |
+| Característica | 🌐 **mikuBot (Local Gateway)** | 🌐 **Open Web UI** | 🤖 **ChatGPT / Gemini / Perplexity** |
+| :--- | :--- | :--- | :--- |
+| **Acceso a Datos** | **Contexto Profundo.** Acceso directo a tu sistema de archivos (@WORKSPACE) y activos locales. | **RAG / Carga de Archivos.** Gestión de documentos mediante vectorización local. | **Sandbox Web.** Limitado a archivos subidos manualmente o búsqueda web genérica. |
+| **Ejecución de Herramientas**| **Soberanía Total.** Ejecución nativa de Python, SearXena y scripts sin intermediarios. | **Docker / Sandbox.** Soporta funciones y scripts dentro de contenedores. | **Nube Restringida.** Ejecución de código en servidores remotos aislados y limitados. |
+| **Privacidad y Control** | **Tú Eres el Dueño.** Los datos son tuyos; tú eliges el proveedor y qué información compartes. | **Local / Auto-hospedado.** Control total si se corre localmente. | **Ecosistema Cerrado.** Tus datos suelen usarse para entrenar modelos futuros del proveedor. |
+| **Visualización** | **Studio Elite.** Renderizado científico de LaTeX, Mermaid y Callouts de alta fidelidad. | **Web UI Estándar.** Interfaz limpia y funcional basada en navegador. | **Markdown Básico.** Visualización estándar de navegador con poca flexibilidad técnica. |
+| **Optimización Local** | **Ultra-eficiente.** Diseñado para maximizar el rendimiento de modelos pequeños (SLMs). | **Generalista.** Optimizado para modelos de gran escala vía servidor. | **Dependiente de Nube.** Requiere conexión constante y modelos masivos. |
 
 #### 🚀 La Ventaja mikuBot: Los 4 Pilares de Excelencia
 
-1.  **Rendimiento Nativo:** Sin capas de traducción ni virtualización; Miku habla el lenguaje de tu PC para una latencia mínima.
-2.  **Precisión y Personalización (Powered by [searXena](https://github.com/NeuralArchLabs/searXena)):** Nada de suposiciones. Miku consulta tus archivos y utiliza el motor de metabúsqueda soberano **searXena** (desarrollado nativamente por nosotros) antes de responder, garantizando resultados exactos y actualizados.
+1.  **Rendimiento Nativo y Soberanía Local:** mikuBot es completamente funcional con modelos ejecutados localmente a través de **Ollama**. Hemos probado que modelos de pocos parámetros (SLMs) como **Gemma 3 4B** funcionan excepcionalmente bien en el modo chat y ejecución instruida, superando en presentación y UX a otros chatbots que dependen de modelos masivos.
+2.  **Precisión y Personalización (Powered by [searXena](https://github.com/NeuralArchLabs/searXena)):** Nada de suposiciones. Miku consulta tus archivos y utiliza el motor de metabúsqueda soberano **searXena** antes de responder, garantizando resultados exactos y actualizados.
 3.  **Transparencia Absoluta (Anti-Black Box):** Tú tienes el control total. Cada decisión del modelo, cada prompt y cada dato enviado es auditable en tiempo real.
 4.  **Libertad de Proveedor:** Cambia de cerebro (Ollama, Gemini, Groq, Z.AI) en segundos sin perder tu flujo de trabajo. Miku es tu interfaz soberana universal.
 
