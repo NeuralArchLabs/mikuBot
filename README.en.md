@@ -80,7 +80,7 @@ It is **not a fork of OpenClaw** nor does it reuse any logic from the **Claude C
 - **Ollama:** 100% local and private inference and access to cloud models with a very generous free tier.
 - **Google AI:** Massive models with massive context windows, free tier available.
 - **Groq:** A wide catalog of models to choose from at reasonable prices.
-- **Z.AI (BigModel):** Advanced coding capabilities at an unbeatable price.
+- **Z.AI (BigModel):** Access to models specialized in coding and technical reasoning.
 - **Neural Flow:** Interface that visually separates internal thought (*Internal Monologue*) from executed technical actions.
 
 ### 🛠️ Tool Ecosystem and Security
