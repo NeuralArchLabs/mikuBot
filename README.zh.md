@@ -89,15 +89,15 @@ mikuBot 使用一个强大的工具生态系统，分为两个主要类别，以
 **1. 核心工具 (系统工具):**
 - **文件管理:** `read_file`, `update_file`, `patch_file` (具有智能修补引擎), `delete_file` 以及用于批量操作的 `batch_operation`。
 - **主动探索:** `list_files`, `search_files` (高性能原生搜索) 以及用于代码映射的 `get_file_outline`。
-- **执行与控制:** `run_console` (Windows 命令安全白名单), `undo_patch` 和 `get_system_metrics` (实时资源监控)。
+- **执行与控制:** `run_console` (Windows 命令安全白名单), `undo_patch`, `get_system_metrics` 和 `add_scheduled_task` (自主任务调度)。
 
 **2. 神经技能 (高级技能):**
 - **语义记忆 (`recall`):** 长期记忆技能，允许助手记住偏好、事实并演进其用户模型。
 - **微应用 (`dynamic_widgets`):** 在桌面上生成、启动和管理独立视觉界面的能力。
 - **深度调查 (`deep_research` / `web_research`):** 网页搜索和审计引擎，旨在避免幻觉并获取精确的技术数据。
 - **通用连通性 (`api_fetcher`):** 集成的 HTTP 客户端，用于调用任何外部 REST API。
-- **时间主动性 (`add_scheduled_task`):** 代理在特定间隔或日期执行的自主任务调度。
 - **自我文档化 (`instruction_booklet`):** 内部查询系统，供代理了解其自身能力和技术参数。
+- **技能发现 (`list_available_skills`):** 能够自动探索并学习使用动态安装的新技能。
 
 **多根文件系统 (`SafePathResolver`):**
 - `@WORKSPACE/` — 主项目目录。

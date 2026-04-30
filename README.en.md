@@ -89,15 +89,15 @@ mikuBot utilizes a robust ecosystem of tools divided into two main categories to
 **1. Core Tools (System Tools):**
 - **File Management:** `read_file`, `update_file`, `patch_file` (with smart patching engine), `delete_file`, and `batch_operation` for bulk actions.
 - **Proactive Exploration:** `list_files`, `search_files` (high-performance native search), and `get_file_outline` for code mapping.
-- **Execution & Control:** `run_console` (security whitelist for Windows commands), `undo_patch`, and `get_system_metrics` (real-time resource monitoring).
+- **Execution & Control:** `run_console` (security whitelist for Windows commands), `undo_patch`, `get_system_metrics`, and `add_scheduled_task` (autonomous task scheduling).
 
 **2. Neural Skills (Advanced Skills):**
 - **Semantic Memory (`recall`):** Long-term memory skill that allows the assistant to remember preferences, facts, and evolve its user model.
 - **Micro-Apps (`dynamic_widgets`):** Ability to generate, launch, and manage independent visual interfaces on the desktop.
 - **Deep Investigation (`deep_research` / `web_research`):** Web search and auditing engines to avoid hallucinations and obtain precise technical data.
 - **Universal Connectivity (`api_fetcher`):** Integrated HTTP client to consume any external REST API.
-- **Temporal Proactivity (`add_scheduled_task`):** Autonomous task scheduling executed by the agent at specific intervals or dates.
 - **Self-Documentation (`instruction_booklet`):** Internal query system for the agent to understand its own capabilities and technical parameters.
+- **Skill Discovery (`list_available_skills`):** Ability to auto-explore and learn to use new dynamically installed skills.
 
 **Multi-Root File System (`SafePathResolver`):**
 - `@WORKSPACE/` — Main project directory.

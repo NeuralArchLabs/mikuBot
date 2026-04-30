@@ -89,15 +89,15 @@ mikuBot utiliza un robusto ecosistema de herramientas divididas en dos categorí
 **1. Core Tools (Herramientas de Sistema):**
 - **Gestión de Archivos:** `read_file`, `update_file`, `patch_file` (con motor de parcheo inteligente), `delete_file` y `batch_operation` para acciones masivas.
 - **Exploración Proactiva:** `list_files`, `search_files` (búsqueda nativa de alto rendimiento) y `get_file_outline` para mapear código.
-- **Ejecución y Control:** `run_console` (whitelist de seguridad para comandos Windows), `undo_patch` y `get_system_metrics` (monitoreo de recursos en tiempo real).
+- **Ejecución y Control:** `run_console` (whitelist de seguridad para comandos Windows), `undo_patch`, `get_system_metrics` y `add_scheduled_task` (programación de tareas autónomas).
 
 **2. Neural Skills (Habilidades Avanzadas):**
 - **Memoria Semántica (`recall`):** Skill de memoria a largo plazo que permite al asistente recordar preferencias, hechos y evolucionar su modelo de usuario.
 - **Micro-Apps (`dynamic_widgets`):** Capacidad de generar, lanzar y gestionar interfaces visuales independientes sobre el escritorio.
 - **Investigación Profunda (`deep_research` / `web_research`):** Motores de búsqueda y auditoría web para evitar alucinaciones y obtener datos técnicos precisos.
 - **Conectividad Universal (`api_fetcher`):** Cliente HTTP integrado para consumir cualquier API REST externa.
-- **Proactividad Temporal (`add_scheduled_task`):** Programación de tareas autónomas ejecutadas por el agente en intervalos o fechas específicas.
 - **Auto-Documentación (`instruction_booklet`):** Sistema de consulta interna para que el agente entienda sus propias capacidades y parámetros técnicos.
+- **Descubrimiento de Habilidades (`list_available_skills`):** Capacidad de auto-explorar y aprender a usar nuevas habilidades instaladas dinámicamente.
 
 **Sistema de Archivos Multi-Raíz (`SafePathResolver`):**
 - `@WORKSPACE/` — Directorio de proyectos principal.
