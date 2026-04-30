@@ -51,6 +51,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
     // MODE: MINIMAL - Restricted formatting for thoughts (lists only)
     if (mode === 'minimal') {
         html = escape(html);
+        html = processInlineMarkdown(html);
         html = convertListsToHtml(html);
         return html.replace(/\n/g, '<br/>');
     }
@@ -61,7 +62,9 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
     // 0. SIGNATURE SHIELD: Protect the assistant's visual signature
     // Pattern: {{ ... }} with typical signature content
     // Reinforced: handles broken brackets (like )}, }), single brackets, trailing junk, and surrounding quotes/backticks.
-    html = html.replace(/[`"']*(?:\{\{)\s*([\s\S]+?)\s*(?:\}\}|\)\}|\}\)|[}\)])\s*[)\}]*\s*[`"']*/g, (match, signContent) => {
+    // Updated: backtick/quote cleaning limited to 2 chars and trailing whitespace restricted to horizontal only.
+    // Enhanced: prevents crossing double newlines inside the braces.
+    html = html.replace(/[`"']{0,2}(?:\{\{)\s*((?:(?!\n\n)[\s\S])+?)\s*(?:\}\}|\)\}|\}\)|[}\)])[ \t]*[)\}]*[ \t]*[`"']{0,2}/g, (match, signContent) => {
         if (signContent.includes('≈') || signContent.includes('∫') || signContent.includes('~')) {
             const id = `__BLOCK_${pieces.length}__`;
             let styledInner = signContent.trim();
@@ -109,7 +112,9 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
     html = html.replace(
         // Match optional leading junk (backticks, quotes, `{{`) + optional emojis/words
         // + the core pattern + optional emojis/words + optional trailing junk (}}, )}, }), quotes, backticks, stray brackets)
-        /[`"']*(?:\{\{)?\s*[`"']*\s*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E|\w|[:_])*)\s*[`"']*\s*(≈̼\^\.┬\.̼\^≈‿⟆)\s*[`"']*\s*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E|\w|[:_])*)\s*[`"']*\s*(?:\}\}|\)\}|\}\)|[}\)])?\s*[)\}]*\s*[`"']*/gu,
+        // Updated: backtick/quote cleaning limited to 2 chars and trailing whitespace restricted to horizontal only.
+        // Enhanced: stops at double newlines to avoid eating following code blocks.
+        /[`"']{0,2}(?:\{\{)?(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E|\w|[:_])*)(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*(≈̼\^\.┬\.̼\^≈‿⟆)(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E|\w|[:_])*)(?:(?!\n\n)\s)*(?:\}\}|\)\}|\}\)|[}\)])?[ \t]*[)\}]*[ \t]*[`"']{0,2}/gu,
         (fullMatch, leadEmojis, core, trailEmojis) => {
             // Safety: only act if the core unicode pattern is genuinely present
             if (!core || !core.includes('┬')) return fullMatch;

@@ -4,6 +4,8 @@ import { Icon } from './Common';
 import { useTranslation } from 'react-i18next';
 import { APP_VERSION } from '../../constants';
 
+import { useUIStore } from '../../stores/useUIStore';
+
 interface AboutDialogProps {
     isOpen: boolean;
     onClose: () => void;
@@ -13,20 +15,23 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({ isOpen, onClose }) => 
     const { t } = useTranslation();
     const [isClosing, setIsClosing] = useState(false);
     const [isVisible, setIsVisible] = useState(false);
+    const { setOverlayActive } = useUIStore();
 
     useEffect(() => {
         if (isOpen) {
             setIsVisible(true);
             setIsClosing(false);
+            setOverlayActive('about', true);
         } else if (isVisible && !isOpen) {
             setIsClosing(true);
+            setOverlayActive('about', false); // Immediate release of overlay
             const timer = setTimeout(() => {
                 setIsVisible(false);
                 setIsClosing(false);
             }, 300); // Matches exit animation
             return () => clearTimeout(timer);
         }
-    }, [isOpen, isVisible]);
+    }, [isOpen, isVisible, setOverlayActive]);
 
     if (!isVisible) return null;
 

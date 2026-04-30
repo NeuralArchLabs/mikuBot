@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Icon } from '../common/Common';
 import { useTranslation } from 'react-i18next';
+import { useUIStore } from '../../stores/useUIStore';
 
 interface MenuOption {
     label?: string;
@@ -19,6 +20,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ activeTab }) => {
     const { t } = useTranslation();
     const [activeMenu, setActiveMenu] = useState<string | null>(null);
     const menuRef = useRef<HTMLDivElement>(null);
+    const isOverlayActive = useUIStore((state) => state.isOverlayActive);
 
     const handleAction = (action?: string, role?: string) => {
         if (action) {
@@ -96,7 +98,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ activeTab }) => {
     }, []);
 
     return (
-        <div className={`h-[35px] flex items-center px-4 select-none relative z-[100] shadow-[0_8px_40px_-2px_rgba(0,0,0,0.8)] shadow-black/60 app-region-drag transition-colors duration-500 ${activeTab === 'chat' ? 'titlebar-active-chat' : 'titlebar-active-standard'}`} style={{ backgroundColor: 'var(--background-color)' }}>
+        <div className={`h-[35px] flex items-center px-4 select-none relative z-[100] shadow-[0_8px_40px_-2px_rgba(0,0,0,0.8)] shadow-black/60 app-region-drag transition-all duration-500 ${activeTab === 'chat' ? 'titlebar-active-chat' : 'titlebar-active-standard'} ${isOverlayActive ? 'opacity-0 pointer-events-none' : 'opacity-100'}`} style={{ backgroundColor: 'var(--background-color)' }}>
             <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--border-color)] via-[5%] to-transparent opacity-40" />
 
             {/* Menu Buttons */}
@@ -148,3 +150,4 @@ export const TitleBar: React.FC<TitleBarProps> = ({ activeTab }) => {
         </div>
     );
 };
+

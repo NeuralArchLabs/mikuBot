@@ -4,6 +4,7 @@ import { Icon, MarkdownRenderer } from '../common/Common';
 import { useTranslation } from 'react-i18next';
 import { AppConfig } from '../../types';
 import { hydrateTemplate, extractVariablesFromConfig } from '../../services/core/BlueprintHydrator';
+import { useUIStore } from '../../stores/useUIStore';
 
 interface Blueprint {
     id: string;
@@ -57,6 +58,16 @@ export const LibraryManager = ({
     const [rawBlueprints, setRawBlueprints] = useState<Blueprint[]>([]);
     const [blueprints, setBlueprints] = useState<Blueprint[]>([]);
     const [showPreview, setShowPreview] = useState(false);
+    const setOverlayActive = useUIStore((state) => state.setOverlayActive);
+
+    // Sync with global UI Store
+    useEffect(() => {
+        setOverlayActive('library', isOpen && !isClosing);
+        // Ensure we clear it if unmounted while open (though unlikely in this app structure)
+        return () => {
+            if (isOpen) setOverlayActive('library', false);
+        };
+    }, [isOpen, isClosing, setOverlayActive]);
 
     useEffect(() => {
         const loadBlueprints = async () => {

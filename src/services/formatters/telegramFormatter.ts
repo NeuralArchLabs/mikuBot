@@ -620,8 +620,10 @@ export class TelegramFormatter implements IFormatter {
         });
 
         // Tier 3: Core pattern without {{ }}
+        // Reinforced: stops at double newlines to avoid eating following code blocks.
+        // Backtick/quote cleaning limited to 2 chars to protect triple-backtick blocks.
         text = text.replace(
-            /[`"']*(?:\{\{)?\s*[`"']*\s*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E)*)\s*[`"']*\s*(≈̼\^\.┬\.̼\^≈‿⟆)\s*[`"']*\s*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E)*)\s*[`"']*\s*(?:\}\})?[`"']*/gu,
+            /[`"']{0,2}(?:\{\{)?(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E)*)(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*(≈̼\^\.┬\.̼\^≈‿⟆)(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E)*)(?:(?!\n\n)\s)*(?:\}\})?[ \t]*[`"']{0,2}/gu,
             (fullMatch, leadEmojis, core, trailEmojis) => {
                 if (!core || !core.includes('┬')) return fullMatch;
                 let lead = (leadEmojis || '').replace(/[\uFE0E\uFE0F]/g, '').trim();

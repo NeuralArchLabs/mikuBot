@@ -7,6 +7,8 @@ import { SessionList } from '../features/SessionList';
 import { getRandomSignature } from '../../utils/easterEgg';
 import { APP_VERSION } from '../../constants/config';
 
+import { useUIStore } from '../../stores/useUIStore';
+
 interface SidebarProps {
     state: AppState & {
         onDeleteSession: (id: string) => void;
@@ -28,6 +30,11 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
      const [sessionModalOpen, setSessionModalOpen] = useState(false);
     const [isClosing, setIsClosing] = useState(false);
     const [windowHeight, setWindowHeight] = useState(window.innerHeight);
+    const { setOverlayActive } = useUIStore();
+
+    React.useEffect(() => {
+        setOverlayActive('sessions-modal', sessionModalOpen && !isClosing);
+    }, [sessionModalOpen, isClosing, setOverlayActive]);
 
     React.useEffect(() => {
         const handleResize = () => setWindowHeight(window.innerHeight);

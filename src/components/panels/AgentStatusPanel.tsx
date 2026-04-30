@@ -30,21 +30,26 @@ function formatElapsed(ms: number): string {
     return `${hours}h ${mins.toString().padStart(2, '0')}m`;
 }
 
-// Helper to render streamed text as keyed animated spans
-const StreamedChunks = ({ text, className }: { text: string; className?: string }) => {
-    // Split by spaces but preserve them
-    const words = text.split(/(\s+)/);
+// Lightweight basic markdown formatter for streaming text.
+// Designed to be very fast and not heavy while avoiding raw tags like ** or `
+const StreamedMarkdown = ({ text, className }: { text: string; className?: string }) => {
+    const html = React.useMemo(() => {
+        let escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        escaped = escaped.replace(/\*\*\*(?!\s)(.+?)\*\*\*/g, '<strong class="text-indigo-400"><em>$1</em></strong>');
+        escaped = escaped.replace(/\*\*(?!\s)(.+?)\*\*/g, '<strong class="text-cyan-300">$1</strong>');
+        escaped = escaped.replace(/\*(?!\s)(.+?)\*/g, '<em class="text-cyan-200">$1</em>');
+        escaped = escaped.replace(/`(.*?)`/g, '<code class="bg-black/30 rounded px-1 text-blue-300">$1</code>');
+        escaped = escaped.replace(/\n/g, '<br/>');
+        return escaped;
+    }, [text]);
+
     return (
-        <div className={className}>
-            {words.map((word, i) => (
-                <span 
-                    key={`${i}-${word.length}`} 
-                    className="text-reveal-chunk"
-                >
-                    {word}
-                </span>
-            ))}
-        </div>
+        <div 
+            className={className} 
+            dangerouslySetInnerHTML={{ 
+                __html: html + '<span class="inline-block w-[3px] h-[10px] ml-1 bg-cyan-400/80 animate-pulse translate-y-[1px]"></span>' 
+            }} 
+        />
     );
 };
 
@@ -180,14 +185,15 @@ export const AgentStatusPanel = React.memo(({
             )}
 
             {status.log?.length > 0 && (
-                <div ref={logContainerRef} className="max-h-32 overflow-y-auto custom-scrollbar p-2 space-y-1 bg-slate-900/40 border-t border-white/5">
+                <div ref={logContainerRef} className="max-h-32 overflow-y-auto custom-scrollbar px-3 bg-slate-900/40 border-t border-white/5">
                 {status.log.map((entry, i) => {
                     const isOptimization = entry.message.includes('optimizado para el llamado');
 
                     if (isOptimization) {
                         return (
-                            <div key={i} className="optimization-badge">
-                                <div className="optimization-inner transform-gpu">
+                            <div key={i} className="animate-in fade-in slide-in-from-top-2 duration-500 my-1">
+                                <div className="optimization-badge">
+                                    <div className="optimization-inner transform-gpu">
                                     <div className="flex items-center gap-3">
                                         <div className="w-4 h-4 rounded-full border border-white/10 flex items-center justify-center">
                                             <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
@@ -204,13 +210,14 @@ export const AgentStatusPanel = React.memo(({
                                         </div>
                                         <div className="engine-label uppercase tracking-widest">{t('status.log_types.enhanced_engine')}</div>
                                     </div>
+                                    </div>
                                 </div>
                             </div>
                         );
                     }
 
                     return (
-                        <div key={i} className="flex gap-2">
+                        <div key={i} className="flex gap-2 py-1 first:pt-2 last:pb-2">
                             <span className="text-slate-600 shrink-0">[{new Date(entry.timestamp).toLocaleTimeString(undefined, { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}]</span>
                             <span className={`shrink-0 font-bold uppercase ${entry.type === 'error' ? 'text-red-500' :
                                 entry.type === 'tool_call' ? 'text-amber-500' :
@@ -232,11 +239,11 @@ export const AgentStatusPanel = React.memo(({
                     <div ref={streamContainerRef} className="max-h-60 overflow-y-auto custom-scrollbar p-2 bg-slate-900/20 text-slate-400 italic">
                         {status.streamedReasoning && (
                             <div className="mb-1 text-cyan-500/80 border-l-2 border-cyan-500/20 pl-2 text-[10px] animate-in fade-in slide-in-from-left-2 duration-500">
-                                [{t('status.phases.thinking')}] <StreamedChunks text={status.streamedReasoning} className="inline" />
+                                [{t('status.phases.thinking')}] <StreamedMarkdown text={status.streamedReasoning} className="inline" />
                             </div>
                         )}
                         {status.streamedText && (
-                            <StreamedChunks text={status.streamedText} className="whitespace-pre-wrap break-words" />
+                            <StreamedMarkdown text={status.streamedText} className="whitespace-pre-wrap break-words" />
                         )}
                     </div>
                 </div>

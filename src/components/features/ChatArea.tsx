@@ -1458,13 +1458,17 @@ export const ChatArea = ({
                             </div>
                         </div>
                     )}
-
+                    {/* Spacer to push chat up just enough for the initial unexpanded Agent Status Bar */}
+                    <div className={`transition-all duration-300 ${(isLoading || pendingApproval) ? 'h-[36px]' : 'h-0'}`} />
+                    
                     <div className="h-4" /> {/* Bottom breathing room */}
-                </div>
             </div>
+        </div>
 
+        <div className={`relative px-4 pb-4 ${isLoading ? 'pt-0' : 'pt-4'} ${config.chatBackgroundImage ? 'bg-transparent border-transparent' : `bg-slate-900/40 border-t ${isLoading ? 'border-transparent' : 'border-slate-800/50'}`} transition-all duration-500`}>
+            
             {/* Sticky Overlay Area for Active Task / Background Status - Only visible while Miku is doing something */}
-            <div className="z-20 w-full relative">
+            <div className="z-20 w-full absolute bottom-full left-0">
                 
                 {/* Elevated Tool Approval Panel - Full Edge-to-Edge Banner Attached to Dock */}
                 {isExecutingThisSession && pendingApproval && (
@@ -1480,12 +1484,19 @@ export const ChatArea = ({
                     </div>
                 )}
 
-                <div className={`w-full agent-status-docked ${(isLoading || pendingApproval) ? 'active' : ''}`}>
+                <div className={`w-full agent-status-docked ${(isLoading || pendingApproval) ? 'active' : ''} shadow-[0_-10px_40px_rgba(0,0,0,0.5)]`}>
                     <div 
-                        className="w-full bg-slate-950/20 backdrop-blur-md agent-status-animate-in"
+                        className="w-full bg-slate-950/20 backdrop-blur-md agent-status-animate-in border-t border-white/5"
                         style={config.chatBackgroundImage ? { 
-                            maskImage: "linear-gradient(to bottom, transparent 0%, black 12px, black calc(100% - 16px), transparent 100%)", 
-                            WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 12px, black calc(100% - 16px), transparent 100%)" 
+                            maskImage: "linear-gradient(to bottom, black 0%, black calc(100% - 24px), transparent 100%)", 
+                            WebkitMaskImage: "linear-gradient(to bottom, black 0%, black calc(100% - 24px), transparent 100%)",
+                            maskSize: "100% calc(100% + 100px)",
+                            WebkitMaskSize: "100% calc(100% + 100px)",
+                            maskPosition: (agentStatus.streamedText || agentStatus.streamedReasoning) ? "center bottom" : "center calc(100% + 24px)",
+                            WebkitMaskPosition: (agentStatus.streamedText || agentStatus.streamedReasoning) ? "center bottom" : "center calc(100% + 24px)",
+                            maskRepeat: "no-repeat",
+                            WebkitMaskRepeat: "no-repeat",
+                            transition: "mask-position 0.5s ease-out, -webkit-mask-position 0.5s ease-out"
                         } : {}}
                     >
                     {isExecutingThisSession ? (
@@ -1516,11 +1527,9 @@ export const ChatArea = ({
                             </div>
                         )
                     )}
+                    </div>
                 </div>
             </div>
-        </div>
-
-        <div className={`px-4 pb-4 ${isLoading ? 'pt-0' : 'pt-4'} bg-slate-900/40 border-t ${isLoading ? 'border-transparent' : 'border-slate-800/50'} transition-all duration-500`}>
                 <div className="max-w-5xl mx-auto flex items-center gap-2 mb-2 flex-wrap">
                     <button
                         onClick={() => onAgentModeChange(agentMode === 'chat' ? 'agent' : 'chat')}

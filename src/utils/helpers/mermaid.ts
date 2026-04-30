@@ -1,4 +1,5 @@
 import mermaid from 'mermaid';
+import { useUIStore } from '../../stores/useUIStore';
 
 /**
  * 🎨 AUTO-CONTRAST ENGINE (Live DOM)
@@ -580,6 +581,9 @@ function openMermaidFullscreen(svgSource: string) {
     // Prevent duplicates
     document.getElementById('mermaid-fullscreen-overlay')?.remove();
 
+    // Trigger state change
+    useUIStore.getState().setOverlayActive('mermaid-fullscreen', true);
+
     const overlay = document.createElement('div');
     overlay.id = 'mermaid-fullscreen-overlay';
     overlay.style.cssText = `
@@ -746,6 +750,7 @@ function openMermaidFullscreen(svgSource: string) {
 
     const closeOverlay = () => {
         overlay.style.animation = 'mermaid-overlay-out 0.2s ease-in forwards';
+        useUIStore.getState().setOverlayActive('mermaid-fullscreen', false);
         setTimeout(() => overlay.remove(), 200);
         window.removeEventListener('keydown', escHandler);
         window.removeEventListener('mousemove', onMouseMove);

@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { THEMES } from '../../constants/themes';
+import { useUIStore } from '../../stores/useUIStore';
 
 interface ThemeManagerProps {
   theme?: string;
@@ -11,6 +12,8 @@ interface ThemeManagerProps {
  * Injects CSS variables into the document root based on the selected theme and preferences.
  */
 export const ThemeManager: React.FC<ThemeManagerProps> = ({ theme = 'miku', chatFont = 'Outfit' }) => {
+  const isOverlayActive = useUIStore((state) => state.isOverlayActive);
+
   useEffect(() => {
     const selectedTheme = THEMES[theme] || THEMES.miku;
     const root = document.documentElement;
@@ -37,14 +40,24 @@ export const ThemeManager: React.FC<ThemeManagerProps> = ({ theme = 'miku', chat
 
     // Update native window controls color (Windows only)
     if ((window as any).electron?.updateTitleBar && (window as any).electron?.platform === 'win32') {
-      (window as any).electron.updateTitleBar({
-        color: selectedTheme['--background-color'],
-        symbolColor: theme === 'cloud' ? '#334155' : selectedTheme['--text-secondary'],
-        height: 35
-      });
+      if (isOverlayActive) {
+        // Hide native buttons by making them transparent when an overlay is active
+        (window as any).electron.updateTitleBar({
+          color: '#00000000',
+          symbolColor: '#00000000',
+          height: 35
+        });
+      } else {
+        // Standard theme-based colors
+        (window as any).electron.updateTitleBar({
+          color: selectedTheme['--background-color'],
+          symbolColor: theme === 'cloud' ? '#334155' : selectedTheme['--text-secondary'],
+          height: 35
+        });
+      }
     }
 
-  }, [theme, chatFont]);
+  }, [theme, chatFont, isOverlayActive]);
 
   return null; // This component doesn't render anything UI-wise
 };

@@ -9,6 +9,7 @@ import { Icon, ModernSelect, SelectOption } from '../common/Common';
 import { THEMES } from '../../constants/themes';
 import { SchedulerTab } from './SchedulerTab';
 import { SkillsPanel } from './SkillsPanel';
+import { useUIStore } from '../../stores/useUIStore';
 
 interface SettingsPanelProps {
     config: AppConfig;
@@ -80,6 +81,12 @@ export const SettingsPanel = ({
     const [startingSearxena, setStartingSearxena] = useState(false);
     const [updatingSearxena, setUpdatingSearxena] = useState(false);
     const [showBackgroundGallery, setShowBackgroundGallery] = useState(false);
+    const setOverlayActive = useUIStore((state) => state.setOverlayActive);
+
+    // Sync Background Gallery with Global UI Store
+    useEffect(() => {
+        setOverlayActive('gallery', showBackgroundGallery);
+    }, [showBackgroundGallery, setOverlayActive]);
 
     const onSyncModelArchitectures = () => {
         onTestConnection(config.provider === 'ollama' ? 'ollama' : config.provider);

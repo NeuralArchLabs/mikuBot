@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { Icon } from './Common';
 import { useTranslation } from 'react-i18next';
 
+import { useUIStore } from '../../stores/useUIStore';
+
 export interface SystemDialogConfig {
     isOpen: boolean;
     type: 'alert' | 'confirm';
@@ -19,20 +21,23 @@ export const SystemDialog = ({ config }: SystemDialogProps) => {
     const { t } = useTranslation();
     const [isClosing, setIsClosing] = useState(false);
     const [activeConfig, setActiveConfig] = useState<SystemDialogConfig | null>(null);
+    const { setOverlayActive } = useUIStore();
 
     useEffect(() => {
         if (config?.isOpen) {
             setActiveConfig(config);
             setIsClosing(false);
+            setOverlayActive('system-dialog', true);
         } else if (activeConfig && !config?.isOpen) {
             setIsClosing(true);
+            setOverlayActive('system-dialog', false); // Immediate release of overlay
             const timer = setTimeout(() => {
                 setActiveConfig(null);
                 setIsClosing(false);
             }, 300); // Wait for shrink animation
             return () => clearTimeout(timer);
         }
-    }, [config, activeConfig]);
+    }, [config, activeConfig, setOverlayActive]);
 
     if (!activeConfig) return null;
 

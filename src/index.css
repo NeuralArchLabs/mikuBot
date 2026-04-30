@@ -781,7 +781,7 @@ pre code .hl-directive { color: #fb7185 !important; font-weight: 700; }
   background-size: 200% auto;
   border-radius: 8px;
   padding: 1.5px;
-  margin: 16px 0;
+  margin: 0;
   animation: shine 3s linear infinite;
   display: block;
   transform: translateZ(0);
