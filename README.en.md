@@ -84,13 +84,26 @@ It is **not a fork of OpenClaw** nor does it reuse any logic from the **Claude C
 - **Neural Flow:** Interface that visually separates internal thought (*Internal Monologue*) from executed technical actions.
 
 ### 🛠️ Tool Ecosystem and Security
+mikuBot utilizes a robust ecosystem of tools divided into two main categories to ensure efficiency and technical sovereignty:
+
+**1. Core Tools (System Tools):**
+- **File Management:** `read_file`, `update_file`, `patch_file` (with smart patching engine), `delete_file`, and `batch_operation` for bulk actions.
+- **Proactive Exploration:** `list_files`, `search_files` (high-performance native search), and `get_file_outline` for code mapping.
+- **Execution & Control:** `run_console` (security whitelist for Windows commands), `undo_patch`, and `get_system_metrics` (real-time resource monitoring).
+
+**2. Neural Skills (Advanced Skills):**
+- **Semantic Memory (`recall`):** Long-term memory skill that allows the assistant to remember preferences, facts, and evolve its user model.
+- **Micro-Apps (`dynamic_widgets`):** Ability to generate, launch, and manage independent visual interfaces on the desktop.
+- **Deep Investigation (`deep_research` / `web_research`):** Web search and auditing engines to avoid hallucinations and obtain precise technical data.
+- **Universal Connectivity (`api_fetcher`):** Integrated HTTP client to consume any external REST API.
+- **Temporal Proactivity (`add_scheduled_task`):** Autonomous task scheduling executed by the agent at specific intervals or dates.
+- **Self-Documentation (`instruction_booklet`):** Internal query system for the agent to understand its own capabilities and technical parameters.
+
 **Multi-Root File System (`SafePathResolver`):**
 - `@WORKSPACE/` — Main project directory.
 - `@CORE/` — System logic and base prompts.
 - `@LIBRARY/` — Protocols and knowledge bases.
 - `@TOOLS/` — Skill blueprints and scripts.
-
-The system includes native tools injected into the LLM such as `read_file`, `smart_patch`, `search_files`, and shell injection protection (`run_console` whitelist).
 
 ### 🏆 Why mikuBot? (Competitive Analysis)
 

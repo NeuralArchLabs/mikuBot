@@ -84,13 +84,26 @@ No es un fork de OpenClaw ni reutiliza ninguna lógica de las filtraciones de **
 - **Neural Flow:** Interfaz que separa visualmente el pensamiento interno (*Internal Monologue*) de las acciones técnicas ejecutadas.
 
 ### 🛠️ Ecosistema de Herramientas y Seguridad
+mikuBot utiliza un robusto ecosistema de herramientas divididas en dos categorías principales para garantizar la eficiencia y la soberanía técnica:
+
+**1. Core Tools (Herramientas de Sistema):**
+- **Gestión de Archivos:** `read_file`, `update_file`, `patch_file` (con motor de parcheo inteligente), `delete_file` y `batch_operation` para acciones masivas.
+- **Exploración Proactiva:** `list_files`, `search_files` (búsqueda nativa de alto rendimiento) y `get_file_outline` para mapear código.
+- **Ejecución y Control:** `run_console` (whitelist de seguridad para comandos Windows), `undo_patch` y `get_system_metrics` (monitoreo de recursos en tiempo real).
+
+**2. Neural Skills (Habilidades Avanzadas):**
+- **Memoria Semántica (`recall`):** Skill de memoria a largo plazo que permite al asistente recordar preferencias, hechos y evolucionar su modelo de usuario.
+- **Micro-Apps (`dynamic_widgets`):** Capacidad de generar, lanzar y gestionar interfaces visuales independientes sobre el escritorio.
+- **Investigación Profunda (`deep_research` / `web_research`):** Motores de búsqueda y auditoría web para evitar alucinaciones y obtener datos técnicos precisos.
+- **Conectividad Universal (`api_fetcher`):** Cliente HTTP integrado para consumir cualquier API REST externa.
+- **Proactividad Temporal (`add_scheduled_task`):** Programación de tareas autónomas ejecutadas por el agente en intervalos o fechas específicas.
+- **Auto-Documentación (`instruction_booklet`):** Sistema de consulta interna para que el agente entienda sus propias capacidades y parámetros técnicos.
+
 **Sistema de Archivos Multi-Raíz (`SafePathResolver`):**
 - `@WORKSPACE/` — Directorio de proyectos principal.
 - `@CORE/` — Lógica del sistema y prompts base.
 - `@LIBRARY/` — Protocolos y bases de conocimiento.
 - `@TOOLS/` — Blueprints de skills y scripts.
-
-El sistema incluye herramientas nativas inyectadas al LLM como `read_file`, `smart_patch`, `search_files`, y protección contra inyecciones de shell (`run_console` whitelist).
 
 ### 🏆 ¿Por qué mikuBot? (Análisis Competitivo)
 
