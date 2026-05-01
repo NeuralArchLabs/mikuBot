@@ -367,7 +367,7 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
             { threshold: 0.1, rootMargin: '100px' }
         );
 
-        const animatedElements = containerNode.querySelectorAll('.divider-container, blockquote, .mermaid, .code-block-anim, .signature-wrapper');
+        const animatedElements = containerNode.querySelectorAll('.divider-container, blockquote, .mermaid, .code-block-anim, .signature-wrapper, details');
         animatedElements.forEach((el) => {
             if (el.tagName === 'BLOCKQUOTE' && !el.hasAttribute('data-original-html')) {
                 const htmlEl = el as HTMLElement;

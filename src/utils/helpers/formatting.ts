@@ -343,6 +343,8 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                     fullTagContent = `<div style="text-align:center;display:flex;justify-content:center;">${fullTagContent}</div>`;
                 }
             }
+
+
             // Allow markdown headers and tables inside container HTML tags.
             // The model sometimes places markdown inside <div>, <section>, etc.
             // We pre-convert only the safe markdown patterns (lines without HTML tags)
@@ -377,8 +379,29 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                         });
                     }
 
-                    // Convert markdown headers — only on lines without any '<' (avoids breaking nested HTML)
-                    inner = inner.replace(/^(#{1,6})\s+(.+)$/gm, (m, hashes, text) => {
+                    // ⚡ PREMIUM AESTHETIC RESTORATION ⚡
+                    // We separate the summary from the rest to avoid mangling the button layout.
+                    const summaryMatch = inner.match(/<summary\b[^>]*>([\s\S]*?)<\/summary>/i);
+                    let processedSummary = '';
+                    let restOfInner = inner;
+
+                    if (summaryMatch) {
+                        const summaryTag = summaryMatch[0];
+                        const summaryContent = summaryMatch[1];
+                        restOfInner = inner.replace(summaryTag, '');
+                        // Process summary content minimally to avoid block-level injections
+                        processedSummary = summaryTag.replace(summaryContent, processInlineMarkdown(summaryContent));
+                    }
+
+                    // Process the rest of the content using the manual loop + Callout/Blockquote support
+                    let processedRest = restOfInner;
+
+                    // 1. Support Callouts and Blockquotes explicitly in the inner content
+                    processedRest = processedRest.replace(/^[ \t]*(?:>\s*)?\[!([A-Z_]+)\][\s\S]*?(?=\n\n|\n[^\s>])/gim, (m) => toHtml(m, isStreaming));
+                    processedRest = processedRest.replace(/(^[ \t]*>.*(?:\n[ \t]*>.*)*)/gm, (m) => toHtml(m, isStreaming));
+
+                    // 2. Standard block markers (headers, tables)
+                    processedRest = processedRest.replace(/^(#{1,6})\s+(.+)$/gm, (m, hashes, text) => {
                         if (text.includes('<')) return m;
                         const lvl = hashes.length;
                         if (lvl === 1) return `<h1 class="text-lg font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-indigo-300 drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-6 mb-1">${text}</h1><div class="h-px w-full" style="background: linear-gradient(to right, transparent 0%, rgba(34,211,238,0.15) 2%, rgba(34,211,238,0.15) 98%, transparent 100%); margin-bottom: 1.5rem;"></div>`;
@@ -389,19 +412,21 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                         return `<h6 class="text-xs font-bold text-slate-500 mt-3 mb-1">${text}</h6>`;
                     });
 
-                    // Convert markdown tables using existing converter
-                    inner = convertTablesToHtml(inner);
+                    processedRest = convertTablesToHtml(processedRest);
 
-                    // Convert inline markdown (bold, italic, code, links) on plain text lines
-                    inner = inner.split('\n').map(line => {
-                        // Skip lines with HTML tags or __BLOCK_X__ placeholders (avoids destroying them)
+                    // 3. Inline & List processing
+                    processedRest = processedRest.split('\n').map(line => {
                         if (/<[a-z]/i.test(line) || /__BLOCK_\d+__/.test(line)) return line;
                         return processInlineMarkdown(line);
                     }).join('\n');
 
-                    // Convert markdown lists (including task lists) — must run AFTER inline markdown
-                    // so that bold/italic inside list items are already rendered before list wrapping.
-                    inner = convertListsToHtml(inner);
+                    processedRest = convertListsToHtml(processedRest);
+
+                    if (isStreaming) {
+                        openTag = openTag.replace(/<details/i, '<details data-animated="true"');
+                    }
+                    inner = processedSummary + processedRest;
+
 
                     fullTagContent = openTag + inner + closeTag;
                 }

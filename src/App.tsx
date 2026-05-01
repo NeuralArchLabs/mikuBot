@@ -644,6 +644,30 @@ export const App = () => {
         }
     }, []);
 
+    // ── Global Layout Reflow Handler ─────────────────────────────────────
+    useEffect(() => {
+        const handleGlobalToggle = (e: any) => {
+            if (e.target.tagName === 'DETAILS' && e.target.open) {
+                // [FIX] Force Iframe Reload: Definitive fix for maps in hidden containers.
+                // Reloading the iframe now that it is visible forces a correct layout calculation.
+                const iframes = e.target.querySelectorAll('iframe');
+                iframes.forEach((ifr: any) => {
+                    if (ifr.src) {
+                        ifr.src = ifr.src; 
+                    }
+                });
+
+                // Force a global resize event as a secondary fallback
+                setTimeout(() => {
+                    window.dispatchEvent(new Event('resize'));
+                }, 150);
+            }
+        };
+        // Use capture phase because 'toggle' event does not bubble
+        document.addEventListener('toggle', handleGlobalToggle, true);
+        return () => document.removeEventListener('toggle', handleGlobalToggle, true);
+    }, []);
+
     // ── File System Handlers ─────────────────────────────────────────────
 
     const syncFiles = useCallback(async (
