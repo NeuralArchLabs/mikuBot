@@ -25,12 +25,18 @@
 
 /* ──────────────────────────────────────────────────────────────────────────
    BORDER REFINEMENT (SETTINGS PANEL)
+   
+   The premium-card system in index.css uses a ::after pseudo-element with
+   mask-composite to render the gradient glow border on hover. 
+   We MUST NOT override box-shadow or border-color on .premium-card here,
+   because that conflicts with the ::after glow and creates corner artifacts.
+   
+   We only hide borders on non-card elements (inputs, selects, etc.) and
+   restore them on their own hover/focus — never touching the card system.
    ────────────────────────────────────────────────────────────────────────── */
 
-/* Suppress persistent borders/outlines on all themes */
-.settings-panel-content .premium-card,
+/* Hide borders on inputs and utility-border elements at rest */
 .settings-panel-content .premium-input,
-.settings-panel-content .ModernSelect button,
 .settings-panel-content input,
 .settings-panel-content .border,
 .settings-panel-content .border-white\/5,
@@ -38,18 +44,20 @@
     border-color: transparent !important;
 }
 
-/* Add depth via shadows to main containers when borders are hidden */
-.settings-panel-content .premium-card,
-.settings-panel-content .premium-panel {
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2), inset 0 0 1px 1px rgba(255, 255, 255, 0.03) !important;
+/* Physically remove dropdown borders and kill rendering artifacts */
+.settings-panel-content .modern-select button {
+    border: none !important;
+    border-width: 0 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important; /* Kill blur to prevent ghost lines during parent transitions */
+    -webkit-backdrop-filter: none !important;
+    transform: translateZ(0); /* Force isolated layer */
+    background-color: var(--surface-color) !important; /* Ensure opaque-ish background */
 }
 
-/* Restore borders ONLY on individual hover/focus, not parent hover */
-.settings-panel-content .premium-card:hover,
-.settings-panel-content .premium-card.active,
+/* Restore borders on individual hover/focus for inputs and selects */
 .settings-panel-content .premium-input:focus,
 .settings-panel-content .premium-input:hover,
-.settings-panel-content .ModernSelect button:hover,
 .settings-panel-content input:focus,
 .settings-panel-content input:hover,
 .settings-panel-content .border:hover,
@@ -57,14 +65,6 @@
 .settings-panel-content .border-\[var\(--border-color\)\]:hover {
     border-color: var(--border-color) !important;
     transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1) !important;
-}
-
-/* Specific restoration for premium card effects */
-.settings-panel-content .premium-card:hover,
-.settings-panel-content .premium-card.active {
-    border-color: var(--pc-color, var(--primary-color)) !important;
-    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1), 0 0 20px var(--pc-glow, var(--glass-glow)) !important;
-    transform: translateY(-2px);
 }
 
 /* Cloud Theme Specific Contrast Fixes */

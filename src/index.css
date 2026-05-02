@@ -515,10 +515,19 @@ pre code .hl-directive { color: #fb7185 !important; font-weight: 700; }
 /* ── Rule A: Dark text on background containers without standalone color ── */
 /* Matches elements with "background" in style but NO standalone "color:" property.
    Specificity: 0,6,0 — beats existing inherit rules (0,2,1) on the parent element.
-   Surgical Fix: Excludes rgba() and transparent backgrounds as they are typically used for dark-mode UI overlays. */
-.markdown-body [style*="background"]:not([style*=" color:"]):not([style*=";color:"]):not([style*="; color:"]):not([style^="color:"]):not([style*="rgba("]):not([style*="transparent"]) {
+   Surgical Fix: Excludes rgba(), transparent, and gradient backgrounds as they are
+   typically used for dark-mode UI overlays or model-generated dark-theme cards. */
+.markdown-body [style*="background"]:not([style*=" color:"]):not([style*=";color:"]):not([style*="; color:"]):not([style^="color:"]):not([style*="rgba("]):not([style*="transparent"]):not([style*="gradient"]) {
   color: #1e293b;
 }
+
+/* ── Rule A2: Light text on gradient-background containers without standalone color ── */
+/* Model-generated cards use dark gradient backgrounds that need white text.
+   This is the counterpart of Rule A for gradient backgrounds. */
+.markdown-body [style*="gradient"]:not([style*=" color:"]):not([style*=";color:"]):not([style*="; color:"]):not([style^="color:"]) {
+  color: #e2e8f0;
+}
+
 
 /* ── Rule B: Nested elements in colored parents inherit that color ── */
 /* Prevents Rule A from forcing dark text on nested bg elements inside containers
@@ -547,6 +556,20 @@ pre code .hl-directive { color: #fb7185 !important; font-weight: 700; }
 .markdown-body [style*="background"] div:not([style*="background"]) {
   color: inherit;
 }
+
+/* Model-generated cards: reset text-align:justify so list items align naturally */
+.markdown-body [style*="background"] ul,
+.markdown-body [style*="background"] ol,
+.markdown-body [style*="background"] li,
+.markdown-body [style*="gradient"] ul,
+.markdown-body [style*="gradient"] ol,
+.markdown-body [style*="gradient"] li {
+  text-align: left;
+  text-justify: auto;
+  hyphens: none;
+  -webkit-hyphens: none;
+}
+
 /* Respect inline text-align on parent containers (prevents justify override) */
 .markdown-body [style*="text-align"] p,
 .markdown-body [style*="text-align"] h1,
@@ -2536,7 +2559,8 @@ pre code .hl-directive { color: #fb7185 !important; font-weight: 700; }
 .premium-card::after {
   content: '';
   position: absolute;
-  inset: 0;
+  inset: -1px;
+  z-index: -1;
   border-radius: inherit;
   padding: 1px;
   background: linear-gradient(135deg, var(--pc-color), transparent 40%, transparent 60%, var(--pc-color));
@@ -2763,7 +2787,8 @@ select.premium-input option {
 .premium-card::after {
   content: '';
   position: absolute;
-  inset: 0;
+  inset: -1px;
+  z-index: -1;
   border-radius: inherit;
   padding: 1px;
   background: linear-gradient(135deg, var(--pc-color), transparent 40%, transparent 60%, var(--pc-color));

@@ -580,11 +580,11 @@ export const ModernSelect = ({
     }, [isOpen]);
 
     return (
-        <div ref={containerRef} className={`relative ${className}`} title={title}>
+        <div ref={containerRef} className={`modern-select relative ${className}`} title={title}>
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className={`w-full bg-[var(--surface-color)] border border-[var(--border-color)] hover:border-[var(--primary-color)]/30 rounded-2xl px-8 py-4 text-xs text-[var(--text-primary)] outline-none transition-all font-black flex items-center justify-between shadow-inner group backdrop-blur-md`}
+                className={`w-full bg-[var(--surface-color)] border border-[var(--border-color)] hover:border-[var(--primary-color)]/30 rounded-2xl px-8 py-4 text-xs text-[var(--text-primary)] outline-none transition-all font-black flex items-center justify-between group backdrop-blur-md`}
             >
                 <span className="flex-grow text-center truncate px-2 group-hover:text-[var(--primary-color)] transition-colors">{activeOption ? activeOption.label : placeholder}</span>
                 <Icon 

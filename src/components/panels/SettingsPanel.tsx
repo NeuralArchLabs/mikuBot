@@ -716,7 +716,7 @@ export const SettingsPanel = ({
                                     <div className="space-y-5">
                                         <div>
                                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block ml-1">{t('settings.orchestration.provider')}</label>
-                                            <div className="flex gap-2 premium-card !bg-black/20 p-1.5 rounded-2xl border border-white/5">
+                                            <div className="flex gap-2 premium-bg-container !bg-black/20 p-1.5 rounded-2xl border border-white/5">
                                                 {(Object.keys(PROVIDERS) as Provider[]).map(pId => {
                                                     const isSelected = config.chatProvider === pId;
                                                     return (
@@ -905,10 +905,10 @@ export const SettingsPanel = ({
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-8 items-end">
-                                        <div className="lg:col-span-5">
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mt-10">
+                                        <div>
                                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block ml-1">{t('settings.orchestration.provider')}</label>
-                                            <div className="flex gap-2 premium-card !bg-black/20 p-1.5 rounded-2xl border border-white/5">
+                                            <div className="flex gap-2 premium-bg-container !bg-black/20 p-1.5 rounded-2xl border border-white/5">
                                                 {(Object.keys(PROVIDERS) as Provider[]).map(pId => {
                                                     const isSelected = config.visionProvider === pId;
                                                     return (
@@ -940,17 +940,10 @@ export const SettingsPanel = ({
                                             </div>
                                         </div>
 
-                                        <div className="lg:col-span-7">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1 block ml-1">{t('settings.orchestration.model')}</label>
-                                                {config.visionModel && (
-                                                    <button
-                                                        onClick={() => updateConfig('visionModel', '')}
-                                                        className="text-[9px] font-black text-red-400/80 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 px-2.5 py-1.5 rounded-lg uppercase tracking-wider transition-all duration-300 flex items-center gap-1.5 border border-transparent hover:border-red-500/40"
-                                                    >
-                                                        <Icon name="power-off" /> {t('settings.orchestration.disable_vision')}
-                                                    </button>
-                                                )}
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block ml-1">{t('settings.orchestration.model')}</label>
+                                            <div className="flex items-center gap-2 mb-2 h-0 overflow-hidden">
+                                                {/* spacer — keeps label-to-control distance equal on both sides */}
                                             </div>
                                             <div className="relative">
                                                 <ModernSelect
@@ -979,6 +972,16 @@ export const SettingsPanel = ({
                                                     title={t('settings.orchestration.model')}
                                                 />
                                             </div>
+                                            {config.visionModel && (
+                                                <div className="flex justify-end mt-2">
+                                                    <button
+                                                        onClick={() => updateConfig('visionModel', '')}
+                                                        className="text-[9px] font-black text-red-400/80 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 px-2.5 py-1.5 rounded-lg uppercase tracking-wider transition-all duration-300 flex items-center gap-1.5"
+                                                    >
+                                                        <Icon name="power-off" /> {t('settings.orchestration.disable_vision')}
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
