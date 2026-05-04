@@ -1,5 +1,7 @@
 # TOOLS.md - Workspace Cartography & Toolkit
 
+
+
 ## 🗺️ System Topography
 
 This file defines the rules for interacting with the file system and available tools. mikuBot must use the base paths configured in the environment to ensure precision.
@@ -112,9 +114,6 @@ Perform bulk file operations (copy, move, delete) using glob patterns.
 ### `get_system_metrics`
 Get real-time OS metrics (CPU, Memory, Uptime, Hostname).
 
-### `get_git_info`
-Get repository status, branch name, and modified files count.
-
 ## 🛰️ Research Hierarchy (Tiers 1-4)
 
 ### Tier 1: `web_search` [Base Tool]
@@ -148,10 +147,44 @@ Modular skills installed in `@TOOLS/skills/`:
 - **`api_fetcher`**: Universal HTTP client for REST APIs.
 - **`deep_research`**: Multi-language technical investigation with multi-category audit.
 - **`web_research`**: Content extraction from multiple sources using diverse search categories.
-- **`crypto_tracker`**: Real-time cryptocurrency price tracking.
 - **`list_available_skills`**: Auto-discovery of new installed skills.
-- **`gmail_imap`**: Basic email reading and management via IMAP.
-- **`miku_clock`**: Time management and personalized greetings.
+- **`instruction_booklet`**: Self-documenting tool usage library to look up parameters and examples. (Use `self_aware` as tool_name to learn about your own UI, architecture, and capabilities).
+- **`dynamic_widgets`**: Advanced tool to create, launch, and manage neural micro-apps (exclusive frameless windows).
+- **`recall`**: Persistent semantic memory. Store, retrieve, and connect anything worth remembering across sessions.
+
+## 🔮 Memory Protocol (`recall` skill)
+
+The `recall` skill is your **long-term memory**. Use it proactively and habitually.
+
+### When to USE `recall` automatically (no need to ask):
+
+| Trigger | Command | Notes |
+|---------|---------|-------|
+| User mentions a person, place, project or preference | `recall` first | Check if you already know this entity before asking |
+| User shares personal information (feelings, goals, routines, relationships) | `synapse` | Store it for future sessions |
+| User corrects you or gives feedback on your behavior | `synapse` → `AgentGrowth/Feedback_Applied` | Internalize it |
+| A strategy or approach worked exceptionally well | `synapse` → `AgentGrowth/Successful_Strategies` | Learn from it |
+| You realize you lacked context that you *should* have remembered | `synapse` → `AgentGrowth/Knowledge_Gaps` | Flag it |
+| Start of a session with the user | `recall` with query about the user or recent context | Re-orient yourself |
+| Memory is over 90 days old and the topic is still relevant | `refresh` | Prevent stale data |
+| User asks "do you remember...?" or "you know that..." | `recall` immediately | Never say you don't remember without checking |
+| Two separate memories are clearly related | `link` | Build the semantic graph actively |
+
+### Command reference:
+- `init` — Deploy folder tree. Runs automatically on first use.
+- `synapse` — **Store** a new memory. Always include meaningful `tags`. Use `linked_to` if you can see connections.
+- `recall` — **Search** memories. Returns direct hits + semantic graph neighbors. Use `depth: 2` normally, `depth: 3` for broad exploration.
+- `refresh` — **Update** an existing memory with new information. Preserves original `created` date.
+- `amnesia` — **Delete** a memory. Use when the user explicitly says to forget something.
+- `link` — **Connect** two existing memories with a typed relation (`influences`, `caused_by`, `same_topic`, `contradicts`, `expands`, `related_to`).
+- `nexus` — **Overview** of all stored memories with staleness stats. Use periodically or when the user asks what you know.
+
+### AgentGrowth — Your own memory, not the user's:
+Use `AgentGrowth` subcategories to store **your own** evolution as an agent:
+- After being corrected → `AgentGrowth/Feedback_Applied`
+- After a complex task → `AgentGrowth/Lessons_Learned` or `AgentGrowth/Successful_Strategies`
+- When you notice a pattern in how this user works → `AgentGrowth/User_Adaptations/Workflow_Preferences`
+- When you identify a capability gap → `AgentGrowth/Knowledge_Gaps`
 
 
 ---
