@@ -1993,90 +1993,174 @@ ipcMain.handle('import-backup', async () => {
     });
 });
 
+// --- Background Process Manager ---
+const backgroundProcesses = new Map();
+const completedBackgroundProcesses = [];
+
 ipcMain.handle('run-console', async (event, input) => {
-    const { command, args, cwd, timeout_ms: topTimeout } = input;
+    const { command, args, cwd, timeout_ms: topTimeout, WaitMsBeforeAsync } = input;
     const { spawn } = require('child_process');
-    const blockedOperators = /[>|&;]/; // Bloquear >, >>, |, &, ;
     
+    // Note: Security validation (blockedOperators) is now handled in the renderer (tools.ts) 
+    // to allow mode-aware flexibility (Chat vs Agent mode).
+    
+    const commandId = input.commandId || `cmd_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    const commandStr = command || '';
+    const argsStr = typeof args === 'string' ? args : (Array.isArray(args) ? args.join(' ') : JSON.stringify(args || ''));
+
+    console.log(`[Main Process] Shell: ${commandStr} ${argsStr} (ID: ${commandId}) in ${cwd || 'root'}`);
+
+    // Extraer timeout_ms
+    const requestedTimeout = topTimeout || (args && args.timeout_ms) || 30000;
+    const timeout_ms = Math.min(requestedTimeout, 600000); // Increased max to 10 mins
+    
+    const isWindows = process.platform === 'win32';
+    const fullCommand = `${commandStr} ${argsStr}`.trim();
+    const finalCommand = isWindows ? `chcp 65001 > nul && ${fullCommand}` : fullCommand;
+
+    const proc = spawn(finalCommand, [], { 
+        cwd: cwd ? SafePathResolver.resolvePath(cwd) : SafePathResolver.roots['@WORKSPACE'],
+        shell: true,
+        windowsHide: true,
+        timeout: timeout_ms,
+        env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1' }
+    });
+
+    proc.on('error', (err) => {
+        finalize(null, `ERROR: ${err.message}${err.code === 'ENOENT' ? ' (Command not found)' : ''}`);
+    });
+
+    const processEntry = {
+        id: commandId,
+        command: `${commandStr} ${argsStr}`.trim(),
+        stdout: '',
+        stderr: '',
+        status: 'running',
+        exitCode: null,
+        startTime: Date.now(),
+        process: proc
+    };
+
+    backgroundProcesses.set(commandId, processEntry);
+
+    proc.stdout.on('data', (data) => {
+        processEntry.stdout += data.toString();
+        // Limit buffer size to prevent memory leaks (max 1MB)
+        if (processEntry.stdout.length > 1024 * 1024) {
+            processEntry.stdout = '...[truncated]...' + processEntry.stdout.slice(-1024 * 1024);
+        }
+    });
+
+    proc.stderr.on('data', (data) => {
+        processEntry.stderr += data.toString();
+        if (processEntry.stderr.length > 1024 * 1024) {
+            processEntry.stderr = '...[truncated]...' + processEntry.stderr.slice(-1024 * 1024);
+        }
+    });
+
     return new Promise((resolve) => {
-        // Bloqueo de operadores vía regex
-        const commandStr = command || '';
-        const argsStr = typeof args === 'string' ? args : (Array.isArray(args) ? args.join(' ') : JSON.stringify(args || ''));
-        
-        if (blockedOperators.test(commandStr) || blockedOperators.test(argsStr)) {
-            return resolve({
-                code: 1,
-                stdout: '',
-                stderr: 'SecurityError: Comando bloqueado por uso de operadores prohibidos (> | & ;).',
-                error: 'Forbidden operator detected'
+        let resolved = false;
+
+        const finalize = (code, error = null) => {
+            processEntry.status = error ? 'error' : 'completed';
+            processEntry.exitCode = code;
+            processEntry.endTime = Date.now();
+            
+            // Move to completed list for notification
+            completedBackgroundProcesses.push({
+                id: commandId,
+                command: processEntry.command,
+                stdout: processEntry.stdout,
+                stderr: processEntry.stderr,
+                exitCode: code,
+                error: error
             });
-        }
 
-        console.log(`[Main Process] Shell: ${commandStr} ${argsStr} (Secure Spawn) in ${cwd || 'root'}`);
-
-        // Extraer timeout_ms (del objeto principal o de args)
-        const requestedTimeout = topTimeout || (args && args.timeout_ms) || 15000;
-        const timeout_ms = Math.min(requestedTimeout, 120000);
-        
-        // Determinar argumentos para spawn
-        let spawnArgs = [];
-        if (typeof args === 'string') {
-            spawnArgs = args.split(/\s+/).filter(a => a.length > 0);
-        } else if (Array.isArray(args)) {
-            spawnArgs = args;
-        }
-
-        // Usar spawn para mayor control
-        // Determinamos el Shell por plataforma para mayor seguridad
-        const shellCmd = process.platform === 'win32' ? 'powershell.exe' : '/bin/sh';
-        
-        // Si usamos shell: true, pasamos el comando como un solo string
-        // Si usamos shell: false, pasamos el ejecutable y argumentos por separado
-        // Para máxima seguridad contra inyecciones, idealmente shell: false
-        
-        const proc = spawn(command, spawnArgs, { 
-            cwd: cwd ? SafePathResolver.resolvePath(cwd) : SafePathResolver.roots['@WORKSPACE'],
-            shell: true, // Requerido para muchos comandos del usuario, mitigado por regex
-            windowsHide: true,
-            timeout: timeout_ms 
-        });
-
-        let stdout = '';
-        let stderr = '';
-
-        proc.stdout.on('data', (data) => stdout += data.toString());
-        proc.stderr.on('data', (data) => stderr += data.toString());
+            if (resolved) return;
+            resolved = true;
+            
+            // Note: We keep it in the backgroundProcesses Map so get-console-status can still find it
+            // but we might want to prune it later.
+            
+            resolve({
+                code: code ?? (error ? 1 : 0),
+                stdout: processEntry.stdout,
+                stderr: processEntry.stderr,
+                error: error,
+                commandId: commandId
+            });
+        };
 
         const timer = setTimeout(() => {
+            if (resolved) return;
             try { proc.kill(); } catch(e) {}
-            resolve({
-                code: 1,
-                stdout,
-                stderr: `${stderr}\nERROR: Proceso finalizado por timeout (${timeout_ms}ms).`,
-                error: 'Process Timed Out'
-            });
+            finalize(1, 'Process Timed Out');
         }, timeout_ms);
 
         proc.on('close', (code) => {
             clearTimeout(timer);
-            resolve({
-                code: code ?? 0,
-                stdout: stdout,
-                stderr: stderr,
-                error: null
-            });
+            finalize(code);
         });
 
         proc.on('error', (err) => {
             clearTimeout(timer);
-            resolve({
-                code: 1,
-                stdout: stdout,
-                stderr: stderr,
-                error: err.message
-            });
+            finalize(1, err.message);
         });
+
+        // Async Support: If WaitMsBeforeAsync is provided, we might return early
+        if (WaitMsBeforeAsync && WaitMsBeforeAsync > 0) {
+            setTimeout(() => {
+                if (!resolved) {
+                    resolved = true;
+                    resolve({
+                        status: 'running',
+                        message: `Command is running in background (ID: ${commandId})`,
+                        commandId: commandId,
+                        stdout: processEntry.stdout,
+                        stderr: processEntry.stderr
+                    });
+                }
+            }, WaitMsBeforeAsync);
+        }
     });
+});
+
+ipcMain.handle('run-console-status', async (event, { commandId }) => {
+    const proc = backgroundProcesses.get(commandId);
+    if (!proc) return { success: false, error: 'Process not found' };
+    
+    return {
+        success: true,
+        id: proc.id,
+        command: proc.command,
+        status: proc.status,
+        stdout: proc.stdout,
+        stderr: proc.stderr,
+        exitCode: proc.exitCode,
+        startTime: proc.startTime,
+        endTime: proc.endTime
+    };
+});
+
+ipcMain.handle('run-console-terminate', async (event, { commandId }) => {
+    const entry = backgroundProcesses.get(commandId);
+    if (!entry) return { success: false, error: 'Process not found' };
+    
+    if (entry.status === 'running' && entry.process) {
+        try {
+            entry.process.kill();
+            return { success: true, message: 'Process terminated' };
+        } catch (e) {
+            return { success: false, error: e.message };
+        }
+    }
+    return { success: false, error: 'Process is not running' };
+});
+
+ipcMain.handle('poll-console-notifications', async (event) => {
+    const notifications = [...completedBackgroundProcesses];
+    completedBackgroundProcesses.length = 0; // Clear the list
+    return notifications;
 });
 
 ipcMain.handle('run-search', async (event, { query, category }) => {

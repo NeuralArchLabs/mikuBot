@@ -8,7 +8,7 @@ export const CORE_TOOLS = new Set([
     'read_file', 'update_file', 'patch_file', 'delete_file',
     'list_files', 'search_files', 'get_system_metrics',
     'web_search',
-    'run_console', 'read_url', 'add_scheduled_task',
+    'run_console', 'get_console_status', 'read_url', 'add_scheduled_task',
     'send_telegram_message', 'batch_operation', 'get_file_outline',
     'request_agent_mode'
 ]);
@@ -189,12 +189,12 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
 
     const isSuccess = result?.success && 
                       result?.data?.success !== false && 
-                      (result?.data?.exitCode === undefined || result?.data?.exitCode === 0);
+                      (result?.data?.exitCode === undefined || result?.data?.exitCode === null || result?.data?.exitCode === 0);
     
     const hasError = !!(result?.error || 
                        result?.data?.success === false || 
-                       (result?.data?.exitCode !== undefined && result?.data?.exitCode !== 0) ||
-                       (result?.data?.stderr && !result?.data?.stdout && result?.data?.exitCode !== 0));
+                       (result?.data?.exitCode !== undefined && result?.data?.exitCode !== null && result?.data?.exitCode !== 0) ||
+                       (result?.data?.stderr && !result?.data?.stdout && result?.data?.exitCode !== 0 && result?.data?.exitCode !== null));
     const isDenied = block.status === 'denied';
     const isPending = !result && isStreaming && !isDenied;
     const isAborted = !result && !isStreaming && !isOld && !isDenied;
@@ -271,6 +271,10 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
                 return t('tools.batch_summary', { operation: args.operation, source_path: getSourceLabel(args.source_path) });
             case 'get_file_outline':
                 return t('tools.outline_summary', { filename: args.filename });
+            case 'get_console_status':
+                return data.status === 'running' 
+                    ? `[RUNNING] ${data.command || args.commandId}`
+                    : `[FINISHED] ${data.command || args.commandId} (Exit: ${data.exitCode})`;
             default:
                 return typeof result.data === 'string' ? result.data : result.data?.message || t('tools.default_summary', { name });
         }

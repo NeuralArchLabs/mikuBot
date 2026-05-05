@@ -36,3 +36,13 @@ export function getExtension(path: string): string {
 export function getBaseName(path: string): string {
     return path.split('/').pop()?.split('.')[0] || '';
 }
+
+/**
+ * Obfuscates system paths with symbolic markers like @ROOT
+ */
+export function obfuscatePaths(text: string, rootPath?: string): string {
+    if (!text || !rootPath) return text;
+    const escapedRoot = rootPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const rootRegex = new RegExp(escapedRoot, 'gi');
+    return text.replace(rootRegex, '@ROOT');
+}

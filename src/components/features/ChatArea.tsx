@@ -1469,31 +1469,16 @@ export const ChatArea = ({
             
             {/* Sticky Overlay Area for Active Task / Background Status - Only visible while Miku is doing something */}
             <div className="z-20 w-full absolute bottom-full left-0">
-                
-                {/* Elevated Tool Approval Panel - Full Edge-to-Edge Banner Attached to Dock */}
-                {isExecutingThisSession && pendingApproval && (
-                    <div className="absolute bottom-full left-0 w-full z-[100] animate-slide-up pointer-events-none">
-                        <div className={`w-full shadow-[0_-15px_40px_-10px_rgba(0,0,0,0.6)] overflow-hidden border-t pointer-events-auto bg-slate-900/95 backdrop-blur-xl ${!CORE_TOOLS.has(pendingApproval.toolCall.function.name) ? 'border-blue-400/40' : 'border-amber-500/40'}`}>
-                            <ToolApprovalPanel
-                                key={pendingApproval.toolCall.id}
-                                pending={pendingApproval}
-                                onApprove={onApproveToolCall}
-                                onReject={onRejectToolCall}
-                            />
-                        </div>
-                    </div>
-                )}
-
                 <div className={`w-full agent-status-docked ${(isLoading || pendingApproval) ? 'active' : ''} shadow-[0_-10px_40px_rgba(0,0,0,0.5)]`}>
                     <div 
-                        className="w-full bg-slate-950/20 backdrop-blur-md agent-status-animate-in border-t border-white/5"
+                        className={`w-full agent-status-animate-in border-t border-white/5 ${pendingApproval ? 'bg-slate-900/90 backdrop-blur-md' : 'bg-slate-950/20 backdrop-blur-md'}`}
                         style={config.chatBackgroundImage ? { 
-                            maskImage: "linear-gradient(to bottom, black 0%, black calc(100% - 24px), transparent 100%)", 
-                            WebkitMaskImage: "linear-gradient(to bottom, black 0%, black calc(100% - 24px), transparent 100%)",
+                            maskImage: "linear-gradient(to bottom, black 0%, black calc(100% - 6px), transparent 100%)", 
+                            WebkitMaskImage: "linear-gradient(to bottom, black 0%, black calc(100% - 6px), transparent 100%)",
                             maskSize: "100% calc(100% + 100px)",
                             WebkitMaskSize: "100% calc(100% + 100px)",
-                            maskPosition: (agentStatus.streamedText || agentStatus.streamedReasoning) ? "center bottom" : "center calc(100% + 24px)",
-                            WebkitMaskPosition: (agentStatus.streamedText || agentStatus.streamedReasoning) ? "center bottom" : "center calc(100% + 24px)",
+                            maskPosition: (isLoading || pendingApproval) ? "center bottom" : "center calc(100% + 6px)",
+                            WebkitMaskPosition: (isLoading || pendingApproval) ? "center bottom" : "center calc(100% + 6px)",
                             maskRepeat: "no-repeat",
                             WebkitMaskRepeat: "no-repeat",
                             transition: "mask-position 0.5s ease-out, -webkit-mask-position 0.5s ease-out"
@@ -1501,11 +1486,22 @@ export const ChatArea = ({
                     >
                     {isExecutingThisSession ? (
                         <div className="w-full">
-                            <AgentStatusPanel
-                                status={agentStatus}
-                                onAbort={onAbort}
-                                onReprompt={onReprompt}
-                            />
+                            {pendingApproval ? (
+                                <div className={`animate-slide-up bg-slate-900 border-t ${!CORE_TOOLS.has(pendingApproval.toolCall.function.name) ? 'border-blue-400/40' : 'border-amber-500/40'}`}>
+                                    <ToolApprovalPanel
+                                        key={pendingApproval.toolCall.id}
+                                        pending={pendingApproval}
+                                        onApprove={onApproveToolCall}
+                                        onReject={onRejectToolCall}
+                                    />
+                                </div>
+                            ) : (
+                                <AgentStatusPanel
+                                    status={agentStatus}
+                                    onAbort={onAbort}
+                                    onReprompt={onReprompt}
+                                />
+                            )}
                         </div>
                     ) : (
                         executingSessionId && (

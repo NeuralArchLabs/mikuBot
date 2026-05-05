@@ -1819,7 +1819,7 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                         'read_file', 'list_files', 'search_files', 'web_search', 'read_url', 
                         'update_file', 'patch_file', 'delete_file', 'add_scheduled_task',
                         'get_file_outline', 'get_system_metrics', 'send_telegram_message',
-                        'request_agent_mode'
+                        'request_agent_mode', 'run_console', 'get_console_status'
                     ].includes(t.function.name)),
                     ...dynamicSkills
                 ]
@@ -1864,7 +1864,7 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                                 'read_file', 'list_files', 'search_files', 'web_search', 'read_url', 
                                 'update_file', 'patch_file', 'delete_file', 'add_scheduled_task',
                                 'get_file_outline', 'get_system_metrics', 'send_telegram_message',
-                                'request_agent_mode'
+                                'request_agent_mode', 'run_console', 'get_console_status'
                             ].includes(t.function.name)),
                             ...dynamicSkills
                         ]

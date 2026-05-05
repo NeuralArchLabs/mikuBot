@@ -4,8 +4,14 @@
  * REWIRED: Literal copy from original agent.ts
  */
 import { ToolCall, ToolResult, AppConfig, FileTarget } from '../../../types';
-import { PROTECTED_CORE_FILES, CONSOLE_ALLOWED_COMMANDS, CONSOLE_BLOCKED_PATTERNS } from '../../../constants';
-import { validateToolArgs, safeFetch } from '../../../utils';
+import { 
+    PROTECTED_CORE_FILES, 
+    CONSOLE_ALLOWED_COMMANDS, 
+    CONSOLE_BLOCKED_PATTERNS,
+    LAX_CONSOLE_ALLOWED_COMMANDS,
+    LAX_CONSOLE_BLOCKED_PATTERNS
+} from '../../../constants';
+import { validateToolArgs, safeFetch, obfuscatePaths } from '../../../utils';
 import { TelegramFormatter } from '../../formatters/telegramFormatter';
 import { resolvePathAndSource, resolveSource, getFileStore, getRelativePath } from './utils';
 
@@ -19,7 +25,9 @@ export async function executeToolCall(
     saveFileFn: (name: string, content: string, target: FileTarget) => Promise<boolean>,
     deleteFileFn: (name: string, target: FileTarget) => Promise<boolean>,
     config: AppConfig,
-    onAddTask?: (task: any) => Promise<string>
+    onAddTask?: (task: any) => Promise<string>,
+    isAgentMode: boolean = false,
+    isInstructionMode: boolean = false
 ): Promise<ToolResult> {
     const { name, arguments: args } = toolCall.function;
 
@@ -425,25 +433,11 @@ export async function executeToolCall(
 
             case 'run_console': {
                 const cmd = (args.command || '').trim().toLowerCase();
-
-                // Security Layer 1: Command whitelist
-                if (!CONSOLE_ALLOWED_COMMANDS.includes(cmd)) {
-                    return {
-                        success: false,
-                        error: `⛔ BLOCKED: "${cmd}" is an unauthorized or restricted command in this environment.`
-                    };
-                }
-
-                // Security Layer 2: Blocked patterns in args
                 const cmdArgs = args.args || '';
-                for (const pattern of CONSOLE_BLOCKED_PATTERNS) {
-                    if (pattern.test(cmdArgs)) {
-                        return {
-                            success: false,
-                            error: `⛔ BLOCKED: Arguments contain a forbidden pattern (${pattern.source}). Shell metacharacters and path traversal are not allowed.`
-                        };
-                    }
-                }
+                
+                // Security Layer: In Chat Mode, we allow any command as long as it has been manually approved 
+                // by the user in the UI (enforced by Agent.ts isAuto logic).
+                // We only perform basic path obfuscation and platform fixes here.
 
                 // Security Layer 3: This runs in the browser, so we delegate to Electron
                 const isElectron = !!(window as any).electron?.runConsole;
@@ -460,10 +454,7 @@ export async function executeToolCall(
 
                     // Specialized fix for mkdir on Windows
                     if (cmd === 'mkdir' && isWindows) {
-                        // Normalize slashes to backslashes for Windows mkdir
                         finalArgs = finalArgs.replace(/\//g, '\\');
-                        // Remove -p flag (can be -p, --parents, etc. but Windows mkdir creates parents by default if single path, 
-                        // or we just remove it to avoid syntax error in CMD)
                         finalArgs = finalArgs.replace(/\B-p\b/g, '').replace(/\B--parents\b/g, '').replace(/\s+/g, ' ').trim();
                     }
 
@@ -471,31 +462,62 @@ export async function executeToolCall(
                         command: cmd,
                         args: finalArgs,
                         cwd: args.cwd || '',
+                        WaitMsBeforeAsync: args.WaitMsBeforeAsync || 0,
+                        commandId: args.commandId
                     });
-                    const obfuscatePaths = (text: string) => {
-                        if (!text) return text;
-                        const rootPath = config.folderPaths?.root;
-                        if (!rootPath) return text;
-                        // Replace real root path with @ROOT
-                        const escapedRoot = rootPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                        const rootRegex = new RegExp(escapedRoot, 'gi');
-                        return text.replace(rootRegex, '@ROOT');
-                    };
+
+                    const root = config.folderPaths?.root;
+
+                    if (result.status === 'running') {
+                        return {
+                            success: true,
+                            data: {
+                                status: 'running',
+                                message: `Command started in background. Use get_console_status with ID: ${result.commandId} to check progress.`,
+                                commandId: result.commandId,
+                                stdout: obfuscatePaths(result.stdout, root),
+                                stderr: obfuscatePaths(result.stderr, root)
+                            }
+                        };
+                    }
 
                     const isSuccess = result.code === 0;
                     return {
                         success: isSuccess,
                         error: isSuccess ? undefined : (obfuscatePaths(result.stderr) || `Command failed with code ${result.code}`),
                         data: {
-                            stdout: obfuscatePaths((result.stdout || '').slice(0, 2000)),
-                            stderr: obfuscatePaths((result.stderr || '').slice(0, 500)),
+                            stdout: obfuscatePaths((result.stdout || '').slice(0, 5000)),
+                            stderr: obfuscatePaths((result.stderr || '').slice(0, 2000)),
                             exitCode: result.code,
                             command: `${cmd} ${cmdArgs}`.trim(),
+                            commandId: result.commandId
                         }
                     };
                 } catch (e) {
                     return { success: false, error: `Console Error: ${e instanceof Error ? e.message : String(e)}` };
                 }
+            }
+
+            case 'get_console_status': {
+                if (!(window as any).electron?.runConsoleStatus) {
+                    return { success: false, error: 'Console status not available.' };
+                }
+                const result = await (window as any).electron.runConsoleStatus({ commandId: args.commandId });
+                if (!result.success) return { success: false, error: result.error };
+
+                const root = config.folderPaths?.root;
+
+                return {
+                    success: true,
+                    data: {
+                        id: result.id,
+                        status: result.status,
+                        stdout: obfuscatePaths(result.stdout.slice(-5000), root),
+                        stderr: obfuscatePaths(result.stderr.slice(-2000), root),
+                        exitCode: result.exitCode,
+                        command: result.command
+                    }
+                };
             }
 
             case 'delete_file': {

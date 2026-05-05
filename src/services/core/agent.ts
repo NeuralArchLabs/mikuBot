@@ -18,9 +18,10 @@ import { useAgentStore } from '../../stores/useAgentStore';
 import { 
     PROTECTED_CORE_FILES, 
     CONSOLE_ALLOWED_COMMANDS, 
-    CONSOLE_BLOCKED_PATTERNS 
+    CONSOLE_BLOCKED_PATTERNS,
+    HIGH_RISK_COMMANDS
 } from '../../constants';
-import { validateToolArgs, safeFetch } from '../../utils';
+import { validateToolArgs, safeFetch, obfuscatePaths } from '../../utils';
 import { recoverToolCallsFromText, normalizeRawToolCall, RecoveredCall } from '../formatters/toolCallNormalizer';
 import { createFormatter } from '../formatters/formatterFactory';
 import type { ProviderOptions } from './ModelProviders';
@@ -346,6 +347,36 @@ export async function sendAgentMessage(
                 tasksContent = taskMatch?.content || '';
             }
 
+            // --- Pre-turn Check: Background console tasks ---
+            if ((window as any).electron?.pollConsoleNotifications) {
+                try {
+                    const notifications = await (window as any).electron.pollConsoleNotifications();
+                    for (const note of notifications) {
+                        const content = JSON.stringify({
+                            success: note.exitCode === 0,
+                            data: {
+                                message: `🔔 BACKGROUND TASK FINISHED: ${note.command}`,
+                                id: note.id,
+                                stdout: obfuscatePaths(note.stdout.slice(-2000), config.folderPaths?.root),
+                                stderr: obfuscatePaths(note.stderr.slice(-1000), config.folderPaths?.root),
+                                exitCode: note.exitCode,
+                                error: note.error
+                            }
+                        });
+                        
+                        agentMessages.push({
+                            role: 'tool',
+                            tool_name: 'run_console',
+                            content: content,
+                            tool_call_id: note.id
+                        });
+                        log('info', `Background task finished: ${note.command} (ID: ${note.id})`);
+                    }
+                } catch (e) {
+                    console.error('[Agent] Failed to poll console notifications:', e);
+                }
+            }
+
             localOnStatus({
                 phase: 'thinking',
                 iteration: iterations,
@@ -544,7 +575,13 @@ export async function sendAgentMessage(
                 const args = tc.function.arguments;
 
                 // 1. DANGEROUS OPERATIONS: ALWAYS REQUIRE MANUAL APPROVAL
-                if (tn === 'run_console' || tn === 'request_agent_mode') return false;
+                if (tn === 'run_console') {
+                    const cmd = (args.command || '').trim().toLowerCase();
+                    if (HIGH_RISK_COMMANDS.includes(cmd)) return false;
+                    // If not high risk, allow auto in Agent Mode
+                    return isAgentMode;
+                }
+                if (tn === 'request_agent_mode') return false;
                 if (tn === 'batch_operation' && args.operation === 'delete') return false;
                 
                 // Sensitive Files Protection (SOUL, USER, IDENTITY)
@@ -619,7 +656,20 @@ export async function sendAgentMessage(
 
             // 2. EXECUTION PHASE
             const executeAndLog = async (tc: ToolCall) => {
-                const res = await executeToolCall(tc, currentFiles, currentAdditional, currentWorkSpace, currentTools, currentRoot, saveFileFn, deleteFileFn, config, onAddTask);
+                const res = await executeToolCall(
+                    tc, 
+                    currentFiles, 
+                    currentAdditional, 
+                    currentWorkSpace, 
+                    currentTools, 
+                    currentRoot, 
+                    saveFileFn, 
+                    deleteFileFn, 
+                    config, 
+                    onAddTask,
+                    isAgentMode,
+                    isInstructionMode
+                );
                 const b = allBlocks.find(x => x.toolCall?.id === tc.id);
                 if (b) { b.result = res; b.status = res.success ? 'success' : 'error'; }
 

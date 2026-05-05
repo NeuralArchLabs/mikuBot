@@ -37,7 +37,7 @@ An AI agent and assistant directed at the general public. Designed as a friendly
 ## ✨ Main Features
 
 *   **Deep Onboarding and Personalization:** Features an initial configuration process that guides you step-by-step. From the first moment, you can nurture the assistant with all the information you want it to know about you, achieving absolute personalization so it understands exactly your context, needs, and how to help you.
-*   **Autonomy and Operation Modes:** Features a Chat Mode and an Agent Mode focused on different types of assistance, both with native tool execution. Choose between a *fully autonomous* mode, a *safe mode* (requires prior authorization), and the creation of **scheduled tasks** for total autonomy.
+*   **Autonomy and Operation Modes:** mikuBot offers absolute technical sovereignty. **Agent Mode** now features a completely liberated console (no command restrictions), allowing any system operation required for complex tasks. **Chat Mode** maintains "lax" security (a broad whitelist) for casual use. Both modes support background tool execution, scheduled tasks, and a **High-Risk Protection** system that requires manual approval for destructive commands.
 *   **Persistent & Multi-session Execution (Studio Elite):** Miku no longer stops when switching neural branches. Agents can complete complex tasks autonomously in the background while you interact with other sessions, maintaining a persistent and visually reactive link that notifies you of process status in other branches.
 *   **Multidimensional Themes (Atmosphere Engine):** Absolute visual personalization with 5 premium themes (`Miku`, `Cloud`, `Midnight`, `Cyberpunk`, `Forest`). Each theme adapts the entire interface to provide an immersive experience tailored to your workspace.
 *   **Neural Credential Vault:** Your API keys are now protected by the `processVault` system, automatically encrypting them at rest. Sovereign security with zero manual intervention.
@@ -89,7 +89,7 @@ mikuBot utilizes a robust ecosystem of tools divided into two main categories to
 **1. Core Tools (System Tools):**
 - **File Management:** `read_file`, `update_file`, `patch_file` (with smart patching engine), `delete_file`, and `batch_operation` for bulk actions.
 - **Proactive Exploration:** `list_files`, `search_files` (high-performance native search), and `get_file_outline` for code mapping.
-- **Execution & Control:** `run_console` (security whitelist for Windows commands), `undo_patch`, `get_system_metrics`, and `add_scheduled_task` (autonomous task scheduling).
+- **Execution & Control:** `run_console` (asynchronous console liberated in Agent Mode / restricted in Chat Mode), `get_console_status` (background task tracking), `undo_patch`, `get_system_metrics`, and `add_scheduled_task` (autonomous task scheduling).
 
 **2. Neural Skills (Advanced Skills):** Dynamic and extensible modules that empower the agent's reasoning. Users can create their own custom skills and easily integrate them into the ecosystem.
 - **Semantic Memory (`recall`):** Long-term memory skill that allows the assistant to remember preferences, facts, and evolve its user model.

@@ -33,20 +33,32 @@ When mikuBot suggests terminal commands, it must adhere to the following:
 - **Package Manager:** npm / pip / maven (according to project).
 - **Git:** Installed and configured globally.
 
-## 🖥️ Console Access (`run_console`)
+## 🖥️ Console Access (`run_console`, `get_console_status`)
 
-The `run_console` tool provides workspace console access. **Security restrictions apply:**
+The `run_console` tool provides workspace console access. Behavior depends on the current **Mode**:
 
-### Allowed Commands
-`git`, `node`, `npm`, `npx`, `ls`, `dir`, `cat`, `type`, `echo`, `mkdir`, `cd`, `pwd`, `grep`, `find`, `head`, `tail`, `wc`, `tree`, `tsc`, `python`, `pip`, `curl`, `wget`, `gh`, `sqlite3`, `awk`, `sed`, `perl`, `jq`, `ping`
+### 🛡️ Chat Mode (Restricted)
+Designed for safe, casual use.
+- **Allowed Commands:** `git`, `node`, `npm`, `npx`, `ls`, `dir`, `cat`, `type`, `echo`, `mkdir`, `cd`, `pwd`, `grep`, `find`, `head`, `tail`, `wc`, `tree`, `tsc`, `python`, `pip`, `curl`, `wget`, `gh`, `sqlite3`, `awk`, `sed`, `perl`, `jq`, `ping`, `tasklist`, `taskkill`, `systeminfo`, `whoami`, `netstat`, `ipconfig`, `ssh`, `scp`, `rsync`, `findstr`, `powershell`, `cmd`, `vite`, `next`, `react-native`, `expo`, `flutter`, `dart`, `go`, `rustc`, `cargo`, `java`, `javac`, `mvn`, `gradle`, `docker`, `kubectl`.
+- **Blocked Patterns:** `rm -rf`, `del /`, `../` (path traversal).
+- **Suggestion:** If a command is blocked, you can request **Agent Mode** to execute it without restrictions.
 
-### Blocked Patterns
-The following are **NEVER** allowed in arguments:
-- `&&`, `||`, `;` (command chaining)
-- `|` (piping)
-- `` ` `` or `$(` (subshell execution)
-- `../` or `..\` (path traversal)
-- `rm -rf` or `rm -R` (recursive delete)
+### 🔓 Agent / Instruction Mode (Unrestricted)
+Completely liberated console.
+- **NO Command Whitelist:** Any installed binary can be executed.
+- **NO Pattern Blocking:** All shell operators (`&&`, `||`, `|`, `;`, `>`, etc.) and path traversals are allowed.
+- **Auto-Approval:** Commands are automatically approved UNLESS they are detected as **HIGH RISK**.
+
+### 🔴 HIGH RISK Commands
+The following commands **ALWAYS** require manual user approval with a specific red warning:
+`rm`, `del`, `rd`, `format`, `mkfs`, `fdisk`, `dd`, `chmod`, `chown`, `mv`, `ren`, `wget`, `curl`, `ssh`, `taskkill`, `kill`, `shutdown`, `reboot`.
+
+### ⏳ Asynchronous Execution
+For long-running tasks, use `WaitMsBeforeAsync` to avoid blocking.
+- **Param:** `WaitMsBeforeAsync` (ms to wait before returning a background ID).
+- **Return:** If the task is still running, you receive a `commandId`.
+- **Polling:** Use `get_console_status` with the `commandId` to check logs and status.
+- **Notification:** When a background task finishes, you will be notified at the start of your next turn.
 
 ### Usage Format
 ```json
@@ -54,13 +66,15 @@ The following are **NEVER** allowed in arguments:
   "name": "run_console",
   "arguments": {
     "command": "npm",
-    "args": "install lodash",
-    "cwd": ""
+    "args": "run dev",
+    "WaitMsBeforeAsync": 500
   }
 }
 ```
 
-> ⚠️ **HIGH SECURITY TOOLS:** All console commands (`run_console`), batch deletions (`batch_operation: delete`), and file deletions (`delete_file`) require **mandatory manual approval** from the user, even in Agent Mode or Remote sessions.
+### `get_console_status`
+Check the status and current output of a background process.
+- **Param:** `commandId` (The ID returned by run_console).
 
 ## 📂 File Management (`read_file`, `update_file`, `patch_file`)
 
@@ -178,6 +192,7 @@ The `recall` skill is your **long-term memory**. Use it proactively and habitual
 - `amnesia` — **Delete** a memory. Use when the user explicitly says to forget something.
 - `link` — **Connect** two existing memories with a typed relation (`influences`, `caused_by`, `same_topic`, `contradicts`, `expands`, `related_to`).
 - `nexus` — **Overview** of all stored memories with staleness stats. Use periodically or when the user asks what you know.
+- `health` — **Diagnostic** of memory integrity. Checks for dangling entries, broken links, and orphan files.
 
 ### AgentGrowth — Your own memory, not the user's:
 Use `AgentGrowth` subcategories to store **your own** evolution as an agent:

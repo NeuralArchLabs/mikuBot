@@ -3,6 +3,7 @@ import { PendingToolApproval } from '../../types';
 import { Icon } from '../common/Common';
 import { useTranslation } from 'react-i18next';
 import { CORE_TOOLS } from '../common/ToolBlock';
+import { HIGH_RISK_COMMANDS } from '../../constants';
 
 interface ToolApprovalPanelProps {
     pending: PendingToolApproval;
@@ -89,6 +90,7 @@ export const ToolApprovalPanel = React.memo(({
     const isNonWorkSpace = (toolArgs.source === 'core' || toolArgs.source === 'library') &&
         (toolName === 'update_file' || toolName === 'read_file');
     const isNeuralSkill = !CORE_TOOLS.has(toolName);
+    const isHighRisk = isConsoleCommand && HIGH_RISK_COMMANDS.includes((toolArgs.command || '').trim().toLowerCase());
 
     // Accent color based on risk level
     const borderClass = isConsoleCommand ? 'border-red-500/50' : 'border-slate-700/30';
@@ -136,7 +138,7 @@ export const ToolApprovalPanel = React.memo(({
                         <div className="flex items-center gap-2 text-red-400">
                             <Icon name="exclamation-triangle" className="text-sm" />
                             <span className="text-[10px] font-bold uppercase tracking-widest truncate">
-                                ⚠ {t('chat.approval.elevated_risk')}
+                                {t('chat.approval.elevated_risk')}
                             </span>
                         </div>
                     ) : isNonWorkSpace ? (
@@ -165,6 +167,14 @@ export const ToolApprovalPanel = React.memo(({
             )}
 
             <div className="p-4 bg-slate-900/20">
+                {isHighRisk && (
+                    <div className="bg-red-500/20 border border-red-500/50 p-3 mb-4 rounded-lg flex items-center gap-3 animate-pulse">
+                        <Icon name="exclamation-triangle" className="text-red-500 text-xl" />
+                        <span className="text-red-400 font-bold uppercase tracking-widest text-xs">
+                            Comando de alto riesgo por favor revise antes de aprobar
+                        </span>
+                    </div>
+                )}
                 <div className="text-[10px] text-slate-400 mb-2 uppercase tracking-wide opacity-70">{t('chat.approval.params_requested')}</div>
                 <pre className="text-[11px] text-indigo-300/90 font-mono bg-black/40 rounded-lg p-3 border border-indigo-500/10 custom-scrollbar max-h-40 overflow-y-auto whitespace-pre-wrap break-all shadow-inner">
                     {displayArgs}

@@ -40,6 +40,9 @@ contextBridge.exposeInMainWorld('electron', {
 
     // Console & Python engine
     runConsole: (data) => ipcRenderer.invoke('run-console', data),
+    runConsoleStatus: (data) => ipcRenderer.invoke('run-console-status', data),
+    runConsoleTerminate: (data) => ipcRenderer.invoke('run-console-terminate', data),
+    pollConsoleNotifications: () => ipcRenderer.invoke('poll-console-notifications'),
     runSearch: (data) => ipcRenderer.invoke('run-search', data),
     runExtract: (data) => ipcRenderer.invoke('run-extract', data),
     extractFileContent: (data) => ipcRenderer.invoke('extract-file-content', data),

@@ -887,6 +887,60 @@ def command_evoke(target):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# COMMAND: health — self-diagnostic and integrity check
+# ─────────────────────────────────────────────────────────────────────────────
+def command_health():
+    index_data = load_index()
+    memories = index_data.get("memories", {})
+    graph = index_data.get("graph", {})
+    
+    issues = []
+    dangling = []
+    orphans = []
+    broken_links = []
+    
+    # 1. Check for dangling index entries (file missing)
+    for mem_id, mem in memories.items():
+        fp = os.path.join(MEMORY_ROOT, mem.get("filepath", ""))
+        if not os.path.exists(fp):
+            dangling.append(mem_id)
+            issues.append(f"Dangling index entry: {mem_id} (File missing)")
+            
+    # 2. Check for orphan files (not in index)
+    for root, dirs, files in os.walk(MEMORY_ROOT):
+        for f in files:
+            if f.endswith(".md"):
+                mid = f.replace(".md", "")
+                if mid not in memories:
+                    orphans.append(os.path.join(root, f))
+                    issues.append(f"Orphan file found: {f} (Not in index)")
+                    
+    # 3. Check for broken graph edges
+    for from_id, edges in graph.items():
+        if from_id not in memories:
+            broken_links.append(f"{from_id} (Source missing)")
+            continue
+        for edge in edges:
+            if edge["to"] not in memories:
+                broken_links.append(f"{from_id} -> {edge['to']} (Target missing)")
+                issues.append(f"Broken link: {from_id} -> {edge['to']}")
+                
+    # 4. Summary metrics
+    return {
+        "success": True,
+        "status": "healthy" if not issues else "degraded",
+        "total_memories": len(memories),
+        "total_issues": len(issues),
+        "details": {
+            "dangling_entries": dangling,
+            "orphan_files": orphans,
+            "broken_links": broken_links,
+        },
+        "message": f"Diagnostic complete. {len(issues)} issues found." if issues else "Neural memory integrity is optimal."
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # ENTRY POINT
 # ─────────────────────────────────────────────────────────────────────────────
 def main():
@@ -934,11 +988,13 @@ def main():
             output = command_nexus()
         elif command == "evoke":
             output = command_evoke(target=args.get("target"))
+        elif command == "health":
+            output = command_health()
         else:
             output = {
                 "success":  False,
                 "error":    f"Unknown command: '{command}'",
-                "valid":    ["init","synapse","recall","refresh","amnesia","link","nexus","evoke"],
+                "valid":    ["init","synapse","recall","refresh","amnesia","link","nexus","evoke","health"],
             }
 
         # If the system bootstrapped itself, let the user know

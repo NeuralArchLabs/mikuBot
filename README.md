@@ -37,7 +37,7 @@ Un agente y asistente de IA dirigido al público general. Diseñado como una alt
 ## ✨ Características Principales
 
 *   **Onboarding y Personalización Profunda:** Cuenta con un proceso de configuración inicial que te guía paso a paso. Desde el primer momento, puedes nutrir al asistente con toda la información que desees que sepa sobre ti, lo que permite un nivel de personalización absoluto para que el sistema entienda exactamente tu contexto, tus necesidades y cómo ayudarte de forma hiperespecífica.
-*   **Autonomía y Modos de Operación:** Cuenta con un Modo Chat y un Modo Agente enfocados en diferentes tipos de asistencia, pero ambos con ejecución nativa de herramientas en el sistema. Puedes elegir entre un modo *completamente autónomo*, un *modo seguro* (requiere autorización previa a la ejecución), y la creación de **tareas programadas** para autonomía total.
+*   **Autonomía y Modos de Operación:** mikuBot ofrece una soberanía técnica absoluta. El **Modo Agente** ahora cuenta con una consola completamente liberada (sin restricciones de comandos), permitiendo cualquier operación de sistema necesaria para tareas complejas. El **Modo Chat** mantiene una seguridad "laxa" (whitelist amplia) para uso casual. Ambos soportan ejecución de herramientas en segundo plano, tareas programadas y un sistema de **Protección de Alto Riesgo** que exige aprobación manual para comandos destructivos.
 *   **Ejecución Persistente y Multi-sesión (Studio Elite):** Miku ya no se detiene al cambiar de rama neural. Los agentes pueden completar tareas complejas de forma autónoma en segundo plano mientras interactúas con otras sesiones, manteniendo un enlace persistente y visualmente reactivo que te notifica el estado de procesos en otras ramas.
 *   **Temas Multidimensionales (Atmosphere Engine):** Personalización visual absoluta con 5 temas premium (`Miku`, `Cloud`, `Midnight`, `Cyberpunk`, `Forest`). Cada tema adapta toda la interfaz para proporcionar una experiencia inmersiva que se ajusta a tu entorno de trabajo.
 *   **Bóveda Neural de Credenciales:** Tus claves API ahora están protegidas por el sistema `processVault`, que las encripta automáticamente en reposo. Seguridad soberana sin intervención manual.
@@ -89,7 +89,7 @@ mikuBot utiliza un robusto ecosistema de herramientas divididas en dos categorí
 **1. Core Tools (Herramientas de Sistema):**
 - **Gestión de Archivos:** `read_file`, `update_file`, `patch_file` (con motor de parcheo inteligente), `delete_file` y `batch_operation` para acciones masivas.
 - **Exploración Proactiva:** `list_files`, `search_files` (búsqueda nativa de alto rendimiento) y `get_file_outline` para mapear código.
-- **Ejecución y Control:** `run_console` (whitelist de seguridad para comandos Windows), `undo_patch`, `get_system_metrics` y `add_scheduled_task` (programación de tareas autónomas).
+- **Ejecución y Control:** `run_console` (consola asíncrona liberada en Modo Agente / restringida en Modo Chat), `get_console_status` (seguimiento de tareas en segundo plano), `undo_patch`, `get_system_metrics` y `add_scheduled_task` (programación de tareas autónomas).
 
 **2. Neural Skills (Habilidades Avanzadas):** Módulos dinámicos y extensibles que permiten potenciar el razonamiento del agente. Los usuarios pueden crear sus propias habilidades personalizadas e integrarlas fácilmente en el ecosistema.
 - **Memoria Semántica (`recall`):** Skill de memoria a largo plazo que permite al asistente recordar preferencias, hechos y evolucionar su modelo de usuario.
