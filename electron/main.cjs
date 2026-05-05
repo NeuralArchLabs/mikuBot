@@ -1999,7 +1999,7 @@ const completedBackgroundProcesses = [];
 
 ipcMain.handle('run-console', async (event, input) => {
     const { command, args, cwd, timeout_ms: topTimeout, WaitMsBeforeAsync } = input;
-    const { spawn } = require('child_process');
+    const { spawn, exec } = require('child_process');
     
     // Note: Security validation (blockedOperators) is now handled in the renderer (tools.ts) 
     // to allow mode-aware flexibility (Chat vs Agent mode).
@@ -2024,10 +2024,6 @@ ipcMain.handle('run-console', async (event, input) => {
         windowsHide: true,
         timeout: timeout_ms,
         env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1' }
-    });
-
-    proc.on('error', (err) => {
-        finalize(null, `ERROR: ${err.message}${err.code === 'ENOENT' ? ' (Command not found)' : ''}`);
     });
 
     const processEntry = {
@@ -2063,8 +2059,9 @@ ipcMain.handle('run-console', async (event, input) => {
 
         const finalize = (code, error = null) => {
             processEntry.status = error ? 'error' : 'completed';
-            processEntry.exitCode = code;
+            processEntry.exitCode = code ?? (error ? 1 : 0); // Normalize exit code
             processEntry.endTime = Date.now();
+            processEntry.durationMs = processEntry.endTime - processEntry.startTime;
             
             // Move to completed list for notification
             completedBackgroundProcesses.push({
@@ -2072,28 +2069,37 @@ ipcMain.handle('run-console', async (event, input) => {
                 command: processEntry.command,
                 stdout: processEntry.stdout,
                 stderr: processEntry.stderr,
-                exitCode: code,
-                error: error
+                exitCode: processEntry.exitCode,
+                error: error,
+                startTime: processEntry.startTime,
+                endTime: processEntry.endTime,
+                durationMs: processEntry.durationMs
             });
 
             if (resolved) return;
             resolved = true;
             
-            // Note: We keep it in the backgroundProcesses Map so get-console-status can still find it
-            // but we might want to prune it later.
-            
             resolve({
-                code: code ?? (error ? 1 : 0),
+                code: processEntry.exitCode,
                 stdout: processEntry.stdout,
                 stderr: processEntry.stderr,
                 error: error,
-                commandId: commandId
+                commandId: commandId,
+                startTime: processEntry.startTime,
+                endTime: processEntry.endTime,
+                durationMs: processEntry.durationMs
             });
         };
 
         const timer = setTimeout(() => {
             if (resolved) return;
-            try { proc.kill(); } catch(e) {}
+            try {
+                if (isWindows) {
+                    exec(`taskkill /F /T /PID ${proc.pid}`, () => {});
+                } else {
+                    proc.kill();
+                }
+            } catch(e) {}
             finalize(1, 'Process Timed Out');
         }, timeout_ms);
 
@@ -2117,13 +2123,15 @@ ipcMain.handle('run-console', async (event, input) => {
                         message: `Command is running in background (ID: ${commandId})`,
                         commandId: commandId,
                         stdout: processEntry.stdout,
-                        stderr: processEntry.stderr
+                        stderr: processEntry.stderr,
+                        startTime: processEntry.startTime
                     });
                 }
             }, WaitMsBeforeAsync);
         }
     });
 });
+
 
 ipcMain.handle('run-console-status', async (event, { commandId }) => {
     const proc = backgroundProcesses.get(commandId);
@@ -2136,9 +2144,10 @@ ipcMain.handle('run-console-status', async (event, { commandId }) => {
         status: proc.status,
         stdout: proc.stdout,
         stderr: proc.stderr,
-        exitCode: proc.exitCode,
+        exitCode: proc.exitCode ?? (proc.status !== 'running' ? 0 : null),
         startTime: proc.startTime,
-        endTime: proc.endTime
+        endTime: proc.endTime,
+        durationMs: proc.durationMs || (proc.endTime ? proc.endTime - proc.startTime : null)
     };
 });
 
@@ -2148,8 +2157,13 @@ ipcMain.handle('run-console-terminate', async (event, { commandId }) => {
     
     if (entry.status === 'running' && entry.process) {
         try {
-            entry.process.kill();
-            return { success: true, message: 'Process terminated' };
+            if (process.platform === 'win32') {
+                const { exec } = require('child_process');
+                exec(`taskkill /F /T /PID ${entry.process.pid}`, () => {});
+            } else {
+                entry.process.kill();
+            }
+            return { success: true, message: 'Process termination requested' };
         } catch (e) {
             return { success: false, error: e.message };
         }

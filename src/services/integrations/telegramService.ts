@@ -164,19 +164,24 @@ class TelegramService {
         }
     }
 
+    private static onMessage: ((message: TelegramUpdate['message'], updateId: number) => Promise<void> | void) | null = null;
+    private static onCallback: ((callback: TelegramUpdate['callback_query'], updateId: number) => Promise<void> | void) | null = null;
+
     async startPolling(
         config: AppConfig, 
         onMessage: (message: TelegramUpdate['message'], updateId: number) => Promise<void> | void,
         onCallback?: (callback: TelegramUpdate['callback_query'], updateId: number) => Promise<void> | void
     ) {
-        // Restore singleton guard to prevent multiple while loops
+        // Update handlers even if already polling to avoid stale closures from React renders
+        TelegramService.onMessage = onMessage;
+        TelegramService.onCallback = onCallback || null;
+
         if (TelegramService.polling) return;
         
+        TelegramService.polling = true;
         // Increment ID for versioning logic
         TelegramService.currentPollingId++;
         const localLoopId = TelegramService.currentPollingId;
-        
-        TelegramService.polling = true;
 
         // On first start, try to skip old messages if lastUpdateId is 0
         if (TelegramService.lastUpdateId === 0) {
@@ -217,9 +222,9 @@ class TelegramService {
                 }
 
                 // Handle Callbacks (Buttons)
-                if (update.callback_query && onCallback) {
+                if (update.callback_query && TelegramService.onCallback) {
                     if (config.telegramChatId && update.callback_query.from.id.toString() !== config.telegramChatId) continue;
-                    await onCallback(update.callback_query, update.update_id);
+                    await TelegramService.onCallback(update.callback_query, update.update_id);
                     continue;
                 }
 
@@ -233,8 +238,8 @@ class TelegramService {
 
                     try {
                         // Handle Text Messages
-                        if (update.message.text) {
-                            await onMessage(update.message, update.update_id);
+                        if (update.message.text && TelegramService.onMessage) {
+                            await TelegramService.onMessage(update.message, update.update_id);
                         }
                         // Handle Voice Messages
                         else if (update.message.voice && (window as any).electron) {
@@ -246,14 +251,18 @@ class TelegramService {
                                     ...update.message,
                                     text: `[Mensaje de Voz] ${res.text}`
                                 };
-                                await onMessage(voiceMsg, update.update_id);
+                                if (TelegramService.onMessage) {
+                                    await TelegramService.onMessage(voiceMsg, update.update_id);
+                                }
                             } else {
                                 console.warn('[TelegramService] Voice transcription failed:', res.error);
                                 const errorMsg = {
                                     ...update.message,
                                     text: `[Sistema] No pude transcribir el mensaje de voz. Error: ${res.error || 'Desconocido'}`
                                 };
-                                await onMessage(errorMsg, update.update_id);
+                                if (TelegramService.onMessage) {
+                                    await TelegramService.onMessage(errorMsg, update.update_id);
+                                }
                             }
                         }
                     } catch (err) {

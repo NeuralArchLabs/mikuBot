@@ -7,12 +7,12 @@
  * Whitelist of allowed console binaries for CHAT MODE (Lax).
  */
 export const LAX_CONSOLE_ALLOWED_COMMANDS = [
-    'git', 'node', 'npm', 'npx', 'ls', 'dir', 'cat', 'type',
+    'git', 'node', 'npm', 'npx', 'pnpm', 'yarn', 'ls', 'dir', 'cat', 'type',
     'echo', 'mkdir', 'cd', 'pwd', 'grep', 'find', 'head', 'tail',
     'wc', 'tree', 'tsc', 'python', 'python3', 'pip', 'pip3', 'curl', 'wget', 'gh',
     'sqlite3', 'awk', 'sed', 'perl', 'jq', 'ping', 'tasklist',
     'taskkill', 'systeminfo', 'whoami', 'netstat', 'ipconfig', 'arp', 'nslookup',
-    'ssh', 'scp', 'rsync', 'findstr', 'powershell', 'cmd',
+    'ssh', 'scp', 'rsync', 'findstr', 'powershell', 'cmd', 'wmic',
     'vite', 'next', 'react-native', 'expo', 'flutter', 'dart',
     'go', 'rustc', 'cargo', 'java', 'javac', 'mvn', 'gradle',
     'docker', 'kubectl', 'date', 'time', 'hostname', 'ver',
@@ -45,8 +45,8 @@ export const LAX_CONSOLE_BLOCKED_PATTERNS: RegExp[] = [
  */
 export const HIGH_RISK_COMMANDS = [
     'rm', 'del', 'rd', 'format', 'mkfs', 'fdisk', 'dd', 
-    'chmod', 'chown', 'mv', 'ren', 'wget', 'curl', 'ssh',
-    'taskkill', 'kill', 'shutdown', 'reboot', 'rmdir'
+    'chmod', 'chown', 'mv', 'ren', 'ssh',
+    'taskkill', 'kill', 'shutdown', 'reboot', 'rmdir', 'sudo', 'runas'
 ];
 
 /**
@@ -57,7 +57,7 @@ export const SAFE_CONSOLE_COMMANDS = [
     'ls', 'dir', 'pwd', 'whoami', 'hostname', 'ver', 'date', 'time',
     'systeminfo', 'type', 'cat', 'echo', 'grep', 'wc', 'head', 'tail', 'tree',
     'findstr', 'ipconfig', 'ifconfig', 'arp', 'ping', 'netstat', 'tracert',
-    'traceroute', 'nslookup', 'tasklist', 'where', 'path', 'tasklist'
+    'traceroute', 'nslookup', 'tasklist', 'where', 'path', 'wmic'
 ];
 
 /**
@@ -67,6 +67,8 @@ export const SAFE_CONSOLE_COMMANDS = [
  */
 export const SAFE_COMMAND_SUBCOMMANDS: Record<string, string[]> = {
     'npm': ['install', 'i', 'test', 't', 'run', 'start', 'init', 'list', 'ls', 'view', 'search', 'help', 'doctor', '--version', '-v'],
+    'pnpm': ['install', 'i', 'test', 't', 'run', 'start', 'init', 'list', 'ls', 'view', 'search', 'help', '--version', '-v'],
+    'yarn': ['install', 'add', 'test', 'run', 'start', 'init', 'list', 'help', '--version', '-v'],
     'pip': ['install', 'list', 'show', 'search', 'freeze', 'check', 'help', '--version'],
     'git': ['status', 'branch', 'log', 'remote', 'diff', 'show', 'fetch', 'pull', '--version', 'rev-parse'],
     'python': ['-m venv', '-m pip', '-v', '--version'],

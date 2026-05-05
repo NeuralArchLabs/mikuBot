@@ -473,7 +473,7 @@ export const App = () => {
                         if (['/approve', '/ok', '/yes', '/decline', '/reject', '/no'].some(c => cmd.startsWith(c))) {
                             if (pendingToolApprovalRef.current) {
                                 const approved = ['/approve', '/ok', '/yes'].some(c => cmd.startsWith(c));
-                                pendingToolApprovalRef.current(approved);
+                                pendingToolApprovalRef.current({ approved });
                                 pendingToolApprovalRef.current = null;
                                 setPendingToolApprovalStore(null);
                                 sendToTelegramRef.current?.(approved ? '✅ <b>Aprobado</b> (vía comando)' : '❌ <b>Rechazado</b> (vía comando)');
@@ -497,7 +497,7 @@ export const App = () => {
                         // 1. Tool Approval Callbacks
                         if (callback.data.includes('_tool') && pendingToolApprovalRef.current) {
                             const approved = callback.data === 'approve_tool';
-                            pendingToolApprovalRef.current(approved);
+                            pendingToolApprovalRef.current({ approved });
                             pendingToolApprovalRef.current = null;
                             setPendingToolApprovalStore(null);
                             
@@ -1360,6 +1360,35 @@ To see all your additional enabled skills and their full technical parameters, y
         }
     }, []);
 
+    const getToolDetail = (tc: ToolCall) => {
+        const name = tc.function.name;
+        const args = tc.function.arguments || {};
+        
+        switch (name) {
+            case 'run_console':
+                return `💻 <b>Ejecutar comando:</b>\n<code>${args.command} ${args.args || ''}</code>`;
+            case 'write_to_file':
+                return `📝 <b>Crear/Sobrescribir archivo:</b>\n<code>${args.filename}</code>`;
+            case 'update_file':
+            case 'patch_file':
+                return `🛠️ <b>Modificar archivo:</b>\n<code>${args.filename}</code>`;
+            case 'delete_file':
+                return `🗑️ <b>Eliminar archivo:</b>\n<code>${args.filename}</code>`;
+            case 'web_search':
+                return `🔍 <b>Buscar en la web:</b>\n"${args.query}"`;
+            case 'read_url':
+                return `🌐 <b>Leer URL:</b>\n${args.url}`;
+            case 'list_files':
+                return `📂 <b>Listar archivos en:</b>\n<code>${args.source || '.'}</code>`;
+            case 'read_file':
+                return `📖 <b>Leer archivo:</b>\n<code>${args.filename}</code>`;
+            case 'add_scheduled_task':
+                return `⏰ <b>Programar tarea:</b>\n"${args.task}"`;
+            default:
+                return `🔧 <b>Herramienta:</b> <code>${name}</code>`;
+        }
+    };
+
     const sendToTelegramDirectly = useCallback((text: string) => {
         if (!state.config.telegramBotToken || !state.config.telegramChatId) {
             console.warn("[Telegram Notifier] Missing Telegram configuration (Bot Token or Chat ID). Skipping notification.");
@@ -1959,9 +1988,10 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                             const isModeRequest = toolCall.function.name === 'request_agent_mode';
                             const reason = toolCall.function.arguments.reason || 'Tarea compleja detectada';
                             
+                            const detail = getToolDetail(toolCall);
                             const tcmsg = isModeRequest
                                 ? `🤖 <b>Solicitud de Modo Agente</b>\n\nEl asistente sugiere el cambio para proceder.\n\n<b>Razón:</b> ${reason}\n\n¿Activar modo agente y continuar?`
-                                : `⚠️ <b>Solicitud de Autorización</b>\n\nMiku desea ejecutar: <code>${toolCall.function.name}</code>\n\n¿Permitir esta acción?`;
+                                : `⚠️ <b>Solicitud de Autorización</b>\n\n${detail}\n\n¿Permitir esta acción?`;
 
                             telegramService.sendMessageWithButtons(state.config.telegramBotToken, state.config.telegramChatId, tcmsg, [
                                 [

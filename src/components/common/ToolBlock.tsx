@@ -187,14 +187,12 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
     // 🧠 Neural Skill Detection — dynamic tools not in the core set
     const isNeuralSkill = !CORE_TOOLS.has(toolCall.function.name);
 
-    const isSuccess = result?.success && 
-                      result?.data?.success !== false && 
-                      (result?.data?.exitCode === undefined || result?.data?.exitCode === null || result?.data?.exitCode === 0);
+    const isSuccess = result?.success && result?.data?.success !== false;
     
-    const hasError = !!(result?.error || 
-                       result?.data?.success === false || 
-                       (result?.data?.exitCode !== undefined && result?.data?.exitCode !== null && result?.data?.exitCode !== 0) ||
-                       (result?.data?.stderr && !result?.data?.stdout && result?.data?.exitCode !== 0 && result?.data?.exitCode !== null));
+    // We only show the RED error block if the tool itself actually failed to run 
+    // or explicitly returned a hard error. A non-zero exitCode from a console command 
+    // is a valid terminal output, NOT a tool failure.
+    const hasError = !!(result?.error || result?.data?.success === false);
     const isDenied = block.status === 'denied';
     const isPending = !result && isStreaming && !isDenied;
     const isAborted = !result && !isStreaming && !isOld && !isDenied;

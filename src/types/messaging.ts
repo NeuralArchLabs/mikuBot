@@ -18,6 +18,8 @@ export interface MessageBlock {
     status?: 'success' | 'error' | 'pending' | 'denied';
     isFromNarrative?: boolean;
     isFromFinalTool?: boolean;
+    loopDurationMs?: number;
+    startTime?: number;
 }
 
 /** File Attachment */

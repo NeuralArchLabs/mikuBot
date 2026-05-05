@@ -35,19 +35,86 @@ function formatElapsed(ms: number): string {
 const StreamedMarkdown = ({ text, className }: { text: string; className?: string }) => {
     const html = React.useMemo(() => {
         let escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        escaped = escaped.replace(/\*\*\*(?!\s)(.+?)\*\*\*/g, '<strong class="text-indigo-400"><em>$1</em></strong>');
-        escaped = escaped.replace(/\*\*(?!\s)(.+?)\*\*/g, '<strong class="text-cyan-300">$1</strong>');
-        escaped = escaped.replace(/\*(?!\s)(.+?)\*/g, '<em class="text-cyan-200">$1</em>');
-        escaped = escaped.replace(/`(.*?)`/g, '<code class="bg-black/30 rounded px-1 text-blue-300">$1</code>');
-        escaped = escaped.replace(/\n/g, '<br/>');
-        return escaped;
+        
+        const lines = escaped.split('\n');
+        let inCodeBlock = false;
+        
+        const processed = lines.map(line => {
+            const t = line.trim();
+            
+            // Code block / Mermaid block toggle
+            if (t.startsWith('```')) {
+                if (!inCodeBlock) {
+                    inCodeBlock = true;
+                    // Simple "proto block" for code: light contrast, no marked lines, preserves whitespace
+                    return `<div class="bg-black/10 border border-slate-700/20 rounded p-1.5 my-1 text-slate-400 font-mono text-[9px] overflow-x-auto whitespace-pre">`;
+                } else {
+                    inCodeBlock = false;
+                    return `</div>`;
+                }
+            }
+            
+            if (inCodeBlock) {
+                return line + '\n'; // Keep raw text inside code block
+            }
+
+            // Inline formatting (Solid colors, no flashy colors)
+            let processedLine = line;
+            processedLine = processedLine.replace(/\*\*\*(?!\s)(.+?)\*\*\*/g, '<strong class="font-bold text-slate-300"><em>$1</em></strong>');
+            processedLine = processedLine.replace(/\*\*(?!\s)(.+?)\*\*/g, '<strong class="font-bold text-slate-300">$1</strong>');
+            processedLine = processedLine.replace(/\*(?!\s)(.+?)\*/g, '<em class="italic text-slate-300">$1</em>');
+            processedLine = processedLine.replace(/`(.*?)`/g, '<code class="bg-black/20 rounded px-1 text-slate-300 border border-white/5">$1</code>');
+
+            const pt = processedLine.trim();
+
+            // Headings
+            if (pt.match(/^#{1,4}\s+(.*)/)) {
+                const hMatch = pt.match(/^(#{1,4})\s+(.*)/);
+                const level = hMatch![1].length;
+                const cls = level === 1 ? 'text-[12px] font-bold text-slate-200 mt-2 mb-1' :
+                            level === 2 ? 'text-[11px] font-bold text-slate-300 mt-2 mb-1' :
+                            'text-[10px] font-semibold text-slate-300 mt-1 mb-0.5';
+                return `<div class="${cls}">` + hMatch![2] + `</div>`;
+            }
+
+            // Quotes
+            if (pt.startsWith('&gt;')) {
+                return `<div class="border-l-2 border-slate-600 pl-2 my-1 text-slate-500 italic bg-black/10 py-0.5">` + pt.substring(4).trim() + `</div>`;
+            }
+            // Unordered Lists
+            const ulMatch = pt.match(/^[-*]\s+(.*)/);
+            if (ulMatch) {
+                return `<div class="pl-2 flex gap-1.5 my-0.5"><span class="text-slate-600">•</span><span class="text-slate-400">` + ulMatch[1] + `</span></div>`;
+            }
+            // Ordered Lists
+            const olMatch = pt.match(/^(\d+\.)\s+(.*)/);
+            if (olMatch) {
+                return `<div class="pl-1 flex gap-1.5 my-0.5"><span class="text-slate-500 font-bold">` + olMatch[1] + `</span><span class="text-slate-400">` + olMatch[2] + `</span></div>`;
+            }
+            // Basic Tables (Minimalist)
+            if (pt.startsWith('|') && pt.endsWith('|')) {
+                if (pt.match(/^\|(?:[\s-:]+\|)+$/)) return ``; // Ignore separator lines to keep it simple
+                const cells = pt.split('|').slice(1, -1).map(c => `<span class="inline-block px-1.5 text-slate-400">${c.trim()}</span>`).join('<span class="text-slate-700/50">|</span>');
+                return `<div class="text-[9px] bg-black/5 whitespace-nowrap overflow-hidden text-ellipsis my-[1px] font-mono">${cells}</div>`;
+            }
+
+            // Plain text lines
+            return pt === '' ? '<div class="h-2"></div>' : `<div>${processedLine}</div>`;
+        });
+
+        // Close unclosed block
+        if (inCodeBlock) {
+            processed.push(`</div>`);
+        }
+
+        return processed.join('');
     }, [text]);
 
     return (
         <div 
-            className={className} 
+            className={`text-slate-400 ${className || ''}`} 
             dangerouslySetInnerHTML={{ 
-                __html: html + '<span class="inline-block w-[3px] h-[10px] ml-1 bg-cyan-400/80 animate-pulse translate-y-[1px]"></span>' 
+                __html: html + '<span class="inline-block w-[3px] h-[10px] ml-1 bg-slate-500 animate-pulse translate-y-[1px]"></span>' 
             }} 
         />
     );

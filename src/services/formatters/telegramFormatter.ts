@@ -247,11 +247,14 @@ function formatTelegramTable(lines: string[]): string {
             const branch = isLast ? '└──' : '├──';
             const content = row[i] || 'N/A';
             
-            // Apply basic formatting to cell content
-            let formattedContent = content
-                .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
-                .replace(/\*(.*?)\*/g, '<i>$1</i>')
-                .replace(/~~(.*?)~~/g, '<s>$1</s>')
+            // 1. Escape content to prevent Telegram HTML parse errors
+            const escaped = escapeTelegramHtml(content);
+
+            // 2. Apply limited Telegram-supported HTML tags from markdown
+            let formattedContent = escaped
+                .replace(/\*\*([\s\S]*?)\*\*/g, '<b>$1</b>')
+                .replace(/\*([\s\S]*?)\*/g, '<i>$1</i>')
+                .replace(/~~([\s\S]*?)~~/g, '<s>$1</s>')
                 .replace(/`([^`\n]+)`/g, '<code>$1</code>');
 
             const cleanContent = formattedContent.length > 600 ? formattedContent.substring(0, 597) + '...' : formattedContent;
@@ -634,7 +637,7 @@ export class TelegramFormatter implements IFormatter {
                 // Remove combining seagulls below (U+033C) from the core
                 const cleanCore = core.replace(/\u033C/g, '');
                 
-                return protect(`{{ ${lead} ${cleanCore} ${trail} }}`);
+                return protect(`{{ ${lead} ${escapeTelegramHtml(cleanCore)} ${trail} }}`);
             }
         );
 
@@ -754,15 +757,15 @@ export class TelegramFormatter implements IFormatter {
         text = text.replace(/^\s*([*\-_]){3,}\s*$/gm, '━━━━━━━━━━━━━━━━━━━━━━━━');
 
         // 4d. Bold+italic ***text*** → <b>text</b> (NO nesting!)
-        text = text.replace(/\*\*\*(.+?)\*\*\*/g, '<b>$1</b>');
+        text = text.replace(/\*\*\*([\s\S]+?)\*\*\*/g, '<b>$1</b>');
 
         // 4e. Bold **text** and __text__
-        text = text.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
-        text = text.replace(/(?<!\w)__(.+?)__(?!\w)/g, '<b>$1</b>');
+        text = text.replace(/\*\*([\s\S]+?)\*\*/g, '<b>$1</b>');
+        text = text.replace(/(?<!\w)__([\s\S]+?)__(?!\w)/g, '<b>$1</b>');
 
         // 4f. Italic *text* and _text_
-        text = text.replace(/(?<!\*)\*(?!\*)(.+?)\*/g, '<i>$1</i>');
-        text = text.replace(/(?<!\w)_(.+?)_(?!\w)/g, '<i>$1</i>');
+        text = text.replace(/(?<!\*)\*(?!\*)([\s\S]+?)\*/g, '<i>$1</i>');
+        text = text.replace(/(?<!\w)_([\s\S]+?)_(?!\w)/g, '<i>$1</i>');
 
         // 4g. Strikethrough ~~text~~
         text = text.replace(/~~(.+?)~~/g, '<s>$1</s>');

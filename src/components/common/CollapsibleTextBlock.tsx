@@ -148,10 +148,10 @@ export const CollapsibleTextBlock: React.FC<CollapsibleTextBlockProps> = ({ cont
         <div className={`relative group/text-block mb-3 pl-6 transition-all duration-300 w-full ${isCollapsed ? '' : 'h-auto'}`}>
             {/* Neural connector line (Thread trace) */}
             <div 
-                className={`absolute left-[5px] top-0 bottom-[-15px] w-0.5 transition-all duration-700 ${isCollapsed ? 'bg-slate-700/20' : 'shadow-[0_0_8px_rgba(59,130,246,0.2)]'}`}
+                className={`absolute left-[5px] top-0 bottom-[-15px] w-0.5 transition-all duration-700 ${isCollapsed ? '' : 'shadow-[0_0_8px_rgba(59,130,246,0.2)]'}`}
                 style={{
                     background: isCollapsed 
-                        ? 'rgba(51, 65, 85, 0.2)' 
+                        ? 'linear-gradient(to bottom, transparent, rgba(51, 65, 85, 0.2) 20%, rgba(51, 65, 85, 0.2) 80%, transparent)' 
                         : 'linear-gradient(to bottom, transparent 0%, rgba(59, 130, 246, 0.8) 15%, rgba(139, 92, 246, 0.4) 50%, transparent 100%)'
                 }}
             ></div>

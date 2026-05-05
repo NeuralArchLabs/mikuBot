@@ -15,6 +15,7 @@ except ImportError:
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from ozen_engine import bare_extraction, extract as ozen_extract, baseline as ozen_baseline
 
+
 import httpx
 from utils import gen_useragent
 

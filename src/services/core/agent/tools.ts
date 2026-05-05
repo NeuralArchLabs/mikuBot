@@ -432,8 +432,11 @@ export async function executeToolCall(
             }
 
             case 'run_console': {
-                const cmd = (args.command || '').trim().toLowerCase();
-                const cmdArgs = args.args || '';
+                const rawCmd = (args.command || '').trim();
+                const cmdTokens = rawCmd.split(/\s+/);
+                const cmd = cmdTokens[0] || '';
+                const extraArgs = rawCmd.substring(cmd.length).trim();
+                const cmdArgs = (extraArgs + ' ' + (args.args || '').trim()).trim();
                 
                 // Security Layer: In Chat Mode, we allow any command as long as it has been manually approved 
                 // by the user in the UI (enforced by Agent.ts isAuto logic).
@@ -463,8 +466,10 @@ export async function executeToolCall(
                         args: finalArgs,
                         cwd: args.cwd || '',
                         WaitMsBeforeAsync: args.WaitMsBeforeAsync || 0,
-                        commandId: args.commandId
+                        commandId: args.commandId,
+                        timeout_ms: args.timeout_ms
                     });
+
 
                     const root = config.folderPaths?.root;
 
@@ -481,17 +486,15 @@ export async function executeToolCall(
                         };
                     }
 
-                    // Logic change: Success means the tool EXECUTED correctly. 
-                    // We consider it success if code is 0 OR if it produced any output (meaning it ran).
-                    // This prevents "Ping failed" from being reported as a "Tool Error".
-                    const isSuccess = result.code === 0 || (result.stdout && result.stdout.trim().length > 0);
+                    // Logic change: The tool ALWAYS succeeds if it executed without throwing an Electron IPC error.
+                    // Even if the command returns code 1 or 127, the terminal tool successfully executed the process.
+                    // The LLM will read the `exitCode`, `stdout`, and `stderr` to determine what happened.
                     
                     return {
-                        success: isSuccess,
-                        error: isSuccess ? undefined : (obfuscatePaths(result.stderr) || `Command failed with code ${result.code}`),
+                        success: true,
                         data: {
-                            stdout: obfuscatePaths((result.stdout || '').slice(0, 5000)),
-                            stderr: obfuscatePaths((result.stderr || '').slice(0, 2000)),
+                            stdout: obfuscatePaths((result.stdout || '').slice(-15000)),
+                            stderr: obfuscatePaths((result.stderr || '').slice(-5000)),
                             exitCode: result.code,
                             command: `${cmd} ${cmdArgs}`.trim(),
                             commandId: result.commandId

@@ -21,7 +21,8 @@ import {
     CONSOLE_BLOCKED_PATTERNS,
     HIGH_RISK_COMMANDS,
     SAFE_CONSOLE_COMMANDS,
-    SAFE_COMMAND_SUBCOMMANDS
+    SAFE_COMMAND_SUBCOMMANDS,
+    LAX_CONSOLE_ALLOWED_COMMANDS
 } from '../../constants';
 import { validateToolArgs, safeFetch, obfuscatePaths } from '../../utils';
 import { recoverToolCallsFromText, normalizeRawToolCall, RecoveredCall } from '../formatters/toolCallNormalizer';
@@ -249,6 +250,12 @@ export async function sendAgentMessage(
                     const segmented = segmentThoughtsAndNarrative(status.streamedText, signatureRegex);
                     tempIterationBlocks.push(...segmented);
                 }
+                const elapsedMs = Date.now() - startTime;
+                if (tempIterationBlocks.length > 0) {
+                    tempIterationBlocks[0].loopDurationMs = elapsedMs;
+                    tempIterationBlocks[0].startTime = startTime;
+                }
+
                 // Call with chunk text as empty or already summarized to avoid App.tsx re-concatenating
                 // app.tsx does: finalAssistantText = replace ? chunk : finalAssistantText + chunk;
                 // Since streamedText is the TOTAL accumulated, we MUST use replace=true to avoid internal duplication
@@ -354,15 +361,23 @@ export async function sendAgentMessage(
                 try {
                     const notifications = await (window as any).electron.pollConsoleNotifications();
                     for (const note of notifications) {
+                        // DEDUPLICATION: Prevent duplicate notifications if the tool already reported its result 
+                        // in the current turn or history.
+                        const isAlreadyReported = agentMessages.some(m => m.tool_call_id === note.id);
+                        if (isAlreadyReported) continue;
+
                         const content = JSON.stringify({
                             success: note.exitCode === 0,
                             data: {
                                 message: `🔔 BACKGROUND TASK FINISHED: ${note.command}`,
                                 id: note.id,
-                                stdout: obfuscatePaths(note.stdout.slice(-2000), config.folderPaths?.root),
-                                stderr: obfuscatePaths(note.stderr.slice(-1000), config.folderPaths?.root),
+                                stdout: obfuscatePaths(note.stdout.slice(-15000), config.folderPaths?.root),
+                                stderr: obfuscatePaths(note.stderr.slice(-5000), config.folderPaths?.root),
                                 exitCode: note.exitCode,
-                                error: note.error
+                                error: note.error,
+                                startTime: note.startTime,
+                                endTime: note.endTime,
+                                durationMs: note.durationMs
                             }
                         });
                         
@@ -378,6 +393,7 @@ export async function sendAgentMessage(
                     console.error('[Agent] Failed to poll console notifications:', e);
                 }
             }
+
 
             localOnStatus({
                 phase: 'thinking',
@@ -487,6 +503,13 @@ export async function sendAgentMessage(
                 if (last && last.type === 'thought' && block.type === 'thought') last.content += `\n\n${block.content}`;
                 else if (block.content?.trim()) mergedBlocks.push(block);
             });
+            
+            const currentElapsed = Date.now() - startTime;
+            if (mergedBlocks.length > 0) {
+                // Attach duration to the first block of this iteration's set
+                mergedBlocks[0].loopDurationMs = currentElapsed;
+                mergedBlocks[0].startTime = startTime;
+            }
 
             // 10. RECONSTRUCT CLEAN NARRATIVE
             const cleanTurnNarrative = mergedBlocks
@@ -581,9 +604,85 @@ export async function sendAgentMessage(
 
                 // 1. DANGEROUS OPERATIONS: ALWAYS REQUIRE MANUAL APPROVAL
                 if (tn === 'run_console') {
-                    const cmd = (args.command || '').trim().toLowerCase();
-                    const cmdArgs = (args.args || '').trim().toLowerCase();
+                    const commandPart = (args.command || '').trim();
+                    const argsPart = (args.args || '').trim();
+                    const fullCmd = (commandPart + ' ' + argsPart).trim();
+                    const lowFullCmd = fullCmd.toLowerCase();
+
+                    // --- HELPER: Quote-aware Shell Operator Detection ---
+                    const hasShellOperators = (cmd: string) => {
+                        let inQuote = false;
+                        let quoteChar = '';
+                        for (let i = 0; i < cmd.length; i++) {
+                            const char = cmd[i];
+                            if ((char === "'" || char === '"') && (i === 0 || cmd[i-1] !== '\\')) {
+                                if (!inQuote) { inQuote = true; quoteChar = char; }
+                                else if (char === quoteChar) { inQuote = false; }
+                            }
+                            if (!inQuote) {
+                                if (char === ';' || char === '|') return true;
+                                if (char === '&') {
+                                    // Chaining: && or just & (in CMD & is an operator)
+                                    return true;
+                                }
+                            }
+                        }
+                        return false;
+                    };
+
+                    // --- HELPER: Quote-aware Tokenizer ---
+                    const tokenize = (cmd: string) => {
+                        const tokens = [];
+                        let current = '';
+                        let inQuote = false;
+                        let quoteChar = '';
+                        for (let i = 0; i < cmd.length; i++) {
+                            const char = cmd[i];
+                            if ((char === "'" || char === '"') && (i === 0 || cmd[i-1] !== '\\')) {
+                                if (!inQuote) { inQuote = true; quoteChar = char; }
+                                else if (char === quoteChar) { inQuote = false; }
+                            } else if (char === ' ' && !inQuote) {
+                                if (current) tokens.push(current);
+                                current = '';
+                            } else {
+                                current += char;
+                            }
+                        }
+                        if (current) tokens.push(current);
+                        return tokens;
+                    };
+
+                    // 1. CHAINING & OPERATOR DETECTION
+                    if (hasShellOperators(fullCmd)) {
+                        const containsHighRisk = HIGH_RISK_COMMANDS.some(risk => lowFullCmd.includes(risk));
+                        if (containsHighRisk) return false;
+                        
+                        // In Agent Mode, always auto-approve non-high-risk chains
+                        if (isAgentMode) return true;
+                        
+                        // In Chat Mode (Lax), allow chains if the primary binary is in the allowed list
+                        const tokens = tokenize(commandPart);
+                        const rawBinary = (tokens[0] || '').replace(/^["']|["']$/g, '');
+                        const binaryBasename = rawBinary.split(/[\\/]/).pop()?.toLowerCase() || '';
+                        const cmd = binaryBasename.replace(/\.exe$/i, '');
+                        
+                        return LAX_CONSOLE_ALLOWED_COMMANDS.includes(cmd);
+                    }
+
+                    // 2. PRIMARY BINARY EXTRACTION (Support Quoted Paths)
+                    const tokens = tokenize(commandPart);
+                    let rawBinary = tokens[0] || '';
+                    // Clean quotes from binary path for comparison
+                    rawBinary = rawBinary.replace(/^["']|["']$/g, '');
                     
+                    // Extract basename if it's a path
+                    const binaryBasename = rawBinary.split(/[\\/]/).pop()?.toLowerCase() || '';
+                    const cmd = binaryBasename.replace(/\.exe$/i, ''); // Normalize Windows binaries
+                    
+                    // Reconstruct arguments for whitelist matching
+                    const cmdArgs = (tokens.slice(1).join(' ') + ' ' + argsPart).trim().toLowerCase();
+                    
+                    // 3. RISK & WHITELIST CHECK
                     if (HIGH_RISK_COMMANDS.includes(cmd)) return false;
 
                     // AUTO-APPROVE SAFE COMMANDS (Basic info retrieval)
@@ -591,12 +690,14 @@ export async function sendAgentMessage(
 
                     // AUTO-APPROVE SAFE SUBCOMMANDS (Project init/test/run)
                     if (SAFE_COMMAND_SUBCOMMANDS[cmd]) {
-                        const isSafeSub = SAFE_COMMAND_SUBCOMMANDS[cmd].some(sub => cmdArgs.startsWith(sub));
+                        const isSafeSub = SAFE_COMMAND_SUBCOMMANDS[cmd].some(sub => cmdArgs.startsWith(sub.toLowerCase()));
                         if (isSafeSub) return true;
                     }
                     
-                    // If not specifically safe, allow auto in Agent Mode
-                    return isAgentMode;
+                    if (isAgentMode) return true;
+
+                    // 4. CHAT MODE (LAX): Allow any command in the lax whitelist if not high risk
+                    return LAX_CONSOLE_ALLOWED_COMMANDS.includes(cmd);
                 }
                 if (tn === 'request_agent_mode') return false;
                 if (tn === 'batch_operation' && args.operation === 'delete') return false;

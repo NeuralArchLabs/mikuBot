@@ -5,6 +5,7 @@ import { Icon, MarkdownRenderer } from '../common/Common';
 import { ToolApprovalPanel } from '../panels/ToolApprovalPanel';
 import { AgentStatusPanel } from '../panels/AgentStatusPanel';
 import { ToolBlock, CORE_TOOLS } from '../common/ToolBlock';
+import { ToolLoopCollapsible } from '../common/ToolLoopCollapsible';
 import { CollapsibleMessage } from '../common/CollapsibleMessage';
 import { CollapsibleTextBlock } from '../common/CollapsibleTextBlock';
 import { TypewriterIdle } from '../common/TypewriterIdle';
@@ -951,11 +952,15 @@ export const ChatArea = ({
             lastBlocksRef.current    = currentBlocks;
             lastBlockCountRef.current = currentBlocks.length;
         } else {
-            // Stream ended — automatically release the lock since layout shifts have stopped
-            scrollModeRef.current    = 'idle';
-            lockTargetRef.current    = null;
-            lastBlocksRef.current    = [];
-            lastBlockCountRef.current = 0;
+            // Stream ended. Instead of immediately releasing the lock, defer it by 1000ms.
+            // This allows the RAFLoop to stay active and automatically correct the layout shift 
+            // when ToolLoopCollapsible auto-collapses 600ms after the stream ends, keeping the response anchored.
+            (container as any)._releaseTimer = setTimeout(() => {
+                scrollModeRef.current    = 'idle';
+                lockTargetRef.current    = null;
+                lastBlocksRef.current    = [];
+                lastBlockCountRef.current = 0;
+            }, 1000);
 
             const { scrollTop, scrollHeight, clientHeight } = container;
             const isNearBottom = scrollHeight - scrollTop - clientHeight < 200;
@@ -965,7 +970,7 @@ export const ChatArea = ({
             if (isNearBottom || isUserMsg) {
                 container.scrollTop = container.scrollHeight;
             }
-            return; // No RAFLoop needed for idle
+            // Do NOT return here. We want the RAFLoop to start/continue if mode is 'locked' or 'locking'
         }
 
         // ── 3. RAFLoop: keeps scroll position correct every frame ──────────────
@@ -1038,8 +1043,21 @@ export const ChatArea = ({
         const mode = scrollModeRef.current;
         if (mode === 'tool_active' || mode === 'locking' || mode === 'locked') {
             const frameId = requestAnimationFrame(tick);
-            return () => { active = false; cancelAnimationFrame(frameId); };
+            return () => { 
+                active = false; 
+                cancelAnimationFrame(frameId);
+                if ((scrollRef.current as any)?._releaseTimer) {
+                    clearTimeout((scrollRef.current as any)._releaseTimer);
+                }
+            };
         }
+
+        return () => {
+            active = false;
+            if ((scrollRef.current as any)?._releaseTimer) {
+                clearTimeout((scrollRef.current as any)._releaseTimer);
+            }
+        };
 
     }, [messages, agentStatus.phase, pendingApproval, isAgentActive, scrollRef]);
 
@@ -1346,34 +1364,140 @@ export const ChatArea = ({
                                                 )}
                                                 {msg.blocks && msg.blocks.length > 0 ? (
                                                     <div className="mb-4">
-                                                        {msg.blocks.map((block, idx) => {
-                                                            const prevBlock = idx > 0 ? msg.blocks![idx - 1] : null;
-                                                            const isTool = block.type === 'tool_call';
-                                                            const isPrevTool = prevBlock?.type === 'tool_call';
-                                                            const isNarrative = ['answer', 'text', 'thought'].includes(block.type);
+                                                        {(() => {
+                                                            // ─── TOOL LOOP SEGMENTATION ───
+                                                            // Group blocks into segments: "loop" (tool_calls + interstitial thoughts)
+                                                            // and "narrative" (answer blocks). Each loop segment gets wrapped in
+                                                            // a ToolLoopCollapsible for auto-collapse after execution.
+                                                            const blocks = msg.blocks!;
+                                                            const hasAnyTool = blocks.some(b => b.type === 'tool_call');
+                                                            
+                                                            // If no tool calls at all, render flat (no loop wrapper needed)
+                                                            if (!hasAnyTool) {
+                                                                return blocks.map((block, idx) => {
+                                                                    const spacingClass = idx === 0 ? '' : 'mt-4';
+                                                                    return (
+                                                                        <div key={idx} id={`block-${msg.id}-${idx}`} className={spacingClass} data-block-type={block.type}>
+                                                                            {block.type === 'answer' ? (
+                                                                                <MarkdownRenderer content={block.content} isStreaming={msg.isStreaming} />
+                                                                            ) : (block.type === 'thought' || block.type === 'text') ? (() => {
+                                                                                const forceCollapse = isOld || block.type === 'thought';
+                                                                                return <CollapsibleTextBlock content={block.content} forceCollapse={forceCollapse} isThought={block.type === 'thought'} isStreaming={msg.isStreaming} mode={block.type === 'thought' ? 'minimal' : 'full'} hasCustomBg={!!config.chatBackgroundImage} />;
+                                                                            })() : null}
+                                                                        </div>
+                                                                    );
+                                                                });
+                                                            }
 
-                                                            // Spacing Logic:
-                                                            // 1. Consecutive tools = compact (mt-2)
-                                                            // 2. Narrative after tool = line jump (mt-8)
-                                                            // 3. Narrative after narrative or tool after narrative = standard (mt-4)
-                                                            let spacingClass = idx === 0 ? '' : 'mt-4';
-                                                            if (isTool && isPrevTool) spacingClass = 'mt-2';
-                                                            if (isNarrative && isPrevTool) spacingClass = 'mt-8';
+                                                            // Segment blocks into loop vs narrative groups
+                                                            type Segment = { type: 'loop'; blocks: typeof blocks; startIdx: number } | { type: 'narrative'; blocks: typeof blocks; startIdx: number };
+                                                            const segments: Segment[] = [];
+                                                            let currentSegment: Segment | null = null;
 
-                                                            return (
-                                                                <div key={idx} id={`block-${msg.id}-${idx}`} className={spacingClass} data-block-type={block.type}>
-                                                                    {block.type === 'answer' ? (
-                                                                        <MarkdownRenderer content={block.content} isStreaming={msg.isStreaming} />
-                                                                    ) : (block.type === 'thought' || block.type === 'text') ? (() => {
-                                                                        const hasTools = msg.blocks!.some(b => b.type === 'tool_call');
-                                                                        const forceCollapse = isOld || (hasTools && !debugMode) || block.type === 'thought';
-                                                                        return <CollapsibleTextBlock content={block.content} forceCollapse={forceCollapse} isThought={block.type === 'thought'} isStreaming={msg.isStreaming} mode={block.type === 'thought' ? 'minimal' : 'full'} hasCustomBg={!!config.chatBackgroundImage} />;
-                                                                    })() : block.type === 'tool_call' ? (
-                                                                        <ToolBlock block={block} isOld={isOld} isStreaming={msg.isStreaming} invertRotation={idx % 2 !== 0} />
-                                                                    ) : null}
-                                                                </div>
-                                                            );
-                                                        })}
+                                                            const hasAnyToolInMessage = blocks.some(b => b.type === 'tool_call');
+
+                                                            for (let i = 0; i < blocks.length; i++) {
+                                                                const block = blocks[i];
+                                                                const isTool = block.type === 'tool_call';
+                                                                const isThought = block.type === 'thought';
+                                                                const hasToolAfter = blocks.slice(i + 1).some(b => b.type === 'tool_call');
+
+                                                                if (isTool || hasToolAfter || (isThought && hasAnyToolInMessage)) {
+                                                                    // Pre-tool, interstitial, post-tool thoughts, or the tool itself — part of the loop
+                                                                    if (!currentSegment || currentSegment.type !== 'loop') {
+                                                                        currentSegment = { type: 'loop', blocks: [], startIdx: i };
+                                                                        segments.push(currentSegment);
+                                                                    }
+                                                                    currentSegment.blocks.push(block);
+                                                                } else {
+                                                                    // Post-tool (Final Narrative) or Standalone Narrative
+                                                                    if (!currentSegment || currentSegment.type !== 'narrative') {
+                                                                        currentSegment = { type: 'narrative', blocks: [], startIdx: i };
+                                                                        segments.push(currentSegment);
+                                                                    }
+                                                                    currentSegment.blocks.push(block);
+                                                                }
+                                                            }
+
+                                                            return segments.map((segment, segIdx) => {
+                                                                if (segment.type === 'loop') {
+                                                                    const toolCount = segment.blocks.filter(b => b.type === 'tool_call').length;
+                                                                    // Check if there's a narrative answer AFTER this loop segment
+                                                                    const hasNarrativeAfter = segments.slice(segIdx + 1).some(s => 
+                                                                        s.type === 'narrative' && s.blocks.some(b => b.type === 'answer')
+                                                                    );
+                                                                    // Only wrap in collapsible if there's at least one tool AND 
+                                                                    // (there's a narrative response after OR it's an old non-streaming message)
+                                                                    const shouldWrap = toolCount > 0 && (hasNarrativeAfter || (!msg.isStreaming && isOld));
+
+                                                                    const loopContent = segment.blocks.map((block, bIdx) => {
+                                                                        const globalIdx = segment.startIdx + bIdx;
+                                                                        const prevBlock = globalIdx > 0 ? blocks[globalIdx - 1] : null;
+                                                                        const isTool = block.type === 'tool_call';
+                                                                        const isPrevTool = prevBlock?.type === 'tool_call';
+                                                                        const isNarrative = ['answer', 'text', 'thought'].includes(block.type);
+
+                                                                        let spacingClass = bIdx === 0 ? '' : 'mt-4';
+                                                                        if (isTool && isPrevTool) spacingClass = 'mt-2';
+                                                                        if (isNarrative && isPrevTool) spacingClass = 'mt-4';
+
+                                                                        return (
+                                                                            <div key={globalIdx} id={`block-${msg.id}-${globalIdx}`} className={spacingClass} data-block-type={block.type}>
+                                                                                {block.type === 'tool_call' ? (
+                                                                                    <ToolBlock block={block} isOld={isOld} isStreaming={msg.isStreaming} invertRotation={globalIdx % 2 !== 0} />
+                                                                                ) : (block.type === 'answer' || block.type === 'text') ? (
+                                                                                    <div className="pl-6 mb-4">
+                                                                                        <MarkdownRenderer content={block.content} isStreaming={msg.isStreaming} />
+                                                                                    </div>
+                                                                                ) : block.type === 'thought' ? (() => {
+                                                                                    const forceCollapse = isOld || (hasAnyTool && !debugMode) || true;
+                                                                                    return <CollapsibleTextBlock content={block.content} forceCollapse={forceCollapse} isThought={true} isStreaming={msg.isStreaming} mode="minimal" hasCustomBg={!!config.chatBackgroundImage} />;
+                                                                                })() : null}
+                                                                            </div>
+                                                                        );
+                                                                    });
+
+                                                                    // Extract duration from the first block of the segment if available
+                                                                    const segmentDuration = segment.blocks.find(b => b.loopDurationMs !== undefined)?.loopDurationMs;
+
+                                                                    if (shouldWrap) {
+                                                                        return (
+                                                                            <ToolLoopCollapsible
+                                                                                key={`loop-${segIdx}`}
+                                                                                stepCount={toolCount}
+                                                                                isStreaming={msg.isStreaming}
+                                                                                isOld={isOld}
+                                                                                elapsedMs={segmentDuration}
+                                                                            >
+                                                                                {loopContent}
+                                                                            </ToolLoopCollapsible>
+                                                                        );
+                                                                    }
+                                                                    return <React.Fragment key={`loop-${segIdx}`}>{loopContent}</React.Fragment>;
+                                                                }
+
+                                                                // Narrative segment
+                                                                return segment.blocks.map((block, bIdx) => {
+                                                                    const globalIdx = segment.startIdx + bIdx;
+                                                                    const prevGlobalBlock = globalIdx > 0 ? blocks[globalIdx - 1] : null;
+                                                                    const isPrevTool = prevGlobalBlock?.type === 'tool_call';
+
+                                                                    let spacingClass = globalIdx === 0 ? '' : 'mt-4';
+                                                                    if (isPrevTool) spacingClass = 'mt-8';
+
+                                                                    return (
+                                                                        <div key={globalIdx} id={`block-${msg.id}-${globalIdx}`} className={spacingClass} data-block-type={block.type}>
+                                                                            {block.type === 'answer' ? (
+                                                                                <MarkdownRenderer content={block.content} isStreaming={msg.isStreaming} />
+                                                                            ) : (block.type === 'thought' || block.type === 'text') ? (() => {
+                                                                                const forceCollapse = isOld || (hasAnyTool && !debugMode) || block.type === 'thought';
+                                                                                return <CollapsibleTextBlock content={block.content} forceCollapse={forceCollapse} isThought={block.type === 'thought'} isStreaming={msg.isStreaming} mode={block.type === 'thought' ? 'minimal' : 'full'} hasCustomBg={!!config.chatBackgroundImage} />;
+                                                                            })() : null}
+                                                                        </div>
+                                                                    );
+                                                                });
+                                                            });
+                                                        })()}
                                                     </div>
                                                 ) : (
                                                     msg.text && (
