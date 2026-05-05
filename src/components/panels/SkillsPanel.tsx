@@ -400,60 +400,27 @@ export const SkillsPanel: React.FC<SkillsPanelProps> = ({ config, toolsFiles, on
                             <div className="hidden lg:block h-px bg-gradient-to-r from-transparent via-[var(--border-color)] to-transparent mb-8" />
 
                             <div className="space-y-6 lg:space-y-8">
-                                {currentSkill.name === 'gmail_imap' ? (
-                                    <>
-                                        <div className="space-y-3">
-                                            <label htmlFor="email-identity" className="text-xs lg:text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                                <Icon name="at" className="text-cyan-500" />
-                                                {t('skills.email_identity')}
-                                            </label>
-                                                <input
-                                                    id="email-identity"
-                                                    type="email"
-                                                    placeholder="your@email.com"
-                                                    value={skillConfig.email || ''}
-                                                    onChange={(e) => handleUpdateSkillConfig('gmail_imap', 'email', e.target.value)}
-                                                    className="w-full premium-input rounded-xl px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none transition-all placeholder:text-[var(--text-secondary)]/30"
-                                                />
-                                        </div>
-                                        <div className="space-y-3">
-                                            <label htmlFor="app-password" className="text-xs lg:text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                                <Icon name="key" className="text-amber-500" />
-                                                {t('skills.app_password')}
-                                            </label>
-                                                <input
-                                                    id="app-password"
-                                                    type="password"
-                                                    placeholder="••••••••••••"
-                                                    value={skillConfig.app_password || ''}
-                                                    onChange={(e) => handleUpdateSkillConfig('gmail_imap', 'app_password', e.target.value)}
-                                                    className="w-full premium-input rounded-xl px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none transition-all placeholder:text-[var(--text-secondary)]/30"
-                                                />
-                                        </div>
-                                    </>
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center py-10">
-                                        <div className="opacity-60 flex flex-col items-center">
-                                            <Icon name="sliders-h" className="text-4xl text-slate-800 mb-4" />
-                                            <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">{t('skills.automatic_title')}</h5>
-                                            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-700 max-w-[180px] text-center leading-relaxed mb-6">
-                                                {t('skills.automatic_desc')}
-                                            </p>
-                                        </div>
-
-                                        {(currentSkill as any).panel && (
-                                            <div className="flex w-full items-center justify-center mt-2 animate-in slide-in-from-bottom-4 duration-700 fade-in">
-                                                <button
-                                                    onClick={() => handleOpenPanel(currentSkill)}
-                                                    className="px-6 py-3.5 border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500 hover:text-black font-bold uppercase tracking-[0.2em] text-[10px] rounded-2xl transition-all duration-300 flex items-center gap-3 group shadow-[0_0_20px_-5px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_0_rgba(6,182,212,0.5)]"
-                                                >
-                                                    <Icon name={(currentSkill as any).panelIcon || 'external-link-alt'} className="text-sm group-hover:scale-125 group-hover:-translate-y-0.5 transition-all duration-300" />
-                                                    {(currentSkill as any).panelLabel || t('skills.widget_launch')}
-                                                </button>
-                                            </div>
-                                        )}
+                                <div className="flex flex-col items-center justify-center py-10">
+                                    <div className="opacity-60 flex flex-col items-center">
+                                        <Icon name="sliders-h" className="text-4xl text-slate-800 mb-4" />
+                                        <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">{t('skills.automatic_title')}</h5>
+                                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-700 max-w-[180px] text-center leading-relaxed mb-6">
+                                            {t('skills.automatic_desc')}
+                                        </p>
                                     </div>
-                                )}
+
+                                    {(currentSkill as any).panel && (
+                                        <div className="flex w-full items-center justify-center mt-2 animate-in slide-in-from-bottom-4 duration-700 fade-in">
+                                            <button
+                                                onClick={() => handleOpenPanel(currentSkill)}
+                                                className="px-6 py-3.5 border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500 hover:text-black font-bold uppercase tracking-[0.2em] text-[10px] rounded-2xl transition-all duration-300 flex items-center gap-3 group shadow-[0_0_20px_-5px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_0_rgba(6,182,212,0.5)]"
+                                            >
+                                                <Icon name={(currentSkill as any).panelIcon || 'external-link-alt'} className="text-sm group-hover:scale-125 group-hover:-translate-y-0.5 transition-all duration-300" />
+                                                {(currentSkill as any).panelLabel || t('skills.widget_launch')}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     )}

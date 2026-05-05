@@ -481,7 +481,11 @@ export async function executeToolCall(
                         };
                     }
 
-                    const isSuccess = result.code === 0;
+                    // Logic change: Success means the tool EXECUTED correctly. 
+                    // We consider it success if code is 0 OR if it produced any output (meaning it ran).
+                    // This prevents "Ping failed" from being reported as a "Tool Error".
+                    const isSuccess = result.code === 0 || (result.stdout && result.stdout.trim().length > 0);
+                    
                     return {
                         success: isSuccess,
                         error: isSuccess ? undefined : (obfuscatePaths(result.stderr) || `Command failed with code ${result.code}`),

@@ -19,7 +19,9 @@ import {
     PROTECTED_CORE_FILES, 
     CONSOLE_ALLOWED_COMMANDS, 
     CONSOLE_BLOCKED_PATTERNS,
-    HIGH_RISK_COMMANDS
+    HIGH_RISK_COMMANDS,
+    SAFE_CONSOLE_COMMANDS,
+    SAFE_COMMAND_SUBCOMMANDS
 } from '../../constants';
 import { validateToolArgs, safeFetch, obfuscatePaths } from '../../utils';
 import { recoverToolCallsFromText, normalizeRawToolCall, RecoveredCall } from '../formatters/toolCallNormalizer';
@@ -568,7 +570,10 @@ export async function sendAgentMessage(
 
             // ─── TOOL EXECUTION ENGINE (SAFE vs BATCH) ───
             localOnStatus({ phase: 'tool_calling' });
-            const READ_ONLY = new Set(['read_file', 'list_files', 'search_files', 'web_search', 'read_url', 'get_file_outline']);
+            const READ_ONLY = new Set([
+                'read_file', 'list_files', 'search_files', 'web_search', 'read_url', 'get_file_outline',
+                'get_console_status', 'get_system_metrics', 'list_available_skills', 'instruction_booklet'
+            ]);
 
             const isAuto = (tc: ToolCall) => {
                 const tn = tc.function.name;
@@ -577,8 +582,20 @@ export async function sendAgentMessage(
                 // 1. DANGEROUS OPERATIONS: ALWAYS REQUIRE MANUAL APPROVAL
                 if (tn === 'run_console') {
                     const cmd = (args.command || '').trim().toLowerCase();
+                    const cmdArgs = (args.args || '').trim().toLowerCase();
+                    
                     if (HIGH_RISK_COMMANDS.includes(cmd)) return false;
-                    // If not high risk, allow auto in Agent Mode
+
+                    // AUTO-APPROVE SAFE COMMANDS (Basic info retrieval)
+                    if (SAFE_CONSOLE_COMMANDS.includes(cmd)) return true;
+
+                    // AUTO-APPROVE SAFE SUBCOMMANDS (Project init/test/run)
+                    if (SAFE_COMMAND_SUBCOMMANDS[cmd]) {
+                        const isSafeSub = SAFE_COMMAND_SUBCOMMANDS[cmd].some(sub => cmdArgs.startsWith(sub));
+                        if (isSafeSub) return true;
+                    }
+                    
+                    // If not specifically safe, allow auto in Agent Mode
                     return isAgentMode;
                 }
                 if (tn === 'request_agent_mode') return false;
@@ -710,17 +727,19 @@ export async function sendAgentMessage(
                 }
             };
 
-            if (safeMode) {
-                // SAFE MODE: Strict sequential execution
+            // ─── EXECUTION STRATEGY (SAFE vs BATCH) ───
+            // Sequential: One by one. Preferred for UX consistency and safety.
+            // Parallel: Simultaneous. Allowed for high-performance agentic batches.
+            const useSequential = safeMode || !isAgentMode;
+
+            if (useSequential) {
+                // SAFE/CHAT MODE: Strict sequential execution
                 for (const tc of toolsToExecute) {
-                    // Check for abort before each tool execution
                     if (useAgentStore.getState().agentStatus.phase === 'aborted') break;
                     await executeAndLog(tc);
                 }
             } else {
-                // BATCH MODE: High-performance parallel execution
-                // In batch mode, we can't easily stop already-started tools,
-                // but we check the phase to avoid starting if already aborted.
+                // BATCH MODE: High-performance parallel execution (Agent Mode only)
                 if (useAgentStore.getState().agentStatus.phase !== 'aborted') {
                     await Promise.all(toolsToExecute.map(tc => executeAndLog(tc)));
                 }
@@ -762,7 +781,7 @@ export async function sendAgentMessage(
                 const taskProgressBlock = `\nNext Action: ${nextAction}`;
                 const autoTaskInfo = turnAutoTasks.length > 0 ? `\n✨ AUTO-SYNC: Tasks automatically completed: ${turnAutoTasks.join(', ')}` : '';
                 const significantCalls = successfulCalls.filter(tc => 
-                    !['read_file', 'list_files', 'search_files', 'get_file_outline', 'miku_clock', 'get_system_metrics', 'get_crypto_price', 'read_url', 'add_scheduled_task'].includes(tc.function.name)
+                    !['read_file', 'list_files', 'search_files', 'get_file_outline', 'get_system_metrics', 'read_url', 'add_scheduled_task'].includes(tc.function.name)
                 );
                 const unplannedInfo = (significantCalls.length > 0 && turnAutoTasks.length === 0 && freshTasksContent.includes('[ ]'))
                     ? '\n⚠️ NOTE: You have performed actions that do not seem to match any pending task in your plan.' : '';

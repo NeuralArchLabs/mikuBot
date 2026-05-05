@@ -1930,11 +1930,14 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                             ac.signal.removeEventListener('abort', abortHandler);
                             if (result.approved && toolCall.function.name === 'request_agent_mode') {
                                 console.log('[App] Auto-switching to AGENT mode via tool approval');
-                                setState(prev => ({ ...prev, agentMode: 'agent', safeMode: true }));
+                                // When auto-switching to agent, we allow the current safeMode/approvalMode 
+                                // but ensure we are in 'agent' mode.
+                                setState(prev => ({ ...prev, agentMode: 'agent' }));
+                                
                                 // ⚡ IMMEDIATE REFRESH: Update ref directly so the async loop sees it now
-                                stateRef.current = { ...stateRef.current, agentMode: 'agent', safeMode: true };
+                                stateRef.current = { ...stateRef.current, agentMode: 'agent' };
                                 if (stateRef.current.config) {
-                                    persistence.saveSettings(stateRef.current.config, 'agent', true, stateRef.current.approvalMode);
+                                    persistence.saveSettings(stateRef.current.config, 'agent', stateRef.current.safeMode, stateRef.current.approvalMode);
                                 }
                             }
                             resolve(result);
@@ -2399,7 +2402,13 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                         models={models}
                         onAgentModeChange={(m) => {
                             const isAgent = m === 'agent';
-                            setState(p => ({ ...p, agentMode: m, safeMode: isAgent ? true : p.safeMode }));
+                            // 🛡️ MODE ISOLATION: Chat mode ALWAYS uses safeMode:true and approvalMode:auto.
+                            // Settings changed in Agent mode should NOT leak into Chat mode.
+                            const nextSafeMode = isAgent ? state.safeMode : true;
+                            const nextApprovalMode = isAgent ? state.approvalMode : 'auto';
+
+                            setState(p => ({ ...p, agentMode: m, safeMode: nextSafeMode, approvalMode: nextApprovalMode }));
+                            
                             // ⚡ Immediate Persistence
                             if (state.sessionId) {
                                 persistence.saveSession({
@@ -2407,8 +2416,8 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                                     title: sessions.find(s => s.id === state.sessionId)?.title || t('common.active_session'),
                                     messages: stripHeavyAttachments(useAgentStore.getState().messages),
                                     agentMode: m,
-                                    safeMode: isAgent ? true : state.safeMode,
-                                    approvalMode: state.approvalMode,
+                                    safeMode: nextSafeMode,
+                                    approvalMode: nextApprovalMode,
                                     timestamp: Date.now()
                                 });
                             }
