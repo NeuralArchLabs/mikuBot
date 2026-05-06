@@ -1,31 +1,29 @@
-# 🌟 mikuBot v2.4.0 — The Generative Memory Update
+# 🌟 mikuBot v2.4.1 — Agent Autonomy & Remote Polish
 
-We are proud to announce the release of **mikuBot v2.4.0**, a major update that transforms the application into a truly modular and context-aware neural interface. This release introduces generative capabilities and a significant upgrade to the agent's long-term memory.
+We are proud to announce the release of **mikuBot v2.4.1**, a stability and autonomy update that refines the agent's workflow and ensures a seamless remote control experience.
 
 ## 🚀 Key Highlights
 
-### 🧠 Recall Skill Upgrade (Long-Term Semantic Memory)
-Miku now possesses a more robust persistent "brain" structure.
-- **Context-Aware Navigation**: Miku can now navigate past interactions and protocols with high precision using a recursive synaptic tree.
-- **Cross-Session Retrieval**: Knowledge gained in one session is stored locally in the `memory/` directory and can be efficiently retrieved later.
-- **Recursive Synaptic Organization**: Deep-directory traversal for complex knowledge mapping.
+### 🤖 Stabilized Agent Console Autonomy
+Miku's execution engine is now smarter about what requires your permission.
+- **Enhanced Whitelists**: Essential diagnostic tools (`wmic`, `pnpm`, `yarn`) and safe network requests (`curl`, `wget` for research) are now fully whitelisted in Chat Mode.
+- **Chained Commands**: The authorization engine now correctly parses and allows non-destructive chained commands without triggering unnecessary security roadblocks.
 
-### 🧩 Generative Dynamic Widgets
-A new modular architecture for neural micro-apps. Miku is no longer limited to pre-defined tools.
-- **Generative Capability**: You can now ask the assistant to create a custom widget for any specific need. Miku will generate the code, launch the widget in your workspace, and save it for future sessions.
-- **Neural Command Center**: Organize your custom-built micro-apps in a high-performance workspace.
+### 📱 Premium Telegram Integration
+Controlling Miku remotely is now more reliable and informative.
+- **Dynamic Tool Descriptions**: Approval requests sent to Telegram now include rich, detailed context (e.g., exact console commands or target file paths) instead of generic tool names.
+- **Stale Closure Fix**: Resolved a critical bug where Telegram approval buttons (`Accept`/`Deny`) would freeze or lose connection to the active session.
 
-### ✨ Chat Renderer Elite
-- **Mermaid Syntax Healing**: Automated "healing" layer for Mermaid diagrams to correct AI-generated syntax errors (specifically for `gitGraph`).
-- **Nested Code Block Integrity**: Fixed structural regressions for complex nested code blocks within markdown.
-- **Visual Refinement**: Improved `backdrop-blur` effects and transition animations for a premium chat experience.
+### ✨ Visual Formatting & UI Polish
+- **Markdown Integrity**: Fixed rendering bugs where text enclosed in `**` would fail to bold if it spanned multiple lines, both in standard chat and Telegram remote output.
+- **Narrative Flow**: Agent narrative blocks within the collapsible tool execution loop now render with proper padding and clean markdown formatting, distinguishing them clearly from internal reasoning blocks.
 
 ## 🛠️ Technical Improvements
-- **Version Lock**: Standardized v2.4.0 metadata across `package.json`, `config.ts`, and the installer.
-- **Engine Stability**: Optimized the background processing link for multi-session agent execution.
+- **Electron Builder**: Resolved file system permission issues causing `7-Zip` symbolic link creation to fail during Windows compilation.
+- **Engine Stability**: Patched `ENOTEMPTY` errors when clearing legacy virtual environments to prevent boot failures.
 
 ## ⬇️ Download
-[Download MikuCentral-Setup-2.4.0.exe](https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.4.0/MikuCentral-Setup-2.4.0.exe)
+[Download MikuCentral-Setup-2.4.1.exe](https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.4.1/MikuCentral-Setup-2.4.1.exe)
 
 ---
 *Developed with precision by Neural Arch Labs.*

@@ -608,7 +608,7 @@ export const ModernSelect = ({
                             width: `${containerRef.current?.getBoundingClientRect().width || 0}px`,
                             pointerEvents: 'auto'
                         }}
-                        className={`bg-[var(--surface-color)] backdrop-blur-3xl border border-[var(--border-color)] rounded-2xl shadow-xl shadow-black/80 z-[9999] py-2 overflow-hidden animate-premium`}
+                        className={`bg-[var(--surface-color)] backdrop-blur-3xl border border-[var(--border-color)] rounded-2xl shadow-xl shadow-black/80 z-[9999] py-2 overflow-hidden animate-premium modern-select-portal`}
                     >
                         <div className="max-h-[220px] overflow-y-auto custom-scrollbar mr-2 ml-1 py-1">
                             {options.length === 0 && (

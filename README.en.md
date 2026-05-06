@@ -2,7 +2,7 @@
 
 <img src="./public/mikuBotICON.png" width="120" style="border-radius: 24px" alt="mikuBot Icon" />
 
-# 🌟 mikuBot v2.4.0 — The Memory & Widgets Update
+# 🌟 mikuBot v2.4.1 — Agent Autonomy & Remote Polish
 
 ![Status](https://img.shields.io/badge/Status-Stable-green.svg?style=for-the-badge)
 ![Platform](https://img.shields.io/badge/Platform-Windows_10%2F11-0078D4.svg?style=for-the-badge&logo=windows)
@@ -18,8 +18,8 @@
 
 <br/>
 
-<a href="https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.4.0/mikuBot-Setup-2.4.0.exe">
-  <img src="https://img.shields.io/badge/DOWNLOAD_LATEST_VERSION-v2.4.0-60A5FA?style=for-the-badge&logo=windows&logoColor=white" height="40" />
+<a href="https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.4.1/MikuCentral-Setup-2.4.1.exe">
+  <img src="https://img.shields.io/badge/DOWNLOAD_LATEST_VERSION-v2.4.1-60A5FA?style=for-the-badge&logo=windows&logoColor=white" height="40" />
 </a>
 
 <br/>

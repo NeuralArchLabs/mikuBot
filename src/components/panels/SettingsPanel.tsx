@@ -465,7 +465,7 @@ export const SettingsPanel = ({
                                                     value={config.chatBackgroundImage || ''}
                                                     onChange={(e) => updateConfig('chatBackgroundImage', e.target.value)}
                                                     placeholder="https://example.com/image.jpg"
-                                                    className="flex-1 bg-[var(--surface-color)] border border-[var(--border-color)] rounded-xl px-4 py-3 text-xs text-[var(--text-primary)] font-mono focus:outline-none focus:ring-1 focus:ring-cyan-500/50 transition-all shadow-inner"
+                                                    className="flex-1 premium-input rounded-xl font-mono px-4 py-3 text-xs focus:outline-none transition-all shadow-inner"
                                                 />
                                                 <button
                                                     onClick={() => setShowBackgroundGallery(true)}
@@ -520,7 +520,7 @@ export const SettingsPanel = ({
                                     )}
 
                                     <div className="flex items-center gap-4 md:gap-3 xl:gap-4 mb-3 md:mb-2 xl:mb-3">
-                                        <div className="w-14 h-14 md:w-12 md:h-12 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rounded-2xl bg-emerald-500/10 border border-transparent group-hover:border-emerald-500/30 text-emerald-400 flex flex-shrink-0 items-center justify-center shadow-inner premium-transition">
+                                        <div className="w-14 h-14 md:w-12 md:h-12 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rounded-2xl premium-icon-box bg-emerald-500/10 text-emerald-400 flex flex-shrink-0 items-center justify-center premium-transition">
                                             <Icon name="box" className="text-3xl md:text-xl lg:text-lg xl:text-xl transition-all" />
                                         </div>
                                         <div className="truncate flex-1">
@@ -528,7 +528,7 @@ export const SettingsPanel = ({
                                             <div className="text-[11px] md:text-[9px] lg:text-[8px] xl:text-[9px] font-bold uppercase tracking-widest text-emerald-500/80 truncate transition-all">{t('settings.pathways.workspace_desc')}</div>
                                         </div>
                                     </div>
-                                    <div className="text-xs font-mono text-[var(--text-secondary)] mb-5 truncate bg-[var(--hover-color)] p-3 rounded-xl border border-[var(--border-color)] leading-relaxed" title={workSpacePathName}>
+                                    <div className="text-xs font-mono text-[var(--text-secondary)] mb-5 truncate premium-path-box p-3 rounded-xl border border-[var(--border-color)] leading-relaxed" title={workSpacePathName}>
                                         {workSpacePathName || "Not configured"}
                                     </div>
                                     <button
@@ -560,7 +560,7 @@ export const SettingsPanel = ({
                                     )}
 
                                     <div className="flex items-center gap-4 md:gap-3 xl:gap-4 mb-3 md:mb-2 xl:mb-3">
-                                        <div className="w-14 h-14 md:w-12 md:h-12 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rounded-2xl bg-indigo-500/10 border border-transparent group-hover:border-indigo-500/30 text-indigo-400 flex flex-shrink-0 items-center justify-center shadow-inner premium-transition">
+                                        <div className="w-14 h-14 md:w-12 md:h-12 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rounded-2xl premium-icon-box bg-indigo-500/10 text-indigo-400 flex flex-shrink-0 items-center justify-center premium-transition">
                                             <Icon name="hdd" className="text-3xl md:text-xl lg:text-lg xl:text-xl transition-all" />
                                         </div>
                                         <div className="truncate flex-1">
@@ -568,7 +568,7 @@ export const SettingsPanel = ({
                                             <div className="text-[11px] md:text-[9px] lg:text-[8px] xl:text-[9px] font-bold uppercase tracking-widest text-indigo-500/80 truncate transition-all">{t('settings.pathways.core_desc')}</div>
                                         </div>
                                     </div>
-                                    <div className="text-xs font-mono text-[var(--text-secondary)] mb-5 truncate bg-[var(--hover-color)] p-3 rounded-xl border border-[var(--border-color)] leading-relaxed" title={corePathName}>
+                                    <div className="text-xs font-mono text-[var(--text-secondary)] mb-5 truncate premium-path-box p-3 rounded-xl border border-[var(--border-color)] leading-relaxed" title={corePathName}>
                                         {corePathName || "Internal Defaults"}
                                     </div>
                                     <button
@@ -600,7 +600,7 @@ export const SettingsPanel = ({
                                     )}
 
                                     <div className="flex items-center gap-4 md:gap-3 xl:gap-4 mb-3 md:mb-2 xl:mb-3">
-                                        <div className="w-14 h-14 md:w-12 md:h-12 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rounded-2xl bg-pink-500/10 border border-transparent group-hover:border-pink-500/30 text-pink-400 flex flex-shrink-0 items-center justify-center shadow-inner premium-transition">
+                                        <div className="w-14 h-14 md:w-12 md:h-12 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rounded-2xl premium-icon-box bg-pink-500/10 text-pink-400 flex flex-shrink-0 items-center justify-center premium-transition">
                                             <Icon name="book" className="text-3xl md:text-xl lg:text-lg xl:text-xl transition-all" />
                                         </div>
                                         <div className="truncate flex-1">
@@ -608,7 +608,7 @@ export const SettingsPanel = ({
                                             <div className="text-[11px] md:text-[9px] lg:text-[8px] xl:text-[9px] font-bold uppercase tracking-widest text-pink-500/80 truncate transition-all">{t('settings.pathways.library_desc')}</div>
                                         </div>
                                     </div>
-                                    <div className="text-xs font-mono text-[var(--text-secondary)] mb-5 truncate bg-[var(--hover-color)] p-3 rounded-xl border border-[var(--border-color)] leading-relaxed" title={extraPathName}>
+                                    <div className="text-xs font-mono text-[var(--text-secondary)] mb-5 truncate premium-path-box p-3 rounded-xl border border-[var(--border-color)] leading-relaxed" title={extraPathName}>
                                         {extraPathName || "No Links"}
                                     </div>
                                     <button
@@ -640,7 +640,7 @@ export const SettingsPanel = ({
                                     )}
 
                                     <div className="flex items-center gap-4 md:gap-3 xl:gap-4 mb-3 md:mb-2 xl:mb-3">
-                                        <div className="w-14 h-14 md:w-12 md:h-12 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rounded-2xl bg-amber-500/10 border border-transparent group-hover:border-amber-500/30 text-amber-400 flex flex-shrink-0 items-center justify-center shadow-inner premium-transition">
+                                        <div className="w-14 h-14 md:w-12 md:h-12 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rounded-2xl premium-icon-box bg-amber-500/10 text-amber-400 flex flex-shrink-0 items-center justify-center premium-transition">
                                             <Icon name="bolt" className="text-3xl md:text-xl lg:text-lg xl:text-xl transition-all" />
                                         </div>
                                         <div className="truncate flex-1">
@@ -648,7 +648,7 @@ export const SettingsPanel = ({
                                             <div className="text-[11px] md:text-[9px] lg:text-[8px] xl:text-[9px] font-bold uppercase tracking-widest text-amber-500/80 truncate transition-all">{t('settings.pathways.commands_desc')}</div>
                                         </div>
                                     </div>
-                                    <div className="text-xs font-mono text-[var(--text-secondary)] mb-5 truncate bg-[var(--hover-color)] p-3 rounded-xl border border-[var(--border-color)] leading-relaxed" title={toolsPathName}>
+                                    <div className="text-xs font-mono text-[var(--text-secondary)] mb-5 truncate premium-path-box p-3 rounded-xl border border-[var(--border-color)] leading-relaxed" title={toolsPathName}>
                                         {toolsPathName || "Not configured"}
                                     </div>
                                     <button
@@ -677,7 +677,7 @@ export const SettingsPanel = ({
 
                                     <div className="flex items-center justify-between mb-6">
                                         <div className="flex items-center gap-3">
-                                            <div className="bg-blue-500/20 p-2 rounded-xl text-blue-400 border border-transparent group-hover:border-blue-500/40 premium-transition">
+                                            <div className="premium-icon-box bg-blue-500/20 p-2 rounded-xl text-blue-400 border border-transparent group-hover:border-blue-500/40 premium-transition">
                                                 <Icon name="brain" className="text-xl mx-0.5" />
                                             </div>
                                             <span className="font-black text-[var(--text-primary)] tracking-tight text-lg">{t('settings.orchestration.chat_runtime')}</span>
@@ -731,11 +731,11 @@ export const SettingsPanel = ({
                                                             {pId === 'gemini' ? (
                                                                 <img src="./geminiICON.png" alt="Gemini" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]' : 'opacity-40 grayscale hover:opacity-80'}`} />
                                                             ) : pId === 'ollama' ? (
-                                                                <img src="./ollamaICON.webp" alt="Ollama" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'opacity-40 grayscale group-hover:opacity-80 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
+                                                                <img src="./ollamaICON.webp" alt="Ollama" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'opacity-30 brightness-0 invert group-hover:opacity-70 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
                                                             ) : pId === 'groq' ? (
-                                                                <img src="./groqICON.png" alt="Groq" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'opacity-40 grayscale group-hover:opacity-80 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
+                                                                <img src="./groqICON.png" alt="Groq" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'opacity-30 brightness-0 invert group-hover:opacity-70 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
                                                             ) : pId === 'zai' ? (
-                                                                <img src="./zai.png" alt="Z.AI" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,165,0,0.3)]' : 'opacity-40 grayscale group-hover:opacity-80 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
+                                                                <img src="./zai.png" alt="Z.AI" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,165,0,0.3)]' : 'opacity-30 brightness-0 invert group-hover:opacity-70 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
                                                             ) : (
                                                                 <Icon name={(PROVIDERS as any)[pId]?.icon || 'robot'} className="text-lg" />
                                                             )}
@@ -769,7 +769,7 @@ export const SettingsPanel = ({
 
                                     <div className="flex items-center justify-between mb-6">
                                         <div className="flex items-center gap-3">
-                                            <div className="bg-purple-500/20 p-2 rounded-xl text-purple-400 border border-transparent group-hover:border-purple-500/40 premium-transition">
+                                            <div className="premium-icon-box bg-purple-500/20 p-2 rounded-xl text-purple-400 border border-transparent group-hover:border-purple-500/40 premium-transition">
                                                 <Icon name="bolt" className="text-xl mx-1" />
                                             </div>
                                             <span className="font-black text-[var(--text-primary)] tracking-tight text-lg">{t('settings.orchestration.agent_runtime')}</span>
@@ -808,7 +808,7 @@ export const SettingsPanel = ({
                                     <div className="space-y-5">
                                         <div>
                                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block ml-1">{t('settings.orchestration.provider')}</label>
-                                            <div className="flex gap-2 premium-card !bg-black/20 p-1.5 rounded-2xl border border-white/5">
+                                            <div className="flex gap-2 premium-card !bg-black/20 p-1.5 rounded-2xl">
                                                 {(Object.keys(PROVIDERS) as Provider[]).map(pId => {
                                                     const isSelected = config.agentProvider === pId;
                                                     return (
@@ -823,11 +823,11 @@ export const SettingsPanel = ({
                                                             {pId === 'gemini' ? (
                                                                 <img src="./geminiICON.png" alt="Gemini" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]' : 'opacity-40 grayscale hover:opacity-80'}`} />
                                                             ) : pId === 'ollama' ? (
-                                                                <img src="./ollamaICON.webp" alt="Ollama" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'opacity-40 grayscale group-hover:opacity-80 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
+                                                                <img src="./ollamaICON.webp" alt="Ollama" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'opacity-30 brightness-0 invert group-hover:opacity-70 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
                                                             ) : pId === 'groq' ? (
-                                                                <img src="./groqICON.png" alt="Groq" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'opacity-40 grayscale group-hover:opacity-80 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
+                                                                <img src="./groqICON.png" alt="Groq" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'opacity-30 brightness-0 invert group-hover:opacity-70 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
                                                             ) : pId === 'zai' ? (
-                                                                <img src="./zai.png" alt="Z.AI" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,165,0,0.3)]' : 'opacity-40 grayscale group-hover:opacity-80 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
+                                                                <img src="./zai.png" alt="Z.AI" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,165,0,0.3)]' : 'opacity-30 brightness-0 invert group-hover:opacity-70 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
                                                             ) : (
                                                                 <Icon name={(PROVIDERS as any)[pId]?.icon || 'robot'} className="text-lg" />
                                                             )}
@@ -863,7 +863,7 @@ export const SettingsPanel = ({
                                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                                         {/* Left: Icon and Title */}
                                         <div className="flex items-center gap-3 shrink-0">
-                                            <div className="bg-emerald-500/20 p-2 rounded-xl text-emerald-400 border border-transparent group-hover:border-emerald-500/40 premium-transition">
+                                            <div className="premium-icon-box bg-emerald-500/20 p-2 rounded-xl text-emerald-400 border border-transparent group-hover:border-emerald-500/40 premium-transition">
                                                 <Icon name="eye" className="text-xl mx-0.5" />
                                             </div>
                                             <span className="font-black text-[var(--text-primary)] tracking-tight text-lg whitespace-nowrap">{t('settings.orchestration.vision_runtime')}</span>
@@ -878,6 +878,16 @@ export const SettingsPanel = ({
 
                                         {/* Right: Sync Controls */}
                                         <div className="flex items-center gap-2 shrink-0">
+                                            {config.visionModel && (
+                                                <button
+                                                    onClick={() => updateConfig('visionModel', '')}
+                                                    className="w-8 h-8 flex items-center justify-center rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 hover:border-red-500/40 transition-all shadow-md active:scale-90"
+                                                    title={t('settings.orchestration.disable_vision')}
+                                                >
+                                                    <Icon name="power-off" />
+                                                </button>
+                                            )}
+
                                             <div
                                                 className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all shadow-md border premium-emphasis ${(config.visionModel)
                                                     ? 'premium-emerald bg-emerald-500/10 text-emerald-400'
@@ -923,11 +933,11 @@ export const SettingsPanel = ({
                                                             {pId === 'gemini' ? (
                                                                 <img src="./geminiICON.png" alt="Gemini" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]' : 'opacity-40 grayscale hover:opacity-80'}`} />
                                                             ) : pId === 'ollama' ? (
-                                                                <img src="./ollamaICON.webp" alt="Ollama" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'opacity-40 grayscale group-hover:opacity-80 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
+                                                                <img src="./ollamaICON.webp" alt="Ollama" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'opacity-30 brightness-0 invert group-hover:opacity-70 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
                                                             ) : pId === 'groq' ? (
-                                                                <img src="./groqICON.png" alt="Groq" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'opacity-40 grayscale group-hover:opacity-80 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
+                                                                <img src="./groqICON.png" alt="Groq" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'opacity-30 brightness-0 invert group-hover:opacity-70 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
                                                             ) : pId === 'zai' ? (
-                                                                <img src="./zai.png" alt="Z.AI" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,165,0,0.3)]' : 'opacity-40 grayscale group-hover:opacity-80 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
+                                                                <img src="./zai.png" alt="Z.AI" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,165,0,0.3)]' : 'opacity-30 brightness-0 invert group-hover:opacity-70 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
                                                             ) : (
                                                                 <Icon name={(PROVIDERS as any)[pId]?.icon || 'robot'} className="text-lg" />
                                                             )}
@@ -972,16 +982,7 @@ export const SettingsPanel = ({
                                                     title={t('settings.orchestration.model')}
                                                 />
                                             </div>
-                                            {config.visionModel && (
-                                                <div className="flex justify-end mt-2">
-                                                    <button
-                                                        onClick={() => updateConfig('visionModel', '')}
-                                                        className="text-[9px] font-black text-red-400/80 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 px-2.5 py-1.5 rounded-lg uppercase tracking-wider transition-all duration-300 flex items-center gap-1.5"
-                                                    >
-                                                        <Icon name="power-off" /> {t('settings.orchestration.disable_vision')}
-                                                    </button>
-                                                </div>
-                                            )}
+
                                         </div>
                                     </div>
                                 </div>
@@ -992,7 +993,7 @@ export const SettingsPanel = ({
 
                         {/* Secure Credential Vault Section - Balanced Spacing */}
                         <div className="space-y-4 pt-4 md:pt-6">
-                            <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
+                            <label className="text-sm font-black text-[var(--text-primary)] uppercase tracking-[0.2em] flex items-center gap-2">
                                 <Icon name="shield-alt" className="text-amber-500" /> {t('settings.security.title')}
                             </label>
 
@@ -1000,7 +1001,7 @@ export const SettingsPanel = ({
 
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-amber-500/10 pb-4 relative z-10">
                                     <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-900/80 to-amber-950 border border-amber-700/50 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-900/20">
+                                        <div className="w-12 h-12 rounded-2xl premium-icon-box bg-amber-500/20 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-900/20 transition-all">
                                             <Icon name="lock" className="text-xl" />
                                         </div>
                                         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
@@ -1059,7 +1060,7 @@ export const SettingsPanel = ({
                                     </div>
 
                                     {/* Keys */}
-                                    <div className="md:col-span-7 premium-card p-5 border transition-all duration-700 flex flex-col miku-composite-isolate">
+                                    <div className="md:col-span-7 premium-card p-5 transition-all duration-700 flex flex-col miku-composite-isolate">
                                         <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">{t('settings.security.key_mgmt')}</h4>
 
                                         <div className="flex gap-2 premium-card !bg-slate-900/60 p-1.5 rounded-2xl mb-4">
@@ -1187,7 +1188,7 @@ export const SettingsPanel = ({
                             </div>
 
                             <div className="space-y-4 pt-4 md:pt-6">
-                                <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
+                                <label className="text-sm font-black text-[var(--text-primary)] uppercase tracking-[0.2em] flex items-center gap-2">
                                     <Icon name="microphone" className="text-emerald-400" /> {t('settings.vosk.title')}
                                 </label>
 
@@ -1247,7 +1248,7 @@ export const SettingsPanel = ({
 
                             <div className="space-y-4 pt-4 md:pt-6">
                                 <div className="flex items-center justify-between pr-2">
-                                    <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
+                                    <label className="text-sm font-black text-[var(--text-primary)] uppercase tracking-[0.2em] flex items-center gap-2">
                                         <Icon name="search" className="text-blue-400" /> {t('settings.searxena.title')}
                                     </label>
                                 </div>
@@ -1475,7 +1476,7 @@ export const SettingsPanel = ({
 
                             {/* System Behavior & Integration */}
                             <div className="space-y-4 pt-4 md:pt-4">
-                                <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
+                                <label className="text-sm font-black text-[var(--text-primary)] uppercase tracking-[0.2em] flex items-center gap-2">
                                     <Icon name="cog" className="text-slate-400" /> {t('settings.integration.title')}
                                 </label>
                                 <div className="premium-card p-8 transition-all duration-700 relative overflow-hidden group">
@@ -1483,9 +1484,9 @@ export const SettingsPanel = ({
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
                                         {/* Auto Launch */}
-                                        <div className="flex items-center justify-between p-4 bg-black/20 rounded-2xl border border-transparent hover:border-blue-500/20 transition-all group/sw">
+                                        <div className="flex items-center justify-between p-4 bg-[var(--hover-color)] rounded-2xl border border-transparent hover:border-blue-500/20 transition-all group/sw">
                                             <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 rounded-xl bg-[var(--primary-color)]/10 border border-transparent group-hover/sw:border-[var(--primary-color)]/30 text-[var(--primary-color)] flex items-center justify-center premium-transition">
+                                                <div className="w-10 h-10 rounded-xl premium-icon-box bg-[var(--primary-color)]/10 border border-transparent group-hover/sw:border-[var(--primary-color)]/30 text-[var(--primary-color)] flex items-center justify-center premium-transition">
                                                     <Icon name="rocket" />
                                                 </div>
                                                 <div>
@@ -1503,9 +1504,9 @@ export const SettingsPanel = ({
                                         </div>
 
                                         {/* Minimize to Tray */}
-                                        <div className="flex items-center justify-between p-4 bg-black/20 rounded-2xl border border-transparent hover:border-indigo-500/20 transition-all group/sw">
+                                        <div className="flex items-center justify-between p-4 bg-[var(--hover-color)] rounded-2xl border border-transparent hover:border-indigo-500/20 transition-all group/sw">
                                             <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 rounded-xl bg-[var(--secondary-color)]/10 border border-transparent group-hover/sw:border-[var(--secondary-color)]/30 text-[var(--secondary-color)] flex items-center justify-center premium-transition">
+                                                <div className="w-10 h-10 rounded-xl premium-icon-box bg-[var(--secondary-color)]/10 border border-transparent group-hover/sw:border-[var(--secondary-color)]/30 text-[var(--secondary-color)] flex items-center justify-center premium-transition">
                                                     <Icon name="window-minimize" />
                                                 </div>
                                                 <div>
@@ -1529,7 +1530,7 @@ export const SettingsPanel = ({
 
                             {/* Neural Maintenance & Backup Section */}
                             <div className="space-y-4 pt-4 md:pt-4">
-                                <label className="text-sm font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
+                                <label className="text-sm font-black text-[var(--text-primary)] uppercase tracking-[0.2em] flex items-center gap-2">
                                     <Icon name="tools" className="text-cyan-400" /> {t('settings.backup.title')}
                                 </label>
 
@@ -1571,7 +1572,7 @@ export const SettingsPanel = ({
                                                         await askAlert(t('dialogs.restore_error', { error: res.error }));
                                                     }
                                                 }}
-                                                className="py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all flex flex-col items-center justify-center gap-2 border shadow-lg group/btn premium-button premium-emphasis premium-indigo bg-slate-800 text-slate-300"
+                                                className="py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all flex flex-col items-center justify-center gap-2 border shadow-lg group/btn premium-button premium-emphasis premium-indigo bg-indigo-500/10 text-indigo-400"
                                             >
                                                 <Icon name="file-download" className="text-xl group-hover/btn:scale-110 transition-transform" />
                                                 <span>{t('settings.backup.restore_btn')}</span>
@@ -1591,13 +1592,13 @@ export const SettingsPanel = ({
 
                         {/* ── Danger Zone: Factory Reset ─────────────────────── */}
                         <div className="pt-2">
-                            <div className="premium-card premium-red p-6 bg-red-950/[0.03] hover:bg-red-950/15 border border-transparent hover:border-red-500/20 group overflow-hidden transition-all duration-700">
+                            <div className="premium-card premium-red p-6 bg-red-950/[0.03] hover:bg-red-950/15 group overflow-hidden transition-all duration-700">
                                 {/* Subtle Inner Glow - Appears on Hover */}
                                 <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-red-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
 
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
                                     <div className="flex items-center gap-5">
-                                        <div className="w-14 h-14 rounded-2xl bg-red-500/[0.05] border border-transparent group-hover:bg-red-500/20 group-hover:border-red-500/30 transition-all duration-500 flex items-center justify-center text-red-400/80 group-hover:text-red-400">
+                                        <div className="w-14 h-14 rounded-2xl premium-icon-box bg-red-500/[0.05] group-hover:bg-red-500/20 transition-all duration-500 flex items-center justify-center text-red-400/80 group-hover:text-red-400">
                                             <Icon name="exclamation-triangle" className="text-2xl animate-pulse" />
                                         </div>
                                         <div className="flex flex-col">
@@ -1653,7 +1654,7 @@ export const SettingsPanel = ({
 
                                 <button
                                     onClick={onSaveGlobal}
-                                    className={`pointer-events-auto h-12 bg-slate-900 hover:bg-slate-800 border border-transparent hover:border-blue-500/50 text-slate-400 hover:text-blue-200 rounded-full transition-all duration-700 ease-in-out flex items-center justify-center shadow-[0_10px_40px_rgba(0,0,0,0.4)] group relative overflow-hidden premium-button px-0 ${isAtBottom ? 'w-36 px-6' : 'w-12 group-hover:w-36 group-hover:px-6'}`}
+                                    className={`pointer-events-auto h-12 bg-[var(--surface-color)] hover:bg-[var(--hover-color)] border border-[var(--border-color)]/20 hover:border-blue-500/50 text-[var(--text-secondary)] hover:text-blue-500 rounded-full transition-all duration-700 ease-in-out flex items-center justify-center shadow-[0_10px_40px_rgba(0,0,0,0.2)] group relative overflow-hidden premium-button px-0 ${isAtBottom ? 'w-36 px-6' : 'w-12 group-hover:w-36 group-hover:px-6'}`}
                                     title={t('settings.actions.save')}
                                 >
                                     {/* Liquid Shine Effect */}

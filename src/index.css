@@ -2536,10 +2536,11 @@ pre code .hl-directive { color: #fb7185 !important; font-weight: 700; }
   --pc-glow: rgba(59, 130, 246, 0.2);
   position: relative;
   background: rgba(30, 41, 59, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.03);
+  border: 1px solid transparent !important;
   border-radius: 1.25rem;
   transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
   overflow: hidden;
+  box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.5), 0 10px 20px -10px rgba(0, 0, 0, 0.4);
   /* Hardware Acceleration Fix - Force layer promotion to prevent masking glitches during global repaints */
   transform: translateZ(0);
 }
@@ -2553,7 +2554,7 @@ pre code .hl-directive { color: #fb7185 !important; font-weight: 700; }
 
 .premium-card.premium-searxena {
   background: #0b0e14 !important;
-  border-color: rgba(129, 140, 248, 0.08);
+  border-color: rgba(129, 140, 248, 0.08) !important;
 }
 
 .premium-card::after {
@@ -2578,8 +2579,8 @@ pre code .hl-directive { color: #fb7185 !important; font-weight: 700; }
 
 .premium-card:hover, .premium-card.active {
   background: var(--surface-color);
-  border-color: var(--pc-color);
-  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1), 0 0 20px var(--pc-glow);
+  border-color: var(--pc-color) !important;
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.25), 0 0 20px var(--pc-glow);
   transform: translateY(-2px);
 }
 
@@ -2603,11 +2604,22 @@ pre code .hl-directive { color: #fb7185 !important; font-weight: 700; }
 
 .premium-input {
   background: var(--hover-color) !important;
-  border: 1px solid var(--border-color) !important;
+  border: 1px solid rgba(0, 0, 0, 0.05) !important;
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1) !important;
   color: var(--text-primary) !important;
+  box-shadow: inset 2px 2px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+.premium-path-box {
+  background: var(--hover-color) !important;
+  box-shadow: inset 2px 2px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+.premium-icon-box {
+  border: none !important;
+  box-shadow: inset 2px 2px 10px rgba(0, 0, 0, 0.25) !important;
 }
 
 /* Specific styling for Select elements to fix visibility issues */
@@ -2636,10 +2648,49 @@ select.premium-input option {
   overflow: hidden;
   transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
   cursor: pointer;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+}
+
+.premium-button:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
 }
 
 .premium-button:active {
   transform: scale(0.96) translateY(1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Global Dropdown Portal Styling (ModernSelect) */
+.modern-select-portal {
+    background-color: var(--surface-color) !important;
+    backdrop-filter: blur(25px) !important;
+    -webkit-backdrop-filter: blur(25px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    /* High-intensity multi-layered shadow for absolute depth */
+    box-shadow: 
+        0 30px 60px -12px rgba(0, 0, 0, 0.95), 
+        0 18px 36px -18px rgba(0, 0, 0, 0.8),
+        0 0 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+.modern-select button {
+    background-color: rgba(0, 0, 0, 0.4) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    /* Force shadow visibility at rest */
+    box-shadow: 
+        0 15px 30px -10px rgba(0, 0, 0, 0.8),
+        0 5px 10px -5px rgba(0, 0, 0, 0.6),
+        inset 0 1px 1px rgba(255, 255, 255, 0.05) !important;
+}
+
+.modern-select button:hover {
+    background-color: rgba(0, 0, 0, 0.6) !important;
+    border-color: var(--primary-color) !important;
+    box-shadow: 
+        0 20px 40px -10px rgba(0, 0, 0, 0.9),
+        0 0 15px var(--glass-glow) !important;
+    transform: translateY(-1px);
 }
 
 /* searXena Mascot Animations - Hover Only */
@@ -2753,10 +2804,8 @@ select.premium-input option {
   background: var(--surface-color);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
-  border: 1px solid var(--border-color);
-  box-shadow: 
-    0 4px 20px rgba(0, 0, 0, 0.1),
-    inset 0 0 1px 1px rgba(255, 255, 255, 0.01);
+  border: 1px solid transparent !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
   border-radius: 1.5rem;
   transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
   transform: translateZ(0);
@@ -2764,56 +2813,18 @@ select.premium-input option {
 }
 
 .premium-panel:hover, .premium-panel:focus-within {
-  border-color: var(--secondary-color);
+  border-color: var(--secondary-color) !important;
   box-shadow: 
     0 0 40px var(--glass-glow),
-    inset 0 0 0px 1px rgba(255, 255, 255, 0.05);
+    0 10px 40px -10px rgba(0, 0, 0, 0.3);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
   background: var(--surface-color);
 }
 
-.premium-card {
-  position: relative;
-  background: var(--hover-color);
-  border: 1px solid var(--border-color);
-  border-radius: 1.25rem;
-  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
-  overflow: hidden;
-  /* Hardware Acceleration Fix - Force layer promotion to prevent masking glitches during global repaints */
-  transform: translateZ(0);
-}
+/* Duplicated .premium-card removed */
 
-.premium-card::after {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  z-index: -1;
-  border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(135deg, var(--pc-color), transparent 40%, transparent 60%, var(--pc-color));
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.4s ease;
-  /* Mask isolation fix - Forces the browser to calculate masks in their own composite layer */
-  transform: translateZ(0);
-  backface-visibility: hidden;
-}
 
-.premium-card:hover, .premium-card.active {
-  background: rgba(30, 41, 59, 0.45);
-  border-color: var(--pc-color, rgba(255, 255, 255, 0.1));
-  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.3), 0 0 15px var(--pc-glow);
-  transform: translateY(-2px);
-}
-
-.premium-card:hover::after, .premium-card.active::after {
-  opacity: 1;
-}
 
 .premium-emphasis {
   border-color: transparent !important;
@@ -3150,8 +3161,8 @@ select.premium-input option {
 /* ── Cloud Theme (Light Mode) Refinements ─────────────────────────── */
 .theme-cloud .premium-card {
     background: rgba(255, 255, 255, 0.7);
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    border: 1px solid transparent;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
 }
 
 /* Clearer hover without inward-pointing masks */
@@ -3161,24 +3172,77 @@ select.premium-input option {
 
 .theme-cloud .premium-card:hover {
     background: rgba(255, 255, 255, 1);
-    border-color: rgba(0, 0, 0, 0.2) !important;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
     transform: translateY(-2px);
 }
 
+/* Dropdown (ModernSelect) Refinements for Cloud Theme */
+.theme-cloud .modern-select button {
+    background-color: #ffffff !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+}
+
+.theme-cloud .modern-select button:hover {
+    background-color: #ffffff !important;
+    border-color: rgba(0, 0, 0, 0.1) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Dropdown Portal (The actual menu) - Correctly targeted for Cloud Theme */
+.theme-cloud .modern-select-portal {
+    background-color: #ffffff !important;
+    border: 1px solid rgba(0, 0, 0, 0.15) !important;
+}
+
+.theme-cloud .modern-select-portal div:hover {
+    background-color: rgba(0, 0, 0, 0.03) !important;
+}
+
+/* Fix active item color in cloud dropdown */
+.theme-cloud .modern-select-portal div[class*="bg-[var(--primary-color)]"] {
+    background-color: rgba(6, 182, 212, 0.1) !important;
+    color: #0891b2 !important; /* cyan-600 */
+}
+
 .theme-cloud .bg-black\/40 {
-    background-color: rgba(0, 0, 0, 0.03);
+    background-color: rgba(0, 0, 0, 0.04);
     border-color: rgba(0, 0, 0, 0.1);
+    box-shadow: inset 2px 2px 8px rgba(0, 0, 0, 0.08) !important;
 }
 
 .theme-cloud .text-slate-100 {
     color: var(--text-primary);
 }
 
-.theme-cloud .text-slate-300,
-.theme-cloud .text-slate-400,
 .theme-cloud .text-slate-500 {
     color: var(--text-secondary);
+}
+
+/* ── Forest Theme Refinements ─────────────────────────── */
+.theme-forest .premium-card {
+    box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.7), 0 10px 20px -10px rgba(0, 0, 0, 0.5);
+    border-color: rgba(16, 185, 129, 0.1) !important;
+}
+
+.theme-forest .modern-select button {
+    background-color: rgba(2, 44, 34, 0.9) !important;
+    border: 1px solid transparent !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+.theme-forest .modern-select-portal {
+    background-color: #022c22 !important; /* Even darker green */
+    border: 1px solid transparent !important;
+}
+
+.theme-forest .modern-select-portal div:hover {
+    background-color: rgba(16, 185, 129, 0.15) !important;
+}
+
+.theme-forest .modern-select-portal div[class*="bg-[var(--primary-color)]"] {
+    background-color: rgba(16, 185, 129, 0.3) !important;
+    color: #34d399 !important; /* emerald-400 */
 }
 
 .theme-cloud .bg-white\/5,
@@ -3249,21 +3313,18 @@ select.premium-input option {
     backdrop-filter: blur(12px) !important;
 }
 
-.theme-cloud .bg-amber-500\/15,
-.theme-cloud .bg-amber-500\/10 {
+.theme-cloud .premium-icon-box.bg-amber-500\/10 {
     background-color: rgba(255, 251, 235, 0.4) !important; /* amber-50 */
-    background-color: rgba(255, 251, 235, 0.4) !important; /* amber-50 */
-
     color: #b45309 !important; /* amber-700 */
-    border: 1px solid rgba(245, 158, 11, 0.3) !important;
+    border: none !important;
     backdrop-filter: blur(12px) !important;
 }
 
-.theme-cloud .bg-emerald-500\/10,
-.theme-cloud .bg-indigo-500\/10,
-.theme-cloud .bg-pink-500\/10 {
+.theme-cloud .premium-icon-box.bg-emerald-500\/10,
+.theme-cloud .premium-icon-box.bg-indigo-500\/10,
+.theme-cloud .premium-icon-box.bg-pink-500\/10 {
     background-color: rgba(255, 255, 255, 0.6) !important;
-    border: 1px solid rgba(0, 0, 0, 0.05) !important;
+    border: none !important;
 }
 
 .theme-cloud .premium-emerald { --pc-color: #059669; --pc-glow: rgba(5, 150, 105, 0.2); }
