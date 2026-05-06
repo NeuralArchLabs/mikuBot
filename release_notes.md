@@ -23,7 +23,7 @@ Controlling Miku remotely is now more reliable and informative.
 - **Engine Stability**: Patched `ENOTEMPTY` errors when clearing legacy virtual environments to prevent boot failures.
 
 ## ⬇️ Download
-[Download MikuCentral-Setup-2.4.1.exe](https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.4.1/MikuCentral-Setup-2.4.1.exe)
+[Download MikuCentral.Setup.2.4.1.exe](https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.4.1/MikuCentral.Setup.2.4.1.exe)
 
 ---
 *Developed with precision by Neural Arch Labs.*

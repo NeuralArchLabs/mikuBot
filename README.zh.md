@@ -18,7 +18,7 @@
 
 <br/>
 
-<a href="https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.4.1/MikuCentral-Setup-2.4.1.exe">
+<a href="https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.4.1/MikuCentral.Setup.2.4.1.exe">
   <img src="https://img.shields.io/badge/下载最新版本-v2.4.1-60A5FA?style=for-the-badge&logo=windows&logoColor=white" height="40" />
 </a>
 
