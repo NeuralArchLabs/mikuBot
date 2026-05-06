@@ -500,7 +500,8 @@
       "resume_task": "Resume Task",
       "close_debug": "Close Debug Interface",
       "hide": "Hide",
-      "show": "Show"
+      "show": "Show",
+      "expand": "View"
     },
     "alerts": {
       "voice_error": "❌ Voice Error: {{error}}",
@@ -516,7 +517,9 @@
     "labels": {
       "debug_interface": "Neural Debugging Interface",
       "debug_desc": "Raw Context & Internal Log Streaming",
-      "no_data": "No raw neural data recorded yet for this session.",
+      "no_data": "No raw neural data has been recorded for this session yet.",
+      "steps_executed_one": "{{count}} action",
+      "steps_executed_other": "{{count}} actions",
       "free_conversation": "Free Conversation",
       "link_intermittent": "Neural Link Intermittent: Local directories sleeping.",
       "wake_up": "Wake Up Linkages",
@@ -540,8 +543,8 @@
       "status_safe": "Protected",
       "status_batch": "Direct",
       "no_user_message": "no user message",
-      "user_sent_attachment": "user attached {{count}} file",
-      "user_sent_attachment_plural": "user attached {{count}} files",
+      "user_sent_attachment_one": "user attached {{count}} file",
+      "user_sent_attachment_other": "user attached {{count}} files",
       "prompt": {
         "protocol_reinforcement": "PROTOCOL REINFORCEMENT",
         "useful_reminders": "USEFUL REMINDERS",

@@ -495,7 +495,8 @@
       "resume_task": "Reanudar Tarea",
       "close_debug": "Cerrar Interfaz de Depuración",
       "hide": "Ocultar",
-      "show": "Mostrar"
+      "show": "Mostrar",
+      "expand": "Ver"
     },
     "alerts": {
       "voice_error": "❌ Error de Voz: {{error}}",
@@ -511,7 +512,9 @@
     "labels": {
       "debug_interface": "Interfaz de Depuración Neural",
       "debug_desc": "Contexto Bruto y Streaming de Registros Internos",
-      "no_data": "Aún no se han registrado datos neurales brutos para esta sesión.",
+      "no_data": "Aún no se han registrado datos neuronales crudos para esta sesión.",
+      "steps_executed_one": "{{count}} acción",
+      "steps_executed_other": "{{count}} acciones",
       "free_conversation": "Conversación Libre",
       "link_intermittent": "Enlace Neural Intermitente: Directorios locales inactivos.",
       "wake_up": "Despertar Enlaces",
@@ -535,8 +538,8 @@
       "status_safe": "Protegido",
       "status_batch": "Directo",
       "no_user_message": "sin mensaje de usuario",
-      "user_sent_attachment": "usuario adjuntó {{count}} archivo",
-      "user_sent_attachment_plural": "usuario adjuntó {{count}} archivos",
+      "user_sent_attachment_one": "usuario adjuntó {{count}} archivo",
+      "user_sent_attachment_other": "usuario adjuntó {{count}} archivos",
       "prompt": {
         "protocol_reinforcement": "REFUERZO DE PROTOCOLO",
         "useful_reminders": "RECORDATORIOS ÚTILES",
