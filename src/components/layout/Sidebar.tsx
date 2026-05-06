@@ -239,8 +239,8 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                         <button
                                             key={tab.id}
                                             onClick={() => setState(prev => ({ ...prev, activeTab: tab.id as any, selectedFile: '' }))}
-                                            className={`w-full flex items-center justify-center lg:justify-start gap-4 px-3 lg:px-4 rounded-xl transition-all duration-300 group premium-button border ${state.activeTab === tab.id
-                                                ? 'text-[var(--text-primary)] shadow-md'
+                                            className={`w-full flex items-center justify-center lg:justify-start gap-4 px-3 lg:px-4 rounded-xl transition-all duration-300 group border ${state.activeTab === tab.id
+                                                ? 'premium-button text-[var(--text-primary)] shadow-md'
                                                 : 'border-transparent shadow-none text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--hover-color)]'
                                                 }`}
                                             style={{ 
