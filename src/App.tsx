@@ -2492,6 +2492,7 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                         voskModelPath={state.config.voskModelPath}
                         userName={state.config.userName}
                         assistantAlias={state.config.assistantAlias}
+                        onUpdatePartialConfig={(updates) => setState(p => ({ ...p, config: { ...p.config, ...updates } }))}
 
                     />
                 </div>

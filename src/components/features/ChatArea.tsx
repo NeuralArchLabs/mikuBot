@@ -11,6 +11,7 @@ import { CollapsibleTextBlock } from '../common/CollapsibleTextBlock';
 import { TypewriterIdle } from '../common/TypewriterIdle';
 import { useAgentStore, selectInput, selectMessages, selectAgentStatus, selectIsLoading, selectIsViewing, selectPendingToolApproval, selectExecutingSessionId } from '../../stores/useAgentStore';
 import { persistence, VisionService } from '../../services';
+import { PROVIDERS } from '../../constants/providers';
 
 interface ChatAreaProps {
     sessionId: string;
@@ -41,6 +42,7 @@ interface ChatAreaProps {
     onSessionsUpdate?: (sessions: any[] | ((prev: any[]) => any[])) => void;
     config: AppConfig;
     models: Record<Provider, ModelInfo[]>;
+    onUpdatePartialConfig?: (updates: Partial<AppConfig>) => void;
 }
 
 const ChatInputControls = React.memo(({
@@ -57,6 +59,32 @@ const ChatInputControls = React.memo(({
     useEffect(() => {
         setLocalInput(globalInput);
     }, [globalInput]);
+
+    // Attachment Carousel Drag Engine
+    const [dragState, setDragState] = useState({ isDragging: false, startX: 0, scrollLeft: 0 });
+    const carouselRef = useRef<HTMLDivElement>(null);
+
+    const handleDragStart = (e: React.MouseEvent) => {
+        const carousel = carouselRef.current;
+        if (!carousel) return;
+        setDragState({
+            isDragging: true,
+            startX: e.pageX - carousel.offsetLeft,
+            scrollLeft: carousel.scrollLeft
+        });
+    };
+
+    const handleDragging = (e: React.MouseEvent) => {
+        if (!dragState.isDragging || !carouselRef.current) return;
+        e.preventDefault();
+        const x = e.pageX - carouselRef.current.offsetLeft;
+        const walk = (x - dragState.startX) * 1.8; // Scroll sensitivity
+        carouselRef.current.scrollLeft = dragState.scrollLeft - walk;
+    };
+
+    const handleDragEnd = () => {
+        setDragState(prev => ({ ...prev, isDragging: false }));
+    };
 
     // Debounced sync to store for "Draft" persistence
     useEffect(() => {
@@ -128,9 +156,23 @@ const ChatInputControls = React.memo(({
                 <div className="flex items-end pointer-events-auto">
                 {/* Attachments Preview (Left) */}
                 {attachments.length > 0 && (
-                    <div className="flex gap-2 pb-1">
+                    <div 
+                        ref={carouselRef}
+                        onWheel={(e) => {
+                            if (e.deltaY !== 0) {
+                                e.currentTarget.scrollLeft += e.deltaY;
+                                e.preventDefault();
+                            }
+                        }}
+                        onMouseDown={handleDragStart}
+                        onMouseMove={handleDragging}
+                        onMouseUp={handleDragEnd}
+                        onMouseLeave={handleDragEnd}
+                        className={`flex gap-2 pt-2 pb-2 overflow-x-auto no-scrollbar max-w-[210px] px-4 scroll-smooth snap-x flex-nowrap pointer-events-auto transition-all select-none mask-horizontal-fade ${dragState.isDragging ? 'cursor-grabbing' : 'cursor-grab active:cursor-grabbing'}`}
+                    >
                         {attachments.map((att: any) => (
-                            <div key={att.id} className="relative group bg-slate-800 border border-slate-700 rounded-lg p-1 flex items-center justify-center w-10 h-10 shadow-sm">
+                            <div key={att.id} className="relative group bg-slate-800 border border-slate-700 rounded-lg p-1 flex items-center justify-center w-10 h-10 shadow-sm flex-shrink-0 snap-start pointer-events-none">
+                                <div className="pointer-events-auto w-full h-full flex items-center justify-center">
                                 {att.type.startsWith('image/') ? (
                                     <>
                                         <div className="relative w-full h-full rounded-md overflow-hidden">
@@ -161,9 +203,10 @@ const ChatInputControls = React.memo(({
                                         <span className="text-[6px] uppercase font-bold text-slate-500 truncate max-w-[32px]">{att.name.split('.').pop()}</span>
                                     </div>
                                 )}
+                                </div>
                                 <button
-                                    onClick={() => handleRemoveAttachment(att.id)}
-                                    className="absolute -top-1.5 -right-1.5 bg-red-500/90 hover:bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center w-4 h-4 shadow-sm"
+                                    onClick={(e) => { e.stopPropagation(); handleRemoveAttachment(att.id); }}
+                                    className="absolute -top-1.5 -right-1.5 bg-red-500/90 hover:bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center w-4 h-4 shadow-sm pointer-events-auto"
                                     title={t('chat.actions.remove_attachment')}
                                     aria-label={t('chat.actions.remove_attachment')}
                                 >
@@ -330,9 +373,62 @@ export const ChatArea = ({
     sessions,
     onSessionsUpdate,
     config,
-    models
+    models,
+    onUpdatePartialConfig
 }: ChatAreaProps) => {
     const { t, i18n } = useTranslation();
+    const [isModelSelectorOpen, setIsModelSelectorOpen] = useState(false);
+    const [isModeSelectorOpen, setIsModeSelectorOpen] = useState(false);
+    const [modeFlash, setModeFlash] = useState(false);
+    const modelSelectorRef = useRef<HTMLDivElement>(null);
+    const modeSelectorRef = useRef<HTMLDivElement>(null);
+
+    // Trigger flash on mode change
+    useEffect(() => {
+        setModeFlash(true);
+        const timer = setTimeout(() => setModeFlash(false), 400);
+        return () => clearTimeout(timer);
+    }, [agentMode]);
+
+    // Close model selector on click outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (modelSelectorRef.current && !modelSelectorRef.current.contains(event.target as Node)) {
+                setIsModelSelectorOpen(false);
+            }
+            if (modeSelectorRef.current && !modeSelectorRef.current.contains(event.target as Node)) {
+                setIsModeSelectorOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const currentProvider = agentMode === 'agent' 
+        ? (config.agentProvider || config.provider) 
+        : (config.chatProvider || config.provider);
+
+    const currentModelId = agentMode === 'agent'
+        ? (config.agentModel || config.model)
+        : (config.chatModel || config.model);
+
+    const availableModels = useMemo(() => models[currentProvider] || [], [models, currentProvider]);
+    const activeModelName = useMemo(() => 
+        availableModels.find(m => m.id === currentModelId)?.name || currentModelId || t('common.unknown_model'),
+    [availableModels, currentModelId, t]);
+
+    const handleModelChange = (modelId: string) => {
+        if (!onUpdatePartialConfig) return;
+        const isAgent = agentMode === 'agent';
+        const modelKey = isAgent ? 'agentModel' : 'chatModel';
+        const providerKey = isAgent ? 'agentProvider' : 'chatProvider';
+        
+        onUpdatePartialConfig({ 
+            [modelKey]: modelId,
+            [providerKey]: currentProvider 
+        });
+        setIsModelSelectorOpen(false);
+    };
 
     // High-frequency UI isolation: Subscribing locally to the store nodes.
     const messages = useAgentStore(selectMessages);
@@ -1520,7 +1616,7 @@ export const ChatArea = ({
                                                 <div className="mt-4 pt-3 border-t border-slate-700/50 flex items-center justify-between">
                                                     <div className="flex items-center gap-2 text-[9px] font-mono text-slate-500">
                                                         <span className="bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700/50 text-blue-400 font-bold uppercase">
-                                                            {msg.provider}
+                                                            {PROVIDERS[msg.provider as any]?.name || msg.provider}
                                                         </span>
                                                         <span className="opacity-60">{msg.model || t('chat.labels.default_model')}</span>
                                                     </div>
@@ -1650,7 +1746,7 @@ export const ChatArea = ({
                     </div>
                 </div>
             </div>
-                <div className="max-w-5xl mx-auto flex items-center gap-2 mb-2 flex-wrap">
+                <div className="max-w-5xl mx-auto flex items-center gap-2 mb-2 flex-nowrap">
                     <button
                         onClick={() => onAgentModeChange(agentMode === 'chat' ? 'agent' : 'chat')}
                         className={config.chatBackgroundImage || config.theme === 'cloud' || config.theme === 'cyberpunk' || config.theme === 'forest'
@@ -1666,28 +1762,77 @@ export const ChatArea = ({
                         <Icon name="sliders-h" />
                         <span className="-mb-[1px]">{t('chat.labels.mode')}</span>
                     </button>
-                    <div className="relative group/mode">
-                        <select
-                            value={agentMode}
-                            onChange={(e) => onAgentModeChange(e.target.value as AgentMode)}
+                    <div className="relative group/mode" ref={modeSelectorRef}>
+                        <div 
+                            className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none transition-all duration-300 scale-75 z-10 opacity-80 group-hover/mode:opacity-100 group-focus-within/mode:opacity-100"
+                            style={{ 
+                                color: 'var(--accent-color)',
+                                filter: (isModeSelectorOpen || modeFlash) ? 'drop-shadow(0 0 5px var(--accent-color))' : 'none'
+                            }}
+                        >
+                            <Icon name={agentMode === 'chat' ? 'comment-alt' : 'robot'} />
+                        </div>
+                        
+                        <button
+                            onClick={() => setIsModeSelectorOpen(!isModeSelectorOpen)}
                             className={config.chatBackgroundImage || config.theme === 'cloud' || config.theme === 'cyberpunk' || config.theme === 'forest'
-                                ? `backdrop-blur-md border border-transparent transition-all duration-300 appearance-none cursor-pointer shadow-sm hover:shadow-md rounded px-2.5 pr-9 py-1 text-xs font-mono outline-none opacity-60 hover:opacity-100 focus:opacity-100 ${
+                                ? `backdrop-blur-md border border-transparent transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md rounded pl-8 pr-9 py-1 text-xs font-mono outline-none flex items-center gap-2 h-6 transform-gpu backface-visibility-hidden ${
+                                    (isModeSelectorOpen || modeFlash) ? 'opacity-100 border-slate-700/50' : 'opacity-70 hover:opacity-100'
+                                  } ${
                                     (config.theme === 'cloud' && !config.chatBackgroundImage)
-                                    ? 'bg-slate-100/30 hover:bg-slate-100/80 hover:border-slate-300/60 focus:bg-white text-slate-600 focus:text-slate-900 md:backdrop-blur-sm'
-                                    : 'bg-slate-900/40 hover:bg-slate-900 focus:bg-slate-900 hover:border-slate-700 hover:text-slate-100 focus:text-slate-100 text-slate-300'
+                                    ? `bg-slate-100/30 hover:bg-slate-100/90 hover:border-slate-300/60 ${modeFlash || isModeSelectorOpen ? 'text-slate-950' : 'text-slate-600 hover:text-slate-950'}`
+                                    : `bg-slate-900/40 hover:bg-slate-900 hover:border-slate-700 ${modeFlash || isModeSelectorOpen ? 'text-slate-100' : 'text-slate-300 hover:text-slate-100'}`
                                   }`
-                                : "bg-slate-800/80 border border-transparent hover:border-slate-700 rounded px-2 pr-10 py-1 text-xs text-slate-300 hover:text-slate-200 font-mono focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-300 appearance-none cursor-pointer opacity-80 hover:opacity-100 focus:opacity-100"
+                                : `border border-transparent rounded pl-8 pr-10 py-1 text-xs font-mono transition-all duration-300 flex items-center gap-2 h-6 transform-gpu backface-visibility-hidden ${
+                                    (isModeSelectorOpen || modeFlash) 
+                                    ? 'opacity-100 border-slate-700 bg-slate-800/80 text-slate-100' 
+                                    : 'bg-slate-800/80 text-slate-300 hover:text-slate-100 hover:bg-slate-900 hover:border-slate-700 opacity-80 hover:opacity-100'
+                                  }`
                             }
                             title={t('chat.actions.mode_selector')}
                         >
-                            <option value="chat" className={(config.theme === 'cloud' && !config.chatBackgroundImage) ? "bg-white text-slate-900" : "bg-slate-900"}>💬 {t('chat.modes.chat')}</option>
-                            <option value="agent" className={(config.theme === 'cloud' && !config.chatBackgroundImage) ? "bg-white text-slate-900" : "bg-slate-900"}>🤖 {t('chat.modes.agent')}</option>
-                        </select>
-                        <div className={`absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none transition-all duration-300 scale-75 ${
-                            (config.theme === 'cloud' && !config.chatBackgroundImage) ? 'text-slate-400 group-hover/mode:text-slate-600' : 'text-slate-400 group-hover/mode:text-slate-200'
-                        } opacity-40 group-hover/mode:opacity-100`}>
-                            <Icon name="chevron-down" />
-                        </div>
+                            <span className="truncate">{agentMode === 'chat' ? t('chat.modes.chat') : t('chat.modes.agent')}</span>
+                            <div className={`absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none transition-all duration-300 scale-75 ${
+                                (config.theme === 'cloud' && !config.chatBackgroundImage) ? 'text-slate-400 group-hover/mode:text-slate-600' : 'text-slate-400 group-hover/mode:text-slate-200'
+                            } opacity-40 group-hover/mode:opacity-100 ${isModeSelectorOpen ? 'rotate-180' : ''}`}>
+                                <Icon name="chevron-down" />
+                            </div>
+                        </button>
+
+                        {isModeSelectorOpen && (
+                            <div className="absolute top-full left-0 mt-2 w-32 bg-slate-950/90 backdrop-blur-xl border border-slate-800 rounded-lg shadow-2xl overflow-hidden z-[100] animate-in fade-in slide-in-from-top-2 duration-200">
+                                <button
+                                    onClick={() => {
+                                        onAgentModeChange('chat');
+                                        setIsModeSelectorOpen(false);
+                                    }}
+                                    className="w-full flex items-center gap-2.5 px-3 py-2 text-[10px] transition-all hover:bg-slate-800/50 group"
+                                    style={{ 
+                                        color: agentMode === 'chat' ? 'var(--accent-color)' : 'var(--text-secondary)',
+                                        backgroundColor: agentMode === 'chat' ? 'var(--hover-color)' : 'transparent'
+                                    }}
+                                >
+                                    <Icon name="comment-alt" className="text-[10px]" />
+                                    <span className="font-mono">{t('chat.modes.chat')}</span>
+                                    {agentMode === 'chat' && <Icon name="check" className="ml-auto text-[8px]" />}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        onAgentModeChange('agent');
+                                        setIsModeSelectorOpen(false);
+                                    }}
+                                    className="w-full flex items-center gap-2.5 px-3 py-2 text-[10px] transition-all hover:bg-slate-800/50 group"
+                                    style={{ 
+                                        color: agentMode === 'agent' ? 'var(--accent-color)' : 'var(--text-secondary)',
+                                        backgroundColor: agentMode === 'agent' ? 'var(--hover-color)' : 'transparent'
+                                    }}
+                                >
+                                    <Icon name="robot" className="text-[10px]" />
+                                    <span className="font-mono">{t('chat.modes.agent')}</span>
+                                    {agentMode === 'agent' && <Icon name="check" className="ml-auto text-[8px]" />}
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     {/* Agent-only toggles: Approval Mode + Safe Mode */}
@@ -1698,10 +1843,15 @@ export const ChatArea = ({
                             {/* Approval Mode Toggle */}
                             <button
                                 onClick={() => onApprovalModeChange(approvalMode === 'auto' ? 'manual' : 'auto')}
-                                className={`flex items-center justify-center gap-1.5 px-2 h-6 min-w-[75px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border border-transparent transition-all duration-300 leading-normal opacity-70 hover:opacity-100 ${approvalMode === 'manual'
-                                    ? 'bg-blue-500/10 hover:bg-blue-500/20 hover:border-blue-500/30 text-blue-400/80 hover:text-blue-400 shadow-sm shadow-blue-500/10'
-                                    : 'bg-amber-500/10 hover:bg-amber-500/20 hover:border-amber-500/30 text-amber-400/80 hover:text-amber-400 shadow-sm shadow-amber-500/10'
-                                    }`}
+                                className={`flex items-center justify-center gap-1.5 px-2.5 h-6 min-w-[80px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-300 leading-normal opacity-100 hover:shadow-[0_8px_15px_-3px_rgba(0,0,0,0.5)] active:scale-95 ${
+                                    approvalMode === 'manual'
+                                        ? config.theme === 'cloud' && !config.chatBackgroundImage
+                                            ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20 bg-gradient-to-b from-white/20 to-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.3),inset_0_-1px_0_rgba(0,0,0,0.4)] [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]'
+                                            : `border-blue-500/40 text-blue-300 bg-gradient-to-b from-white/10 to-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.2),inset_0_-1px_0_rgba(0,0,0,0.3)] ${config.chatBackgroundImage ? 'bg-slate-900/60 hover:!bg-blue-600 text-blue-100 hover:!text-white shadow-lg [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]' : 'bg-blue-500/10 hover:!bg-blue-500/30'}`
+                                        : config.theme === 'cloud' && !config.chatBackgroundImage
+                                            ? 'bg-amber-500 border-amber-400 text-white shadow-lg shadow-amber-500/20 bg-gradient-to-b from-white/20 to-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.3),inset_0_-1px_0_rgba(0,0,0,0.4)] [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]'
+                                            : `border-amber-500/40 text-amber-400 bg-gradient-to-b from-white/5 to-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.1),inset_0_-1px_0_rgba(0,0,0,0.2)] ${config.chatBackgroundImage ? 'bg-slate-900/60 hover:!bg-amber-600 text-amber-100 hover:!text-white shadow-lg [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]' : 'bg-amber-500/10 hover:!bg-amber-500/30'}`
+                                }`}
                                 title={approvalMode === 'manual'
                                     ? t('chat.actions.manual_approval_desc')
                                     : t('chat.actions.auto_approval_desc')
@@ -1714,10 +1864,15 @@ export const ChatArea = ({
                             {/* Safe Mode Toggle */}
                             <button
                                 onClick={() => onSafeModeChange(!safeMode)}
-                                className={`flex items-center justify-center gap-1.5 px-2 h-6 min-w-[75px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border border-transparent transition-all duration-300 leading-normal opacity-70 hover:opacity-100 ${safeMode
-                                    ? 'bg-blue-500/10 hover:bg-blue-500/20 hover:border-blue-500/30 text-blue-400/80 hover:text-blue-400 shadow-sm shadow-blue-500/10'
-                                    : 'bg-amber-500/10 hover:bg-amber-500/20 hover:border-amber-500/30 text-amber-400/80 hover:text-amber-400 shadow-sm shadow-amber-500/10'
-                                    }`}
+                                className={`flex items-center justify-center gap-1.5 px-2.5 h-6 min-w-[80px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-300 leading-normal opacity-100 hover:shadow-[0_8px_15px_-3px_rgba(0,0,0,0.5)] active:scale-95 ${
+                                    safeMode
+                                        ? config.theme === 'cloud' && !config.chatBackgroundImage
+                                            ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20 bg-gradient-to-b from-white/20 to-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.3),inset_0_-1px_0_rgba(0,0,0,0.4)] [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]'
+                                            : `border-blue-500/40 text-blue-300 bg-gradient-to-b from-white/10 to-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.2),inset_0_-1px_0_rgba(0,0,0,0.3)] ${config.chatBackgroundImage ? 'bg-slate-900/60 hover:!bg-blue-600 text-blue-100 hover:!text-white shadow-lg [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]' : 'bg-blue-500/10 hover:!bg-blue-500/30'}`
+                                        : config.theme === 'cloud' && !config.chatBackgroundImage
+                                            ? 'bg-amber-500 border-amber-400 text-white shadow-lg shadow-amber-500/20 bg-gradient-to-b from-white/20 to-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.3),inset_0_-1px_0_rgba(0,0,0,0.4)] [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]'
+                                            : `border-amber-500/40 text-amber-400 bg-gradient-to-b from-white/5 to-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.1),inset_0_-1px_0_rgba(0,0,0,0.2)] ${config.chatBackgroundImage ? 'bg-slate-900/60 hover:!bg-amber-600 text-amber-100 hover:!text-white shadow-lg [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]' : 'bg-amber-500/10 hover:!bg-amber-500/30'}`
+                                }`}
                                 title={safeMode
                                     ? t('chat.actions.safe_mode_on_desc')
                                     : t('chat.actions.safe_mode_off_desc')
@@ -1729,16 +1884,65 @@ export const ChatArea = ({
                         </div>
                     </div>
 
-                    <span className={`text-[10px] font-mono hidden sm:inline-block ml-2 transition-opacity duration-300 ${
+                    <span className={`text-[10px] font-mono hidden sm:inline-block ml-2 transition-opacity duration-300 truncate max-w-[150px] ${
                         (config.theme === 'cloud' && !config.chatBackgroundImage) ? 'text-slate-500 opacity-60' : 'text-slate-400 opacity-40'
                     }`}>
-                        {agentMode === 'chat'
-                            ? t('chat.labels.free_conversation')
-                            : `${approvalMode === 'manual' ? '🔒 ' + t('chat.labels.status_manual') : '⚡ ' + t('chat.labels.status_auto')} · ${safeMode ? '💠 ' + t('chat.labels.status_safe') : '📦 ' + t('chat.labels.status_batch')}`
-                        }
+                        {agentMode === 'chat' && t('chat.labels.free_conversation')}
                     </span>
 
-                    <div className="ml-auto">
+                    <div className="ml-auto flex items-center gap-1.5">
+                        {/* Model Selector Dropdown */}
+                        <div className="relative" ref={modelSelectorRef}>
+                            <button
+                                onClick={() => setIsModelSelectorOpen(!isModelSelectorOpen)}
+                                className={`flex items-center justify-center gap-1.5 px-2.5 h-6 min-w-[120px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-300 leading-normal ${
+                                    isModelSelectorOpen 
+                                    ? 'bg-[var(--primary-color)] border-[var(--primary-color)] text-white shadow-[0_12px_25px_-5px_rgba(0,0,0,0.6),0_0_15px_rgba(var(--primary-rgb,59,130,246),0.4)] bg-gradient-to-b from-white/10 to-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.3),inset_0_-1px_0_rgba(0,0,0,0.4)] [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]' 
+                                    : (config.chatBackgroundImage || config.theme === 'cloud' || config.theme === 'cyberpunk' || config.theme === 'forest')
+                                        ? 'bg-slate-900/30 border-transparent hover:border-slate-500/30 text-slate-400 hover:text-slate-200 backdrop-blur-md hover:shadow-[0_8px_20px_-5px_rgba(0,0,0,0.7)] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),inset_0_-1px_0_rgba(0,0,0,0.1)]'
+                                        : 'bg-slate-800/40 border-transparent hover:border-slate-600 text-slate-500 hover:text-slate-300 hover:shadow-[0_8px_20px_-5px_rgba(0,0,0,0.7)] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),inset_0_-1px_0_rgba(0,0,0,0.1)]'
+                                }`}
+                                title={t('chat.actions.change_model')}
+                            >
+                                <Icon name="microchip" className={`text-[10px] ${isModelSelectorOpen ? 'text-white' : 'opacity-70'}`} />
+                                <span className="truncate max-w-[100px]">{activeModelName}</span>
+                                <Icon name="chevron-down" className={`text-[8px] transition-transform duration-300 ${isModelSelectorOpen ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {isModelSelectorOpen && (
+                                <div className="absolute bottom-full right-0 mb-2 w-48 bg-slate-950/90 backdrop-blur-xl border border-slate-800 rounded-lg shadow-2xl overflow-hidden z-[100] animate-in fade-in slide-in-from-bottom-2 duration-200">
+                                    <div className="px-3 py-1 border-b border-slate-800/50 bg-slate-900/40">
+                                        <span className="text-[8px] uppercase font-bold text-[var(--primary-color)] opacity-70 tracking-widest">{PROVIDERS[currentProvider]?.name || currentProvider}</span>
+                                    </div>
+                                    <div className="max-h-[200px] overflow-y-auto chat-input-scrollbar">
+                                        {availableModels.length > 0 ? (
+                                            availableModels.map((model) => (
+                                                <button
+                                                    key={model.id}
+                                                    onClick={() => handleModelChange(model.id)}
+                                                    className={`w-full flex items-center justify-between px-3 py-2 text-[10px] transition-all hover:bg-[var(--primary-color)]/10 group ${
+                                                        model.id === currentModelId ? 'text-[var(--primary-color)] bg-[var(--primary-color)]/5' : 'text-slate-400 hover:text-slate-200'
+                                                    }`}
+                                                >
+                                                    <span className="truncate pr-2 font-mono">{model.name}</span>
+                                                    {model.id === currentModelId && <Icon name="check" className="text-[8px]" />}
+                                                </button>
+                                            ))
+                                        ) : (
+                                            <div className="px-3 py-4 text-center">
+                                                <span className="text-[10px] text-slate-600 italic">{t('chat.labels.no_models_available')}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="px-3 py-1.5 bg-slate-900/40 border-t border-slate-800/50">
+                                        <span className="text-[8px] text-slate-500 flex items-center gap-1">
+                                            <Icon name="info-circle" /> {t('chat.labels.temporary_change')}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
                         <button
                             onClick={() => onDebugModeChange(!debugMode)}
                             className={config.chatBackgroundImage || config.theme === 'cloud' || config.theme === 'cyberpunk' || config.theme === 'forest'

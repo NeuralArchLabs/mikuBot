@@ -26,7 +26,7 @@ export const THEMES: Record<string, ThemeColors> = {
     '--surface-color': 'rgba(30, 41, 59, 0.7)', // Slate-800
     '--text-primary': '#f8fafc', // Slate-50
     '--text-secondary': '#94a3b8', // Slate-400
-    '--accent-color': '#32ff7e', // Miku Green
+    '--accent-color': '#94a3b8', // Light Gray Emphasis
     '--border-color': 'rgba(51, 65, 85, 0.5)',
     '--hover-color': 'rgba(96, 165, 250, 0.1)',
     '--sidebar-bg': 'rgba(15, 23, 42, 0.8)',
@@ -40,7 +40,7 @@ export const THEMES: Record<string, ThemeColors> = {
     '--surface-color': 'rgba(15, 23, 42, 0.7)',
     '--text-primary': '#f8fafc',
     '--text-secondary': '#64748b',
-    '--accent-color': '#3b82f6',
+    '--accent-color': '#94a3b8',
     '--border-color': 'rgba(30, 41, 59, 0.5)',
     '--hover-color': 'rgba(148, 163, 184, 0.1)',
     '--sidebar-bg': 'rgba(2, 6, 17, 0.9)',
@@ -54,7 +54,7 @@ export const THEMES: Record<string, ThemeColors> = {
     '--surface-color': 'rgba(255, 255, 255, 0.9)', 
     '--text-primary': '#334155', // Slate-700
     '--text-secondary': '#64748b', // Slate-500
-    '--accent-color': '#0d9488', // Teal-600
+    '--accent-color': '#94a3b8', // Light Gray (Slate-400)
     '--border-color': 'rgba(203, 213, 225, 1)', // Slate-200
     '--hover-color': 'rgba(37, 99, 235, 0.08)',
     '--sidebar-bg': 'rgba(241, 245, 249, 0.95)',

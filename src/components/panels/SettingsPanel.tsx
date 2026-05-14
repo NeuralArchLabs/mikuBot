@@ -716,7 +716,7 @@ export const SettingsPanel = ({
                                     <div className="space-y-5">
                                         <div>
                                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block ml-1">{t('settings.orchestration.provider')}</label>
-                                            <div className="flex gap-2 premium-bg-container !bg-black/20 p-1.5 rounded-2xl border border-white/5">
+                                            <div className="flex gap-2 premium-card !bg-black/20 p-1.5 rounded-2xl">
                                                 {(Object.keys(PROVIDERS) as Provider[]).map(pId => {
                                                     const isSelected = config.chatProvider === pId;
                                                     return (
@@ -918,7 +918,7 @@ export const SettingsPanel = ({
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mt-10">
                                         <div>
                                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block ml-1">{t('settings.orchestration.provider')}</label>
-                                            <div className="flex gap-2 premium-bg-container !bg-black/20 p-1.5 rounded-2xl border border-white/5">
+                                            <div className="flex gap-2 premium-card !bg-black/20 p-1.5 rounded-2xl">
                                                 {(Object.keys(PROVIDERS) as Provider[]).map(pId => {
                                                     const isSelected = config.visionProvider === pId;
                                                     return (

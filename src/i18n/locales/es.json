@@ -89,7 +89,9 @@
     "no_links": "Sin Enlaces",
     "decrease": "Disminuir",
     "increase": "Aumentar",
-    "code": "Código"
+    "code": "Código",
+    "hide_sidebar": "Ocultar barra lateral",
+    "show_sidebar": "Mostrar barra lateral"
   },
   "tools": {
     "metrics_summary": "Métricas del sistema obtenidas: {{platform}} [CPU: {{cpu}}%, RAM: {{ram}}]",
@@ -479,6 +481,7 @@
       "copy_logs": "Copiar todos los registros",
       "toggle_mode": "Pulse para alternar modo",
       "mode_selector": "Selector de modo de agente",
+      "change_model": "Cambiar modelo para este modo",
       "manual": "MANUAL",
       "auto": "AUTO",
       "safe": "SEGURO",
@@ -510,6 +513,9 @@
       "agent": "Agente"
     },
     "labels": {
+      "select_model": "SELECCIONAR MODELO",
+      "temporary_change": "Cambio temporal (no guardado)",
+      "no_models_available": "Sin modelos disponibles",
       "debug_interface": "Interfaz de Depuración Neural",
       "debug_desc": "Contexto Bruto y Streaming de Registros Internos",
       "no_data": "Aún no se han registrado datos neuronales crudos para esta sesión.",
@@ -578,7 +584,7 @@
     "actions": {
       "new_doc": "Nuevo Documento",
       "new_doc_short": "Nuevo Doc",
-      "save": "Guardar Contexto de Aplicación",
+      "save": "Aplicar Selección",
       "search": "Buscar archivos...",
       "no_match": "No se encontraron archivos coincidentes.",
       "empty": "No hay archivos en la carpeta de biblioteca. Selecciona una carpeta en ajustes o crea un archivo.",

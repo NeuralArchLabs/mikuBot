@@ -510,6 +510,28 @@ function healMermaidSyntax(code: string): string {
         }
     }
 
+    // 6. Graph / Flowchart: Fix unquoted node and edge labels with parentheses
+    if (/^\s*(graph|flowchart)\b/i.test(processed)) {
+        const lines = processed.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+            // Heal unquoted edge labels containing parentheses: -->|Text (text)|
+            lines[i] = lines[i].replace(/\|(?!")([^|]+)\|/g, (match, text) => {
+                if (/[()]/.test(text)) {
+                    return `|"${text.replace(/"/g, '&quot;')}"|`;
+                }
+                return match;
+            });
+            // Heal unquoted node labels containing parentheses inside square brackets: A[Text (text)]
+            lines[i] = lines[i].replace(/([A-Za-z0-9_]+)\[(?!")([^\]]+)\]/g, (match, node, text) => {
+                if (/[()]/.test(text)) {
+                    return `${node}["${text.replace(/"/g, '&quot;')}"]`;
+                }
+                return match;
+            });
+        }
+        processed = lines.join('\n');
+    }
+
     return processed;
 }
 

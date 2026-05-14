@@ -89,7 +89,9 @@
     "no_links": "No Links",
     "decrease": "Decrease",
     "increase": "Increase",
-    "code": "Code"
+    "code": "Code",
+    "hide_sidebar": "Hide Sidebar",
+    "show_sidebar": "Show Sidebar"
   },
   "dialogs": {
     "backup_success": "✅ Backup Created\n\nThe file has been saved at:\n{{path}}",
@@ -484,6 +486,7 @@
       "copy_logs": "Copy All Logs",
       "toggle_mode": "Click to toggle mode",
       "mode_selector": "Agent mode selector",
+      "change_model": "Change model for this mode",
       "manual": "MANUAL",
       "auto": "AUTO",
       "safe": "SAFE",
@@ -515,6 +518,9 @@
       "agent": "Agent"
     },
     "labels": {
+      "select_model": "SELECT MODEL",
+      "temporary_change": "Temporary change (not saved)",
+      "no_models_available": "No models available",
       "debug_interface": "Neural Debugging Interface",
       "debug_desc": "Raw Context & Internal Log Streaming",
       "no_data": "No raw neural data has been recorded for this session yet.",
@@ -582,7 +588,7 @@
     "actions": {
       "new_doc": "New Document",
       "new_doc_short": "New Doc",
-      "save": "Apply Application Context",
+      "save": "Apply Selection",
       "search": "Search files...",
       "no_match": "No matching files found.",
       "empty": "No files in library folder. Select a folder in settings or create a file.",

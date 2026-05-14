@@ -78,8 +78,8 @@ export const SessionList = React.memo(({ sessions, loading, currentSessionId, on
                     </div>
                 ) : (
                     <>
-                        {/* Buffer to clear the top fade mask when fully scrolled */}
-                        <div className="h-3 w-full flex-shrink-0" />
+                        {/* Buffer to clear the top fade mask when fully scrolled (only in sidebar) */}
+                        {!isModal && <div className="h-3 w-full flex-shrink-0" />}
                         {sessions.map(ss => {
                             const isActive = currentSessionId === ss.id;
     

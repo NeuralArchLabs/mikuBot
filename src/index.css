@@ -139,6 +139,43 @@ body, html {
   border: 4px solid transparent;
 }
 
+/* Tiny Horizontal Scrollbar for Attachments Carousel */
+.custom-scrollbar-mini {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(236, 72, 153, 0.2) transparent;
+}
+
+.custom-scrollbar-mini::-webkit-scrollbar {
+  height: 2px;
+}
+
+.custom-scrollbar-mini::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar-mini::-webkit-scrollbar-thumb {
+  background-color: rgba(236, 72, 153, 0.2);
+  border-radius: 4px;
+}
+
+.custom-scrollbar-mini::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(236, 72, 153, 0.4);
+}
+
+/* Hide scrollbar but keep functionality */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.mask-horizontal-fade {
+  mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+}
+
 .chat-input-scrollbar::-webkit-scrollbar-button {
   display: none;
 }
@@ -2388,6 +2425,50 @@ pre code .hl-directive { color: #fb7185 !important; font-weight: 700; }
 
 .icon-shadow-premium-light {
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.4));
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   PREMIUM VOLUME BUTTON (Capsule Style)
+   Provides 3D volume using inner highlights and rich projected shadows.
+   ────────────────────────────────────────────────────────────────────────── */
+.btn-volume-premium {
+  position: relative;
+  overflow: hidden !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 
+    0 8px 20px -5px rgba(0, 0, 0, 0.4),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+.btn-volume-premium::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 1.5px 2.5px rgba(255, 255, 255, 0.45) !important;
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0.8;
+  transition: opacity 0.3s ease;
+}
+
+.btn-volume-premium:hover::before {
+  opacity: 1;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+}
+
+.btn-volume-premium:hover {
+  transform: translateY(1px) !important;
+  box-shadow: 
+    0 4px 10px -2px rgba(0, 0, 0, 0.4),
+    inset 0 2px 5px rgba(0, 0, 0, 0.25) !important;
+}
+
+.btn-volume-premium:active {
+  transform: translateY(2px) scale(0.98) !important;
+  box-shadow: 
+    0 2px 5px -1px rgba(0, 0, 0, 0.4),
+    inset 0 3px 8px rgba(0, 0, 0, 0.4) !important;
 }
 
 

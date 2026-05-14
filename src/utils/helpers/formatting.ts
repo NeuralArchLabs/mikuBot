@@ -245,19 +245,14 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
     // MUST run BEFORE the HTML protector so that backtick-wrapped tags
     // like `<h1>` in table cells become code pills, not real HTML.
     // ═══════════════════════════════════════════════════════════════════
-    // 0a. Double inline code block protection (supports internal single backticks)
-    html = html.replace(/``([^`\n]+?)``/g, (match, code) => {
+    // 0a. Unified inline code protection (supports multiple backticks for escaping internal backticks like `` ` ``)
+    html = html.replace(/(`+)(?!`)([\s\S]+?)(?<!`)\1(?!`)/g, (match, backticks, content) => {
         const id = `__BLOCK_${pieces.length}__`;
-        const codeTrimmed = code.replace(/^ | $/g, '');
-        const escapedCode = codeTrimmed.replace(/</g, '‹').replace(/>/g, '›').replace(/\$/g, '‹DOLLAR›');
-        pieces.push(`<code class="bg-indigo-500/10 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-[0.9em] border border-indigo-400/20 mx-1 shadow-[0_0_8px_rgba(99,102,241,0.1)]">${escapedCode}</code>`);
-        return id;
-    });
-
-    // 0b. Single inline code protection
-    html = html.replace(/`([^`\n]+)`/g, (match, code) => {
-        const id = `__BLOCK_${pieces.length}__`;
-        const escapedCode = code.replace(/</g, '‹').replace(/>/g, '›').replace(/\$/g, '‹DOLLAR›');
+        let inner = content;
+        if (inner.length >= 2 && inner.startsWith(' ') && inner.endsWith(' ') && inner.trim() !== '') {
+            inner = inner.substring(1, inner.length - 1);
+        }
+        const escapedCode = inner.replace(/</g, '‹').replace(/>/g, '›').replace(/\$/g, '‹DOLLAR›');
         pieces.push(`<code class="bg-indigo-500/10 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-[0.9em] border border-indigo-400/20 mx-1 shadow-[0_0_8px_rgba(99,102,241,0.1)]">${escapedCode}</code>`);
         return id;
     });
@@ -929,7 +924,13 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
     html = convertDefinitionListsToHtml(html);
 
     html = html.replace(/\\`/g, '‹esc-backtick›');
-    html = html.replace(/`([^`\n]+)`/g, '<code class="bg-indigo-500/10 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs border border-indigo-400/20 shadow-[0_0_8px_rgba(99,102,241,0.1)]">$1</code>');
+    html = html.replace(/(`+)(?!`)([\s\S]+?)(?<!`)\1(?!`)/g, (match, backticks, content) => {
+        let inner = content;
+        if (inner.length >= 2 && inner.startsWith(' ') && inner.endsWith(' ') && inner.trim() !== '') {
+            inner = inner.substring(1, inner.length - 1);
+        }
+        return `<code class="bg-indigo-500/10 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs border border-indigo-400/20 shadow-[0_0_8px_rgba(99,102,241,0.1)]">${inner}</code>`;
+    });
     html = html.replace(/‹esc-backtick›/g, '`');
 
     // 13c. Spoiler Support (||text||) - Process before tables to prevent | collision
@@ -941,7 +942,13 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
             .replace(/\*\*\*(.+?)\*\*\*/g, '<strong class="text-indigo-400"><em>$1</em></strong>')
             .replace(/\*\*(.+?)\*\*/g, '<strong class="text-indigo-300">$1</strong>')
             .replace(/\*(.+?)\*/g, '<em class="text-slate-300">$1</em>')
-            .replace(/`([^`\n]+)`/g, '<code class="bg-indigo-500/10 px-1 py-0.5 rounded text-indigo-300 font-mono text-xs border border-indigo-400/20">$1</code>');
+            .replace(/(`+)(?!`)([\s\S]+?)(?<!`)\1(?!`)/g, (match, backticks, content) => {
+                let inner = content;
+                if (inner.length >= 2 && inner.startsWith(' ') && inner.endsWith(' ') && inner.trim() !== '') {
+                    inner = inner.substring(1, inner.length - 1);
+                }
+                return `<code class="bg-indigo-500/10 px-1 py-0.5 rounded text-indigo-300 font-mono text-xs border border-indigo-400/20">${inner}</code>`;
+            });
             
         pieces.push(`<span class="studio-spoiler" title="Revelar spoiler">${innerHtml}</span>`);
         return id;
@@ -1243,8 +1250,14 @@ function processInlineMarkdown(text: string): string {
 
     // Escaped backticks
     result = result.replace(/\\`/g, '‹esc-backtick›');
-    // Inline code `text`
-    result = result.replace(/`([^`\n]+)`/g, '<code class="bg-indigo-500/10 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs border border-indigo-400/20 shadow-[0_0_8px_rgba(99,102,241,0.1)]">$1</code>');
+    // Inline code (supports multiple backticks for escaping inner backticks like `` ` ``)
+    result = result.replace(/(`+)(?!`)([\s\S]+?)(?<!`)\1(?!`)/g, (match, backticks, content) => {
+        let inner = content;
+        if (inner.length >= 2 && inner.startsWith(' ') && inner.endsWith(' ') && inner.trim() !== '') {
+            inner = inner.substring(1, inner.length - 1);
+        }
+        return `<code class="bg-indigo-500/10 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs border border-indigo-400/20 shadow-[0_0_8px_rgba(99,102,241,0.1)]">${inner}</code>`;
+    });
     result = result.replace(/‹esc-backtick›/g, '`');
 
     // Protect __BLOCK_N__ placeholders from underscore patterns before processing

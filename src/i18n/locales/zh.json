@@ -89,7 +89,9 @@
     "no_links": "无链接",
     "decrease": "减少",
     "increase": "增加",
-    "code": "代码"
+    "code": "代码",
+    "hide_sidebar": "隐藏侧边栏",
+    "show_sidebar": "显示侧边栏"
   },
   "tools": {
     "metrics_summary": "获取系统指标：{{platform}} [CPU: {{cpu}}%, RAM: {{ram}}]",
@@ -464,6 +466,7 @@
       "copy_logs": "复制所有日志",
       "toggle_mode": "点击以切换模式",
       "mode_selector": "代理模式选择器",
+      "change_model": "更改当前模式的模型",
       "manual": "手动",
       "auto": "自动",
       "safe": "安全",
@@ -495,6 +498,9 @@
       "agent": "代理"
     },
     "labels": {
+      "select_model": "选择模型",
+      "temporary_change": "临时更改（未保存）",
+      "no_models_available": "无可用模型",
       "debug_interface": "神经调试界面",
       "debug_desc": "原始上下文与内部日志流",
       "no_data": "此会话尚未记录原始神经数据。",
@@ -561,7 +567,7 @@
     "actions": {
       "new_doc": "新文档",
       "new_doc_short": "新文档",
-      "save": "应用应用程序上下文",
+      "save": "应用选择",
       "search": "搜索文件...",
       "no_match": "未找到匹配的文件。",
       "empty": "库文件夹中没有文件。请在设置中选择文件夹或创建一个文件。",

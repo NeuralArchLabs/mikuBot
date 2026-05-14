@@ -58,6 +58,7 @@ export const LibraryManager = ({
     const [rawBlueprints, setRawBlueprints] = useState<Blueprint[]>([]);
     const [blueprints, setBlueprints] = useState<Blueprint[]>([]);
     const [showPreview, setShowPreview] = useState(false);
+    const [showSidebar, setShowSidebar] = useState(true);
     const setOverlayActive = useUIStore((state) => state.setOverlayActive);
 
     // Sync with global UI Store
@@ -129,6 +130,23 @@ export const LibraryManager = ({
         setEditContent('');
     }, []);
 
+    const handleClose = useCallback(() => {
+        setIsClosing(true);
+        setTimeout(() => {
+            onClose();
+            setIsClosing(false);
+        }, 400);
+    }, [onClose]);
+
+    const handleApply = useCallback(() => {
+        if (!viewFile) return;
+        // If the file is not selected, select it
+        if (!selectedFiles.includes(viewFile)) {
+            onToggleSelect(viewFile);
+        }
+        handleClose();
+    }, [viewFile, selectedFiles, onToggleSelect, handleClose]);
+
     const handleCreateBlueprint = useCallback(async (blueprint: Blueprint) => {
         const timestamp = new Date().toISOString().split('T')[0];
         
@@ -194,27 +212,33 @@ export const LibraryManager = ({
         }
     }, [askConfirm, onDelete, viewFile]);
 
-    const handleClose = useCallback(() => {
-        setIsClosing(true);
-        setTimeout(() => {
-            onClose();
-            setIsClosing(false);
-        }, 400);
-    }, [onClose]);
 
     if (!isOpen) return null;
 
     return createPortal(
-        <div className={`fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-8 transition-opacity duration-300 border-none ${isClosing ? 'opacity-0' : 'opacity-100'}`}>
+        <div className={`fixed inset-0 z-[120] flex items-center justify-center px-1.5 py-6 sm:px-3 sm:py-10 lg:p-8 transition-opacity duration-300 border-none ${isClosing ? 'opacity-0' : 'opacity-100'}`}>
             <div className="absolute inset-0 bg-black/40 backdrop-blur-md" onClick={handleClose} />
-            <div className={`relative bg-[var(--surface-color)] [.theme-cloud_&]:bg-slate-900/95 border border-[var(--border-color)]/30 [.theme-cloud_&]:border-slate-800/40 transition-all duration-700 w-full max-w-6xl h-[85vh] shadow-[0_30px_100px_rgba(0,0,0,0.5)] hover:shadow-[0_0_50px_-10px_rgba(236,72,153,0.3)] flex flex-col overflow-hidden rounded-[2.5rem] ${isClosing ? 'animate-macos-shrink-bottom' : 'animate-macos-expand-bottom'}`}>
+            <div className={`relative bg-[var(--surface-color)] [.theme-cloud_&]:bg-slate-900/95 border border-[var(--border-color)]/30 [.theme-cloud_&]:border-slate-800/40 transition-all duration-700 w-full h-full lg:max-w-6xl lg:h-[85vh] shadow-[0_30px_100px_rgba(0,0,0,0.5)] hover:shadow-[0_0_50px_-10px_rgba(236,72,153,0.2)] flex flex-col overflow-hidden rounded-[1.5rem] sm:rounded-[2.5rem] ${isClosing ? 'animate-macos-shrink-bottom' : 'animate-macos-expand-bottom'}`}>
 
                 {/* ── Header ─────────────────────────────────────────── */}
                 <div className="h-16 flex items-center justify-between px-6 bg-[var(--background-color)]/25 [.theme-cloud_&]:bg-slate-700/95 relative z-20 shadow-[0_4px_30px_rgba(0,0,0,0.2)]">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-pink-500/15 text-pink-400 flex items-center justify-center border border-pink-500/30 shadow-[inset_0_0_12px_rgba(236,72,153,0.2)]">
-                            <Icon name="book" className="text-xl" />
-                        </div>
+                        <button 
+                            onClick={() => setShowSidebar(!showSidebar)}
+                            className="group w-10 h-10 rounded-full bg-pink-500/15 text-pink-400 flex items-center justify-center border border-transparent transition-all duration-300 relative overflow-hidden hover:border-pink-500/30 hover:shadow-[inset_0_0_12px_rgba(236,72,153,0.2)]"
+                            title={showSidebar ? t('common.hide_sidebar') || 'Hide Sidebar' : t('common.show_sidebar') || 'Show Sidebar'}
+                        >
+                            <div className="relative w-full h-full">
+                                <Icon 
+                                    name="book" 
+                                    className={`text-xl absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-500 transform-gpu ${!showSidebar ? 'scale-0 opacity-0' : 'group-hover:scale-0 group-hover:opacity-0 scale-100 opacity-100'}`} 
+                                />
+                                <Icon 
+                                    name="expand" 
+                                    className={`text-xl absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-500 transform-gpu ${!showSidebar ? 'opacity-100 scale-100' : 'opacity-0 scale-150 group-hover:opacity-100 group-hover:scale-100'}`} 
+                                />
+                            </div>
+                        </button>
                         <div>
                             <h2 className="text-lg font-bold text-[var(--text-primary)] [.theme-cloud_&]:text-slate-100 tracking-tight">{t('library.title')}</h2>
                             <p className="text-xs text-[var(--text-secondary)] [.theme-cloud_&]:text-slate-400 opacity-80">{t('library.desc')}</p>
@@ -235,7 +259,7 @@ export const LibraryManager = ({
                             <span className="hidden sm:inline">{t('library.actions.new_doc')}</span>
                             <span className="inline sm:hidden">{t('library.actions.new_doc_short')}</span>
                         </button>
-                        <button onClick={handleClose} title={t('common.close') || 'Close'} className="w-8 h-8 rounded-full bg-[var(--hover-color)] hover:bg-[var(--border-color)]/20 text-[var(--text-secondary)] flex items-center justify-center transition-colors">
+                        <button onClick={handleClose} title={t('common.close') || 'Close'} className="w-8 h-8 rounded-full bg-[var(--hover-color)] hover:bg-[var(--border-color)]/40 text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center justify-center transition-all border border-transparent hover:border-[var(--text-secondary)]/60">
                             <Icon name="times" />
                         </button>
                     </div>
@@ -274,7 +298,7 @@ export const LibraryManager = ({
                 {/* ── Body ───────────────────────────────────────────── */}
                 <div className="flex-1 flex overflow-hidden">
                     {/* ── Sidebar ────────────────────────────────────── */}
-                    <div className="w-1/3 bg-[var(--background-color)]/30 [.theme-cloud_&]:bg-slate-800/95 flex flex-col border-r border-[var(--border-color)]/10 [.theme-cloud_&]:border-slate-700/30 relative z-10 shadow-[10px_0_40px_rgba(0,0,0,0.15)]">
+                    <div className={`bg-[var(--background-color)]/30 [.theme-cloud_&]:bg-slate-800/95 flex flex-col border-r border-[var(--border-color)]/10 [.theme-cloud_&]:border-slate-700/30 relative z-10 shadow-[10px_0_40px_rgba(0,0,0,0.15)] transition-all duration-500 ease-in-out ${showSidebar ? 'w-80 opacity-100' : 'w-0 opacity-0 overflow-hidden border-none shadow-none'}`}>
                         <div className="p-3 bg-[var(--surface-color)]/60 [.theme-cloud_&]:bg-slate-900/40 backdrop-blur-sm border-b border-[var(--border-color)]/10 [.theme-cloud_&]:border-slate-700/30">
                             <input
                                 type="text"
@@ -297,7 +321,14 @@ export const LibraryManager = ({
                                     return (
                                         <div
                                             key={name}
-                                            onClick={() => { setViewFile(name); setEditMode(false); }}
+                                            onClick={() => { 
+                                                if (isActive) {
+                                                    setViewFile(null);
+                                                } else {
+                                                    setViewFile(name); 
+                                                    setEditMode(false); 
+                                                }
+                                            }}
                                             className={`group relative w-full flex items-center justify-between p-2 rounded cursor-pointer transition-all ${isActive ? 'bg-[var(--hover-color)] shadow-sm' : 'hover:bg-[var(--hover-color)]/40'
                                                 }`}
                                         >
@@ -374,17 +405,25 @@ export const LibraryManager = ({
                                         <span className="text-xs font-mono text-[var(--text-secondary)] [.theme-cloud_&]:text-slate-200">{viewFile}</span>
                                     </div>
                                         <div className="flex items-center gap-2">
-                                        {editMode ? (
+                                            <button 
+                                                onClick={() => setShowSidebar(!showSidebar)}
+                                                className="w-6 h-6 rounded bg-[var(--hover-color)] hover:bg-[var(--border-color)]/20 text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center justify-center transition-colors mr-1"
+                                                title={showSidebar ? t('common.hide_sidebar') : t('common.show_sidebar')}
+                                            >
+                                                <Icon name="expand" className="text-[13px]" />
+                                            </button>
+
+                                            {editMode ? (
                                             <>
                                                 <button
                                                     onClick={() => setShowPreview(!showPreview)}
-                                                    className={`px-3 py-1 rounded text-[10px] font-medium transition-colors flex items-center gap-1 ${showPreview ? 'bg-violet-600/20 text-violet-400 ring-1 ring-violet-500/40' : 'bg-[var(--hover-color)] hover:bg-[var(--border-color)]/20 text-[var(--text-secondary)]'}`}
+                                                    className={`px-3 py-1 rounded text-[10px] font-medium transition-all flex items-center gap-1 border border-transparent ${showPreview ? 'bg-violet-600/20 text-violet-400 hover:border-violet-500/40' : 'bg-[var(--hover-color)] hover:bg-[var(--border-color)]/20 text-[var(--text-secondary)]'}`}
                                                 >
                                                     <Icon name={showPreview ? 'edit' : 'eye'} /> {showPreview ? t('editor.editor') : t('editor.live_preview')}
                                                 </button>
                                                 <button
                                                     onClick={handleCancelEdit}
-                                                    className="px-2 py-1 text-[10px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                                                    className="px-3 py-1 bg-[var(--hover-color)] hover:bg-[var(--border-color)]/20 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all rounded text-[10px] font-medium border border-transparent hover:border-[var(--border-color)]/30"
                                                 >
                                                     {t('editor.cancel')}
                                                 </button>
@@ -409,7 +448,7 @@ export const LibraryManager = ({
 
                                 {editMode ? (
                                     showPreview ? (
-                                        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar [.theme-cloud_&_.markdown-body]:text-slate-100">
+                                        <div className="flex-1 overflow-auto p-8 custom-scrollbar [.theme-cloud_&_.markdown-body]:text-slate-100">
                                             <MarkdownRenderer content={editContent} />
                                         </div>
                                     ) : (
@@ -424,7 +463,7 @@ export const LibraryManager = ({
                                         </div>
                                     )
                                 ) : (
-                                    <div className="flex-1 overflow-y-auto p-8 custom-scrollbar [.theme-cloud_&_.markdown-body]:text-slate-100">
+                                    <div className="flex-1 overflow-auto p-8 custom-scrollbar [.theme-cloud_&_.markdown-body]:text-slate-100">
                                         <MarkdownRenderer content={files[viewFile]} />
                                     </div>
                                 )}
@@ -443,13 +482,14 @@ export const LibraryManager = ({
 
                 {/* ── Footer ─────────────────────────────────────────── */}
                 <div className="h-14 bg-[var(--background-color)]/30 [.theme-cloud_&]:bg-slate-700/95 flex items-center border-t border-[var(--border-color)]/10 relative z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.2)]">
-                    {/* Spacer to align with sidebar (w-1/3) and keep button centered to content area */}
-                    <div className="w-1/3 hidden lg:block" />
+                    {/* Spacer to align with sidebar and keep button centered to content area */}
+                    <div className={`hidden lg:block transition-all duration-500 ease-in-out ${showSidebar ? 'w-80' : 'w-0'}`} />
                     
                     <div className="flex-1 flex items-center justify-center">
                         <button
-                            onClick={onClose}
-                            className="px-10 py-2.5 bg-pink-600 hover:bg-pink-500 text-white rounded-full font-black text-sm transition-all shadow-[0_10px_30px_rgba(236,72,153,0.4)] hover:shadow-[0_15px_40px_rgba(236,72,153,0.6)] hover:-translate-y-0.5 active:scale-95"
+                            onClick={handleApply}
+                            disabled={!viewFile}
+                            className={`px-10 py-2.5 rounded-full font-black text-sm btn-volume-premium transition-all ${viewFile ? 'bg-pink-600 hover:bg-pink-500 text-white shadow-[0_10px_30px_rgba(236,72,153,0.4)] opacity-100 cursor-pointer' : 'bg-gray-700/50 text-gray-500 opacity-50 cursor-not-allowed shadow-none'}`}
                         >
                             {t('library.actions.save')}
                         </button>

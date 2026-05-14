@@ -15,7 +15,7 @@ export const PROVIDERS: Record<Provider, ProviderConfig> = {
         getApiKeyUrl: 'https://console.groq.com/keys'
     },
     gemini: {
-        name: 'Google Gemini',
+        name: 'Google',
         icon: 'gem',
         color: 'from-blue-500 to-cyan-500',
         apiKeyRequired: true,
