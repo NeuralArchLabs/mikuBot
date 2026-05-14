@@ -24,7 +24,7 @@
 
 <br/>
 
-An AI agent and assistant directed at the general public. Designed as a friendly alternative, easy to install and use compared to more complex tools like OpenClaw, ideal for users without high technical knowledge.
+An AI assistant and agent with a true soul, designed to be the perfect companion on Windows. We step away from the "sterile gray boards" that dominate the market to offer a vibrant, immersive, and modern visual experience. Its design and functionality are meticulously optimized for everyone: from kids looking for an AI companion to learn and be guided, non-tech-savvy seniors needing simple assistance, to pro-users and office workers requiring a robust environment and advanced tools. mikuBot doesn't follow conventional standards; we forge our own path so as not to be "just another clone".
 
 <br/>
 
@@ -44,7 +44,7 @@ An AI agent and assistant directed at the general public. Designed as a friendly
 *   **Context Library:** A specialized module for creating, storing, and managing protocols, technical documents, and static knowledge bases. It allows Miku to access curated reference information for specific tasks without cluttering dynamic memory.
 *   **Semantic Memory (Recall Skill):** Unlike the static library, Recall is an autonomous long-term memory skill. Miku records preferences, user details, and key concepts across sessions, creating a recursive navigation structure and a user model that evolves with every interaction.
 *   **Generative Dynamic Widgets (Micro-Apps):** mikuBot now supports a generative widgets architecture. You can ask the assistant to create any custom widget for a specific task; Miku will program it, launch it in your workspace, and save it for future sessions. You can even close the main application and the widgets will remain active and functional on your Windows desktop.
-*   **mikuBot Markdown Engine (Studio Elite):** mikuBot integrates a professional-grade rendering engine designed for technological sovereignty and technical precision. This "Studio Elite" suite redefines visual interaction:
+*   **mikuBot Markdown Engine (Studio Elite) & HTMDL:** Our "Studio Elite" rendering engine rewrites the rules using a unique approach we call **HTMDL** (a masterful mix of HTML and Markdown). The model uses HTMDL natively and proactively as its main *meta-tool* (without requiring explicit function calls) to structure data, creating unparalleled visual presentations that no other agent or web client has today. *(We are working on publishing the HTMDL implementation specs so the community can explore and adopt this vision).* This suite redefines visual interaction:
     *   **Mermaid Syntax Healing:** Native ability to correct and normalize syntax errors in AI-generated diagrams (especially `gitGraph`), ensuring the visual architecture always renders correctly.
     *   **Documentation Integrity (Protection Pipeline):** A 3-phase pipeline ensuring that images, links, and nested code blocks maintain their perfect structure, even within complex markdown layouts.
     *   **Professional-Grade Scientific Rendering (LaTeX):** High-precision engine for complex mathematics ($$ and $), integrals, matrices, and physical constants.
@@ -117,7 +117,7 @@ mikuBot is not just another AI client; it is an agentic execution environment de
 | **Windows Execution** | **100% Native (`.exe`).** Optimized to run directly on the Windows kernel. | **Server-side / VPS.** Designed for persistent self-hosted infrastructure. | **Requires WSL2 (Ubuntu).** Depends on a Linux subsystem and manual bash scripts. | Native / Cross-platform, but heavy server-side architecture. |
 | **Learning Curve** | **Instant (Wizard-led).** Step-by-step installation and guided setup for any user. | **Moderate-High.** Requires configuring messaging gateways and servers. | **High.** Requires deep CLI knowledge and Linux environment configuration. | **Moderate.** Setup geared toward IT departments and enterprise workflows. |
 | **Learning / Memory** | **Dual (Recall + Library).** User semantic memory + curated knowledge base. | **Learning Loop.** Automatically creates and refines reusable skills autonomously. | **File-Based.** Context management via local file reading. | **Enterprise History.** Data centralization for work teams. |
-| **Visual Reasoning** | **Neural Flow.** Real-time visual stream of thoughts, tool usage, and states. | **Logs / Messaging.** Interaction via external chat interfaces. | **Text Logs.** Raw terminal output without visual internal state representation. | **Standard History.** Conventional chat interface without visual technical breakdown. |
+| **Visual Reasoning** | **HTMDL & Neural Flow.** Visual stream of thoughts and HTML/Markdown mixing. A vibrant UX with a true "soul", no sterile gray boards. | **Logs / Messaging.** Interaction via external chat interfaces. | **Text Logs.** Raw terminal output without visual internal state representation. | **Standard History.** Conventional chat interface without visual technical breakdown. |
 | **Languages (Sovereignty)** | **Universal (ES/EN/ZH).** Absolute feature and reasoning parity in 3 languages. | **EN-Centric.** Optimized for English reasoning and models. | **EN-Centric.** Optimized support almost exclusively for the English language. | **EN-Centric.** Limited multilingual support. |
 
 #### ☁️ Tier 2: Web-Based AI Clients
@@ -127,7 +127,7 @@ mikuBot is not just another AI client; it is an agentic execution environment de
 | **Data Access** | **Deep Context.** Direct access to your file system (@WORKSPACE) and local assets. | **RAG / File Upload.** Document management via local vectorization. | **Web Sandbox.** Limited to manually uploaded files or generic web search. |
 | **Tool Execution** | **Total Sovereignty.** Native execution of Python, SearXena, and scripts with no middlemen. | **Docker / Sandbox.** Supports functions and scripts within containers. | **Restricted Cloud.** Code execution in isolated, remote servers with limited permissions. |
 | **Privacy & Control** | **You are the Owner.** Data stays yours; you choose the provider and what to share. | **Local / Self-hosted.** Full control if running locally. | **Closed Ecosystem.** Your data is often used to train the provider's future models. |
-| **Visualization** | **Studio Elite.** Scientific-grade high-fidelity rendering of LaTeX, Mermaid, and Callouts. | **Standard Web UI.** Clean and functional browser-based interface. | **Basic Markdown.** Standard browser visualization with low technical flexibility. |
+| **Visualization** | **HTMDL (Studio Elite).** Active HTML/Markdown mixing that gives "soul" to the chat, stepping away from sterile designs and market clones. | **Standard Web UI.** Clean and functional, but traditional interface. | **Basic Markdown.** Standard gray chat boards with low technical flexibility. |
 | **Local Optimization** | **Ultra-efficient.** Designed to maximize performance of small models (SLMs). | **Generalist.** Optimized for large-scale models via server. | **Cloud Dependent.** Requires constant connection and massive models. |
 
 #### 🚀 The mikuBot Edge: The 4 Pillars of Excellence
