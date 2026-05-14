@@ -357,32 +357,73 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                     let inner = fullTagContent.substring(openTagEnd, closeTagIdx);
                     const closeTag = fullTagContent.substring(closeTagIdx);
 
-                    // ⚡ THEME COLOR SANITIZER ⚡
-                    // The model often generates inline `color: #ccc` or similar dim grays on <ul>/<li>/<p>/<span>.
-                    // On a dark chat background these appear nearly invisible.
-                    // We replace any gray-ish or near-white hex colors used as `color:` with the theme text color.
-                    const sanitizeInlineTextColor = (tag: string): string => {
-                        return tag.replace(/(\bcolor\s*:\s*)#([0-9a-fA-F]{3,6})\b/g, (m, prefix, hex) => {
-                            const full = hex.length === 3
-                                ? hex.split('').map((c: string) => c + c).join('')
-                                : hex;
-                            const r = parseInt(full.slice(0, 2), 16);
-                            const g = parseInt(full.slice(2, 4), 16);
-                            const b = parseInt(full.slice(4, 6), 16);
-                            // If it's a low-saturation gray (all channels within 40 of each other)
-                            // and relatively bright (avg > 100), it's a "light gray on dark" problem.
-                            const avg = (r + g + b) / 3;
-                            const spread = Math.max(r, g, b) - Math.min(r, g, b);
-                            if (spread < 40 && avg > 100) {
-                                // Replace with the app's light slate text color
-                                return `${prefix}#e2e8f0`;
-                            }
-                            return m;
-                        });
+                    // ⚡ INTELLIGENT CONTRAST DETECTOR ⚡
+                    const parseColorToBrightness = (colorStr: string): number | null => {
+                        if (!colorStr) return null;
+                        let hexMatch = colorStr.match(/#([0-9a-fA-F]{3,8})\b/);
+                        if (hexMatch) {
+                            let hex = hexMatch[1];
+                            if (hex.length === 3 || hex.length === 4) hex = hex.split('').map((c: string) => c + c).join('');
+                            const r = parseInt(hex.slice(0, 2), 16);
+                            const g = parseInt(hex.slice(2, 4), 16);
+                            const b = parseInt(hex.slice(4, 6), 16);
+                            return (r * 299 + g * 587 + b * 114) / 1000;
+                        }
+                        let rgbMatch = colorStr.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+                        if (rgbMatch) {
+                            const r = parseInt(rgbMatch[1], 10);
+                            const g = parseInt(rgbMatch[2], 10);
+                            const b = parseInt(rgbMatch[3], 10);
+                            return (r * 299 + g * 587 + b * 114) / 1000;
+                        }
+                        if (/\b(?:white|lightgray|silver|beige|ivory)\b/i.test(colorStr)) return 240;
+                        if (/\b(?:black|darkgray|navy|maroon)\b/i.test(colorStr)) return 20;
+                        return null;
                     };
+
+                    const ensureContrast = (tag: string): string => {
+                        let bgMatch = tag.match(/(?:background|background-color)\s*:\s*([^;>"]+)/i);
+                        let colorMatch = tag.match(/\bcolor\s*:\s*([^;>"]+)/i);
+                        
+                        let bgBrightness = bgMatch ? parseColorToBrightness(bgMatch[1]) : null;
+                        let textBrightness = colorMatch ? parseColorToBrightness(colorMatch[1]) : null;
+
+                        if (bgBrightness !== null) {
+                            let isBgLight = bgBrightness > 128;
+                            
+                            if (isBgLight) {
+                                // Background is LIGHT. We MUST ensure text is DARK.
+                                if (textBrightness === null || textBrightness > 128) {
+                                    if (colorMatch) {
+                                        tag = tag.replace(colorMatch[0], 'color: #0f172a');
+                                    } else {
+                                        tag = tag.replace(/(style=['"])/i, '$1color: #0f172a; ');
+                                    }
+                                }
+                            } else {
+                                // Background is DARK. We MUST ensure text is LIGHT.
+                                if (textBrightness === null || textBrightness <= 128) {
+                                    if (colorMatch) {
+                                        tag = tag.replace(colorMatch[0], 'color: #f8fafc');
+                                    } else {
+                                        tag = tag.replace(/(style=['"])/i, '$1color: #f8fafc; ');
+                                    }
+                                }
+                            }
+                        } else if (colorMatch) {
+                            // No explicit background detected. Assume standard dark theme.
+                            if (textBrightness !== null && textBrightness <= 128) {
+                                tag = tag.replace(colorMatch[0], 'color: #f8fafc');
+                            }
+                        }
+
+                        return tag;
+                    };
+
+                    openTag = ensureContrast(openTag);
                     // Apply to all inline tags inside the inner content
-                    inner = inner.replace(/<(ul|ol|li|p|span|div)\b([^>]*)>/gi, (m: string, tag: string, attrs: string) => {
-                        return `<${tag}${sanitizeInlineTextColor(attrs)}>`;
+                    inner = inner.replace(/<(ul|ol|li|p|span|div)\b([^>]*)>/gi, (m: string) => {
+                        return ensureContrast(m);
                     });
 
                     // ⚡ RESPONSIVE GRID FIX ⚡
@@ -415,10 +456,16 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
 
                     if (summaryMatch) {
                         const summaryTag = summaryMatch[0];
-                        const summaryContent = summaryMatch[1];
+                        let summaryContent = summaryMatch[1];
+                        
+                        // ⚡ REDUNDANT ARROW FILTER ⚡
+                        // Models often add '▶', '▼', or '>' to the summary, but the browser renders
+                        // a native disclosure triangle, causing double arrows. We strip the text ones.
+                        summaryContent = summaryContent.replace(/^[\s]*(?:▶|▼|▸|▾|>|►|&gt;|&#x25b6;|&#9654;)\s*/i, '');
+                        
                         restOfInner = inner.replace(summaryTag, '');
                         // Process summary content minimally to avoid block-level injections
-                        processedSummary = summaryTag.replace(summaryContent, processInlineMarkdown(summaryContent));
+                        processedSummary = summaryTag.replace(summaryMatch[1], processInlineMarkdown(summaryContent));
                     }
 
                     // Process the rest of the content using the manual loop + Callout/Blockquote support
@@ -444,7 +491,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
 
                     // 3. Inline & List processing
                     processedRest = processedRest.split('\n').map(line => {
-                        if (/<[a-z]/i.test(line) || /__BLOCK_\d+__/.test(line)) return line;
+                        if (/^<(pre|table|iframe|canvas|svg|style|script)\b/i.test(line.trim())) return line;
                         return processInlineMarkdown(line);
                     }).join('\n');
 
@@ -464,9 +511,9 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
 
             // Inject CSS classes for inline formatting tags captured by the protector
             if (tagName === 'strong' || tagName === 'b') {
-                fullTagContent = fullTagContent.replace(/<(strong|b)(\s[^>]*)?>/i, '<$1 class="text-indigo-300 drop-shadow-[1px_1.5px_0px_rgba(0,0,0,1)] mx-0.5">');
+                fullTagContent = fullTagContent.replace(/<(strong|b)(\s[^>]*)?>/i, '<$1 class="font-bold text-inherit"$2>');
             } else if (tagName === 'em' || tagName === 'i') {
-                fullTagContent = fullTagContent.replace(/<(em|i)(\s[^>]*)?>/i, '<$1 class="text-slate-300 mx-0.5">');
+                fullTagContent = fullTagContent.replace(/<(em|i)(\s[^>]*)?>/i, '<$1 class="italic text-inherit"$2>');
             }
 
             pieces.push(fullTagContent);
@@ -857,9 +904,9 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         .replace(/‹h([1-4])\s*([^›]*?)›/gi, '<h$1 class="text-inherit font-black drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] my-2" $2>')
         .replace(/‹h([5-6])\s*([^›]*?)›/gi, '<h$1 class="text-inherit font-black my-2" $2>')
         .replace(/‹\/h([1-6])›/g, '</h$1>')
-        .replace(/‹strong›/g, '<strong class="text-indigo-300 drop-shadow-[1px_1.5px_0px_rgba(0,0,0,1)] mx-0.5">')
+        .replace(/‹strong›/g, '<strong class="font-bold text-inherit">')
         .replace(/‹\/strong›/g, '</strong>')
-        .replace(/‹em›/g, '<em class="text-slate-300 mx-0.5">')
+        .replace(/‹em›/g, '<em class="italic text-inherit">')
         .replace(/‹\/em›/g, '</em>')
         .replace(/‹small\s*([^›]*?)›/gi, '<small class="text-[0.85em] opacity-80 mx-1" $1>')
         .replace(/‹\/small›/g, '</small>')
@@ -912,15 +959,15 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
     const divExtra = isStreaming ? 'data-animated="true" is-visible' : '';
     html = html.replace(/^(?:\s*[\*\-_]){3,}\s*$/gm, `<div ${divExtra} class="divider-container"><div class="divider-line bg-gradient-to-r from-transparent via-cyan-500/15 to-transparent h-px my-8"></div></div>`);
 
-    html = html.replace(/\*\*\*(?!\s)(.+?)\*\*\*/g, '<strong class="text-indigo-400 drop-shadow-[1px_1.5px_0px_rgba(0,0,0,1)]"><em>$1</em></strong>');
-    html = html.replace(/\*\*(?!\s)(.+?)\*\*/g, '<strong class="text-indigo-300 drop-shadow-[1px_1.5px_0px_rgba(0,0,0,1)]">$1</strong>');
-    html = html.replace(/\*(?!\s)(.+?)\*/g, '<em class="text-slate-300">$1</em>');
+    html = html.replace(/\*\*\*(?!\s)(.+?)\*\*\*/g, '<strong class="font-bold text-inherit"><em class="italic text-inherit">$1</em></strong>');
+    html = html.replace(/\*\*(?!\s)(.+?)\*\*/g, '<strong class="font-bold text-inherit">$1</strong>');
+    html = html.replace(/\*(?!\s)(.+?)\*/g, '<em class="italic text-inherit">$1</em>');
 
     // Protect __BLOCK_N__ placeholders from underscore patterns before processing
     html = html.replace(/__BLOCK_(\d+)__/g, '‹BLOCK_$1›');
-    html = html.replace(/(?<!\w)___(?!\s)(.+?)___(?!\w)/g, '<strong class="text-indigo-400 drop-shadow-[1px_1.5px_0px_rgba(0,0,0,1)]"><em>$1</em></strong>');
-    html = html.replace(/(?<!\w)__(?!\s)(.+?)__(?!\w)/g, '<strong class="text-indigo-300 drop-shadow-[1px_1.5px_0px_rgba(0,0,0,1)]">$1</strong>');
-    html = html.replace(/(?<!\w)_(?!\s)(.+?)_(?!\w)/g, '<em class="text-slate-300">$1</em>');
+    html = html.replace(/(?<!\w)___(?!\s)(.+?)___(?!\w)/g, '<strong class="font-bold text-inherit"><em class="italic text-inherit">$1</em></strong>');
+    html = html.replace(/(?<!\w)__(?!\s)(.+?)__(?!\w)/g, '<strong class="font-bold text-inherit">$1</strong>');
+    html = html.replace(/(?<!\w)_(?!\s)(.+?)_(?!\w)/g, '<em class="italic text-inherit">$1</em>');
     // Restore __BLOCK_N__ placeholders
     html = html.replace(/‹BLOCK_(\d+)›/g, '__BLOCK_$1__');
     html = html.replace(/~~(?!\s)(.+?)~~/g, '<del class="text-slate-500 line-through">$1</del>');
@@ -1200,16 +1247,23 @@ function processInlineMarkdown(text: string): string {
     result = result.replace(/`([^`\n]+)`/g, '<code class="bg-indigo-500/10 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs border border-indigo-400/20 shadow-[0_0_8px_rgba(99,102,241,0.1)]">$1</code>');
     result = result.replace(/‹esc-backtick›/g, '`');
 
+    // Protect __BLOCK_N__ placeholders from underscore patterns before processing
+    result = result.replace(/__BLOCK_(\d+)__/g, '‹BLOCK_$1›');
+
     // Bold and italic combos ***text***
-    result = result.replace(/\*\*\*(?!\s)(.+?)\*\*\*/g, '<strong class="text-indigo-400 drop-shadow-[1px_1.5px_0px_rgba(0,0,0,1)]"><em>$1</em></strong>');
+    result = result.replace(/\*\*\*(?!\s)(.+?)\*\*\*/g, '<strong class="font-bold text-inherit"><em class="italic text-inherit">$1</em></strong>');
     // Bold **text**
-    result = result.replace(/\*\*(?!\s)(.+?)\*\*/g, '<strong class="text-indigo-300 drop-shadow-[1px_1.5px_0px_rgba(0,0,0,1)]">$1</strong>');
+    result = result.replace(/\*\*(?!\s)(.+?)\*\*/g, '<strong class="font-bold text-inherit">$1</strong>');
     // Italic *text*
-    result = result.replace(/\*(?!\s)(.+?)\*/g, '<em class="text-slate-300">$1</em>');
+    result = result.replace(/\*(?!\s)(.+?)\*/g, '<em class="italic text-inherit">$1</em>');
     // Underscore emphasis variants (word-boundary aware per CommonMark)
-    result = result.replace(/(?<!\w)___(?!\s)(.+?)___(?!\w)/g, '<strong class="text-indigo-400 drop-shadow-[1px_1.5px_0px_rgba(0,0,0,1)]"><em>$1</em></strong>');
-    result = result.replace(/(?<!\w)__(?!\s)(.+?)__(?!\w)/g, '<strong class="text-indigo-300 drop-shadow-[1px_1.5px_0px_rgba(0,0,0,1)]">$1</strong>');
-    result = result.replace(/(?<!\w)_(?!\s)(.+?)_(?!\w)/g, '<em class="text-slate-300">$1</em>');
+    result = result.replace(/(?<!\w)___(?!\s)(.+?)___(?!\w)/g, '<strong class="font-bold text-inherit"><em class="italic text-inherit">$1</em></strong>');
+    result = result.replace(/(?<!\w)__(?!\s)(.+?)__(?!\w)/g, '<strong class="font-bold text-inherit">$1</strong>');
+    result = result.replace(/(?<!\w)_(?!\s)(.+?)_(?!\w)/g, '<em class="italic text-inherit">$1</em>');
+    
+    // Restore __BLOCK_N__ placeholders
+    result = result.replace(/‹BLOCK_(\d+)›/g, '__BLOCK_$1__');
+
     // Strikethrough ~~text~~
     result = result.replace(/~~(?!\s)(.+?)~~/g, '<del class="text-slate-500 line-through">$1</del>');
     // Highlight ==text==

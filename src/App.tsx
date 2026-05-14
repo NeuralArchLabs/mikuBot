@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { InteractionContext } from './services/core/InteractionContext';
-import { AppState, AgentStatus, Message, PendingToolApproval, AgentMode, ModelInfo, FileSystemDirectoryHandle, FileSystemFileHandle, FileTarget, Session, ApprovalMode, SessionMetadata, PermissionStatus, Provider, AppConfig, Attachment } from './types';
+import { AppState, AgentStatus, Message, PendingToolApproval, AgentMode, ModelInfo, FileSystemDirectoryHandle, FileSystemFileHandle, FileTarget, Session, ApprovalMode, SessionMetadata, PermissionStatus, Provider, AppConfig, Attachment, ToolCall } from './types';
 import { DEFAULT_CONFIG, DEFAULT_FILES, AGENT_TOOLS, PROVIDERS } from './constants';
 import { createDefaultAgentStatus } from './utils';
 import { useAgentStore, selectMessages, selectAgentStatus, selectIsLoading, selectInput, selectPendingToolApproval } from './stores/useAgentStore';

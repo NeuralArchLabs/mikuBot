@@ -512,15 +512,6 @@ pre code .hl-directive { color: #fb7185 !important; font-weight: 700; }
    Nested elements inside containers with explicit color inherit that color.
    ═══════════════════════════════════════════════════════════════════ */
 
-/* ── Rule A: Dark text on background containers without standalone color ── */
-/* Matches elements with "background" in style but NO standalone "color:" property.
-   Specificity: 0,6,0 — beats existing inherit rules (0,2,1) on the parent element.
-   Surgical Fix: Excludes rgba(), transparent, and gradient backgrounds as they are
-   typically used for dark-mode UI overlays or model-generated dark-theme cards. */
-.markdown-body [style*="background"]:not([style*=" color:"]):not([style*=";color:"]):not([style*="; color:"]):not([style^="color:"]):not([style*="rgba("]):not([style*="transparent"]):not([style*="gradient"]) {
-  color: #1e293b;
-}
-
 /* ── Rule A2: Light text on gradient-background containers without standalone color ── */
 /* Model-generated cards use dark gradient backgrounds that need white text.
    This is the counterpart of Rule A for gradient backgrounds. */
