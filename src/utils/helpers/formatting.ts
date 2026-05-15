@@ -208,34 +208,30 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         const accent = codeColors[langClean] || 'text-slate-400';
         const displayLang = langClean || 'code';
 
-        const containerClass = isDiagram 
-            ? 'relative group bg-black/45 pt-12 pb-12 px-8 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_15px_45px_rgba(0,0,0,0.65)] max-w-full min-w-0 selection:bg-cyan-500/30' 
-            : 'relative group bg-black/45 pt-12 pb-12 px-6 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_15px_45px_rgba(0,0,0,0.65)] backdrop-blur-md max-w-full min-w-0 md:mx-2';
+        const codeContainerClass = 'relative group/code bg-black/45 pt-8 pb-8 px-6 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_15px_45px_rgba(0,0,0,0.65)] backdrop-blur-md max-w-full min-w-0 md:mx-2';
+        const diagramContainerClass = 'relative group/code bg-black/45 pt-8 pb-8 px-6 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_15px_45px_rgba(0,0,0,0.65)] max-w-full min-w-0 selection:bg-cyan-500/30';
         
         // Studio Elite Header: Minimal Floating Language Badge
         const studioHeader = `
-            <div class="absolute top-3 left-6 flex items-center gap-2 non-typing select-none pointer-events-none">
+            <div class="absolute top-2 left-6 flex items-center gap-2 non-typing select-none pointer-events-none">
                 <i class="fas fa-terminal text-[9px] ${accent} opacity-60"></i>
                 <span class="text-[9px] font-black uppercase tracking-[0.25em] ${accent} opacity-80">${displayLang}</span>
             </div>`;
 
         // Minimal Action: Icon-only Copy Button
-        // NOTE: encoded content lives in data-code to avoid breaking onclick attribute parsing
-        // on large or quote-heavy blocks (e.g. SOUL.md). encodeURIComponent guarantees
-        // no ", <, >, or & in the value, making data-code="..." structurally safe.
-        const copyButton = `<button class="absolute top-3 right-5 text-slate-500/50 hover:text-cyan-400 p-1 opacity-0 group-hover:opacity-100 transition hover:scale-110 active:scale-90 cursor-pointer z-20" title="Copiar Código" data-code="${encodedCode}" onclick="var btn=this,icon=btn.querySelector('i'),code=decodeURIComponent(btn.dataset.code);navigator.clipboard.writeText(code).then(function(){icon.className='fas fa-check text-emerald-400';setTimeout(function(){icon.className='fas fa-clone'},2000)})"><i class="fas fa-clone text-[13px]"></i></button>`;
+             const copyButton = `<div class="absolute top-0 right-6 h-8 flex items-center z-20 opacity-0 group-hover/code:opacity-100 transition-opacity duration-300"><button class="group/btn text-slate-500/50 hover:text-cyan-400 p-2 cursor-pointer" title="Copiar Código" data-code="${encodedCode}" onclick="var btn=this,icon=btn.querySelector('i'),code=decodeURIComponent(btn.dataset.code);navigator.clipboard.writeText(code).then(function(){icon.className='fas fa-check text-emerald-400 inline-block transition-transform duration-200 transform-gpu group-hover/btn:scale-110 group-active/btn:scale-95';setTimeout(function(){icon.className='fas fa-clone text-[13px] inline-block transition-transform duration-200 transform-gpu group-hover/btn:scale-110 group-active/btn:scale-95'},2000)})"><i class="fas fa-clone text-[13px] inline-block transition-transform duration-200 transform-gpu group-hover/btn:scale-110 group-active/btn:scale-95"></i></button></div>`;
         
         if (isDiagram) {
             const codeBtnLabel = i18n.t('common.code', { defaultValue: 'Código' });
-            const codeButton = `<button class="absolute top-3 right-14 text-slate-500/50 hover:text-cyan-400 p-1 opacity-0 group-hover:opacity-100 transition hover:scale-110 active:scale-90 cursor-pointer z-20" title="${codeBtnLabel}" onclick="var container=this.closest('.group'); var svg=container.querySelector('.mermaid'); var raw=container.querySelector('.mermaid-raw-code'); if(svg.style.display==='none'){svg.style.display='flex';raw.style.display='none';svg.style.animation='none';svg.offsetHeight;svg.style.animation='slide-up-fade 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards';this.classList.remove('text-cyan-400');this.classList.add('text-slate-500/50');}else{svg.style.display='none';raw.style.display='block';raw.style.animation='none';raw.offsetHeight;raw.style.animation='slide-up-fade 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards';this.classList.remove('text-slate-500/50');this.classList.add('text-cyan-400');}"><i class="fas fa-code text-[13px]"></i></button>`;
+            const codeButton = `<div class="absolute top-0 right-14 h-8 flex items-center z-20 opacity-0 group-hover/code:opacity-100 transition-opacity duration-300"><button class="group/btn text-slate-500/50 hover:text-cyan-400 p-2 cursor-pointer" title="${codeBtnLabel}" onclick="var container=this.closest('.group\\\\/code'); var svg=container.querySelector('.mermaid'); var raw=container.querySelector('.mermaid-raw-code'); if(svg.style.display==='none'){svg.style.display='flex';raw.style.display='none';svg.style.animation='none';svg.offsetHeight;svg.style.animation='slide-up-fade 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards';this.classList.remove('text-cyan-400');this.classList.add('text-slate-500/50');}else{svg.style.display='none';raw.style.display='block';raw.style.animation='none';raw.offsetHeight;raw.style.animation='slide-up-fade 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards';this.classList.remove('text-slate-500/50');this.classList.add('text-cyan-400');}"><i class="fas fa-code text-[13px] inline-block transition-transform duration-200 transform-gpu group-hover/btn:scale-110 group-active/btn:scale-95"></i></button></div>`;
 
-            const finalClass = isStreaming ? `${containerClass} isolate overflow-visible is-visible` : `${containerClass} overflow-visible code-block-anim opacity-0 scale-95 transition-all duration-500 ease-in-out will-change-transform transform translate-z-0`;
+            const finalClass = isStreaming ? `${diagramContainerClass} isolate overflow-visible is-visible` : `${diagramContainerClass} overflow-visible code-block-anim opacity-0 scale-95 transition-all duration-500 ease-in-out will-change-transform transform translate-z-0`;
             const extraAttrs = isStreaming ? 'data-animated="true"' : '';
-            pieces.push(`<div class="${finalClass}" ${extraAttrs}>${studioHeader}${copyButton}${codeButton}<div class="overflow-x-auto w-full px-2 pb-6"><div class="mermaid min-h-[100px] flex items-center justify-center" data-mermaid-src="${encodedCode}"></div><div class="mermaid-raw-code hidden w-full bg-black/20 shadow-[0_3px_12px_rgba(0,0,0,0.3),0_1px_3px_rgba(0,0,0,0.15)] rounded-xl p-5 pb-10 border border-transparent mt-4"><pre class="bg-transparent border-none p-0 m-0" style="background: transparent !important; box-shadow: none !important;"><code class="text-sm shadow-none font-mono leading-relaxed block">${highlighted}</code></pre></div></div></div>`);
+            pieces.push(`<div class="${finalClass}" ${extraAttrs}>${studioHeader}${copyButton}${codeButton}<div class="overflow-x-auto overflow-y-hidden w-full px-0 custom-scrollbar"><div class="mermaid min-h-[100px] flex items-center justify-center" data-mermaid-src="${encodedCode}"></div><div class="mermaid-raw-code hidden w-full bg-black/20 shadow-[0_3px_12px_rgba(0,0,0,0.3),0_1px_3px_rgba(0,0,0,0.15)] rounded-xl p-5 border border-transparent"><pre class="bg-transparent border-none p-0 m-0" style="background: transparent !important; box-shadow: none !important;"><code class="text-sm shadow-none font-mono leading-relaxed block">${highlighted}</code></pre></div></div></div>`);
         } else {
-            const finalClass = isStreaming ? `${containerClass} isolate overflow-visible is-visible` : `${containerClass} overflow-visible code-block-anim opacity-0 scale-95 transition-all duration-500 ease-in-out will-change-transform transform translate-z-0`;
+            const finalClass = isStreaming ? `${codeContainerClass} isolate overflow-visible is-visible` : `${codeContainerClass} overflow-visible code-block-anim opacity-0 scale-95 transition-all duration-500 ease-in-out will-change-transform transform translate-z-0`;
             const extraAttrs = isStreaming ? 'data-animated="true"' : '';
-            pieces.push(`<div class="${finalClass}" ${extraAttrs}>${studioHeader}${copyButton}<div class="overflow-x-auto w-full bg-black/20 shadow-[0_3px_12px_rgba(0,0,0,0.3),0_1px_3px_rgba(0,0,0,0.15)] rounded-xl p-5 pb-10 border border-transparent"><pre class="bg-transparent border-none p-0 m-0" style="background: transparent !important; box-shadow: none !important;"><code class="text-sm shadow-none font-mono leading-relaxed block">${highlighted}</code></pre></div></div>`);
+            pieces.push(`<div class="${finalClass}" ${extraAttrs}>${studioHeader}${copyButton}<div class="overflow-x-auto w-full bg-black/20 shadow-[0_3px_12px_rgba(0,0,0,0.3),0_1px_3px_rgba(0,0,0,0.15)] rounded-xl p-5 border border-transparent"><pre class="bg-transparent border-none p-0 m-0" style="background: transparent !important; box-shadow: none !important;"><code class="text-sm shadow-none font-mono leading-relaxed block">${highlighted}</code></pre></div></div>`);
         }
         return `\n${id}\n`;
     });
@@ -484,9 +480,16 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
 
                     processedRest = convertTablesToHtml(processedRest);
 
-                    // 3. Inline & List processing
+                    // 3. Normalize multiline HTML tags into single lines before splitting.
+                    // Models often emit tags like <iframe\n  style="..."\n  src="..."\n  allowfullscreen>
+                    // which get fragmented when we split by \n. Collapse them first.
+                    processedRest = processedRest.replace(/<([a-zA-Z][a-zA-Z0-9]*)\b[^>]*?\n[^>]*?>/g, (match) => {
+                        return match.replace(/\s*\n\s*/g, ' ');
+                    });
+
+                    // Inline & List processing
                     processedRest = processedRest.split('\n').map(line => {
-                        if (/^<(pre|table|iframe|canvas|svg|style|script)\b/i.test(line.trim())) return line;
+                        if (/^<\/?(?:pre|table|iframe|canvas|svg|style|script|div|p|h[1-6]|ul|ol|li|blockquote|details|summary|section|article|aside|figure|figcaption|header|footer|nav|main|form|video|audio)\b/i.test(line.trim())) return line;
                         return processInlineMarkdown(line);
                     }).join('\n');
 
@@ -1513,6 +1516,8 @@ function convertListsToHtml(html: string): string {
                     '<section', '<article', '<aside', '<nav', '<header', '<footer', '<main', 
                     '<figure', '<figcaption', '<p', '<br', '<blockquote',
                     '<ul', '<ol', '<li', '</ul', '</ol', '</li',
+                    '<iframe', '<video', '<audio', '<canvas', '<embed', '<object', '<form', '<img',
+                    '</iframe', '</video', '</audio', '</canvas', '</embed', '</object', '</form',
                     '</h', '</pre', '</table', '</blockquote', '</div', '</details', '</summary', 
                     '</section', '</article', '</aside', '</nav', '</header', '</footer', '</main', 
                     '</figure', '</figcaption', '</p',
@@ -1701,6 +1706,12 @@ function highlightCode(code: string, lang: string): string {
         return id;
     };
 
+    // 0. Python / Lua / Generic triple-quote docstrings (must run BEFORE anything else to prevent inner # from breaking it)
+    if (!lang || lang === 'python' || lang === 'py' || lang === 'lua' || lang === 'text' || lang === 'txt') {
+        highlighted = highlighted.replace(/"""[\s\S]*?(?:"""|$)/g, m => addToken(m, 'hl-comment'));
+        highlighted = highlighted.replace(/'''[\s\S]*?(?:'''|$)/g, m => addToken(m, 'hl-comment'));
+    }
+
     // ── Comments (must run before language handlers) ──────────────────────────
     // 1. Block comments /* ... */ — for JS, TS, C, C++, CSS, Java, Go, Rust, PHP, etc.
     const blockCommentLangs = new Set(['javascript','typescript','js','ts','jsx','tsx','c','cpp','c++','h','hpp','css','scss','less','java','kotlin','kt','go','golang','rust','php','swift','dart','sql','mysql','postgresql','sqlite','jsonc']);
@@ -1716,6 +1727,11 @@ function highlightCode(code: string, lang: string): string {
     // 3. PowerShell block comments <# ... #> (escaped as &lt;# ... #&gt;)
     if (['powershell','ps1'].includes(lang)) {
         highlighted = highlighted.replace(/&lt;#[\s\S]*?#&gt;/g, m => addToken(m, 'hl-comment'));
+    }
+
+    // 3.5 Ruby block comments =begin ... =end
+    if (lang === 'ruby' || lang === 'rb') {
+        highlighted = highlighted.replace(/^=begin[\s\S]*?^=end/gm, m => addToken(m, 'hl-comment'));
     }
 
     // 4. Single-line comments
@@ -1738,10 +1754,7 @@ function highlightCode(code: string, lang: string): string {
         highlighted = highlighted.replace(/([ \t]+)(--\s.*)$/gm, (_m, sp, c) => sp + addToken(c, 'hl-comment'));
     }
 
-    // 5. Python / Lua triple-quote docstrings
-    if (lang === 'python' || lang === 'py') {
-        highlighted = highlighted.replace(/("""[\s\S]*?"""|'''[\s\S]*?''')/g, m => addToken(m, 'hl-comment'));
-    }
+
 
     // 6. Lua -- single-line comments
     if (lang === 'lua') {
@@ -1878,9 +1891,13 @@ function highlightCode(code: string, lang: string): string {
     // ── Generic fallback (always runs) ──────────────────────────────────────
     // 1. Fences (3+ backticks/tildes) - Documenting Markdown
     highlighted = highlighted.replace(/(`{3,}|~{3,})/g, m => addToken(m, 'hl-string'));
+
+    // 1.5. Triple-quote strings (prevents them from being broken by standard strings in other languages)
+    highlighted = highlighted.replace(/"""[\s\S]*?(?:"""|$)/g, m => addToken(m, 'hl-string'));
+    highlighted = highlighted.replace(/'''[\s\S]*?(?:'''|$)/g, m => addToken(m, 'hl-string'));
     
     // 2. Standard Strings
-    highlighted = highlighted.replace(/(["'`])(?:(?=(\\?))\2.)*?\1/g, m => addToken(m, 'hl-string'));
+    highlighted = highlighted.replace(/(["'`])(?:(?=(\\?))\2.)*?(?:\1|$)/g, m => addToken(m, 'hl-string'));
     
     // 3. Lone backticks or tildes (remaining from odd counts)
     highlighted = highlighted.replace(/(`|~)/g, m => addToken(m, 'hl-string'));

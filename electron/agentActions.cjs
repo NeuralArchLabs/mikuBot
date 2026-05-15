@@ -544,6 +544,110 @@ async function handleSystemMetrics() {
     };
 }
 
+async function handleRestartOllama(zeroOverhead) {
+    if (process.platform !== 'win32') {
+        throw new Error("El reinicio automático de Ollama solo está soportado en Windows por ahora.");
+    }
+    
+    // Configurar o limpiar la variable de entorno
+    if (zeroOverhead) {
+        await execPromise('setx OLLAMA_GPU_OVERHEAD 0');
+    } else {
+        try {
+            await execPromise('REG delete HKCU\\Environment /F /V OLLAMA_GPU_OVERHEAD');
+        } catch(e) {} // Ignorar si no existe
+    }
+    
+    // Matar procesos
+    try { await execPromise('taskkill /F /IM "ollama app.exe"'); } catch(e) {}
+    try { await execPromise('taskkill /F /IM "ollama.exe"'); } catch(e) {}
+    
+    await new Promise(r => setTimeout(r, 1500));
+    
+    const appData = process.env.LOCALAPPDATA;
+    const ollamaPath = `${appData}\\Programs\\Ollama\\ollama app.exe`;
+    
+    const { spawn } = require('child_process');
+    const child = spawn(ollamaPath, [], {
+        detached: true,
+        stdio: 'ignore'
+    });
+    child.unref();
+    
+    return true;
+}
+
+async function handleGpuInfo() {
+    const results = [];
+    
+    // 1. Try NVIDIA-SMI (Highest accuracy for AI indexes)
+    try {
+        const { stdout } = await execPromise('nvidia-smi --query-gpu=index,name,memory.total --format=csv,noheader,nounits');
+        if (stdout) {
+            const lines = stdout.trim().split('\n');
+            lines.forEach(line => {
+                const [index, name, mem] = line.split(',').map(s => s.trim());
+                results.push({
+                    index: parseInt(index),
+                    name,
+                    memory: `${mem} MB`,
+                    type: 'NVIDIA'
+                });
+            });
+            return results;
+        }
+    } catch (e) {
+        // nvidia-smi not available or no NVIDIA GPU
+    }
+
+    // 2. Try Windows WMIC (Fallback for general GPUs)
+    if (process.platform === 'win32') {
+        try {
+            // Get Name and AdapterRAM (in bytes)
+            const { stdout } = await execPromise('wmic path win32_VideoController get name,AdapterRAM /format:list');
+            if (stdout) {
+                const devices = stdout.trim().split(/\r?\n\r?\n/);
+                devices.forEach((device, i) => {
+                    const lines = device.split('\n');
+                    let name = '', ram = 0;
+                    lines.forEach(l => {
+                        if (l.startsWith('Name=')) name = l.split('=')[1].trim();
+                        if (l.startsWith('AdapterRAM=')) ram = parseInt(l.split('=')[1].trim());
+                    });
+                    if (name) {
+                        results.push({
+                            index: i,
+                            name,
+                            memory: ram ? `${Math.round(ram / 1024 / 1024)} MB` : 'Unknown',
+                            type: 'Windows'
+                        });
+                    }
+                });
+            }
+        } catch (e) { }
+    }
+
+    // 3. Linux Fallback (lspci)
+    if (process.platform !== 'win32' && results.length === 0) {
+        try {
+            const { stdout } = await execPromise('lspci | grep -i vga');
+            if (stdout) {
+                const lines = stdout.trim().split('\n');
+                lines.forEach((line, i) => {
+                    results.push({
+                        index: i,
+                        name: line.split(': ')[1] || line,
+                        memory: 'Unknown',
+                        type: 'Linux'
+                    });
+                });
+            }
+        } catch (e) { }
+    }
+
+    return results;
+}
+
 async function handleGitInfo(root) {
     try {
         const { stdout: gitRootRaw } = await execPromise('git rev-parse --show-toplevel', { cwd: root }).catch(() => ({ stdout: '' }));
@@ -606,5 +710,7 @@ module.exports = {
     handlePatchFile,
     handleUndoPatch,
     handleSystemMetrics,
+    handleGpuInfo,
+    handleRestartOllama,
     handleGitInfo
 };

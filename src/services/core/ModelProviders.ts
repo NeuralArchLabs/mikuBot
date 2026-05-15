@@ -147,6 +147,7 @@ export abstract class ModelProvider {
             provider,
             model: this.options.config.model,
             body,
+            ollamaUrl: this.options.config.ollamaUrl,
             overrideUrl,
             abortSignal: this.options.abortSignal,
             onChunk: (raw) => {
@@ -241,7 +242,7 @@ export class OpenAICompatibleProvider extends ModelProvider {
             messages: this.serializeMessages(messages),
             stream: true,
             temperature: this.options.config.temperature ?? 0.7,
-            max_tokens: this.options.config.maxOutputTokens || 128000,
+            max_tokens: this.providerName === 'groq' ? 4096 : ((this.options.config as any).maxOutputTokens || 128000),
             tools: this.options.useTools ? this.options.tools : undefined
         };
 
@@ -412,15 +413,27 @@ export class OllamaProvider extends ModelProvider {
             // Without this, every message after ~5 min of inactivity triggers a full model
             // reload (30-120s for larger models), causing the UI to appear "hung".
             keep_alive: '30m',
-            // num_ctx is intentionally omitted — Ollama uses the context size configured
-            // in the Ollama app per model (via Modelfile), which is the correct source of truth.
-            options: { temperature: this.options.config.temperature ?? 0.7 },
+            options: { 
+                temperature: this.options.config.temperature ?? 0.7,
+                ...(this.options.config.ollamaNumGpu !== undefined && this.options.config.ollamaNumGpu >= 0 
+                    ? { num_gpu: this.options.config.ollamaNumGpu } 
+                    : {}),
+                ...(this.options.config.ollamaNumCtx && this.options.config.ollamaNumCtx > 0 
+                    ? { num_ctx: this.options.config.ollamaNumCtx } 
+                    : {}),
+                ...(this.options.config.ollamaMainGpu !== undefined 
+                    ? { main_gpu: this.options.config.ollamaMainGpu } 
+                    : {}),
+                ...(this.options.config.ollamaNumThread && this.options.config.ollamaNumThread > 0 
+                    ? { num_thread: this.options.config.ollamaNumThread } 
+                    : {})
+            },
             tools: this.options.useTools ? this.options.tools : undefined
         };
 
         if (this.options.isElectronProxy) {
-            // Pass the configured ollamaUrl through; the main process will normalize localhost→127.0.0.1
-            return this.streamProxy('ollama', { ...body, ollamaUrl: this.options.config.ollamaUrl }, false);
+            // Pass the configured ollamaUrl separately; the main process will handle normalization
+            return this.streamProxy('ollama', body, false);
         } else {
             // Direct mode (dev/browser): force IPv4 to skip Windows DNS resolution delay.
             const rawBase = (this.options.config.ollamaUrl || 'http://localhost:11434').replace('localhost', '127.0.0.1');

@@ -356,7 +356,12 @@
       "telegram_desc": "将 Miku 连接到 Telegram 机器人以进行远程移动交互。留空以禁用。",
       "bot_token": "机器人令牌",
       "chat_id": "允许的聊天 ID (管理员)",
-      "chat_id_placeholder": "您的数字聊天 ID"
+      "chat_id_placeholder": "您的数字聊天 ID",
+      "ollama_advanced": "Ollama 高级设置",
+      "ollama_gpu": "GPU 层数 (num_gpu)",
+      "ollama_gpu_desc": "卸载到 GPU 的层数。-1 为自动检测。",
+      "ollama_ctx": "上下文窗口 (num_ctx)",
+      "ollama_ctx_desc": "令牌内存大小。较大的值会消耗更多 VRAM。"
     },
     "vosk": {
       "title": "Vosk 识别引擎",

@@ -375,7 +375,18 @@
       "telegram_desc": "Link Miku to a Telegram Bot for remote mobile interactions. Leave blank to disable.",
       "bot_token": "Bot Token",
       "chat_id": "Allowed Chat ID (Admin)",
-      "chat_id_placeholder": "Your numeric Chat ID"
+      "chat_id_placeholder": "Your numeric Chat ID",
+      "ollama_advanced": "Advanced Ollama Settings",
+      "ollama_advanced_desc": "Hardware Optimization & Performance",
+      "ollama_gpu": "GPU Layers (num_gpu)",
+      "ollama_gpu_desc": "Number of layers to offload to the GPU. -1 is automatic.",
+      "ollama_ctx": "Context Window (num_ctx)",
+      "ollama_ctx_desc": "Token memory size. High values consume more VRAM.",
+      "ollama_detected_gpus": "Detected GPUs",
+      "ollama_main_gpu": "Main GPU (index)",
+      "ollama_main_gpu_desc": "In multi-GPU systems, defines which card will be used for primary tasks.",
+      "ollama_threads": "CPU Threads (num_thread)",
+      "ollama_threads_desc": "Number of threads for computation. 0 is automatic."
     },
     "vosk": {
       "title": "Vosk Recognition Engine",

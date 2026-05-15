@@ -715,6 +715,14 @@ pre code .hl-directive { color: #fb7185 !important; font-weight: 700; }
   margin: 1.5rem auto;
 }
 
+/* When the model provides its own responsive container (padding-bottom trick),
+   the iframe has inline position:absolute + height:100%. Our base min-height
+   would force it taller than the container can show, causing clipping. */
+.markdown-body iframe[style*="position"] {
+  min-height: unset;
+  margin: 0;
+}
+
 
 
 /* ── Dark Theme Overrides for UA-Default Light Backgrounds ─────────── */

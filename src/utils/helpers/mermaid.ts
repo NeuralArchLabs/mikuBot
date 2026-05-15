@@ -800,13 +800,14 @@ function attachExpandButton(block: HTMLElement) {
     if (!svg) return;
 
     // Find the parent container that has the studio header
-    const container = block.closest('.group');
+    const container = block.closest('[class*="group/code"]');
     if (!container || container.querySelector('.mermaid-expand-btn')) return; // Already has button
 
     const expandBtn = document.createElement('button');
-    expandBtn.className = 'mermaid-expand-btn absolute top-3 right-[92px] text-slate-500/50 hover:text-cyan-400 p-1 opacity-0 group-hover:opacity-100 transition hover:scale-110 active:scale-90 cursor-pointer z-20';
-    expandBtn.title = 'Inspeccionar diagrama';
-    expandBtn.innerHTML = '<i class="fas fa-expand text-[13px]"></i>';
+    // Align with our new absolute-flex header style
+    expandBtn.className = 'mermaid-expand-btn absolute top-0 right-22 h-8 flex items-center text-slate-500/50 hover:text-cyan-400 p-2 opacity-0 group-hover/code:opacity-100 transition hover:scale-110 active:scale-90 cursor-pointer z-20';
+    expandBtn.title = 'Ampliar diagrama';
+    expandBtn.innerHTML = '<i class="fas fa-expand text-[13px] transition-transform duration-200 transform-gpu hover:scale-110 active:scale-95"></i>';
     expandBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         const svgSource = block.querySelector('svg')?.outerHTML;

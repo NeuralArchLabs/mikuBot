@@ -3105,6 +3105,24 @@ ipcMain.handle('agent:system-metrics', async () => {
     }
 });
 
+ipcMain.handle('agent:gpu-info', async () => {
+    try {
+        const gpus = await agentActions.handleGpuInfo();
+        return { ok: true, gpus };
+    } catch (e) {
+        return { ok: false, error: e.message };
+    }
+});
+
+ipcMain.handle('agent:restart-ollama', async (event, zeroOverhead) => {
+    try {
+        const result = await agentActions.handleRestartOllama(zeroOverhead);
+        return { ok: true, result };
+    } catch (e) {
+        return { ok: false, error: e.message };
+    }
+});
+
 // Redundant tool removed
 
 // ... rest of the file

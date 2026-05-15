@@ -71,6 +71,7 @@ contextBridge.exposeInMainWorld('electron', {
     patchFile: (data) => ipcRenderer.invoke('agent:patch-file', data),
     undoPatch: (data) => ipcRenderer.invoke('agent:undo-patch', data),
     getSystemMetrics: () => ipcRenderer.invoke('agent:system-metrics'),
+    getGpuInfo: () => ipcRenderer.invoke('agent:gpu-info'),
 
     // Voice & Vosk Models
     getVoiceStatus: () => ipcRenderer.invoke('voice:status'),
@@ -142,5 +143,8 @@ contextBridge.exposeInMainWorld('electron', {
     readBackground: (filename) => ipcRenderer.invoke('read-background', filename),
 
     // Title Bar
-    updateTitleBar: (overlay) => ipcRenderer.send('update-titlebar', overlay)
+    updateTitleBar: (overlay) => ipcRenderer.send('update-titlebar', overlay),
+
+    // Advanced Agent
+    restartOllama: (zeroOverhead) => ipcRenderer.invoke('agent:restart-ollama', zeroOverhead)
 });

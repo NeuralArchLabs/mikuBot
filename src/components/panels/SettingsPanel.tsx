@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import './SettingsPanel.css';
@@ -69,9 +69,25 @@ export const SettingsPanel = ({
     onUpdatePartialConfig
 }: SettingsPanelProps) => {
     const [showApiKey, setShowApiKey] = useState(false);
+    const [isRestartingOllama, setIsRestartingOllama] = useState(false);
+    const [detectedGpus, setDetectedGpus] = useState<any[]>([]);
+    const [isScanningGpus, setIsScanningGpus] = useState(false);
+    
     // Track which provider's key we are currently editing in the global section
     const [editingProvider, setEditingProvider] = useState<Provider>(config.provider);
     const [localApiKey, setLocalApiKey] = useState('');
+
+    const scanGpus = useCallback(async () => {
+        setIsScanningGpus(true);
+        try {
+            const res = await (window as any).electron.getGpuInfo();
+            if (res.ok) setDetectedGpus(res.gpus);
+        } catch (e) {
+            console.error('Failed to scan GPUs:', e);
+        } finally {
+            setIsScanningGpus(false);
+        }
+    }, []);
     const [showFloatingSave, setShowFloatingSave] = useState(false);
     const [isAtBottom, setIsAtBottom] = useState(false);
     const [settingsTab, setSettingsTab] = useState<'core' | 'skills'>('core');
@@ -81,6 +97,7 @@ export const SettingsPanel = ({
     const [startingSearxena, setStartingSearxena] = useState(false);
     const [updatingSearxena, setUpdatingSearxena] = useState(false);
     const [showBackgroundGallery, setShowBackgroundGallery] = useState(false);
+    const [showOllamaAdvanced, setShowOllamaAdvanced] = useState(false);
     const setOverlayActive = useUIStore((state) => state.setOverlayActive);
 
     // Sync Background Gallery with Global UI Store
@@ -200,6 +217,25 @@ export const SettingsPanel = ({
         }
     };
 
+        const handleToggleOverhead = async (enableZeroOverhead: boolean) => {
+        if (!(window as any).electron) return;
+        setIsRestartingOllama(true);
+        try {
+            updateConfig('ollamaZeroOverhead', enableZeroOverhead);
+            const res = await (window as any).electron.restartOllama(enableZeroOverhead);
+            if (res.ok) {
+                await askAlert(i18n.language === 'es' ? '✅ Ollama reiniciado con éxito. Los cambios están activos.' : '✅ Ollama restarted successfully. Changes are active.');
+            } else {
+                await askAlert(i18n.language === 'es' ? '❌ Error al reiniciar Ollama: ' + res.error : '❌ Error restarting Ollama: ' + res.error);
+                updateConfig('ollamaZeroOverhead', !enableZeroOverhead); // revert
+            }
+        } catch(err: any) {
+            console.error(err);
+            updateConfig('ollamaZeroOverhead', !enableZeroOverhead); // revert
+        }
+        setIsRestartingOllama(false);
+    };
+
     const handleSaveKey = (provider: Provider, key: string) => {
         updateConfig('apiKeys', { ...config.apiKeys, [provider]: key });
     };
@@ -213,6 +249,9 @@ export const SettingsPanel = ({
             <div className="absolute bottom-0 right-1/4 w-1/3 h-64 bg-purple-600/05 blur-[100px] pointer-events-none rounded-full transform-gpu" />
 
             <div className={`mx-auto w-full relative z-10 transition-all duration-700 ease-in-out ${settingsTab === 'skills' ? 'flex-1 min-h-0 flex flex-col max-w-7xl px-2 lg:px-4' : 'max-w-4xl space-y-6'}`}>
+
+                
+
 
                 {/* ── Shared Macro-Tab Header ─────────────────────────── */}
                 <div className={`flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 relative transition-all duration-500 ease-in-out`}>
@@ -998,6 +1037,287 @@ export const SettingsPanel = ({
                             </label>
 
                             <div className="premium-panel !bg-amber-500/[0.03] hover:!bg-amber-500/[0.06] p-6 shadow-[0_0_40px_rgba(251,191,36,0.05)] space-y-5 relative miku-composite-isolate border-amber-500/10 hover:border-amber-500/30">
+{/* ── Ollama Advanced Sub-View ──────────────────────── */}
+                {showOllamaAdvanced && (
+                    <div className="absolute inset-0 bg-[var(--background-color)] z-[100] flex flex-col animate-in fade-in slide-in-from-right-10 duration-500 rounded-[2rem] overflow-hidden">
+                        <div className="p-6 border-b border-[var(--border-color)]/20 flex items-center justify-between bg-[var(--surface-color)]/50 backdrop-blur-xl">
+                            <div className="flex items-center gap-4">
+                                <button
+                                    onClick={() => setShowOllamaAdvanced(false)}
+                                    className="w-10 h-10 rounded-xl bg-slate-800/50 hover:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-all border border-transparent hover:border-slate-700"
+                                >
+                                    <Icon name="arrow-left" />
+                                </button>
+                                <div>
+                                    <h2 className="text-xl font-black text-[var(--text-primary)] tracking-tight uppercase">{t('settings.security.ollama_advanced')}</h2>
+                                    <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest">{t('settings.security.ollama_advanced_desc')}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[8px] font-black text-emerald-400 uppercase tracking-widest animate-pulse">
+                                    Ollama Performance Tuning
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                            <div className="max-w-2xl mx-auto space-y-10 pb-10">
+                                
+                                {/* GPU Layers */}
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-baseline">
+                                        <h3 className="text-sm font-black text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                                            <Icon name="layer-group" className="text-emerald-500" /> {t('settings.security.ollama_gpu')}
+                                        </h3>
+                                        <span className="text-lg font-black text-emerald-400 font-mono">
+                                            {config.ollamaNumGpu === -1 || config.ollamaNumGpu === undefined ? 'AUTO' : config.ollamaNumGpu}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                                        {t('settings.security.ollama_gpu_desc')}
+                                    </p>
+                                    <div className="pt-2">
+                                        <input
+                                            type="range"
+                                            min="-1"
+                                            max="128"
+                                            step="1"
+                                            value={config.ollamaNumGpu ?? -1}
+                                            onChange={(e) => updateConfig('ollamaNumGpu', parseInt(e.target.value))}
+                                            className="w-full h-2 bg-slate-800 rounded-full appearance-none cursor-pointer accent-emerald-500"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="h-px bg-slate-800/50" />
+
+                                {/* Context Window */}
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-baseline">
+                                        <h3 className="text-sm font-black text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                                            <Icon name="brain" className="text-emerald-500" /> {t('settings.security.ollama_ctx')}
+                                        </h3>
+                                        <span className="text-lg font-black text-emerald-400 font-mono">
+                                            {!config.ollamaNumCtx || config.ollamaNumCtx === 0 ? 'DEFAULT' : `${config.ollamaNumCtx / 1024}k`}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                                        {t('settings.security.ollama_ctx_desc')}
+                                    </p>
+                                    {(() => {
+                                        const checkpoints = [0, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288];
+                                        const currentIndex = checkpoints.indexOf(config.ollamaNumCtx ?? 0);
+                                        const safeIndex = currentIndex === -1 ? 0 : currentIndex;
+                                        
+                                        return (
+                                            <div className="pt-2 space-y-4">
+                                                <input
+                                                    type="range"
+                                                    min="0"
+                                                    max={checkpoints.length - 1}
+                                                    step="1"
+                                                    value={safeIndex}
+                                                    onChange={(e) => {
+                                                        const index = parseInt(e.target.value);
+                                                        updateConfig('ollamaNumCtx', checkpoints[index]);
+                                                    }}
+                                                    className="w-full h-2 bg-slate-800 rounded-full appearance-none cursor-pointer accent-emerald-500"
+                                                />
+                                                <div className="flex justify-between px-1">
+                                                    {checkpoints.map((v, i) => (
+                                                        <div key={i} className="flex flex-col items-center w-0 overflow-visible">
+                                                            <div className={`w-1 h-1 rounded-full mb-2 ${safeIndex === i ? 'bg-emerald-400' : 'bg-slate-700'}`} />
+                                                            <span className={`text-[8px] whitespace-nowrap font-black uppercase tracking-tighter transition-colors ${safeIndex === i ? 'text-emerald-400' : 'text-slate-600'}`}>
+                                                                {v === 0 ? 'Auto' : `${v / 1024}k`}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
+
+                                <div className="h-px bg-slate-800/50" />
+
+                                
+                                {/* Temperature Control */}
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-baseline">
+                                        <h3 className="text-sm font-black text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                                            <Icon name="thermometer-half" className="text-emerald-500" /> {t('settings.security.temp_label')}
+                                        </h3>
+                                        <span className="text-lg font-black text-emerald-400 font-mono">
+                                            {config.temperature.toFixed(1)}
+                                        </span>
+                                    </div>
+                                    <div className="pt-2">
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max="1"
+                                            step="0.1"
+                                            value={config.temperature}
+                                            onChange={(e) => updateConfig('temperature', parseFloat(e.target.value))}
+                                            className="w-full h-2 bg-slate-800 rounded-full appearance-none cursor-pointer accent-emerald-500"
+                                        />
+                                        <div className="flex justify-between text-[9px] text-slate-600 font-bold uppercase tracking-wider mt-2 px-1">
+                                            <span>{t('settings.security.temp_precise')}</span>
+                                            <span>{t('settings.security.temp_creative')}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="h-px bg-slate-800/50 my-6" />
+
+                                {/* GPU Hardware Detection */}
+                                <div className="space-y-6">
+                                    <div className="flex justify-between items-center">
+                                        <h3 className="text-sm font-black text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                                            <Icon name="microchip" className="text-emerald-500" /> {t('settings.security.ollama_detected_gpus')}
+                                        </h3>
+                                        <button 
+                                            onClick={(e) => { e.preventDefault(); scanGpus(); }}
+                                            disabled={isScanningGpus}
+                                            className="px-4 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-widest transition-all border border-emerald-500/20 flex items-center gap-2"
+                                        >
+                                            <Icon name="sync" className={isScanningGpus ? 'animate-spin' : ''} />
+                                            {isScanningGpus ? (i18n.language === 'es' ? 'Escaneando...' : 'Scanning...') : (i18n.language === 'es' ? 'Refrescar' : 'Refresh')}
+                                        </button>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {detectedGpus.length > 0 ? (
+                                            detectedGpus.map((gpu, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    onClick={(e) => { e.preventDefault(); updateConfig('ollamaMainGpu', gpu.index); }}
+                                                    className={`group relative flex flex-col p-4 rounded-2xl border transition-all duration-300 ${config.ollamaMainGpu === gpu.index 
+                                                        ? 'bg-emerald-500/10 border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.1)]' 
+                                                        : 'bg-slate-900/40 border-slate-800 hover:border-slate-700'}`}
+                                                >
+                                                    <div className="flex items-center justify-between mb-3">
+                                                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black ${config.ollamaMainGpu === gpu.index ? 'bg-emerald-500 text-black' : 'bg-slate-800 text-slate-500'}`}>
+                                                            {gpu.index}
+                                                        </div>
+                                                        {config.ollamaMainGpu === gpu.index && (
+                                                            <div className="w-5 h-5 rounded-full bg-emerald-500 text-black flex items-center justify-center text-[10px]">
+                                                                <Icon name="check" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-left">
+                                                        <div className="text-xs font-black text-slate-200 mb-1 truncate w-full group-hover:text-white transition-colors">{gpu.name}</div>
+                                                        <div className="text-[9px] font-bold text-emerald-500/60 uppercase tracking-widest">{gpu.type}</div>
+                                                        <div className="mt-3 flex items-center gap-2">
+                                                            <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
+                                                                <div className="h-full bg-emerald-500/40 w-full" />
+                                                            </div>
+                                                            <span className="text-[9px] font-mono font-bold text-slate-500 whitespace-nowrap">{gpu.memory}</span>
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                            ))
+                                        ) : (
+                                            <div className="col-span-full p-10 rounded-3xl border border-dashed border-slate-800 text-center bg-slate-900/20">
+                                                <div className="w-12 h-12 rounded-2xl bg-slate-800/50 flex items-center justify-center text-slate-600 mx-auto mb-4">
+                                                    <Icon name="search" />
+                                                </div>
+                                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-relaxed">
+                                                    {isScanningGpus 
+                                                        ? (i18n.language === 'es' ? 'Identificando controladores de hardware...' : 'Identifying hardware controllers...') 
+                                                        : (i18n.language === 'es' ? 'No se detectaron GPUs discretas.\nUsa el índice manual abajo.' : 'No discrete GPUs detected.\nUse manual index below.')}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="h-px bg-slate-800/50" />
+
+                                {/* Advanced Manual Tuning */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-2">
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between items-center">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                                <Icon name="cog" /> {t('settings.security.ollama_main_gpu')}
+                                            </label>
+                                            <span className="bg-slate-800 text-emerald-400 font-mono text-[10px] font-bold px-2 py-1 rounded border border-slate-700">
+                                                {config.ollamaMainGpu ?? 0}
+                                            </span>
+                                        </div>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="8"
+                                            value={config.ollamaMainGpu ?? 0}
+                                            onChange={(e) => updateConfig('ollamaMainGpu', parseInt(e.target.value) || 0)}
+                                            className="w-full bg-slate-900/60 border border-slate-800 text-slate-200 text-xs rounded-xl px-4 py-3 focus:outline-none focus:border-emerald-500/30 transition-all font-mono"
+                                        />
+                                        <p className="text-[9px] text-slate-600 font-medium leading-relaxed">
+                                            {t('settings.security.ollama_main_gpu_desc')}
+                                        </p>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between items-center">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                                <Icon name="cpu" /> {t('settings.security.ollama_threads')}
+                                            </label>
+                                            <span className="bg-slate-800 text-emerald-400 font-mono text-[10px] font-bold px-2 py-1 rounded border border-slate-700">
+                                                {config.ollamaNumThread === 0 ? 'AUTO' : config.ollamaNumThread}
+                                            </span>
+                                        </div>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="128"
+                                            value={config.ollamaNumThread ?? 0}
+                                            onChange={(e) => updateConfig('ollamaNumThread', parseInt(e.target.value) || 0)}
+                                            className="w-full bg-slate-900/60 border border-slate-800 text-slate-200 text-xs rounded-xl px-4 py-3 focus:outline-none focus:border-emerald-500/30 transition-all font-mono"
+                                        />
+                                        <p className="text-[9px] text-slate-600 font-medium leading-relaxed">
+                                            {t('settings.security.ollama_threads_desc')}
+                                        </p>
+                                    </div>
+                                    
+                                    {/* Zero Overhead Toggle */}
+                                    <div className="md:col-span-2 space-y-4 pt-4 border-t border-slate-800/50 mt-4">
+                                        <div className="flex justify-between items-start gap-4">
+                                            <div className="flex-1">
+                                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-1">
+                                                    <Icon name="rocket" className="text-amber-500" /> {i18n.language === 'es' ? 'Liberar Límite de VRAM (Zero Overhead)' : 'Unlock VRAM Limit (Zero Overhead)'}
+                                                </h3>
+                                                <p className="text-[9px] text-slate-500 font-medium leading-relaxed">
+                                                    {i18n.language === 'es' 
+                                                        ? 'Desactiva el margen de seguridad de Windows en la GPU. Usa esto SÓLO en GPUs dedicadas exclusivamente para inferencia. Aplicar esto reiniciará Ollama.' 
+                                                        : 'Disables the Windows safety margin on the GPU. Use this ONLY on GPUs dedicated exclusively for inference. Applying this will restart Ollama.'}
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={() => handleToggleOverhead(!config.ollamaZeroOverhead)}
+                                                disabled={isRestartingOllama}
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-slate-900 ${config.ollamaZeroOverhead ? 'bg-amber-500' : 'bg-slate-700'}`}
+                                            >
+                                                <span className={`${config.ollamaZeroOverhead ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform rounded-full bg-white transition-transform`} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="p-4 bg-slate-950/50 border-t border-slate-800/30 text-center">
+                            <button
+                                onClick={() => setShowOllamaAdvanced(false)}
+                                className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-black text-xs font-black uppercase tracking-[0.2em] rounded-xl transition-all shadow-lg shadow-emerald-900/20"
+                            >
+                                {t('settings.actions.apply_and_back', 'Aplicar y Volver')}
+                            </button>
+                        </div>
+                    </div>
+                )}
+
 
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-amber-500/10 pb-4 relative z-10">
                                     <div className="flex items-center gap-4">
@@ -1114,7 +1434,27 @@ export const SettingsPanel = ({
                                                 </div>
                                             </div>
 
-                                            <div className="mt-6 flex flex-col gap-3 p-4 premium-card !bg-slate-900/30">
+                                            
+                                            {editingProvider === 'ollama' ? (
+                                                <div className="mt-6">
+                                                    <button
+                                                        onClick={() => setShowOllamaAdvanced(true)}
+                                                        className="w-full py-4 px-6 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 hover:border-emerald-500/40 rounded-2xl transition-all duration-300 flex items-center justify-between group"
+                                                    >
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
+                                                                <Icon name="microchip" />
+                                                            </div>
+                                                            <div className="text-left">
+                                                                <div className="text-sm font-black text-emerald-500 tracking-tight">{t('settings.security.ollama_advanced')}</div>
+                                                                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{t('settings.security.ollama_advanced_desc', 'Hardware & Performance Tuning')}</div>
+                                                            </div>
+                                                        </div>
+                                                        <Icon name="chevron-right" className="text-emerald-500/40 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all" />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="mt-6 flex flex-col gap-3 p-4 premium-card !bg-slate-900/30">
                                                 <div className="flex justify-between items-center">
                                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                                                         <Icon name="thermometer-half" /> {t('settings.security.temp_label')}
@@ -1138,6 +1478,10 @@ export const SettingsPanel = ({
                                                     <span>{t('settings.security.temp_creative')}</span>
                                                 </div>
                                             </div>
+                                            )}
+
+
+                                            
                                         </div>
                                     </div>
                                 </div>

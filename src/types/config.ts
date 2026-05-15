@@ -35,6 +35,11 @@ export interface AppConfig {
     visionModel?: string;
     apiKeys: Record<Provider, string>;
     ollamaUrl: string;
+    ollamaNumGpu?: number;
+    ollamaNumCtx?: number;
+    ollamaMainGpu?: number;
+    ollamaNumThread?: number;
+    ollamaZeroOverhead?: boolean;
     temperature: number;
     telegramBotToken: string;
 
