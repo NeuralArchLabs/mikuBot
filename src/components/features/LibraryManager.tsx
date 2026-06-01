@@ -397,7 +397,7 @@ export const LibraryManager = ({
                     </div>
 
                     {/* ── Content Area ───────────────────────────────── */}
-                    <div className="flex-1 bg-[var(--background-color)]/50 [.theme-cloud_&]:bg-slate-700/90 [.theme-cloud_&]:text-slate-100 flex flex-col relative">
+                    <div className="flex-1 min-w-0 bg-[var(--background-color)]/50 [.theme-cloud_&]:bg-slate-700/90 [.theme-cloud_&]:text-slate-100 flex flex-col relative">
                         {viewFile ? (
                             <>
                                 <div className="h-10 flex items-center justify-between px-4 bg-[var(--surface-color)]/40 [.theme-cloud_&]:bg-slate-800/40 border-b border-[var(--border-color)]/10 [.theme-cloud_&]:border-slate-700/20 shadow-sm relative z-10">
@@ -448,7 +448,7 @@ export const LibraryManager = ({
 
                                 {editMode ? (
                                     showPreview ? (
-                                        <div className="flex-1 overflow-auto p-8 custom-scrollbar [.theme-cloud_&_.markdown-body]:text-slate-100">
+                                        <div className="flex-1 overflow-auto p-8 custom-scrollbar [.theme-cloud_&_.markdown-body]:text-slate-100 whitespace-pre-wrap break-words">
                                             <MarkdownRenderer content={editContent} />
                                         </div>
                                     ) : (
@@ -463,7 +463,7 @@ export const LibraryManager = ({
                                         </div>
                                     )
                                 ) : (
-                                    <div className="flex-1 overflow-auto p-8 custom-scrollbar [.theme-cloud_&_.markdown-body]:text-slate-100">
+                                    <div className="flex-1 overflow-auto p-8 custom-scrollbar [.theme-cloud_&_.markdown-body]:text-slate-100 whitespace-pre-wrap break-words">
                                         <MarkdownRenderer content={files[viewFile]} />
                                     </div>
                                 )}

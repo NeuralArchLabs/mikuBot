@@ -500,10 +500,10 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                     }
                     inner = processedSummary + processedRest;
 
-
                     fullTagContent = openTag + inner + closeTag;
                 }
             }
+
             // Inline tags must not break text flow (critical for table cells, paragraphs)
             const inlineTags = new Set(['strong', 'em', 'b', 'i', 'u', 'span', 'a', 'code', 'kbd', 'mark', 'small', 'abbr', 'sub', 'sup', 'var', 'dfn', 'cite', 'q', 's', 'strike', 'del', 'ins', 'samp', 'bdo', 'big', 'time', 'data', 'ruby', 'rt', 'rp', 'wbr']);
 
@@ -512,6 +512,47 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                 fullTagContent = fullTagContent.replace(/<(strong|b)(\s[^>]*)?>/i, '<$1 class="font-bold text-inherit"$2>');
             } else if (tagName === 'em' || tagName === 'i') {
                 fullTagContent = fullTagContent.replace(/<(em|i)(\s[^>]*)?>/i, '<$1 class="italic text-inherit"$2>');
+            }
+
+            // Fix translucent table headers: move the gradient from <tr> to <thead>.
+            // Chromium does not render backgrounds on <tr>/<thead> reliably.
+            // By moving it to <thead> and making <tr>/<th> transparent via CSS (index.css),
+            // we get one continuous gradient band across the full header row.
+            if (fullTagContent.includes('<thead') && /background/i.test(fullTagContent)) {
+                fullTagContent = fullTagContent.replace(/<thead\b([^>]*)>([\s\S]*?)<tr\b([^>]*)>([\s\S]*?)<\/tr>([\s\S]*?)<\/thead>/gi, (match, theadAttrs, beforeTr, trAttrs, trInner, afterTr) => {
+                    const styleMatch = trAttrs.match(/style=(['"])([^'"]*background[^'"]*)\1/i);
+                    if (!styleMatch) return match;
+
+                    const trBackgroundStyle = styleMatch[2];
+                    const trBackgroundStyleClean = trBackgroundStyle.replace(/;\s*$/, '');
+
+                    // Strip background from <tr> — it will live on <thead> instead
+                    const cleanTrAttrs = trAttrs.replace(/style=(['"])([^'"]*)\1/i, (m, q, s) => {
+                        const cleaned = s.replace(/background\s*:[^;]+;?/gi, '').trim();
+                        return (cleaned && !/^;*$/.test(cleaned)) ? `style=${q}${cleaned}${q}` : '';
+                    });
+
+                    // Move background to <thead> so it spans the full header row as one band
+                    let newTheadAttrs = theadAttrs;
+                    if (/style=/i.test(newTheadAttrs)) {
+                        newTheadAttrs = newTheadAttrs.replace(/style=(['"])([^'"]*)\1/i, `style=$1${trBackgroundStyleClean}; $2$1`);
+                    } else {
+                        newTheadAttrs = ` style="${trBackgroundStyleClean};"`;
+                    }
+
+                    // Patch TH background styles to ensure consistency
+                    const updatedInner = trInner.replace(/<th\b([^>]*)>/gi, (_match, attrs) => {
+                        const trimmedAttrs = attrs.trim();
+                        if (/style=/i.test(trimmedAttrs)) {
+                            const updated = trimmedAttrs.replace(/style=(['"])([^'"]*)\1/i, `style=$1${trBackgroundStyleClean}; $2$1`);
+                            return `<th ${updated}>`;
+                        } else {
+                            return trimmedAttrs ? `<th style="${trBackgroundStyleClean};" ${trimmedAttrs}>` : `<th style="${trBackgroundStyleClean};">`;
+                        }
+                    });
+
+                    return `<thead${newTheadAttrs}>${beforeTr}<tr${cleanTrAttrs}>${updatedInner}</tr>${afterTr}</thead>`;
+                });
             }
 
             pieces.push(fullTagContent);

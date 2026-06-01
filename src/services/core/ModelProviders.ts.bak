@@ -399,8 +399,8 @@ export class OllamaProvider extends ModelProvider {
         if (fullParsed?.message?.content) {
             this.fullContent += fullParsed.message.content;
         }
-        if (fullParsed?.message?.thinking) {
-            this.fullReasoning += fullParsed.message.thinking;
+        if (fullParsed?.message?.thought) {
+            this.fullReasoning += fullParsed.message.thought;
         }
         if (fullParsed?.message?.tool_calls) {
             this.toolCallsDeltas = [...this.toolCallsDeltas, ...fullParsed.message.tool_calls];

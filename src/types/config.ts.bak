@@ -39,7 +39,6 @@ export interface AppConfig {
     ollamaNumCtx?: number;
     ollamaMainGpu?: number;
     ollamaNumThread?: number;
-    ollamaThink?: boolean;
     ollamaZeroOverhead?: boolean;
     temperature: number;
     telegramBotToken: string;

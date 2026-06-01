@@ -1170,30 +1170,6 @@ export const SettingsPanel = ({
 
                                 <div className="h-px bg-slate-800/50 my-6" />
 
-                                {/* Extended Thinking Toggle */}
-                                <div className="space-y-4">
-                                    <div className="flex justify-between items-start gap-4">
-                                        <div className="flex-1">
-                                            <h3 className="text-sm font-black text-slate-200 uppercase tracking-wider flex items-center gap-2 mb-1">
-                                                <Icon name="brain" className="text-purple-500" /> {i18n.language === 'es' ? 'Pensamiento Extendido' : 'Extended Thinking'}
-                                            </h3>
-                                            <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                                                {i18n.language === 'es'
-                                                    ? 'Activa el razonamiento interno en modelos compatibles (ej: deepseek-r1). Muestra el proceso de pensamiento del modelo.'
-                                                    : 'Enables internal reasoning on compatible models (e.g., deepseek-r1). Shows the model\'s thinking process.'}
-                                            </p>
-                                        </div>
-                                        <button
-                                            onClick={() => updateConfig('ollamaThink', config.ollamaThink !== false ? false : true)}
-                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 ${config.ollamaThink !== false ? 'bg-purple-500' : 'bg-slate-700'}`}
-                                        >
-                                            <span className={`${config.ollamaThink !== false ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform rounded-full bg-white transition-transform`} />
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="h-px bg-slate-800/50 my-6" />
-
                                 {/* GPU Hardware Detection */}
                                 <div className="space-y-6">
                                     <div className="flex justify-between items-center">
