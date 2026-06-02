@@ -1048,15 +1048,13 @@ export const ChatArea = ({
             lastBlocksRef.current    = currentBlocks;
             lastBlockCountRef.current = currentBlocks.length;
         } else {
-            // Stream ended. Instead of immediately releasing the lock, defer it by 1000ms.
-            // This allows the RAFLoop to stay active and automatically correct the layout shift 
-            // when ToolLoopCollapsible auto-collapses 600ms after the stream ends, keeping the response anchored.
-            (container as any)._releaseTimer = setTimeout(() => {
-                scrollModeRef.current    = 'idle';
-                lockTargetRef.current    = null;
-                lastBlocksRef.current    = [];
-                lastBlockCountRef.current = 0;
-            }, 1000);
+            // Stream ended. Release RAFLoop immediately to let CSS overflow-anchor handle the layout shift.
+            // The browser's native scroll anchoring is synchronous and prevents the flash/jump 
+            // when ToolLoopCollapsible auto-collapses 600ms after stream ends.
+            scrollModeRef.current    = 'idle';
+            lockTargetRef.current    = null;
+            lastBlocksRef.current    = [];
+            lastBlockCountRef.current = 0;
 
             const { scrollTop, scrollHeight, clientHeight } = container;
             const isNearBottom = scrollHeight - scrollTop - clientHeight < 200;
@@ -1302,11 +1300,13 @@ export const ChatArea = ({
             )}
 
             <div
+                id="chat-scroll-container"
                 key={sessionId}
                 className="flex-1 overflow-y-auto p-4 custom-scrollbar chat-area-scroll chat-fade-mask relative animate-chat flex flex-col transform-gpu z-10"
                 ref={scrollRef}
                 style={{ 
-                    fontFamily: 'var(--chat-font)'
+                    fontFamily: 'var(--chat-font)',
+                    overflowAnchor: 'auto'
                 }}
             >
                 <div className="flex-1" />

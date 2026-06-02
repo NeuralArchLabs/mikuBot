@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Icon } from './Common';
 
@@ -35,6 +35,8 @@ export const ToolLoopCollapsible: React.FC<ToolLoopCollapsibleProps> = ({
     const loopStartTimeRef = useRef<number>(Date.now());
     const [elapsedMs, setElapsedMs] = useState<number>(initialElapsedMs || 0);
     const wasStreamingRef = useRef(isStreaming);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
 
     // Sync elapsedMs if initialElapsedMs changes and we're not streaming
     useEffect(() => {
@@ -64,7 +66,7 @@ export const ToolLoopCollapsible: React.FC<ToolLoopCollapsibleProps> = ({
             // Small delay so the user sees the last tool complete before collapsing
             const timer = setTimeout(() => {
                 if (!hasUserInteractedRef.current) {
-                    setIsCollapsed(true);
+                    toggleWithScrollCompensation(true);
                 }
             }, 600);
             return () => clearTimeout(timer);
@@ -84,6 +86,30 @@ export const ToolLoopCollapsible: React.FC<ToolLoopCollapsibleProps> = ({
         setIsCollapsed(!isCollapsed);
     };
 
+    const toggleWithScrollCompensation = (collapse: boolean) => {
+        const chatContainer = document.getElementById('chat-scroll-container');
+        if (!chatContainer || !containerRef.current) {
+            setIsCollapsed(collapse);
+            return;
+        }
+
+        const startY = chatContainer.scrollTop;
+        setIsCollapsed(collapse);
+
+        // Wait for the next frame to measure the final height after state change
+        requestAnimationFrame(() => {
+            if (!containerRef.current) return;
+            const finalHeight = containerRef.current.scrollHeight;
+            const collapsedHeight = 0; // Target is 0 height
+            const delta = collapse ? (startY > 0 ? finalHeight - collapsedHeight : 0) : -(finalHeight - collapsedHeight);
+            
+            // Instantly compensate to prevent layout shift flash
+            if (collapse && delta > 0) {
+                chatContainer.scrollTop = startY - delta;
+            }
+        });
+    };
+
     const formatDuration = (ms: number): string => {
         if (ms < 1000) return `${ms}ms`;
         const seconds = ms / 1000;
@@ -99,7 +125,7 @@ export const ToolLoopCollapsible: React.FC<ToolLoopCollapsibleProps> = ({
     });
 
     return (
-        <div className="mb-4 relative">
+        <div ref={containerRef} className="mb-4 relative">
             {/* Unified Header: Always visible, acts as toggle */}
             <button
                 onClick={handleToggle}
@@ -136,15 +162,17 @@ export const ToolLoopCollapsible: React.FC<ToolLoopCollapsibleProps> = ({
                 </div>
             </button>
 
-            {/* Animated Content Container */}
+            {/* Animated Content Container - Using max-height instead of grid-rows to allow overflow: visible for shadows */}
             <div 
-                className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${isCollapsed ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'}`}
+                ref={contentRef}
+                className={`transition-all duration-300 ease-in-out overflow-visible`}
+                style={{ 
+                    maxHeight: isCollapsed ? '0px' : '2000px',
+                    opacity: isCollapsed ? 0 : 1,
+                    overflowAnchor: 'none'
+                }}
             >
-                <div className="overflow-y-hidden overflow-x-clip">
-                    <div className={`px-4 transition-opacity duration-300 ease-in-out ${isCollapsed ? 'opacity-0' : 'opacity-100'}`}>
-                        {children}
-                    </div>
-                </div>
+                {children}
             </div>
         </div>
     );
