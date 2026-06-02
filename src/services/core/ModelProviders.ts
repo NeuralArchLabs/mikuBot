@@ -471,9 +471,11 @@ export class GeminiProvider extends ModelProvider {
 
             if (m.role === 'tool' && this.supportsNativeTools()) {
                 const sig = (m as any).thought_signature || (m as any).thoughtSignature;
+                const toolName = (m as any).tool_name;
+                const safeName = (toolName && String(toolName).trim()) || 'unknown_tool';
                 parts.push({
                     functionResponse: {
-                        name: (m as any).tool_name || 'unknown_tool',
+                        name: safeName,
                         response: { content: m.content || '{}' }
                     },
                     ...(sig ? { thought_signature: sig } : {})

@@ -45,6 +45,10 @@ release/
 *.pyc
 *.pyo
 
+# Miku Agent Memory & Backups
+.miku/
+*.bak
+
 # ── Embedded Python Engine ────────────────────────────────────────────
 # Keep: engine/python/, engine/Lib/, engine/Scripts/, engine/models/
 # Ignore: nothing - all embedded files are needed

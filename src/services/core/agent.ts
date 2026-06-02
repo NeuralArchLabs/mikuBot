@@ -760,7 +760,7 @@ export async function sendAgentMessage(
 
                     agentMessages.push({
                         role: 'tool',
-                        tool_name: tc.function.name,
+                        tool_name: tc.function.name || 'unknown_tool',
                         content: content,
                         tool_call_id: tc.id,
                         tool_args: tc.function.arguments,
@@ -795,7 +795,7 @@ export async function sendAgentMessage(
                     turnHasFailure = true;
                     agentMessages.push({
                         role: 'tool',
-                        tool_name: tc.function.name,
+                        tool_name: tc.function.name || 'unknown_tool',
                         content: res.error,
                         tool_call_id: tc.id,
                         tool_args: tc.function.arguments,
@@ -811,7 +811,7 @@ export async function sendAgentMessage(
 
                     agentMessages.push({
                         role: 'tool',
-                        tool_name: tc.function.name,
+                        tool_name: tc.function.name || 'unknown_tool',
                         content: content,
                         tool_call_id: tc.id,
                         tool_args: tc.function.arguments,
