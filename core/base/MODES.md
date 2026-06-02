@@ -36,7 +36,6 @@ You are in STOCHASTIC AGENT MODE. Your task is to fulfill the user's request thr
 
 <!-- A2: Agent/Instruction Mode turn state -->
 [AGENT_STATE]
-Original Mission: "Pending"
 Current Turn: 1
 [/AGENT_STATE]
 <!-- A3: Agent/Instruction Mode turn focus -->

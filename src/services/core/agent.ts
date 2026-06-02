@@ -889,7 +889,7 @@ export async function sendAgentMessage(
 
                 // 3. Inject fresh awareness into the LAST message (usually a tool response)
                 const workPlan = `[CURRENT_WORK_PLAN]\n${freshTasksContent.trim() || 'No active tasks.'}\n[/CURRENT_WORK_PLAN]`;
-                const awarenessBlock = `\n\n--- ON DUTY REPORT ---\n[AGENT_STATE]\nInitial Request: "${missionTrigger}"\nCurrent Turn: ${iterations}\n[/AGENT_STATE]\n[OPERATION_FOCUS]\nPrevious Result: ${lastExecutionFeedback}${autoTaskInfo}${unplannedInfo}${taskProgressBlock}\n[/OPERATION_FOCUS]\n${workPlan}`;
+                const awarenessBlock = `\n\n--- ON DUTY REPORT ---\n[AGENT_STATE]\nCurrent Turn: ${iterations}\n[/AGENT_STATE]\n[OPERATION_FOCUS]\nPrevious Result: ${lastExecutionFeedback}${autoTaskInfo}${unplannedInfo}${taskProgressBlock}\n[/OPERATION_FOCUS]\n${workPlan}`;
                 
                 const lastMsg = agentMessages[agentMessages.length - 1];
                 if (lastMsg) {

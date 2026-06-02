@@ -98,71 +98,53 @@ export const ToolLoopCollapsible: React.FC<ToolLoopCollapsibleProps> = ({
         defaultValue: `${stepCount} ${stepCount === 1 ? 'acción' : 'acciones'}` 
     });
 
-    if (isCollapsed) {
-        return (
-            <div className="mb-4">
-                <button
-                    onClick={handleToggle}
-                    className="group/loop w-full text-left focus:outline-none"
-                >
-                    <div className="flex items-center gap-3 py-2.5 px-1 transition-all duration-300">
-                        {/* Left accent line */}
-                        <div className="w-8 h-px bg-gradient-to-r from-transparent to-blue-500/30 flex-shrink-0" />
-                        
-                        {/* Summary content */}
-                        <div className="flex items-center gap-2.5 text-[11px] font-mono">
-                            <span className="text-blue-400/70 group-hover/loop:text-blue-400 transition-colors">
-                                <Icon name="layer-group" className="text-[10px]" />
-                            </span>
-                            <span className="text-slate-400/80 group-hover/loop:text-slate-300 transition-colors tracking-wide">
-                                {stepsLabel}
-                            </span>
-                            <span className="text-slate-600 group-hover/loop:text-slate-500 transition-colors">·</span>
-                            <span className="text-slate-500/60 group-hover/loop:text-slate-400 transition-colors tabular-nums text-[10px]">
-                                {formatDuration(elapsedMs)}
-                            </span>
-                        </div>
-
-                        {/* Right accent line */}
-                        <div className="flex-1 h-px bg-gradient-to-r from-blue-500/20 to-transparent" />
-
-                        {/* Expand indicator */}
-                        <div className="flex items-center gap-1 text-[9px] text-slate-600 group-hover/loop:text-blue-400/80 transition-all opacity-0 group-hover/loop:opacity-100 flex-shrink-0">
-                            <span className="uppercase tracking-widest font-bold">
-                                {t('chat.actions.expand', { defaultValue: 'ver' })}
-                            </span>
-                            <Icon name="chevron-down" className="text-[8px] transform group-hover/loop:translate-y-0.5 transition-transform" />
-                        </div>
-                    </div>
-                </button>
-            </div>
-        );
-    }
-
     return (
         <div className="mb-4 relative">
-            {/* Collapse handle — appears on hover at the top of the expanded tool section */}
-            <div className="flex items-center gap-3 pb-1 mb-2">
-                <div className="w-8 h-px bg-gradient-to-r from-transparent to-blue-500/20 flex-shrink-0" />
-                <button
-                    onClick={handleToggle}
-                    className="group/collapse flex items-center gap-2 text-[10px] font-mono text-slate-500 hover:text-blue-400 transition-colors focus:outline-none"
-                >
-                    <Icon name="layer-group" className="text-[9px]" />
-                    <span className="tracking-wide">{stepsLabel}</span>
-                    <span className="text-slate-600">·</span>
-                    <span className="tabular-nums text-slate-500/60">{formatDuration(elapsedMs)}</span>
-                    <span className="text-[8px] uppercase tracking-widest font-bold ml-1 opacity-0 group-hover/collapse:opacity-100 transition-opacity">
-                        {t('chat.actions.hide', { defaultValue: 'ocultar' })}
-                    </span>
-                    <Icon name="chevron-up" className="text-[8px] opacity-0 group-hover/collapse:opacity-100 transition-opacity" />
-                </button>
-                <div className="flex-1 h-px bg-gradient-to-r from-blue-500/15 to-transparent" />
-            </div>
+            {/* Unified Header: Always visible, acts as toggle */}
+            <button
+                onClick={handleToggle}
+                className={`group/loop w-full text-left focus:outline-none ${isCollapsed ? 'py-2.5' : 'pb-1 mb-2'}`}
+            >
+                <div className="flex items-center gap-3 px-1 transition-all duration-300">
+                    <div className={`w-8 h-px flex-shrink-0 ${isCollapsed ? 'bg-gradient-to-r from-transparent to-blue-500/30' : 'bg-gradient-to-r from-transparent to-blue-500/20'}`} />
+                    
+                    <div className={`flex items-center gap-2 font-mono transition-colors ${isCollapsed ? 'gap-2.5 text-[11px]' : 'gap-2 text-[10px] text-slate-500 hover:text-blue-400'}`}>
+                        <span className={`transition-colors ${isCollapsed ? 'text-blue-400/70 group-hover/loop:text-blue-400' : ''}`}>
+                            <Icon name="layer-group" className="text-[10px]" />
+                        </span>
+                        <span className={`tracking-wide transition-colors ${isCollapsed ? 'text-slate-400/80 group-hover/loop:text-slate-300' : ''}`}>
+                            {stepsLabel}
+                        </span>
+                        <span className="text-slate-600 group-hover/loop:text-slate-500 transition-colors">·</span>
+                        <span className="text-slate-500/60 group-hover/loop:text-slate-400 transition-colors tabular-nums text-[10px]">
+                            {formatDuration(elapsedMs)}
+                        </span>
+                        
+                        {/* Conditional Action Labels */}
+                        <span className={`text-[8px] uppercase tracking-widest font-bold ml-1 transition-opacity ${isCollapsed ? 'opacity-0 group-hover/loop:opacity-100' : 'opacity-0 group-hover/loop:opacity-100'}`}>
+                            {isCollapsed 
+                                ? t('chat.actions.expand', { defaultValue: 'ver' }) 
+                                : t('chat.actions.hide', { defaultValue: 'ocultar' })}
+                        </span>
+                        <Icon 
+                            name={isCollapsed ? 'chevron-down' : 'chevron-up'} 
+                            className={`text-[8px] transition-all ${isCollapsed ? 'transform group-hover/loop:translate-y-0.5' : ''} opacity-0 group-hover/loop:opacity-100`} 
+                        />
+                    </div>
 
-            {/* Full expanded content — exactly the same as before */}
-            <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                {children}
+                    <div className="flex-1 h-px bg-gradient-to-r from-blue-500/20 to-transparent" />
+                </div>
+            </button>
+
+            {/* Animated Content Container */}
+            <div 
+                className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${isCollapsed ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'}`}
+            >
+                <div className="overflow-y-hidden overflow-x-clip">
+                    <div className={`px-4 transition-opacity duration-300 ease-in-out ${isCollapsed ? 'opacity-0' : 'opacity-100'}`}>
+                        {children}
+                    </div>
+                </div>
             </div>
         </div>
     );
