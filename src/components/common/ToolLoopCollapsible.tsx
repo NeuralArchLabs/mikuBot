@@ -277,7 +277,7 @@ export const ToolLoopCollapsible: React.FC<ToolLoopCollapsibleProps> = ({
             <div 
                 ref={contentRef}
                 onTransitionEnd={handleTransitionEnd}
-                className="transition-all duration-300 ease-in-out flex flex-col justify-end"
+                className={`transition-all duration-300 ease-in-out ${isCollapsed ? 'flex flex-col justify-end' : ''}`}
                 style={getContainerStyle()}
             >
                 {children}
