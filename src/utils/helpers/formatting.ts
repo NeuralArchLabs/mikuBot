@@ -470,12 +470,13 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                     processedRest = processedRest.replace(/^(#{1,6})\s+(.+)$/gm, (m, hashes, text) => {
                         if (text.includes('<')) return m;
                         const lvl = hashes.length;
-                        if (lvl === 1) return `<h1 class="text-lg font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-indigo-300 drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-6 mb-1">${text}</h1><div class="h-px w-full" style="background: linear-gradient(to right, transparent 0%, rgba(34,211,238,0.15) 2%, rgba(34,211,238,0.15) 98%, transparent 100%); margin-bottom: 1.5rem;"></div>`;
-                        if (lvl === 2) return `<h2 class="text-md font-bold text-cyan-400 drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-5 mb-1">${text}</h2><div class="h-px w-full" style="background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.08) 2%, rgba(255,255,255,0.08) 98%, transparent 100%); margin-bottom: 1rem;"></div>`;
-                        if (lvl === 3) return `<h3 class="text-sm font-bold text-[#FC8F35] drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-4 mb-2">${text}</h3>`;
-                        if (lvl === 4) return `<h4 class="text-sm font-bold text-[#fca865] drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-4 mb-2">${text}</h4>`;
-                        if (lvl === 5) return `<h5 class="text-xs font-bold text-indigo-400/70 mt-3 mb-1">${text}</h5>`;
-                        return `<h6 class="text-xs font-bold text-slate-500 mt-3 mb-1">${text}</h6>`;
+                        const processedText = processInlineMarkdown(text);
+                        if (lvl === 1) return `<h1 class="text-lg font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-indigo-300 drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-6 mb-1">${processedText}</h1><div class="h-px w-full" style="background: linear-gradient(to right, transparent 0%, rgba(34,211,238,0.15) 2%, rgba(34,211,238,0.15) 98%, transparent 100%); margin-bottom: 1.5rem;"></div>`;
+                        if (lvl === 2) return `<h2 class="text-md font-bold text-cyan-400 drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-5 mb-1">${processedText}</h2><div class="h-px w-full" style="background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.08) 2%, rgba(255,255,255,0.08) 98%, transparent 100%); margin-bottom: 1rem;"></div>`;
+                        if (lvl === 3) return `<h3 class="text-sm font-bold text-[#FC8F35] drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-4 mb-2">${processedText}</h3>`;
+                        if (lvl === 4) return `<h4 class="text-sm font-bold text-[#fca865] drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.8)] mt-4 mb-2">${processedText}</h4>`;
+                        if (lvl === 5) return `<h5 class="text-xs font-bold text-indigo-400/70 mt-3 mb-1">${processedText}</h5>`;
+                        return `<h6 class="text-xs font-bold text-slate-500 mt-3 mb-1">${processedText}</h6>`;
                     });
 
                     processedRest = convertTablesToHtml(processedRest);
@@ -1239,7 +1240,8 @@ function renderTable(rows: string[][], alignments: ('left' | 'center' | 'right')
     // 1. HEADER
     html += '<thead class="bg-white/[0.05] relative z-20"><tr>';
     for (let i = 0; i < maxCols; i++) {
-        const cellText = headerRow[i] || '&nbsp;';
+        const rawText = headerRow[i];
+        const cellText = rawText ? processInlineMarkdown(rawText) : '&nbsp;';
         const isLastHeader = i === maxCols - 1;
         const borderX = !isLastHeader ? 'border-r border-white/[0.06]' : '';
         const align = alignments[i] || 'left';
@@ -1259,7 +1261,8 @@ function renderTable(rows: string[][], alignments: ('left' | 'center' | 'right')
         const zebraClass = r % 2 === 1 ? 'bg-white/[0.015]' : '';
         html += `<tr class="${zebraClass} hover:bg-white/[0.025] transition duration-300 group/row relative">`;
         for (let c = 0; c < maxCols; c++) {
-            const cellText = row[c] || '&nbsp;';
+            const rawText = row[c];
+            const cellText = rawText ? processInlineMarkdown(rawText) : '&nbsp;';
             const isLastCol = c === maxCols - 1;
             const align = alignments[c] || 'left';
             

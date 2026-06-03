@@ -1048,13 +1048,26 @@ export const ChatArea = ({
             lastBlocksRef.current    = currentBlocks;
             lastBlockCountRef.current = currentBlocks.length;
         } else {
-            // Stream ended. Release RAFLoop immediately to let CSS overflow-anchor handle the layout shift.
-            // The browser's native scroll anchoring is synchronous and prevents the flash/jump 
-            // when ToolLoopCollapsible auto-collapses 600ms after stream ends.
-            scrollModeRef.current    = 'idle';
-            lockTargetRef.current    = null;
-            lastBlocksRef.current    = [];
-            lastBlockCountRef.current = 0;
+            // Stream ended. Keep RAFLoop in 'locked' mode to maintain scroll anchor during collapse.
+            // ToolLoopCollapsible auto-collapses 600ms after stream ends, animation takes 300ms.
+            // We keep the lock active for 1500ms to smoothly correct any layout shifts.
+            if (scrollModeRef.current === 'locking' || scrollModeRef.current === 'locked') {
+                scrollModeRef.current = 'locked';
+                if (!lockTargetRef.current) {
+                    lockTargetRef.current = `msg-${lastMsg.id}`;
+                }
+                (container as any)._releaseTimer = setTimeout(() => {
+                    scrollModeRef.current    = 'idle';
+                    lockTargetRef.current    = null;
+                    lastBlocksRef.current    = [];
+                    lastBlockCountRef.current = 0;
+                }, 1500);
+            } else {
+                scrollModeRef.current    = 'idle';
+                lockTargetRef.current    = null;
+                lastBlocksRef.current    = [];
+                lastBlockCountRef.current = 0;
+            }
 
             const { scrollTop, scrollHeight, clientHeight } = container;
             const isNearBottom = scrollHeight - scrollTop - clientHeight < 200;
@@ -1090,9 +1103,10 @@ export const ChatArea = ({
 
             const mode = scrollModeRef.current;
 
-            // Calculate frame interval: full speed during streaming, 10fps when locked-idle
+            // Calculate frame interval: full speed during streaming and collapse window, 10fps when stable
             const isStreaming = lastMsg.isStreaming;
-            const interval    = (mode === 'locked' && !isStreaming) ? 100 : 0;
+            const isCollapsingWindow = !!(container as any)._releaseTimer; 
+            const interval    = (mode === 'locked' && !isStreaming && !isCollapsingWindow) ? 100 : 0;
 
             if (time - lastTick >= interval) {
                 lastTick = time;
