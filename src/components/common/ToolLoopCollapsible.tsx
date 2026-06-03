@@ -89,21 +89,16 @@ export const ToolLoopCollapsible: React.FC<ToolLoopCollapsibleProps> = ({
             return;
         }
 
-        // Check if ChatArea's scroll engine is actively locking/anchoring scroll.
-        // If it is, ChatArea is already running a frame-by-frame adjustment on the active message wrapper
-        // and we should not interfere by adjusting scrollTop in parallel.
-        const isChatLocking = (scrollParent as any)._releaseTimer !== undefined;
-
         const startHeight = content.offsetHeight;
         setIsCollapsed(true);
 
-        if (!isChatLocking && startHeight > 0) {
+        if (startHeight > 0) {
             const containerRect = containerRef.current?.getBoundingClientRect();
-            const parentRect = scrollParent.getBoundingClientRect();
+            const scrollParentRect = scrollParent.getBoundingClientRect();
             
-            // If the element is above the viewport midpoint, collapsing it will pull up the view.
-            // We compensate incrementally to keep the visual position stable during the transition.
-            if (containerRect && containerRect.bottom < parentRect.top + parentRect.height * 0.8) {
+            // If the collapsible is above the visible window area, we must compensate
+            // for the height lost during the transition so that elements below don't jump upwards.
+            if (containerRect && containerRect.top < scrollParentRect.top + scrollParentRect.height) {
                 const duration = 300; // CSS animation duration
                 const startTime = performance.now();
                 let lastCompensation = 0;

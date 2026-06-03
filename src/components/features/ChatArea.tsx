@@ -1051,26 +1051,12 @@ export const ChatArea = ({
             // Stream ended. Keep RAFLoop in 'locked' mode to maintain scroll anchor during collapse.
             // ToolLoopCollapsible auto-collapses 600ms after stream ends, animation takes 300ms.
             // We keep the lock active for 1500ms to smoothly correct any layout shifts.
-            // Stream ended. Keep RAFLoop in 'locked_bottom' mode to maintain bottom scroll anchor during collapse.
-            // ToolLoopCollapsible auto-collapses 600ms after stream ends, animation takes 300ms.
-            // We keep the lock active for 1500ms to smoothly correct any layout shifts.
-            if (scrollModeRef.current === 'locking' || scrollModeRef.current === 'locked') {
-                scrollModeRef.current = 'locked';
-                if (!lockTargetRef.current) {
-                    lockTargetRef.current = `msg-${lastMsg.id}`;
-                }
-                (container as any)._releaseTimer = setTimeout(() => {
-                    scrollModeRef.current    = 'idle';
-                    lockTargetRef.current    = null;
-                    lastBlocksRef.current    = [];
-                    lastBlockCountRef.current = 0;
-                }, 1500);
-            } else {
-                scrollModeRef.current    = 'idle';
-                lockTargetRef.current    = null;
-                lastBlocksRef.current    = [];
-                lastBlockCountRef.current = 0;
-            }
+            // Stream ended. Release scroll locking immediately so that the ToolLoopCollapsible
+            // can run its own scroll compensation cleanly without being overridden by the RAFLoop.
+            scrollModeRef.current    = 'idle';
+            lockTargetRef.current    = null;
+            lastBlocksRef.current    = [];
+            lastBlockCountRef.current = 0;
 
             const { scrollTop, scrollHeight, clientHeight } = container;
             const isNearBottom = scrollHeight - scrollTop - clientHeight < 200;
@@ -1080,7 +1066,6 @@ export const ChatArea = ({
             if (isNearBottom || isUserMsg) {
                 container.scrollTop = container.scrollHeight;
             }
-            // Do NOT return here. We want the RAFLoop to start/continue if mode is 'locked' or 'locking'
         }
 
         // ── 3. RAFLoop: keeps scroll position correct every frame ──────────────
