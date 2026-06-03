@@ -46,6 +46,7 @@ export const ToolLoopCollapsible: React.FC<ToolLoopCollapsibleProps> = ({
     elapsedMs: initialElapsedMs,
     children
 }) => {
+    const { t } = useTranslation();
     const [isCollapsed, setIsCollapsed] = useState(!isStreaming);
     const hasUserInteractedRef = useRef(false);
     const loopStartTimeRef = useRef<number>(Date.now());
