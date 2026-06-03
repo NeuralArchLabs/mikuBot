@@ -1,0 +1,31 @@
+{
+    "name": "compute",
+    "description": "Advanced scientific and symbolic calculator powered by SymPy. Handles arbitrary precision arithmetic, equation solving, calculus, simplification, factoring, and expression expansion.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "expression": {
+                "type": "string",
+                "description": "The mathematical expression, equation, or list of equations (in JSON array format) to calculate/solve. Example: '2 * sin(pi/4)^2', 'x^2 - 4 = 0', 'integrate(sin(x), x)', or '[x + y = 3, x - y = 1]'"
+            },
+            "mode": {
+                "type": "string",
+                "enum": ["evaluate", "solve", "simplify", "differentiate", "integrate", "factor", "expand"],
+                "default": "evaluate",
+                "description": "The math operation mode: 'evaluate' (numeric calculation), 'solve' (solve algebraic equation or system), 'simplify' (simplify expression), 'differentiate' (derivative), 'integrate' (integral), 'factor' (factorize polynomial), 'expand' (expand expression)."
+            },
+            "variables": {
+                "type": "object",
+                "description": "Optional dictionary of variable substitutions. Example: {\"x\": 5, \"y\": 10}."
+            },
+            "variable": {
+                "type": "string",
+                "default": "x",
+                "description": "The target variable to differentiate, integrate, or solve for (defaults to 'x')."
+            }
+        },
+        "required": ["expression"]
+    },
+    "runtime": "python",
+    "entry": "main.py"
+}

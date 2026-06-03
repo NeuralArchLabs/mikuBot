@@ -1,4 +1,4 @@
-# 📚 Toolkit Snippets Library (Neural JIT)
+# ðŸ“š Toolkit Snippets Library (Neural JIT)
 
 This file contains valid JSON code snippets, contextual use cases, and parameter explanations for each tool in the MikuBot ecosystem. It is used by the `instruction_booklet` skill to provide detailed manuals to the agent dynamically.
 
@@ -385,7 +385,7 @@ Can be: `general`, `images`, `videos`, `news`, `maps`, `shopping`, `it`, `social
 {
   "name": "send_telegram_message",
   "arguments": {
-    "text": "Task finished successfully! 🚀",
+    "text": "Task finished successfully! ðŸš€",
     "chat_id": "optional_id"
   }
 }
@@ -473,7 +473,7 @@ Can be: `general`, `images`, `videos`, `news`, `maps`, `shopping`, `it`, `social
 }
 ```
 
-## [recall — init]
+## [recall â€” init]
 **Purpose:** Deploy the memory folder tree.
 **When to use:** Only if the system says memory is not initialized.
 ```json
@@ -483,7 +483,7 @@ Can be: `general`, `images`, `videos`, `news`, `maps`, `shopping`, `it`, `social
 }
 ```
 
-## [recall — synapse]
+## [recall â€” synapse]
 **Purpose:** Store a new long-term memory.
 **When to use:** When the user shares personal preferences, workflows, feedback, or when you learn a successful strategy. Always include meaningful `tags`.
 
@@ -504,7 +504,7 @@ Can be: `general`, `images`, `videos`, `news`, `maps`, `shopping`, `it`, `social
 }
 ```
 
-## [recall — recall]
+## [recall â€” recall]
 **Purpose:** Search memories (returns direct hits, semantic graph neighbors, and current dynamic memory structure).
 **When to use:** At the start of a session, or when the user asks "do you remember?".
 
@@ -520,7 +520,7 @@ Can be: `general`, `images`, `videos`, `news`, `maps`, `shopping`, `it`, `social
 }
 ```
 
-## [recall — evoke]
+## [recall â€” evoke]
 **Purpose:** Navigate the memory folder structure or read a specific memory file directly.
 **When to use:** Use this after `recall` if you want to see all memories inside a specific subfolder, or if you need to read the full content of a memory file via its ID or relative path. Accepts a folder path (e.g. `User_Model/Active_Context`) to list contents, or a memory ID (`mem_xxxxxx`) to read it.
 
@@ -546,7 +546,7 @@ Can be: `general`, `images`, `videos`, `news`, `maps`, `shopping`, `it`, `social
 }
 ```
 
-## [recall — refresh]
+## [recall â€” refresh]
 **Purpose:** Update an existing memory with new information.
 **When to use:** When a preference changes or you have new data to add to an old memory.
 
@@ -562,7 +562,7 @@ Can be: `general`, `images`, `videos`, `news`, `maps`, `shopping`, `it`, `social
 }
 ```
 
-## [recall — amnesia]
+## [recall â€” amnesia]
 **Purpose:** Delete a memory entirely.
 **When to use:** When the user explicitly asks to forget something.
 
@@ -577,7 +577,7 @@ Can be: `general`, `images`, `videos`, `news`, `maps`, `shopping`, `it`, `social
 }
 ```
 
-## [recall — link]
+## [recall â€” link]
 **Purpose:** Connect two existing memories with a typed relation.
 **When to use:** When you notice two distinct memories are highly related to form a better semantic graph.
 
@@ -594,7 +594,7 @@ Can be: `general`, `images`, `videos`, `news`, `maps`, `shopping`, `it`, `social
 }
 ```
 
-## [recall — nexus]
+## [recall â€” nexus]
 **Purpose:** Get an overview of all stored memories.
 **When to use:** To see what categories of memory you hold.
 
@@ -605,7 +605,7 @@ Can be: `general`, `images`, `videos`, `news`, `maps`, `shopping`, `it`, `social
   "arguments": { "command": "nexus" }
 }
 ```
-## [recall � health]
+## [recall — health]
 **Purpose:** Self-diagnostic and integrity check of the neural memory system.
 **When to use:** Use this periodically or after major updates to ensure the memory graph is healthy. It checks for:
 - **Dangling entries**: Index entries without corresponding markdown files.
@@ -617,5 +617,49 @@ Can be: `general`, `images`, `videos`, `news`, `maps`, `shopping`, `it`, `social
 {
   "name": "recall",
   "arguments": { "command": "health" }
+}
+```
+
+## [compute]
+**Purpose:** Advanced scientific and symbolic calculator using SymPy.
+**When to use:** Use this when you need precise arithmetic (arbitrary precision), algebraic expression simplification, factoring, expansion, differentiation, integration, or to solve single equations and systems of equations.
+
+### Parameters
+- **`expression`**: (Required) The mathematical expression, equation, or list of equations (as a JSON array or list string) to solve/calculate.
+- **`mode`**: (Optional) The math operation: `"evaluate"` (default, numeric evaluation), `"solve"` (solve for a variable), `"simplify"` (algebraic simplification), `"differentiate"` (derivative), `"integrate"` (integral), `"factor"` (factorize), or `"expand"` (expand expression).
+- **`variables`**: (Optional) A dictionary mapping variable names to their values or sub-expressions for substitution (e.g. `{"x": 2, "y": "z + 1"}`).
+- **`variable`**: (Optional) The target variable to solve, differentiate, or integrate for (defaults to `"x"`).
+
+### Example 1: Numeric Evaluation
+```json
+{
+  "name": "compute",
+  "arguments": {
+    "expression": "2 * sin(pi/4)^2",
+    "mode": "evaluate"
+  }
+}
+```
+
+### Example 2: Solving equations
+```json
+{
+  "name": "compute",
+  "arguments": {
+    "expression": "x^2 - 5x + 6 = 0",
+    "mode": "solve",
+    "variable": "x"
+  }
+}
+```
+
+### Example 3: Systems of Equations
+```json
+{
+  "name": "compute",
+  "arguments": {
+    "expression": "[x + y = 3, x - y = 1]",
+    "mode": "solve"
+  }
 }
 ```

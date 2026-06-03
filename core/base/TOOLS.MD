@@ -159,6 +159,7 @@ Program a proactive task for the agent to execute in the future.
 ## 🧠 Neural Skills Library (Dynamic)
 Modular skills installed in `@TOOLS/skills/`:
 - **`api_fetcher`**: Universal HTTP client for REST APIs.
+- **`compute`**: Advanced scientific and symbolic calculator using SymPy (arbitrary precision arithmetic, equation solving, calculus).
 - **`deep_research`**: Multi-language technical investigation with multi-category audit.
 - **`web_research`**: Content extraction from multiple sources using diverse search categories.
 - **`list_available_skills`**: Auto-discovery of new installed skills.
