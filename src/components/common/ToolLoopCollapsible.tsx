@@ -217,10 +217,11 @@ export const ToolLoopCollapsible: React.FC<ToolLoopCollapsibleProps> = ({
             {/* Animated Content Container - Using max-height transition with opacity */}
             <div 
                 ref={contentRef}
-                className="transition-all duration-300 ease-in-out overflow-visible"
+                className="transition-all duration-300 ease-in-out"
                 style={{ 
-                    maxHeight: isCollapsed ? '0px' : '2000px',
+                    maxHeight: isCollapsed ? '0px' : 'none',
                     opacity: isCollapsed ? 0 : 1,
+                    overflow: isCollapsed ? 'hidden' : 'visible',
                     overflowAnchor: 'none'
                 }}
             >
