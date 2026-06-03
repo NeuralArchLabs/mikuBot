@@ -46,14 +46,7 @@ export const ToolLoopCollapsible: React.FC<ToolLoopCollapsibleProps> = ({
     elapsedMs: initialElapsedMs,
     children
 }) => {
-    const { t } = useTranslation();
-    
-    // Animation state machine to drive dynamic height transitions safely
-    const [animState, setAnimState] = useState<'collapsed' | 'expanding' | 'expanded' | 'collapsing'>(
-        !isStreaming ? 'collapsed' : 'expanded'
-    );
-    
-    const isCollapsed = animState === 'collapsed' || animState === 'collapsing';
+    const [isCollapsed, setIsCollapsed] = useState(!isStreaming);
     const hasUserInteractedRef = useRef(false);
     const loopStartTimeRef = useRef<number>(Date.now());
     const [elapsedMs, setElapsedMs] = useState<number>(initialElapsedMs || 0);
@@ -82,18 +75,16 @@ export const ToolLoopCollapsible: React.FC<ToolLoopCollapsibleProps> = ({
     }, [isStreaming]);
 
     // ── SCROLL-SAFE COLLAPSE ──────────────────────────────────────────
-    // Initiates a smooth height transition to 0px, and compensates the parent 
-    // container's scrollTop dynamically on each frame of the animation.
     const collapseWithScrollLock = useCallback(() => {
         const content = contentRef.current;
         if (!content) {
-            setAnimState('collapsed');
+            setIsCollapsed(true);
             return;
         }
 
         const scrollParent = getScrollParent(content);
         if (!scrollParent) {
-            setAnimState('collapsed');
+            setIsCollapsed(true);
             return;
         }
 
@@ -103,45 +94,38 @@ export const ToolLoopCollapsible: React.FC<ToolLoopCollapsibleProps> = ({
         const isChatLocking = (scrollParent as any)._releaseTimer !== undefined;
 
         const startHeight = content.offsetHeight;
-        
-        // 1. Temporarily pin the element to its exact pixel height before triggering collapse
-        content.style.maxHeight = `${startHeight}px`;
-        content.style.overflow = 'hidden';
-        
-        // Force reflow so browser registers the starting height for transition
-        content.offsetHeight;
+        setIsCollapsed(true);
 
-        // 2. Set state to collapsing. This will trigger React to render maxHeight: '0px' and opacity: 0
-        setAnimState('collapsing');
-
-        // 3. Compensate scroll incrementally during the 300ms transition
         if (!isChatLocking && startHeight > 0) {
-            const duration = 300; // CSS animation duration
-            const startTime = performance.now();
-            let lastCompensation = 0;
+            const containerRect = containerRef.current?.getBoundingClientRect();
+            const parentRect = scrollParent.getBoundingClientRect();
+            
+            // If the element is above the viewport midpoint, collapsing it will pull up the view.
+            // We compensate incrementally to keep the visual position stable during the transition.
+            if (containerRect && containerRect.bottom < parentRect.top + parentRect.height * 0.8) {
+                const duration = 300; // CSS animation duration
+                const startTime = performance.now();
+                let lastCompensation = 0;
 
-            const adjustScroll = (now: number) => {
-                const elapsed = now - startTime;
-                if (!content || !scrollParent) return;
+                const adjustScroll = (now: number) => {
+                    const elapsed = now - startTime;
+                    if (!content || !scrollParent) return;
 
-                // The container height shrinks over time. The difference from starting height
-                // is the amount the layout below it has been pulled up.
-                const currentHeight = content.offsetHeight;
-                const totalShrunk = startHeight - currentHeight;
-                
-                // We only apply the delta (what has shrunk since our last frame adjustment)
-                const stepCompensation = totalShrunk - lastCompensation;
+                    const currentHeight = content.offsetHeight;
+                    const totalShrunk = startHeight - currentHeight;
+                    const stepCompensation = totalShrunk - lastCompensation;
 
-                if (stepCompensation > 0) {
-                    scrollParent.scrollTop = Math.max(0, scrollParent.scrollTop - stepCompensation);
-                    lastCompensation = totalShrunk;
-                }
+                    if (stepCompensation > 0) {
+                        scrollParent.scrollTop = Math.max(0, scrollParent.scrollTop - stepCompensation);
+                        lastCompensation = totalShrunk;
+                    }
 
-                if (elapsed < duration && currentHeight > 0) {
-                    requestAnimationFrame(adjustScroll);
-                }
-            };
-            requestAnimationFrame(adjustScroll);
+                    if (elapsed < duration && currentHeight > 0) {
+                        requestAnimationFrame(adjustScroll);
+                    }
+                };
+                requestAnimationFrame(adjustScroll);
+            }
         }
     }, []);
 
@@ -164,60 +148,16 @@ export const ToolLoopCollapsible: React.FC<ToolLoopCollapsibleProps> = ({
     // Old messages start collapsed
     useEffect(() => {
         if (isOld && !hasUserInteractedRef.current) {
-            setAnimState('collapsed');
+            setIsCollapsed(true);
         }
     }, [isOld]);
 
     const handleToggle = () => {
         hasUserInteractedRef.current = true;
-        if (animState === 'expanded' || animState === 'expanding') {
+        if (!isCollapsed) {
             collapseWithScrollLock();
         } else {
-            setAnimState('expanding');
-        }
-    };
-
-    const handleTransitionEnd = (e: React.TransitionEvent) => {
-        // Once the CSS transition completes, set the stable states
-        if (e.propertyName === 'max-height') {
-            if (animState === 'expanding') {
-                setAnimState('expanded');
-            } else if (animState === 'collapsing') {
-                setAnimState('collapsed');
-            }
-        }
-    };
-
-    const getContainerStyle = (): React.CSSProperties => {
-        switch (animState) {
-            case 'collapsed':
-                return {
-                    maxHeight: '0px',
-                    opacity: 0,
-                    overflow: 'hidden',
-                    overflowAnchor: 'none'
-                };
-            case 'expanding':
-                return {
-                    maxHeight: `${contentRef.current?.scrollHeight || 2000}px`,
-                    opacity: 1,
-                    overflow: 'hidden',
-                    overflowAnchor: 'none'
-                };
-            case 'expanded':
-                return {
-                    maxHeight: 'none',
-                    opacity: 1,
-                    overflow: 'visible',
-                    overflowAnchor: 'none'
-                };
-            case 'collapsing':
-                return {
-                    maxHeight: '0px',
-                    opacity: 0,
-                    overflow: 'hidden',
-                    overflowAnchor: 'none'
-                };
+            setIsCollapsed(false);
         }
     };
 
@@ -276,9 +216,13 @@ export const ToolLoopCollapsible: React.FC<ToolLoopCollapsibleProps> = ({
             {/* Animated Content Container - Using max-height transition with opacity */}
             <div 
                 ref={contentRef}
-                onTransitionEnd={handleTransitionEnd}
-                className={`transition-all duration-300 ease-in-out ${isCollapsed ? 'flex flex-col justify-end' : ''}`}
-                style={getContainerStyle()}
+                className="transition-all duration-300 ease-in-out"
+                style={{ 
+                    maxHeight: isCollapsed ? '0px' : '5000px',
+                    opacity: isCollapsed ? 0 : 1,
+                    overflow: 'hidden',
+                    overflowAnchor: 'none'
+                }}
             >
                 {children}
             </div>
