@@ -1,6 +1,6 @@
-# 🌟 mikuBot v2.5.0 — Precise Mathematics & Rich Assets Release
+# 🌟 mikuBot v2.4.2 — Precise Mathematics & Rich Assets Release
 
-We are proud to announce the release of **mikuBot v2.5.0**, introducing the highly requested **Compute Neural Skill** for advanced mathematical calculations, along with a complete overhaul of the documentation assets for a premium showcase.
+We are proud to announce the release of **mikuBot v2.4.2**, introducing the highly requested **Compute Neural Skill** for advanced mathematical calculations, along with a complete overhaul of the documentation assets for a premium showcase.
 
 ## 🚀 Key Highlights
 
@@ -20,7 +20,7 @@ Miku now has native access to a powerful scientific and symbolic calculator usin
 - Integrated high-fidelity screenshots for Recall, Widgets, Themes, Library, Voice, Scheduler, and the Calculator features across the readmes.
 
 ## ⬇️ Download
-[Download MikuCentral.Setup.2.5.0.exe](https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.5.0/MikuCentral.Setup.2.5.0.exe)
+[Download MikuCentral.Setup.2.4.2.exe](https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.4.2/MikuCentral.Setup.2.4.2.exe)
 
 ---
 *Developed with precision by Neural Arch Labs.*

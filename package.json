@@ -1,7 +1,7 @@
 {
   "name": "mikucentral",
   "private": true,
-  "version": "2.5.0",
+  "version": "2.4.2",
   "license": "AGPL-3.0",
   "type": "module",
   "description": "MikuCentral - Neural AI Interface",
