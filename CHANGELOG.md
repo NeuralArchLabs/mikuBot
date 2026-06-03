@@ -1,3 +1,9 @@
+## [2.5.0] - 2026-06-03
+### Added
+- **🧮 Compute Neural Skill (SymPy Integration)**: A new dynamic modular calculator tool. Enables precise arbitrary-precision numeric calculations, equation/system solving, and symbolic operations (simplification, factoring, expansion, integration, differentiation) using SymPy in the embedded Python engine.
+- **Agent Prompts Whitelist**: Seamless integration of the new `compute` skill into the whitelists and outlines in `MODES.md` (for both Agent/Instruction and Chat/Casual modes) to guide model reasoning.
+- **Extended Readme Assets**: Upgraded the documentation files to showcase rich screenshots for Recall, Widgets, Themes, Library, Voice, Scheduler, and the new Calculator features.
+
 ## [2.4.1] - 2026-05-05
 ### Added
 - **📱 Premium Telegram Integration**: Approval requests sent to Telegram now include rich, detailed context (e.g., exact console commands or target file paths) instead of generic tool names.

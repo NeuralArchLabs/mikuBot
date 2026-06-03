@@ -2,7 +2,7 @@
 
 <img src="./public/mikuBotICON.png" width="120" style="border-radius: 24px" alt="mikuBot Icon" />
 
-# 🌟 mikuBot v2.4.1 — Agent Autonomy & Remote Polish
+# 🌟 mikuBot v2.5.0 — Precise Mathematics & Rich Assets Release
 
 ![Status](https://img.shields.io/badge/Status-Stable-green.svg?style=for-the-badge)
 ![Platform](https://img.shields.io/badge/Platform-Windows_10%2F11-0078D4.svg?style=for-the-badge&logo=windows)
@@ -18,8 +18,8 @@
 
 <br/>
 
-<a href="https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.4.1/MikuCentral.Setup.2.4.1.exe">
-  <img src="https://img.shields.io/badge/DOWNLOAD_LATEST_VERSION-v2.4.1-60A5FA?style=for-the-badge&logo=windows&logoColor=white" height="40" />
+<a href="https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.5.0/MikuCentral.Setup.2.5.0.exe">
+  <img src="https://img.shields.io/badge/DOWNLOAD_LATEST_VERSION-v2.5.0-60A5FA?style=for-the-badge&logo=windows&logoColor=white" height="40" />
 </a>
 
 <br/>
@@ -28,7 +28,7 @@ An AI assistant and agent with a true soul, designed to be the perfect companion
 
 <br/>
 
-<img src="./public/preview.gif" width="100%" style="border-radius: 12px; border: 1px solid #30363d" alt="mikuBot Preview" />
+<img src="./public/readme_assets/preview.gif" width="100%" style="border-radius: 12px; border: 1px solid #30363d" alt="mikuBot Preview" />
 
 </div>
 
@@ -39,11 +39,18 @@ An AI assistant and agent with a true soul, designed to be the perfect companion
 *   **Deep Onboarding and Personalization:** Features an initial configuration process that guides you step-by-step. From the first moment, you can nurture the assistant with all the information you want it to know about you, achieving absolute personalization so it understands exactly your context, needs, and how to help you.
 *   **Autonomy and Operation Modes:** mikuBot offers absolute technical sovereignty. **Agent Mode** now features a completely liberated console (no command restrictions), allowing any system operation required for complex tasks. **Chat Mode** maintains "lax" security (a broad whitelist) for casual use. Both modes support background tool execution, scheduled tasks, and a **High-Risk Protection** system that requires manual approval for destructive commands.
 *   **Persistent & Multi-session Execution (Studio Elite):** Miku no longer stops when switching neural branches. Agents can complete complex tasks autonomously in the background while you interact with other sessions, maintaining a persistent and visually reactive link that notifies you of process status in other branches.
+    <br/><img src="./public/readme_assets/mikuBot_chatView00.png" width="100%" style="border-radius: 8px; border: 1px solid #30363d" alt="Chat View" />
+*   **Scientific and Symbolic Calculation (Compute Skill):** An advanced integrated calculator based on SymPy that allows the agent to perform arbitrary-precision arithmetic, solve equations and systems, differentiate and integrate algebraic expressions dynamically and symbolically. Prevents the agent from making errors in mathematical calculations not covered by its training.
+    <br/><img src="./public/readme_assets/mikuBot_computeView00.png" width="48%" style="border-radius: 8px; border: 1px solid #30363d" alt="Compute View" /> <img src="./public/readme_assets/mikuBot_computeDetailView00.png" width="48%" style="border-radius: 8px; border: 1px solid #30363d" alt="Compute Detail View" />
 *   **Multidimensional Themes (Atmosphere Engine):** Absolute visual personalization with 5 premium themes (`Miku`, `Cloud`, `Midnight`, `Cyberpunk`, `Forest`). Each theme adapts the entire interface to provide an immersive experience tailored to your workspace.
+    <br/><img src="./public/readme_assets/mikuBot_themeLangView00.png" width="31%" style="border-radius: 8px; border: 1px solid #30363d" alt="Theme View 1" /> <img src="./public/readme_assets/mikuBot_themeLangView01.png" width="31%" style="border-radius: 8px; border: 1px solid #30363d" alt="Theme View 2" /> <img src="./public/readme_assets/mikuBot_themeLangView03.png" width="31%" style="border-radius: 8px; border: 1px solid #30363d" alt="Theme View 3" />
 *   **Neural Credential Vault:** Your API keys are now protected by the `processVault` system, automatically encrypting them at rest. Sovereign security with zero manual intervention.
 *   **Context Library:** A specialized module for creating, storing, and managing protocols, technical documents, and static knowledge bases. It allows Miku to access curated reference information for specific tasks without cluttering dynamic memory.
+    <br/><img src="./public/readme_assets/mikuBot_libraryView00.png" width="100%" style="border-radius: 8px; border: 1px solid #30363d" alt="Library View" />
 *   **Semantic Memory (Recall Skill):** Unlike the static library, Recall is an autonomous long-term memory skill. Miku records preferences, user details, and key concepts across sessions, creating a recursive navigation structure and a user model that evolves with every interaction.
+    <br/><img src="./public/readme_assets/mikuBot_recallView00.jpg" width="100%" style="border-radius: 8px; border: 1px solid #30363d" alt="Recall View" />
 *   **Generative Dynamic Widgets (Micro-Apps):** mikuBot now supports a generative widgets architecture. You can ask the assistant to create any custom widget for a specific task; Miku will program it, launch it in your workspace, and save it for future sessions. You can even close the main application and the widgets will remain active and functional on your Windows desktop.
+    <br/><img src="./public/readme_assets/mikuBot_widgetManagerView00.png" width="48%" style="border-radius: 8px; border: 1px solid #30363d" alt="Widget Manager" /> <img src="./public/readme_assets/mikuBot_widgetView00.jpg" width="48%" style="border-radius: 8px; border: 1px solid #30363d" alt="Widget View" />
 *   **mikuBot Markdown Engine (Studio Elite) & HTMDL:** Our "Studio Elite" rendering engine rewrites the rules using a unique approach we call **HTMDL** (a masterful mix of HTML and Markdown). The model uses HTMDL natively and proactively as its main *meta-tool* (without requiring explicit function calls) to structure data, creating unparalleled visual presentations that no other agent or web client has today. *(We are working on publishing the HTMDL implementation specs so the community can explore and adopt this vision).* This suite redefines visual interaction:
     *   **Mermaid Syntax Healing:** Native ability to correct and normalize syntax errors in AI-generated diagrams (especially `gitGraph`), ensuring the visual architecture always renders correctly.
     *   **Documentation Integrity (Protection Pipeline):** A 3-phase pipeline ensuring that images, links, and nested code blocks maintain their perfect structure, even within complex markdown layouts.
@@ -53,6 +60,7 @@ An AI assistant and agent with a true soul, designed to be the perfect companion
     *   **Kinetic & Progressive Canvas:** Organic animation system that synchronizes information reveal with the assistant's real-time thinking.
 *   **Neural Editing (Cortex & Command Editors):** mikuBot includes specialized editors to directly modify the assistant's instructions and base knowledge. While you can adjust these files at any time for technical customization, **it is recommended to follow the Onboarding Wizard process** for optimal results. Critical files like `MODES.md` dictate the agent's operating protocols, and manual changes require caution to maintain system stability.
 *   **Voice, Connectivity & Pro Backgrounds:** Includes native voice recognition (Vosk) out-of-the-box in English and Spanish. Additionally, features an **Atmospheric Background Gallery** with high-performance mapping via `local://` protocol for lag-free customization. Also allows easy linking with Telegram (via BotFather).
+    <br/><img src="./public/readme_assets/mikuBot_voskSearXenaView00.png" width="48%" style="border-radius: 8px; border: 1px solid #30363d" alt="Voice Engine" /> <img src="./public/readme_assets/mikuBot_schedulerView00.jpg" width="48%" style="border-radius: 8px; border: 1px solid #30363d" alt="Scheduler View" />
 *   **100% Multilingual Support (EN/ES/ZH):** Unlike other alternatives on the market that are usually limited to a single language, mikuBot is **fully translated and optimized** to function perfectly in **English, Spanish, and Chinese**. From the interface to the agent's reasoning, the system offers a native and fluid experience in all three languages, providing technical superiority and global usability.
 *   **Portability and Backup:** Allows a full memory dump into a compressed file to backup everything, including sessions, personalizations, memory, *skills*, and access keys.
 *   **Windows-First Focus:** Programmed in Electron for scalability, but 100% focused on Windows for perfect native integration with **searXena**, with no short-term plans to be ported to other systems.
@@ -69,7 +77,7 @@ mikuBot is a 100% independent project started in early **February 2026** (see ev
 It is **not a fork of OpenClaw** nor does it reuse any logic from the **Claude Code** (March 31, 2026) leaks. We believe in transparency and proprietary architecture as the foundation of a secure, sovereign system.
 
 <div align="center">
-  <img src="./public/startDateEvidence.png" width="600" style="border-radius: 8px; border: 1px solid #30363d" alt="Project Start Evidence" />
+  <img src="./public/readme_assets/startDateEvidence.png" width="600" style="border-radius: 8px; border: 1px solid #30363d" alt="Project Start Evidence" />
   <p><i>Snapshot of the very first logical core commits of mikuBot (February 2026).</i></p>
 </div>
 
@@ -95,6 +103,7 @@ mikuBot utilizes a robust ecosystem of tools divided into two main categories to
 - **Semantic Memory (`recall`):** Long-term memory skill that allows the assistant to remember preferences, facts, and evolve its user model.
 - **Micro-Apps (`dynamic_widgets`):** Ability to generate, launch, and manage independent visual interfaces on the desktop.
 - **Deep Investigation (`deep_research` / `web_research`):** Web search and auditing engines to avoid hallucinations and obtain precise technical data.
+- **Advanced Calculation (`compute`):** Scientific and symbolic calculator skill powered by SymPy for exact and complex math operations.
 - **Universal Connectivity (`api_fetcher`):** Integrated HTTP client to consume any external REST API.
 - **Self-Documentation (`instruction_booklet`):** Internal query system for the agent to understand its own capabilities and technical parameters.
 - **Skill Discovery (`list_available_skills`):** Ability to auto-explore and learn to use new dynamically installed skills.
@@ -186,7 +195,7 @@ mikuBot is an initiative developed and maintained by [**Neural Arch Labs**](http
 It's common to think that **mikuBot** takes its name from the well-known virtual idol *Hatsune Miku*. However, the origin is personal. "Miku" is a word that means "sky", which is why I named the kitten in the photo (the middle one) this way. I rescued her along with her two siblings, and since then she has been with me and always stays by my side while I am programming.
 
 <div align="center">
-  <img src="./public/Zanahorio_Miku_Freya.png" alt="Zanahorio, Miku and Freya" width="100%" style="max-width: 500px; border-radius: 12px; margin: 15px 0;" />
+  <img src="./public/readme_assets/Zanahorio_Miku_Freya.png" alt="Zanahorio, Miku and Freya" width="100%" style="max-width: 500px; border-radius: 12px; margin: 15px 0;" />
   <p><i>From left to right: Zanahorio, Miku, and Freya.</i></p>
 </div>
 

@@ -1,29 +1,26 @@
-# 🌟 mikuBot v2.4.1 — Agent Autonomy & Remote Polish
+# 🌟 mikuBot v2.5.0 — Precise Mathematics & Rich Assets Release
 
-We are proud to announce the release of **mikuBot v2.4.1**, a stability and autonomy update that refines the agent's workflow and ensures a seamless remote control experience.
+We are proud to announce the release of **mikuBot v2.5.0**, introducing the highly requested **Compute Neural Skill** for advanced mathematical calculations, along with a complete overhaul of the documentation assets for a premium showcase.
 
 ## 🚀 Key Highlights
 
-### 🤖 Stabilized Agent Console Autonomy
-Miku's execution engine is now smarter about what requires your permission.
-- **Enhanced Whitelists**: Essential diagnostic tools (`wmic`, `pnpm`, `yarn`) and safe network requests (`curl`, `wget` for research) are now fully whitelisted in Chat Mode.
-- **Chained Commands**: The authorization engine now correctly parses and allows non-destructive chained commands without triggering unnecessary security roadblocks.
+### 🧮 Compute Neural Skill (SymPy Integration)
+Miku now has native access to a powerful scientific and symbolic calculator using SymPy inside the embedded Python runtime.
+- **High-Precision Arithmetic**: Calculate complex formulas with arbitrary precision.
+- **Equation & Systems Solver**: Solve single equations or systems of equations (e.g. `[x + y = 3, x - y = 1]`) with support for variables substitution.
+- **Calculus Operations**: Perform symbolic derivatives (differentiate) and integrals (integrate) natively.
+- **Symbolic Manipulation**: Simplify, factor, and expand algebraic expressions.
+- **Intelligent Parser**: Natural mathematical inputs (like caret powers `x^2` and implicit multiplications `2x`) are automatically parsed and translated.
 
-### 📱 Premium Telegram Integration
-Controlling Miku remotely is now more reliable and informative.
-- **Dynamic Tool Descriptions**: Approval requests sent to Telegram now include rich, detailed context (e.g., exact console commands or target file paths) instead of generic tool names.
-- **Stale Closure Fix**: Resolved a critical bug where Telegram approval buttons (`Accept`/`Deny`) would freeze or lose connection to the active session.
+### 🤖 Whitelisted Mode Prompts
+- The `compute` tool has been integrated directly into both **Agent/Instruction Mode** and **Chat/Casual Mode** whitelists inside `MODES.md`, prompting the agent to use it for high-precision math tasks.
 
-### ✨ Visual Formatting & UI Polish
-- **Markdown Integrity**: Fixed rendering bugs where text enclosed in `**` would fail to bold if it spanned multiple lines, both in standard chat and Telegram remote output.
-- **Narrative Flow**: Agent narrative blocks within the collapsible tool execution loop now render with proper padding and clean markdown formatting, distinguishing them clearly from internal reasoning blocks.
-
-## 🛠️ Technical Improvements
-- **Electron Builder**: Resolved file system permission issues causing `7-Zip` symbolic link creation to fail during Windows compilation.
-- **Engine Stability**: Patched `ENOTEMPTY` errors when clearing legacy virtual environments to prevent boot failures.
+### 🖼️ Documentation Visual Showcase
+- Shifted all readme images to the `public/readme_assets/` subdirectory.
+- Integrated high-fidelity screenshots for Recall, Widgets, Themes, Library, Voice, Scheduler, and the Calculator features across the readmes.
 
 ## ⬇️ Download
-[Download MikuCentral.Setup.2.4.1.exe](https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.4.1/MikuCentral.Setup.2.4.1.exe)
+[Download MikuCentral.Setup.2.5.0.exe](https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.5.0/MikuCentral.Setup.2.5.0.exe)
 
 ---
 *Developed with precision by Neural Arch Labs.*

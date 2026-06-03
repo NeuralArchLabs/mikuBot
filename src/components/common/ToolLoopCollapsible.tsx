@@ -150,11 +150,9 @@ export const ToolLoopCollapsible: React.FC<ToolLoopCollapsibleProps> = ({
 
     const handleToggle = () => {
         hasUserInteractedRef.current = true;
-        if (!isCollapsed) {
-            collapseWithScrollLock();
-        } else {
-            setIsCollapsed(false);
-        }
+        // Manual toggle: just flip state. No scroll compensation — that only
+        // applies during the automatic post-stream collapse (see useEffect below).
+        setIsCollapsed(prev => !prev);
     };
 
     const formatDuration = (ms: number): string => {
