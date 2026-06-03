@@ -221,7 +221,7 @@ export const ToolLoopCollapsible: React.FC<ToolLoopCollapsibleProps> = ({
                 style={{ 
                     maxHeight: isCollapsed ? '0px' : '5000px',
                     opacity: isCollapsed ? 0 : 1,
-                    overflow: 'hidden',
+                    overflow: isCollapsed ? 'hidden' : 'visible',
                     overflowAnchor: 'none'
                 }}
             >
