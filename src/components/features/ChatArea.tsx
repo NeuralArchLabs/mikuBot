@@ -956,7 +956,7 @@ export const ChatArea = ({
     //
     //  Human interaction (wheel/touch/mousedown) sets mode → 'idle' immediately (sync).
     // ─────────────────────────────────────────────────────────────────────────
-    type ScrollMode = 'idle' | 'tool_active' | 'locking' | 'locked' | 'locked_bottom';
+    type ScrollMode = 'idle' | 'tool_active' | 'locking' | 'locked';
     const scrollModeRef = React.useRef<ScrollMode>('idle');
     // The element ID we want to pin at the top of the viewport
     const lockTargetRef   = React.useRef<string | null>(null);
@@ -972,11 +972,7 @@ export const ChatArea = ({
 
         const breakLock = () => {
             // Only release during active scroll control — never clobber idle
-            if (
-                scrollModeRef.current === 'locking' || 
-                scrollModeRef.current === 'locked' || 
-                scrollModeRef.current === 'locked_bottom'
-            ) {
+            if (scrollModeRef.current === 'locking' || scrollModeRef.current === 'locked') {
                 scrollModeRef.current = 'idle';
                 lockTargetRef.current = null;
             }
@@ -1058,12 +1054,8 @@ export const ChatArea = ({
             // Stream ended. Keep RAFLoop in 'locked_bottom' mode to maintain bottom scroll anchor during collapse.
             // ToolLoopCollapsible auto-collapses 600ms after stream ends, animation takes 300ms.
             // We keep the lock active for 1500ms to smoothly correct any layout shifts.
-            if (
-                scrollModeRef.current === 'locking' || 
-                scrollModeRef.current === 'locked' || 
-                scrollModeRef.current === 'tool_active'
-            ) {
-                scrollModeRef.current = 'locked_bottom';
+            if (scrollModeRef.current === 'locking' || scrollModeRef.current === 'locked') {
+                scrollModeRef.current = 'locked';
                 if (!lockTargetRef.current) {
                     lockTargetRef.current = `msg-${lastMsg.id}`;
                 }
@@ -1122,7 +1114,7 @@ export const ChatArea = ({
             if (time - lastTick >= interval) {
                 lastTick = time;
 
-                if (mode === 'tool_active' || mode === 'locked_bottom') {
+                if (mode === 'tool_active') {
                     // Follow bottom freely
                     container.scrollTop = container.scrollHeight - container.clientHeight;
 
@@ -1160,12 +1152,7 @@ export const ChatArea = ({
 
         // Only start loop if we're in an active mode
         const mode = scrollModeRef.current;
-        if (
-            mode === 'tool_active' || 
-            mode === 'locking' || 
-            mode === 'locked' || 
-            mode === 'locked_bottom'
-        ) {
+        if (mode === 'tool_active' || mode === 'locking' || mode === 'locked') {
             const frameId = requestAnimationFrame(tick);
             return () => { 
                 active = false; 
