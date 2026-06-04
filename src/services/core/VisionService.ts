@@ -29,7 +29,7 @@ export class VisionService {
                 ...config,
                 // Override main model with vision model for this specific call
                 provider: config.visionProvider,
-                model: config.visionModel
+                model: config.visionModel,
             },
             onStatus: () => {}, // Stateless call, no UI updates needed during pre-processing
             abortSignal: abortController.signal,

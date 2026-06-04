@@ -199,7 +199,7 @@ export class OpenAICompatibleProvider extends ModelProvider {
                 return res;
             }
 
-            const imageAttachments = m.attachments?.filter((a: any) => a.type.startsWith('image/') && a.data) || [];
+            const imageAttachments = m.attachments?.filter((a: any) => a.type?.startsWith('image/') && a.data && !a.extractedContent) || [];
             if (imageAttachments.length > 0) {
                 const contentBlocks: any[] = [{ type: 'text', text: m.content || '' }];
                 imageAttachments.forEach((img: any) => {
@@ -290,7 +290,7 @@ export class ZAIProvider extends ModelProvider {
                 res.content = m.content || '{}';
                 return res;
             }
-            const imageAttachments = m.attachments?.filter((a: any) => a.type.startsWith('image/') && a.data) || [];
+            const imageAttachments = m.attachments?.filter((a: any) => a.type?.startsWith('image/') && a.data && !a.extractedContent) || [];
             if (imageAttachments.length > 0) {
                 const contentBlocks: any[] = [{ type: 'text', text: m.content || '' }];
                 imageAttachments.forEach((img: any) => contentBlocks.push({ type: 'image_url', image_url: { url: img.data } }));
@@ -385,7 +385,12 @@ export class OllamaProvider extends ModelProvider {
 
     protected serializeMessages(messages: any[]): any[] {
         return messages.filter(m => m.content || (m.tool_calls && m.tool_calls.length > 0)).map(m => {
-            const imageAttachments = m.attachments?.filter((a: any) => a.type.startsWith('image/') && a.data) || [];
+            // Only send images if the attachment has raw data and was NOT already processed
+            // by the Vision Vortex (extractedContent means Vortex ran and data was stripped upstream).
+            // Sending images to non-vision Ollama models causes them to crash.
+            const imageAttachments = m.attachments?.filter((a: any) =>
+                a.type?.startsWith('image/') && a.data && !a.extractedContent
+            ) || [];
             return {
                 role: m.role,
                 content: m.content,
@@ -408,7 +413,7 @@ export class OllamaProvider extends ModelProvider {
     }
 
     async streamRequest(messages: any[]): Promise<ProviderResponse> {
-        const body = {
+        const buildBody = (includeThink: boolean) => ({
             model: this.options.config.model,
             messages: this.serializeMessages(messages),
             stream: true,
@@ -432,19 +437,38 @@ export class OllamaProvider extends ModelProvider {
                     : {})
             },
             tools: this.options.useTools ? this.options.tools : undefined,
-            // Enable extended thinking for compatible models (deepseek-r1, etc.)
-            // Default: true (thinking enabled). Set ollamaThink: false to disable.
-            ...(this.options.config.ollamaThink !== false ? { think: true } : {})
+            // Enable extended thinking for compatible models (deepseek-r1, etc.).
+            // Omitted entirely on retry if the model doesn't support it.
+            ...(includeThink ? { think: true } : {})
+        });
+
+        const wantsThink = this.options.config.ollamaThink !== false;
+
+        const execute = async (includeThink: boolean): Promise<ProviderResponse> => {
+            if (this.options.isElectronProxy) {
+                return this.streamProxy('ollama', buildBody(includeThink), false);
+            } else {
+                const rawBase = (this.options.config.ollamaUrl || 'http://localhost:11434').replace('localhost', '127.0.0.1');
+                return this.streamFetch(`${rawBase}/api/chat`, { 'Content-Type': 'application/json' }, buildBody(includeThink), false);
+            }
         };
 
-        if (this.options.isElectronProxy) {
-            // Pass the configured ollamaUrl separately; the main process will handle normalization
-            return this.streamProxy('ollama', body, false);
-        } else {
-            // Direct mode (dev/browser): force IPv4 to skip Windows DNS resolution delay.
-            const rawBase = (this.options.config.ollamaUrl || 'http://localhost:11434').replace('localhost', '127.0.0.1');
-            const url = `${rawBase}/api/chat`;
-            return this.streamFetch(url, { 'Content-Type': 'application/json' }, body, false);
+        try {
+            return await execute(wantsThink);
+        } catch (err: any) {
+            // Automatic fallback: model reported it doesn't support thinking.
+            // Retry transparently without the `think` field so any Ollama model
+            // works regardless of the global ollamaThink setting.
+            const msg = (err?.message || '').toLowerCase();
+            if (wantsThink && msg.includes('does not support thinking')) {
+                console.warn(`[OllamaProvider] Model "${this.options.config.model}" does not support thinking. Retrying without think field...`);
+                // Reset accumulated state before retry
+                this.fullContent = '';
+                this.fullReasoning = '';
+                this.toolCallsDeltas = [];
+                return execute(false);
+            }
+            throw err;
         }
     }
 }
@@ -516,7 +540,7 @@ export class GeminiProvider extends ModelProvider {
                 if (text) parts.push({ text });
                 if (m.reasoning) parts.push({ thought: m.reasoning });
 
-                const imageAttachments = m.attachments?.filter((a: any) => a.type.startsWith('image/') && a.data) || [];
+                const imageAttachments = m.attachments?.filter((a: any) => a.type?.startsWith('image/') && a.data && !a.extractedContent) || [];
                 imageAttachments.forEach((img: any) => {
                     parts.push({
                         inlineData: { mimeType: img.type, data: img.data.split(',')[1] }
@@ -615,7 +639,7 @@ export class GeminiProvider extends ModelProvider {
                     maxOutputTokens: this.options.config.maxOutputTokens || 128000, 
                     thinkingConfig: isThinkingModel ? { include_thoughts: true } : undefined
                 },
-                systemInstruction: !isGemma ? { parts: [{ text: systemPromptContent }] } : undefined,
+                systemInstruction: (!isGemma && systemPromptContent) ? { parts: [{ text: systemPromptContent }] } : undefined,
                 tools: (this.options.useTools || (historyHasTools && this.options.tools.length > 0))
                     ? [{ functionDeclarations: this.options.tools.map(t => t.function) }]
                     : undefined

@@ -48,7 +48,8 @@ interface ChatAreaProps {
 const ChatInputControls = React.memo(({
     isRecording, partialText, agentMode, isLoading, isViewing, executingSessionId, currentSessionId, agentIteration, agentPhase, agentIsInstructionMode, attachments, t,
     inputRef, fileInputRef,
-    toggleRecording, onAbort, handleSend, handleSendAsInstruction, onReprompt, handleNativeFileSelect, handleRemoveAttachment, boltGlow, isSent, safeMode, approvalMode, debugMode, onDebugModeChange
+    toggleRecording, onAbort, handleSend, handleSendAsInstruction, onReprompt, handleNativeFileSelect, handleRemoveAttachment, boltGlow, isSent, safeMode, approvalMode, debugMode, onDebugModeChange,
+    onPasteImage
 }: any) => {
     // Character-level isolation: Use local state for typing to avoid global store overhead on every keystroke.
     const globalInput = useAgentStore(selectInput);
@@ -126,6 +127,25 @@ const ChatInputControls = React.memo(({
         setTimeout(handleSendAsInstruction, 0);
     };
 
+    const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        let hasImage = false;
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            if (item.type.indexOf('image') !== -1) {
+                const file = item.getAsFile();
+                if (file) {
+                    hasImage = true;
+                    onPasteImage(file);
+                }
+            }
+        }
+        if (hasImage) {
+            e.preventDefault();
+        }
+    };
+
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
             if (e.altKey) {
@@ -176,12 +196,18 @@ const ChatInputControls = React.memo(({
                                 {att.type.startsWith('image/') ? (
                                     <>
                                         <div className="relative w-full h-full rounded-md overflow-hidden">
-                                            <img src={att.data} alt={att.name} className={`w-full h-full object-cover transition-all duration-500 ${att.isAnalyzing ? 'blur-[1px] brightness-50' : ''}`} />
+                                            <img src={att.data} alt={att.name} className={`w-full h-full object-cover transition-all duration-500 ${att.isAnalyzing ? 'blur-[1px] brightness-50' : att.analysisError ? 'blur-[1px] brightness-40' : ''}`} />
                                             {att.isAnalyzing && (
                                                 <div className="absolute inset-0 flex items-center justify-center">
                                                     <div className="absolute inset-0 bg-emerald-500/20 animate-pulse" />
                                                     <Icon name="eye" className="text-emerald-400 text-xs animate-bounce" />
                                                     <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500 shadow-[0_0_10px_#10b981] animate-scan-fast" />
+                                                </div>
+                                            )}
+                                            {att.analysisError && !att.isAnalyzing && (
+                                                <div className="absolute inset-0 flex items-center justify-center" title={att.analysisError}>
+                                                    <div className="absolute inset-0 bg-red-900/40" />
+                                                    <Icon name="exclamation-triangle" className="text-red-400 text-xs z-10" />
                                                 </div>
                                             )}
                                         </div>
@@ -240,6 +266,7 @@ const ChatInputControls = React.memo(({
                         value={localInput}
                         onChange={(e) => setLocalInput(e.target.value)}
                         onKeyDown={handleKeyDown}
+                        onPaste={handlePaste}
                         placeholder={isRecording ? (partialText || t('chat.placeholders.recording')) : (agentMode === 'agent' ? t('chat.placeholders.agent') : t('chat.placeholders.idle'))}
                         className={`w-full bg-slate-900/80 backdrop-blur-xl border rounded-xl py-3.5 px-4 text-slate-200 font-mono text-sm placeholder-slate-600 focus:ring-1 outline-none resize-none min-h-[50px] transition-[border-color,box-shadow,padding-right] duration-300 chat-input-scrollbar ${isRecording
                             ? 'border-emerald-500/50 ring-1 ring-emerald-500/20'
@@ -604,6 +631,67 @@ export const ChatArea = ({
         }, 300);
     };
 
+    const handlePasteImage = (file: File) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const base64Data = e.target?.result as string;
+            if (!base64Data) return;
+            const attachmentId = Date.now().toString() + Math.random().toString();
+            const fileType = file.type;
+            const fileName = file.name || `clipboard_${Date.now()}.png`;
+
+            const activeProvider = (agentMode === 'agent' && config.agentProvider && config.agentModel)
+                ? config.agentProvider
+                : (config.chatProvider && config.chatModel)
+                    ? config.chatProvider
+                    : config.provider;
+
+            const activeModel = (agentMode === 'agent' && config.agentProvider && config.agentModel)
+                ? config.agentModel
+                : (config.chatProvider && config.chatModel)
+                    ? config.chatModel
+                    : config.model;
+
+            const isVortexDistinct = config.visionProvider && config.visionModel
+                && !(config.visionProvider === activeProvider && config.visionModel === activeModel);
+
+            if (isVortexDistinct) {
+                setAttachments(prev => [...prev, {
+                    id: attachmentId,
+                    name: fileName,
+                    type: fileType,
+                    data: base64Data,
+                    isAnalyzing: true
+                }]);
+
+                VisionService.describeImage(config, base64Data, fileType, models)
+                    .then(description => {
+                        setAttachments(prev => prev.map(a => 
+                            a.id === attachmentId 
+                                ? { ...a, extractedContent: description, isAnalyzing: false } 
+                                : a
+                        ));
+                    })
+                    .catch(err => {
+                        console.error('[Vision Runtime] Analysis failed:', err);
+                        setAttachments(prev => prev.map(a => 
+                            a.id === attachmentId 
+                                ? { ...a, isAnalyzing: false, analysisError: err.message || 'Vision analysis failed' } 
+                                : a
+                        ));
+                    });
+            } else {
+                setAttachments(prev => [...prev, {
+                    id: attachmentId,
+                    name: fileName,
+                    type: fileType,
+                    data: base64Data
+                }]);
+            }
+        };
+        reader.readAsDataURL(file);
+    };
+
     const handleNativeFileSelect = async (filePaths: string[]) => {
         if (!(window as any).electron) return;
         
@@ -664,7 +752,7 @@ export const ChatArea = ({
                             console.error('[Vision Runtime] Analysis failed:', err);
                             setAttachments(prev => prev.map(a => 
                                 a.id === attachmentId 
-                                    ? { ...a, isAnalyzing: false } 
+                                    ? { ...a, isAnalyzing: false, analysisError: err.message || 'Vision analysis failed' } 
                                     : a
                             ));
                         });
@@ -1994,6 +2082,7 @@ export const ChatArea = ({
                     approvalMode={approvalMode}
                     debugMode={debugMode}
                     onDebugModeChange={onDebugModeChange}
+                    onPasteImage={handlePasteImage}
                 />
             </div>
         </div>

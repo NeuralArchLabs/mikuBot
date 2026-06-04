@@ -30,6 +30,7 @@ export interface Attachment {
     data: string; // Base64 encoded data
     extractedContent?: string; // Raw text extracted for universal context
     isAnalyzing?: boolean; // True when Vision Runtime is processing an image
+    analysisError?: string; // Set when Vision Runtime fails, shown to user on the thumbnail
 }
 
 /** Message Role */
