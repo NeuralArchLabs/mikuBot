@@ -15,6 +15,110 @@
  * Normalizes raw text from the model for rendering.
  * This is the SINGLE SOURCE for text normalization.
  */
+/**
+ * Extracts and protects fenced code blocks while respecting nested code blocks of the same fence.
+ */
+function protectFencedCodeBlocks(text: string, pieces: string[]): string {
+    const lines = text.split('\n');
+    const processedLines: string[] = [];
+
+    let inBlock = false;
+    let fenceChar = '';
+    let fenceLen = 0;
+    let blockLang = '';
+    let blockLines: string[] = [];
+    let innerDepth = 0; // Only used for markdown blocks
+
+    // Markdown blocks can contain nested ```lang...``` examples as content.
+    // We track them with innerDepth instead of treating them as block boundaries.
+    const isMdBlock = (lang: string) =>
+        lang === 'markdown' || lang === 'md' || lang === 'mdx';
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const match = line.match(/^([ \t]*)(`{3,}|~{3,})([^\s`~]*)(.*)$/);
+
+        if (match) {
+            const char = match[2][0];
+            const len  = match[2].length;
+            const lang = match[3].trim();
+            const rest = match[4].trim();
+
+            if (!inBlock) {
+                // ── Open outer block ──────────────────────────────────────
+                inBlock    = true;
+                fenceChar  = char;
+                fenceLen   = len;
+                blockLang  = lang.toLowerCase();
+                innerDepth = 0;
+                blockLines = [line];
+
+            } else if (isMdBlock(blockLang)) {
+                // ── Inside a markdown block ───────────────────────────────
+                // Backticks + language → open inner block
+                if (lang !== '' || rest !== '') {
+                    innerDepth++;
+                    blockLines.push(line);
+                } else if (char === fenceChar && len >= fenceLen) {
+                    // Bare fence
+                    blockLines.push(line);
+                    if (innerDepth > 0) {
+                        innerDepth--; // closes an inner block
+                    } else {
+                        // closes the outer markdown block
+                        const id = `___PROTECTED_BLOCK_${pieces.length}___`;
+                        pieces.push(blockLines.join('\n'));
+                        processedLines.push(`\n${id}\n`);
+                        inBlock = false;
+                    }
+                } else {
+                    blockLines.push(line);
+                }
+
+            } else {
+                // ── Inside a regular (non-markdown) block ─────────────────
+                blockLines.push(line);
+                if (char === fenceChar && len >= fenceLen && lang === '' && rest === '') {
+                    const id = `___PROTECTED_BLOCK_${pieces.length}___`;
+                    pieces.push(blockLines.join('\n'));
+                    processedLines.push(`\n${id}\n`);
+                    inBlock = false;
+                }
+            }
+
+        } else {
+            if (inBlock) {
+                // For regular blocks only: force-close on a bare heading/divider.
+                // This heals responses where the AI forgot the closing fence.
+                // Markdown blocks intentionally contain headings → never force-close them.
+                if (!isMdBlock(blockLang) && innerDepth === 0) {
+                    const t = line.trim();
+                    if (/^#{1,3}\s/.test(t) || /^---$/.test(t)) {
+                        const id = `___PROTECTED_BLOCK_${pieces.length}___`;
+                        pieces.push(blockLines.join('\n'));
+                        processedLines.push(`\n${id}\n`);
+                        inBlock = false;
+                        processedLines.push(line);
+                        continue;
+                    }
+                }
+                blockLines.push(line);
+            } else {
+                processedLines.push(line);
+            }
+        }
+    }
+
+    // Catch any block that reached end-of-text without a closing fence
+    if (inBlock) {
+        const id = `___PROTECTED_BLOCK_${pieces.length}___`;
+        pieces.push(blockLines.join('\n'));
+        processedLines.push(`\n${id}\n`);
+    }
+
+    return processedLines.join('\n');
+}
+
 export function formatFinalResponse(rawText: any): string {
     if (!rawText) return '';
 
@@ -28,12 +132,8 @@ export function formatFinalResponse(rawText: any): string {
     // Extract and protect blocks that should NEVER be affected by generic unescaping logic (\n, \t)
     const pieces: string[] = [];
     
-    // 2a. Fenced Code Blocks
-    formatted = formatted.replace(/^[ \t]*(`{3,}|~{3,})([\w./+#-]*)[\t ]*\n([\s\S]*?)\n[ \t]*\1/gm, (match) => {
-        const id = `___PROTECTED_BLOCK_${pieces.length}___`;
-        pieces.push(match);
-        return `\n${id}\n`;
-    });
+    // 2a. Fenced Code Blocks (nested-aware)
+    formatted = protectFencedCodeBlocks(formatted, pieces);
 
     // 2b. Math Blocks ($$, \[, \()
     formatted = formatted.replace(/\$\$[\s\S]*?\$\$/g, (match) => {
@@ -115,8 +215,13 @@ export function formatFinalResponse(rawText: any): string {
     for (let i = 0; i < linesArr.length; i++) {
         const line = linesArr[i];
         if (line.trim() && line === linesArr[i+1]) {
-            // Skip if next line is exactly the same
-            continue;
+            // Do NOT deduplicate lines that consist only of HTML tags (e.g. nested </div>) or code fences (e.g. nested ```)
+            const isHtmlTag = /^\s*<\/?([a-zA-Z0-9-]+)(?:\s[^>]*)?>\s*$/.test(line);
+            const isCodeFence = /^\s*(`{3,}|~{3,})\s*$/.test(line);
+            if (!isHtmlTag && !isCodeFence) {
+                // Skip if next line is exactly the same
+                continue;
+            }
         }
         uniqueLines.push(line);
     }

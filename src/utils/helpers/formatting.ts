@@ -180,61 +180,121 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
 
 
     
-    // 0. PRE-EXTRACTION: Protect inline and fenced code blocks
-    // Multi-fence support (3+ backticks or tildes) for nested code blocks
-    // Updated: relax ^ to ^[ \t]* to handle indented code blocks
-    // Updated: Ensure closing fence is on a line by itself to prevent early termination
-    html = html.replace(/^[ \t]*(`{3,}|~{3,})([\w./+#-]*)[\t ]*\n([\s\S]*?)\n[ \t]*\1[ \t]*(?:\n|$)/gm, (match, fence, lang, code) => {
-        const id = `__BLOCK_${pieces.length}__`;
-        const langClean = lang.toLowerCase().trim();
-        const codeTrimmed = code; // Preserve exact content for nested blocks
-        const highlighted = highlightCode(codeTrimmed.trim(), langClean);
-        const encodedCode = encodeURIComponent(codeTrimmed.trim());
-        const isDiagram = ['mermaid', 'flowchart', 'graph', 'sequenceDiagram', 'gantt', 'pie', 'gitGraph', 'stateDiagram', 'stateDiagram-v2', 'mindmap', 'erDiagram'].some(d => langClean.includes(d));
-        
-        // Premium Code Studio: Language-specific accent colors
-        const codeColors: Record<string, string> = {
-            python: 'text-blue-400',
-            javascript: 'text-yellow-400',
-            typescript: 'text-blue-500',
-            json: 'text-cyan-400',
-            html: 'text-orange-500',
-            css: 'text-indigo-400',
-            rust: 'text-orange-600',
-            go: 'text-sky-400',
-            bash: 'text-emerald-400',
-            yaml: 'text-rose-400'
+    // 0. PRE-EXTRACTION: Protect inline and fenced code blocks.
+    // Uses a line-by-line parser instead of a regex so that ```markdown blocks
+    // containing nested ```lang...``` examples are handled correctly:
+    // - For ```markdown blocks: backticks+lang open an inner block; bare ``` closes it.
+    //   Only a bare ``` with no open inner blocks (innerDepth===0) closes the outer block.
+    // - For all other blocks: original behavior (bare ``` closes the block).
+    html = (() => {
+        const isMdBlock = (lang: string) =>
+            lang === 'markdown' || lang === 'md' || lang === 'mdx';
+
+        const buildBlock = (langClean: string, codeTrimmed: string) => {
+            const highlighted  = highlightCode(codeTrimmed.trim(), langClean);
+            const encodedCode  = encodeURIComponent(codeTrimmed.trim());
+            const isDiagram    = ['mermaid','flowchart','graph','sequenceDiagram','gantt','pie',
+                                   'gitGraph','stateDiagram','stateDiagram-v2','mindmap','erDiagram']
+                                   .some(d => langClean.includes(d));
+            const codeColors: Record<string, string> = {
+                python:'text-blue-400', javascript:'text-yellow-400', typescript:'text-blue-500',
+                json:'text-cyan-400', html:'text-orange-500', css:'text-indigo-400',
+                rust:'text-orange-600', go:'text-sky-400', bash:'text-emerald-400', yaml:'text-rose-400'
+            };
+            const accent      = codeColors[langClean] || 'text-slate-400';
+            const displayLang = langClean || 'code';
+            const codeBox  = 'relative group/code bg-black/45 pt-8 pb-8 px-6 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_15px_45px_rgba(0,0,0,0.65)] backdrop-blur-md max-w-full min-w-0 md:mx-2';
+            const diagBox  = 'relative group/code bg-black/45 pt-8 pb-8 px-6 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_15px_45px_rgba(0,0,0,0.65)] max-w-full min-w-0 selection:bg-cyan-500/30';
+            const header   = `\n            <div class="absolute top-2 left-6 flex items-center gap-2 non-typing select-none pointer-events-none">\n                <i class="fas fa-terminal text-[9px] ${accent} opacity-60"></i>\n                <span class="text-[9px] font-black uppercase tracking-[0.25em] ${accent} opacity-80">${displayLang}</span>\n            </div>`;
+            const copyBtn  = `<div class="absolute top-0 right-6 h-8 flex items-center z-20 opacity-0 group-hover/code:opacity-100 transition-opacity duration-300"><button class="group/btn text-slate-500/50 hover:text-cyan-400 p-2 cursor-pointer" title="Copiar Código" data-code="${encodedCode}" onclick="var btn=this,icon=btn.querySelector('i'),code=decodeURIComponent(btn.dataset.code);navigator.clipboard.writeText(code).then(function(){icon.className='fas fa-check text-emerald-400 inline-block transition-transform duration-200 transform-gpu group-hover/btn:scale-110 group-active/btn:scale-95';setTimeout(function(){icon.className='fas fa-clone text-[13px] inline-block transition-transform duration-200 transform-gpu group-hover/btn:scale-110 group-active/btn:scale-95'},2000)})"><i class="fas fa-clone text-[13px] inline-block transition-transform duration-200 transform-gpu group-hover/btn:scale-110 group-active/btn:scale-95"></i></button></div>`;
+            const id       = `__BLOCK_${pieces.length}__`;
+            if (isDiagram) {
+                const codeBtnLabel = i18n.t('common.code', { defaultValue: 'Código' });
+                const codeBtn  = `<div class="absolute top-0 right-14 h-8 flex items-center z-20 opacity-0 group-hover/code:opacity-100 transition-opacity duration-300"><button class="group/btn text-slate-500/50 hover:text-cyan-400 p-2 cursor-pointer" title="${codeBtnLabel}" onclick="var container=this.closest('.group\\\\/code'); var svg=container.querySelector('.mermaid'); var raw=container.querySelector('.mermaid-raw-code'); if(svg.style.display==='none'){svg.style.display='flex';raw.style.display='none';svg.style.animation='none';svg.offsetHeight;svg.style.animation='slide-up-fade 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards';this.classList.remove('text-cyan-400');this.classList.add('text-slate-500/50');}else{svg.style.display='none';raw.style.display='block';raw.style.animation='none';raw.offsetHeight;raw.style.animation='slide-up-fade 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards';this.classList.remove('text-slate-500/50');this.classList.add('text-cyan-400');}"><i class="fas fa-code text-[13px] inline-block transition-transform duration-200 transform-gpu group-hover/btn:scale-110 group-active/btn:scale-95"></i></button></div>`;
+                const cls  = isStreaming ? `${diagBox} isolate overflow-visible is-visible` : `${diagBox} overflow-visible code-block-anim opacity-0 scale-95 transition-all duration-500 ease-in-out will-change-transform transform translate-z-0`;
+                const attr = isStreaming ? 'data-animated="true"' : '';
+                pieces.push(`<div class="${cls}" ${attr}>${header}${copyBtn}${codeBtn}<div class="overflow-x-auto overflow-y-hidden w-full px-0 custom-scrollbar"><div class="mermaid min-h-[100px] flex items-center justify-center" data-mermaid-src="${encodedCode}"></div><div class="mermaid-raw-code hidden w-full bg-black/20 shadow-[0_3px_12px_rgba(0,0,0,0.3),0_1px_3px_rgba(0,0,0,0.15)] rounded-xl p-5 border border-transparent"><pre class="bg-transparent border-none p-0 m-0" style="background: transparent !important; box-shadow: none !important;"><code class="text-sm shadow-none font-mono leading-relaxed block">${highlighted}</code></pre></div></div></div>`);
+            } else {
+                const cls  = isStreaming ? `${codeBox} isolate overflow-visible is-visible` : `${codeBox} overflow-visible code-block-anim opacity-0 scale-95 transition-all duration-500 ease-in-out will-change-transform transform translate-z-0`;
+                const attr = isStreaming ? 'data-animated="true"' : '';
+                pieces.push(`<div class="${cls}" ${attr}>${header}${copyBtn}<div class="overflow-x-auto w-full bg-black/20 shadow-[0_3px_12px_rgba(0,0,0,0.3),0_1px_3px_rgba(0,0,0,0.15)] rounded-xl p-5 border border-transparent"><pre class="bg-transparent border-none p-0 m-0" style="background: transparent !important; box-shadow: none !important;"><code class="text-sm shadow-none font-mono leading-relaxed block">${highlighted}</code></pre></div></div>`);
+            }
+            return `\n${id}\n`;
         };
-        const accent = codeColors[langClean] || 'text-slate-400';
-        const displayLang = langClean || 'code';
 
-        const codeContainerClass = 'relative group/code bg-black/45 pt-8 pb-8 px-6 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_15px_45px_rgba(0,0,0,0.65)] backdrop-blur-md max-w-full min-w-0 md:mx-2';
-        const diagramContainerClass = 'relative group/code bg-black/45 pt-8 pb-8 px-6 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_15px_45px_rgba(0,0,0,0.65)] max-w-full min-w-0 selection:bg-cyan-500/30';
-        
-        // Studio Elite Header: Minimal Floating Language Badge
-        const studioHeader = `
-            <div class="absolute top-2 left-6 flex items-center gap-2 non-typing select-none pointer-events-none">
-                <i class="fas fa-terminal text-[9px] ${accent} opacity-60"></i>
-                <span class="text-[9px] font-black uppercase tracking-[0.25em] ${accent} opacity-80">${displayLang}</span>
-            </div>`;
+        const lines        = html.split('\n');
+        const out: string[] = [];
+        let inBlock        = false;
+        let fenceChar      = '';
+        let fenceLen       = 0;
+        let blockLang      = '';
+        let contentLines: string[] = [];
+        let innerDepth     = 0;
 
-        // Minimal Action: Icon-only Copy Button
-             const copyButton = `<div class="absolute top-0 right-6 h-8 flex items-center z-20 opacity-0 group-hover/code:opacity-100 transition-opacity duration-300"><button class="group/btn text-slate-500/50 hover:text-cyan-400 p-2 cursor-pointer" title="Copiar Código" data-code="${encodedCode}" onclick="var btn=this,icon=btn.querySelector('i'),code=decodeURIComponent(btn.dataset.code);navigator.clipboard.writeText(code).then(function(){icon.className='fas fa-check text-emerald-400 inline-block transition-transform duration-200 transform-gpu group-hover/btn:scale-110 group-active/btn:scale-95';setTimeout(function(){icon.className='fas fa-clone text-[13px] inline-block transition-transform duration-200 transform-gpu group-hover/btn:scale-110 group-active/btn:scale-95'},2000)})"><i class="fas fa-clone text-[13px] inline-block transition-transform duration-200 transform-gpu group-hover/btn:scale-110 group-active/btn:scale-95"></i></button></div>`;
-        
-        if (isDiagram) {
-            const codeBtnLabel = i18n.t('common.code', { defaultValue: 'Código' });
-            const codeButton = `<div class="absolute top-0 right-14 h-8 flex items-center z-20 opacity-0 group-hover/code:opacity-100 transition-opacity duration-300"><button class="group/btn text-slate-500/50 hover:text-cyan-400 p-2 cursor-pointer" title="${codeBtnLabel}" onclick="var container=this.closest('.group\\\\/code'); var svg=container.querySelector('.mermaid'); var raw=container.querySelector('.mermaid-raw-code'); if(svg.style.display==='none'){svg.style.display='flex';raw.style.display='none';svg.style.animation='none';svg.offsetHeight;svg.style.animation='slide-up-fade 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards';this.classList.remove('text-cyan-400');this.classList.add('text-slate-500/50');}else{svg.style.display='none';raw.style.display='block';raw.style.animation='none';raw.offsetHeight;raw.style.animation='slide-up-fade 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards';this.classList.remove('text-slate-500/50');this.classList.add('text-cyan-400');}"><i class="fas fa-code text-[13px] inline-block transition-transform duration-200 transform-gpu group-hover/btn:scale-110 group-active/btn:scale-95"></i></button></div>`;
-
-            const finalClass = isStreaming ? `${diagramContainerClass} isolate overflow-visible is-visible` : `${diagramContainerClass} overflow-visible code-block-anim opacity-0 scale-95 transition-all duration-500 ease-in-out will-change-transform transform translate-z-0`;
-            const extraAttrs = isStreaming ? 'data-animated="true"' : '';
-            pieces.push(`<div class="${finalClass}" ${extraAttrs}>${studioHeader}${copyButton}${codeButton}<div class="overflow-x-auto overflow-y-hidden w-full px-0 custom-scrollbar"><div class="mermaid min-h-[100px] flex items-center justify-center" data-mermaid-src="${encodedCode}"></div><div class="mermaid-raw-code hidden w-full bg-black/20 shadow-[0_3px_12px_rgba(0,0,0,0.3),0_1px_3px_rgba(0,0,0,0.15)] rounded-xl p-5 border border-transparent"><pre class="bg-transparent border-none p-0 m-0" style="background: transparent !important; box-shadow: none !important;"><code class="text-sm shadow-none font-mono leading-relaxed block">${highlighted}</code></pre></div></div></div>`);
-        } else {
-            const finalClass = isStreaming ? `${codeContainerClass} isolate overflow-visible is-visible` : `${codeContainerClass} overflow-visible code-block-anim opacity-0 scale-95 transition-all duration-500 ease-in-out will-change-transform transform translate-z-0`;
-            const extraAttrs = isStreaming ? 'data-animated="true"' : '';
-            pieces.push(`<div class="${finalClass}" ${extraAttrs}>${studioHeader}${copyButton}<div class="overflow-x-auto w-full bg-black/20 shadow-[0_3px_12px_rgba(0,0,0,0.3),0_1px_3px_rgba(0,0,0,0.15)] rounded-xl p-5 border border-transparent"><pre class="bg-transparent border-none p-0 m-0" style="background: transparent !important; box-shadow: none !important;"><code class="text-sm shadow-none font-mono leading-relaxed block">${highlighted}</code></pre></div></div>`);
+        for (const line of lines) {
+            const m = line.match(/^([ \t]*)(`{3,}|~{3,})([^\s`~]*)(.*)$/);
+            if (m) {
+                const char = m[2][0];
+                const len  = m[2].length;
+                const lang = m[3].trim();
+                const rest = m[4].trim();
+                if (!inBlock) {
+                    inBlock      = true;
+                    fenceChar    = char;
+                    fenceLen     = len;
+                    blockLang    = lang.toLowerCase();
+                    innerDepth   = 0;
+                    contentLines = [];
+                } else if (isMdBlock(blockLang)) {
+                    // Inside a markdown block: track inner fences by language tag
+                    if (lang !== '' || rest !== '') {
+                        innerDepth++;
+                        contentLines.push(line);
+                    } else if (char === fenceChar && len >= fenceLen) {
+                        if (innerDepth > 0) {
+                            innerDepth--;
+                            contentLines.push(line);
+                        } else {
+                            // Closes the outer markdown block
+                            out.push(buildBlock(blockLang, contentLines.join('\n')));
+                            inBlock = false;
+                        }
+                    } else {
+                        contentLines.push(line);
+                    }
+                } else {
+                    // Regular block: bare fence closes it
+                    if (char === fenceChar && len >= fenceLen && lang === '' && rest === '') {
+                        out.push(buildBlock(blockLang, contentLines.join('\n')));
+                        inBlock = false;
+                    } else {
+                        contentLines.push(line);
+                    }
+                }
+            } else {
+                if (inBlock) {
+                    // For regular blocks: force-close on bare heading/divider
+                    if (!isMdBlock(blockLang) && innerDepth === 0) {
+                        const t = line.trim();
+                        if (/^#{1,3}\s/.test(t) || /^---$/.test(t)) {
+                            out.push(buildBlock(blockLang, contentLines.join('\n')));
+                            inBlock = false;
+                            out.push(line);
+                            continue;
+                        }
+                    }
+                    contentLines.push(line);
+                } else {
+                    out.push(line);
+                }
+            }
         }
-        return `\n${id}\n`;
-    });
+        // Unclosed block at end of input
+        if (inBlock) {
+            out.push(buildBlock(blockLang, contentLines.join('\n')));
+        }
+        return out.join('\n');
+    })();
 
     // ═══════════════════════════════════════════════════════════════════
     // PHASE 0a: INLINE CODE PROTECTION
