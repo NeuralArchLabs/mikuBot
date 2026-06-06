@@ -139,6 +139,85 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
         if (!containerRef.current || isStreaming) return;
 
         const containerNode = containerRef.current;
+
+        // --- PROCESS IMAGES (Markdown and HTML ones, inside any wrappers) ---
+        const images = containerNode.querySelectorAll('img');
+        images.forEach(img => {
+            // Skip if already inside our container, or if it is a mermaid diagram
+            if (img.closest('.image-container') || img.classList.contains('mermaid-svg') || img.closest('.mermaid')) {
+                return;
+            }
+
+            // Create wrapper
+            const wrapper = document.createElement('div');
+            wrapper.className = 'image-container relative group/img w-full flex flex-col items-center justify-center my-6';
+            wrapper.style.textAlign = 'center';
+
+            // Create inner wrapper to hold img and buttons
+            const innerWrapper = document.createElement('div');
+            innerWrapper.className = 'relative overflow-hidden rounded-2xl border border-white/10 shadow-2xl';
+            
+            // Copy styles/width/height from the original image if any
+            const styleAttr = img.getAttribute('style') || '';
+            innerWrapper.setAttribute('style', styleAttr);
+            
+            // Add hover/click styles to image
+            img.classList.add('max-w-full', 'h-auto', 'transition', 'duration-300', 'group-hover/img:scale-[1.01]', 'hover:shadow-cyan-500/10', 'cursor-pointer');
+            
+            // Setup click to inspect
+            img.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (window.openImageFullscreen) {
+                    window.openImageFullscreen(img.src, img.alt || '');
+                }
+            });
+
+            // Create buttons container
+            const btnContainer = document.createElement('div');
+            btnContainer.className = 'absolute top-3 right-3 flex gap-2 z-10 opacity-0 group-hover/img:opacity-100 transition-opacity duration-300';
+            
+            // Expand button
+            const expandBtn = document.createElement('button');
+            expandBtn.className = 'bg-black/60 hover:bg-cyan-500/80 text-white hover:text-white p-2 rounded-lg cursor-pointer transition border border-white/10';
+            expandBtn.title = 'Ampliar imagen';
+            expandBtn.innerHTML = '<i class="fas fa-expand text-xs"></i>';
+            expandBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (window.openImageFullscreen) {
+                    window.openImageFullscreen(img.src, img.alt || '');
+                }
+            });
+
+            // Download button
+            const downloadBtn = document.createElement('button');
+            downloadBtn.className = 'bg-black/60 hover:bg-cyan-500/80 text-white hover:text-white p-2 rounded-lg cursor-pointer transition border border-white/10';
+            downloadBtn.title = 'Descargar imagen';
+            downloadBtn.innerHTML = '<i class="fas fa-download text-xs"></i>';
+            downloadBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (window.downloadImage) {
+                    window.downloadImage(img.src, img.alt || '');
+                }
+            });
+
+            btnContainer.appendChild(expandBtn);
+            btnContainer.appendChild(downloadBtn);
+
+            // Assemble
+            img.parentNode?.insertBefore(wrapper, img);
+            innerWrapper.appendChild(img);
+            innerWrapper.appendChild(btnContainer);
+            wrapper.appendChild(innerWrapper);
+
+            // Add alt subtitle if present
+            const alt = img.alt;
+            if (alt) {
+                const altText = document.createElement('span');
+                altText.className = 'mt-2 text-[10px] text-slate-500 font-mono tracking-tight opacity-0 group-hover/img:opacity-100 transition-opacity italic';
+                altText.textContent = alt;
+                wrapper.appendChild(altText);
+            }
+        });
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach((entry) => {
