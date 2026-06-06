@@ -150,7 +150,7 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
 
             // Create wrapper
             const wrapper = document.createElement('div');
-            wrapper.className = 'image-container relative group/img w-full flex flex-col items-center justify-center my-6';
+            wrapper.className = 'image-container relative group/img w-full flex flex-col items-center justify-center my-3';
             wrapper.style.textAlign = 'center';
 
             // Create inner wrapper to hold img and buttons
@@ -161,8 +161,9 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
             const styleAttr = img.getAttribute('style') || '';
             innerWrapper.setAttribute('style', styleAttr);
             
-            // Add hover/click styles to image
-            img.classList.add('max-w-full', 'h-auto', 'transition', 'duration-300', 'group-hover/img:scale-[1.01]', 'hover:shadow-cyan-500/10', 'cursor-pointer');
+            // Add hover/click styles to image + premium transitions
+            img.classList.add('max-w-full', 'h-auto', 'transition-all', 'duration-500', 'ease-out', 'group-hover/img:scale-[1.03]', 'hover:shadow-cyan-500/10', 'cursor-pointer');
+            img.style.transition = 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.5s ease-out';
             
             // Setup click to inspect
             img.addEventListener('click', (e) => {
@@ -172,13 +173,13 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
                 }
             });
 
-            // Create buttons container
+            // Create buttons container (items-center ensures no vertical stretching)
             const btnContainer = document.createElement('div');
-            btnContainer.className = 'absolute top-3 right-3 flex gap-2 z-10 opacity-0 group-hover/img:opacity-100 transition-opacity duration-300';
+            btnContainer.className = 'absolute top-3 right-3 flex items-center gap-2 z-10 opacity-0 group-hover/img:opacity-100 transition-opacity duration-300';
             
-            // Expand button
+            // Expand button (square)
             const expandBtn = document.createElement('button');
-            expandBtn.className = 'bg-black/60 hover:bg-cyan-500/80 text-white hover:text-white p-2 rounded-lg cursor-pointer transition border border-white/10';
+            expandBtn.className = 'w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-cyan-500/80 text-white rounded-lg cursor-pointer transition border border-white/10';
             expandBtn.title = 'Ampliar imagen';
             expandBtn.innerHTML = '<i class="fas fa-expand text-xs"></i>';
             expandBtn.addEventListener('click', (e) => {
@@ -188,9 +189,9 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
                 }
             });
 
-            // Download button
+            // Download button (square)
             const downloadBtn = document.createElement('button');
-            downloadBtn.className = 'bg-black/60 hover:bg-cyan-500/80 text-white hover:text-white p-2 rounded-lg cursor-pointer transition border border-white/10';
+            downloadBtn.className = 'w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-cyan-500/80 text-white rounded-lg cursor-pointer transition border border-white/10';
             downloadBtn.title = 'Descargar imagen';
             downloadBtn.innerHTML = '<i class="fas fa-download text-xs"></i>';
             downloadBtn.addEventListener('click', (e) => {

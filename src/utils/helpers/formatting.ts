@@ -635,14 +635,14 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                 const width = widthVal ? `width="${widthVal}"` : '';
                 const height = heightVal ? `height="${heightVal}"` : '';
 
-                fullTagContent = `<div class="image-container relative group/img w-full flex flex-col items-center justify-center my-6" style="text-align:center;">` +
+                fullTagContent = `<div class="image-container relative group/img w-full flex flex-col items-center justify-center my-4" style="text-align:center;">` +
                     `<div class="relative overflow-hidden rounded-2xl border border-white/10 shadow-2xl" style="${style}">` +
-                        `<img src="${src}" alt="${alt}" ${width} ${height} class="max-w-full h-auto transition duration-300 group-hover/img:scale-[1.01] hover:shadow-cyan-500/10 cursor-pointer" onclick="window.openImageFullscreen(this.src, this.alt || '')" />` +
+                        `<img src="${src}" alt="${alt}" ${width} ${height} class="max-w-full h-auto transition-all duration-500 ease-out group-hover/img:scale-[1.03] hover:shadow-cyan-500/10 cursor-pointer" onclick="window.openImageFullscreen(this.src, this.alt || '')" />` +
                         `<div class="absolute top-3 right-3 flex gap-2 z-10 opacity-0 group-hover/img:opacity-100 transition-opacity duration-300">` +
-                            `<button class="bg-black/60 hover:bg-cyan-500/80 text-white hover:text-white p-2 rounded-lg cursor-pointer transition border border-white/10" title="Ampliar imagen" onclick="window.openImageFullscreen(this.closest('.relative').querySelector('img').src, this.closest('.relative').querySelector('img').alt || '')">` +
+                            `<button class="w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-cyan-500/80 text-white rounded-lg cursor-pointer transition border border-white/10" title="Ampliar imagen" onclick="window.openImageFullscreen(this.closest('.relative').querySelector('img').src, this.closest('.relative').querySelector('img').alt || '')">` +
                                 `<i class="fas fa-expand text-xs"></i>` +
                             `</button>` +
-                            `<button class="bg-black/60 hover:bg-cyan-500/80 text-white hover:text-white p-2 rounded-lg cursor-pointer transition border border-white/10" title="Descargar imagen" onclick="window.downloadImage(this.closest('.relative').querySelector('img').src, this.closest('.relative').querySelector('img').alt || '')">` +
+                            `<button class="w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-cyan-500/80 text-white rounded-lg cursor-pointer transition border border-white/10" title="Descargar imagen" onclick="window.downloadImage(this.closest('.relative').querySelector('img').src, this.closest('.relative').querySelector('img').alt || '')">` +
                                 `<i class="fas fa-download text-xs"></i>` +
                             `</button>` +
                         `</div>` +
@@ -1221,14 +1221,14 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         }
 
         const extra = isStreaming ? 'data-animated="true" is-visible' : '';
-        pieces.push(`<div ${extra} class="image-container relative group/img w-full flex flex-col items-center justify-center my-6" style="text-align:center;">` +
+        pieces.push(`<div ${extra} class="image-container relative group/img w-full flex flex-col items-center justify-center my-4" style="text-align:center;">` +
             `<div class="relative overflow-hidden rounded-2xl border border-white/10 shadow-2xl">` +
-                `<img src="${url}" alt="${cleanAlt}" ${width} ${height} class="max-w-full h-auto transition duration-300 group-hover/img:scale-[1.01] hover:shadow-cyan-500/10 cursor-pointer" onclick="window.openImageFullscreen(this.src, this.alt || '')" />` +
+                `<img src="${url}" alt="${cleanAlt}" ${width} ${height} class="max-w-full h-auto transition-all duration-500 ease-out group-hover/img:scale-[1.03] hover:shadow-cyan-500/10 cursor-pointer" onclick="window.openImageFullscreen(this.src, this.alt || '')" />` +
                 `<div class="absolute top-3 right-3 flex gap-2 z-10 opacity-0 group-hover/img:opacity-100 transition-opacity duration-300">` +
-                    `<button class="bg-black/60 hover:bg-cyan-500/80 text-white hover:text-white p-2 rounded-lg cursor-pointer transition border border-white/10" title="Ampliar imagen" onclick="window.openImageFullscreen(this.closest('.relative').querySelector('img').src, this.closest('.relative').querySelector('img').alt || '')">` +
+                    `<button class="w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-cyan-500/80 text-white rounded-lg cursor-pointer transition border border-white/10" title="Ampliar imagen" onclick="window.openImageFullscreen(this.closest('.relative').querySelector('img').src, this.closest('.relative').querySelector('img').alt || '')">` +
                         `<i class="fas fa-expand text-xs"></i>` +
                     `</button>` +
-                    `<button class="bg-black/60 hover:bg-cyan-500/80 text-white hover:text-white p-2 rounded-lg cursor-pointer transition border border-white/10" title="Descargar imagen" onclick="window.downloadImage(this.closest('.relative').querySelector('img').src, this.closest('.relative').querySelector('img').alt || '')">` +
+                    `<button class="w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-cyan-500/80 text-white rounded-lg cursor-pointer transition border border-white/10" title="Descargar imagen" onclick="window.downloadImage(this.closest('.relative').querySelector('img').src, this.closest('.relative').querySelector('img').alt || '')">` +
                         `<i class="fas fa-download text-xs"></i>` +
                     `</button>` +
                 `</div>` +
