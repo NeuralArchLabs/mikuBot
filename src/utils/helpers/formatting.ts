@@ -6,6 +6,229 @@
 /** Emoji shortcode map */
 import { getEmojiAnimationClass } from '../animations/emojiAnimations';
 import i18n from '../../i18n';
+import { useUIStore } from '../../stores/useUIStore';
+
+// Extend window interface
+declare global {
+    interface Window {
+        openImageFullscreen: (src: string, alt: string) => void;
+        downloadImage: (src: string, alt: string) => void;
+    }
+}
+
+if (typeof window !== 'undefined') {
+    window.openImageFullscreen = (imgSrc: string, altText: string) => {
+        // Prevent duplicates
+        document.getElementById('mermaid-fullscreen-overlay')?.remove();
+
+        // Trigger state change
+        useUIStore.getState().setOverlayActive('image-fullscreen', true);
+
+        const overlay = document.createElement('div');
+        overlay.id = 'mermaid-fullscreen-overlay';
+        overlay.style.cssText = `
+            position: fixed; inset: 0; z-index: 99999;
+            background: rgba(2, 6, 23, 0.97);
+            -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            animation: mermaid-overlay-in 0.3s ease-out;
+            cursor: grab;
+        `;
+
+        // ── Bottom Control Bar ──
+        const controlBar = document.createElement('div');
+        controlBar.style.cssText = `
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            display: flex; align-items: center; gap: 16px;
+            padding: 10px 24px;
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(6, 182, 212, 0.15);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            z-index: 10; user-select: none;
+            -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+        `;
+        controlBar.innerHTML = `
+            <span style="color: #06b6d4; font-size: 10px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; opacity: 0.6;">
+                <i class="fas fa-image" style="margin-right: 6px;"></i>IMAGEN
+            </span>
+            <span style="width: 1px; height: 16px; background: rgba(255,255,255,0.1);"></span>
+            <span id="mermaid-zoom-label" style="color: #94a3b8; font-size: 12px; font-family: monospace; min-width: 40px; text-align: center;">100%</span>
+            <button id="mermaid-zoom-in" style="color: #94a3b8; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; width: 28px; height: 28px; cursor: pointer; font-size: 14px; transition: all 0.2s; display: flex; align-items: center; justify-content: center;" title="Acercar">
+                <i class="fas fa-plus" style="font-size: 10px;"></i>
+            </button>
+            <button id="mermaid-zoom-out" style="color: #94a3b8; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; width: 28px; height: 28px; cursor: pointer; font-size: 14px; transition: all 0.2s; display: flex; align-items: center; justify-content: center;" title="Alejar">
+                <i class="fas fa-minus" style="font-size: 10px;"></i>
+            </button>
+            <button id="mermaid-zoom-reset" style="color: #94a3b8; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 4px 12px; height: 28px; cursor: pointer; font-size: 11px; transition: all 0.2s;">
+                Reset
+            </button>
+            <span style="width: 1px; height: 16px; background: rgba(255,255,255,0.1);"></span>
+            <button id="image-download-btn" style="color: #38bdf8; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.2); border-radius: 6px; width: 28px; height: 28px; cursor: pointer; font-size: 14px; transition: all 0.2s; display: flex; align-items: center; justify-content: center;" title="Descargar">
+                <i class="fas fa-download" style="font-size: 11px;"></i>
+            </button>
+            <button id="mermaid-close-btn" style="color: #f87171; background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.2); border-radius: 6px; width: 28px; height: 28px; cursor: pointer; font-size: 14px; transition: all 0.2s; display: flex; align-items: center; justify-content: center;" title="Cerrar (Esc)">
+                <i class="fas fa-times" style="font-size: 11px;"></i>
+            </button>
+        `;
+        overlay.appendChild(controlBar);
+
+        // ── Image Container ──
+        const container = document.createElement('div');
+        container.id = 'mermaid-fullscreen-content';
+        container.style.cssText = `
+            width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden; position: relative;
+            padding: 40px;
+        `;
+
+        const imgWrapper = document.createElement('div');
+        imgWrapper.style.cssText = `
+            transform-origin: center center;
+            transition: transform 0.15s ease-out;
+            will-change: transform;
+            display: flex; align-items: center; justify-content: center;
+        `;
+        
+        const imgEl = document.createElement('img');
+        imgEl.src = imgSrc;
+        imgEl.alt = altText;
+        imgEl.style.cssText = `
+            max-width: 85vw;
+            max-height: 80vh;
+            border-radius: 12px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            user-select: none;
+            -webkit-user-drag: none;
+        `;
+
+        imgWrapper.appendChild(imgEl);
+        container.appendChild(imgWrapper);
+        overlay.appendChild(container);
+        document.body.appendChild(overlay);
+
+        // ── Zoom & Pan State ──
+        let scale = 1;
+        let panX = 0, panY = 0;
+        let isDragging = false;
+        let startX = 0, startY = 0;
+        const zoomLabel = overlay.querySelector('#mermaid-zoom-label') as HTMLElement;
+
+        const applyTransform = () => {
+            imgWrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+            if (zoomLabel) zoomLabel.textContent = `${Math.round(scale * 100)}%`;
+        };
+
+        // Wheel zoom
+        container.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            scale = Math.max(0.2, Math.min(5, scale * delta));
+            imgWrapper.style.transition = 'transform 0.1s ease-out';
+            applyTransform();
+        }, { passive: false });
+
+        // Pan (drag)
+        container.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return;
+            isDragging = true;
+            startX = e.clientX - panX;
+            startY = e.clientY - panY;
+            overlay.style.cursor = 'grabbing';
+            imgWrapper.style.transition = 'none';
+        });
+
+        // Reset button
+        overlay.querySelector('#mermaid-zoom-reset')?.addEventListener('click', () => {
+            scale = 1; panX = 0; panY = 0;
+            imgWrapper.style.transition = 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+            applyTransform();
+        });
+
+        // Zoom in/out buttons
+        overlay.querySelector('#mermaid-zoom-in')?.addEventListener('click', () => {
+            scale = Math.min(5, scale * 1.25);
+            imgWrapper.style.transition = 'transform 0.2s ease-out';
+            applyTransform();
+        });
+        overlay.querySelector('#mermaid-zoom-out')?.addEventListener('click', () => {
+            scale = Math.max(0.2, scale * 0.8);
+            imgWrapper.style.transition = 'transform 0.2s ease-out';
+            applyTransform();
+        });
+
+        // Download button click handler
+        overlay.querySelector('#image-download-btn')?.addEventListener('click', () => {
+            window.downloadImage(imgSrc, altText);
+        });
+
+        // Mouse events
+        const onMouseMove = (e: MouseEvent) => {
+            if (!isDragging) return;
+            panX = e.clientX - startX;
+            panY = e.clientY - startY;
+            applyTransform();
+        };
+        const onMouseUp = () => {
+            isDragging = false;
+            overlay.style.cursor = 'grab';
+        };
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+
+        const closeOverlay = () => {
+            overlay.style.animation = 'mermaid-overlay-out 0.2s ease-in forwards';
+            useUIStore.getState().setOverlayActive('image-fullscreen', false);
+            setTimeout(() => overlay.remove(), 200);
+            window.removeEventListener('keydown', escHandler);
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+        };
+
+        const escHandler = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') closeOverlay();
+        };
+        window.addEventListener('keydown', escHandler);
+        overlay.querySelector('#mermaid-close-btn')?.addEventListener('click', closeOverlay);
+
+        // Double-click on background to close
+        overlay.addEventListener('dblclick', (e) => {
+            if (e.target === container || e.target === overlay) closeOverlay();
+        });
+    };
+
+    window.downloadImage = async (url: string, filename?: string) => {
+        try {
+            const response = await fetch(url);
+            const blob = await response.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            
+            let cleanName = filename ? filename.trim().replace(/[^a-zA-Z0-9-_]/g, '-').substring(0, 50) : '';
+            if (!cleanName) {
+                const urlParts = url.split('/');
+                cleanName = urlParts[urlParts.length - 1].split('?')[0];
+            }
+            if (!cleanName.includes('.')) {
+                cleanName += '.jpg';
+            }
+            
+            a.download = cleanName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(blobUrl);
+        } catch (error) {
+            console.error('Failed to download image via blob, falling back to open in tab', error);
+            window.open(url, '_blank');
+        }
+    };
+}
+
 const EMOJI_MAP: Record<string, string> = {
     smile: '😊', grin: '😁', joy: '😂', heart: '❤️', fire: '🔥',
     rocket: '🚀', thumbsup: '👍', thumbsdown: '👎', star: '⭐', eyes: '👀',
@@ -393,7 +616,40 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
 
             const id = `__BLOCK_${pieces.length}__`;
             // Auto-center <img> and <iframe> when the model doesn't specify alignment
-            if (tagName === 'img' || tagName === 'iframe') {
+            if (tagName === 'img') {
+                const getAttr = (name: string): string => {
+                    const r = new RegExp(`${name}\\s*=\\s*(['"])(.*?)\\1`, 'i');
+                    const m = fullTagContent.match(r);
+                    if (m) return m[2];
+                    const rNoQuotes = new RegExp(`${name}\\s*=\\s*([^\\s/>]+)`, 'i');
+                    const mNoQuotes = fullTagContent.match(rNoQuotes);
+                    return mNoQuotes ? mNoQuotes[1] : '';
+                };
+
+                const src = getAttr('src');
+                const alt = getAttr('alt');
+                const style = getAttr('style');
+                const widthVal = getAttr('width');
+                const heightVal = getAttr('height');
+
+                const width = widthVal ? `width="${widthVal}"` : '';
+                const height = heightVal ? `height="${heightVal}"` : '';
+
+                fullTagContent = `<div class="image-container relative group/img w-full flex flex-col items-center justify-center my-6" style="text-align:center;">` +
+                    `<div class="relative overflow-hidden rounded-2xl border border-white/10 shadow-2xl" style="${style}">` +
+                        `<img src="${src}" alt="${alt}" ${width} ${height} class="max-w-full h-auto transition duration-300 group-hover/img:scale-[1.01] hover:shadow-cyan-500/10 cursor-pointer" onclick="window.openImageFullscreen(this.src, this.alt || '')" />` +
+                        `<div class="absolute top-3 right-3 flex gap-2 z-10 opacity-0 group-hover/img:opacity-100 transition-opacity duration-300">` +
+                            `<button class="bg-black/60 hover:bg-cyan-500/80 text-white hover:text-white p-2 rounded-lg cursor-pointer transition border border-white/10" title="Ampliar imagen" onclick="window.openImageFullscreen(this.closest('.relative').querySelector('img').src, this.closest('.relative').querySelector('img').alt || '')">` +
+                                `<i class="fas fa-expand text-xs"></i>` +
+                            `</button>` +
+                            `<button class="bg-black/60 hover:bg-cyan-500/80 text-white hover:text-white p-2 rounded-lg cursor-pointer transition border border-white/10" title="Descargar imagen" onclick="window.downloadImage(this.closest('.relative').querySelector('img').src, this.closest('.relative').querySelector('img').alt || '')">` +
+                                `<i class="fas fa-download text-xs"></i>` +
+                            `</button>` +
+                        `</div>` +
+                    `</div>` +
+                    (alt ? `<span class="mt-2 text-[10px] text-slate-500 font-mono tracking-tight opacity-0 group-hover/img:opacity-100 transition-opacity italic">${alt}</span>` : '') +
+                    `</div>`;
+            } else if (tagName === 'iframe') {
                 const hasAlign = /\balign\s*=|float\s*:\s*(?!none)|margin-left\s*:\s*auto|margin-right\s*:\s*auto|margin\s*:[^;]*auto|text-align\s*:\s*(?:left|right|center)|justify-content\s*:/.test(fullTagContent);
                 if (!hasAlign) {
                     fullTagContent = `<div style="text-align:center;display:flex;justify-content:center;">${fullTagContent}</div>`;
@@ -965,8 +1221,18 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         }
 
         const extra = isStreaming ? 'data-animated="true" is-visible' : '';
-        pieces.push(`<div ${extra} class="image-container w-full flex flex-col items-center justify-center my-6 group/img" style="text-align:center;">` +
-            `<img src="${url}" alt="${cleanAlt}" ${width} ${height} class="max-w-full h-auto rounded-2xl border border-white/10 shadow-2xl transition group-hover/img:scale-[1.01] hover:shadow-cyan-500/10" />` +
+        pieces.push(`<div ${extra} class="image-container relative group/img w-full flex flex-col items-center justify-center my-6" style="text-align:center;">` +
+            `<div class="relative overflow-hidden rounded-2xl border border-white/10 shadow-2xl">` +
+                `<img src="${url}" alt="${cleanAlt}" ${width} ${height} class="max-w-full h-auto transition duration-300 group-hover/img:scale-[1.01] hover:shadow-cyan-500/10 cursor-pointer" onclick="window.openImageFullscreen(this.src, this.alt || '')" />` +
+                `<div class="absolute top-3 right-3 flex gap-2 z-10 opacity-0 group-hover/img:opacity-100 transition-opacity duration-300">` +
+                    `<button class="bg-black/60 hover:bg-cyan-500/80 text-white hover:text-white p-2 rounded-lg cursor-pointer transition border border-white/10" title="Ampliar imagen" onclick="window.openImageFullscreen(this.closest('.relative').querySelector('img').src, this.closest('.relative').querySelector('img').alt || '')">` +
+                        `<i class="fas fa-expand text-xs"></i>` +
+                    `</button>` +
+                    `<button class="bg-black/60 hover:bg-cyan-500/80 text-white hover:text-white p-2 rounded-lg cursor-pointer transition border border-white/10" title="Descargar imagen" onclick="window.downloadImage(this.closest('.relative').querySelector('img').src, this.closest('.relative').querySelector('img').alt || '')">` +
+                        `<i class="fas fa-download text-xs"></i>` +
+                    `</button>` +
+                `</div>` +
+            `</div>` +
             (cleanAlt ? `<span class="mt-2 text-[10px] text-slate-500 font-mono tracking-tight opacity-0 group-hover/img:opacity-100 transition-opacity italic">${cleanAlt}</span>` : '') +
             `</div>`);
         return `\n${id}\n`;
