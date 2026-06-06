@@ -1387,6 +1387,14 @@ function renderTable(rows: string[][], alignments: ('left' | 'center' | 'right')
 function processInlineMarkdown(text: string): string {
     let result = text;
 
+    // Protect HTML tags first to avoid parsing markdown within attributes (e.g. underscores in URLs)
+    const htmlBlocks: string[] = [];
+    result = result.replace(/<[^>]+>/g, (tag) => {
+        const id = `__INLINE_HTML_${htmlBlocks.length}__`;
+        htmlBlocks.push(tag);
+        return id;
+    });
+
     // Links [text](url) - must be processed first to avoid conflicts
     result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, linkText, url) => {
         const cleanUrl = url.replace(/‹/g, '<').replace(/›/g, '>').replace(/&amp;/g, '&');
@@ -1435,6 +1443,11 @@ function processInlineMarkdown(text: string): string {
         if (content.includes('$') || content.includes(' ') || content.length > 15) return match;
         return `<sub class="text-slate-400 text-[0.7em] leading-none">${content}</sub>`;
     });
+
+    // Restore protected HTML tags (using split/join to prevent any $ interpretation)
+    for (let i = 0; i < htmlBlocks.length; i++) {
+        result = result.split(`__INLINE_HTML_${i}__`).join(htmlBlocks[i]);
+    }
 
     return result;
 }
