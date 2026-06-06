@@ -274,9 +274,14 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
             } else {
                 if (inBlock) {
                     // For regular blocks: force-close on bare heading/divider
+                    // Only trigger on ## or ### (NOT single # which is a comment in yaml/python/bash/etc.)
+                    // Also skip force-close for blocks with a known language tag since those
+                    // are far less likely to have forgotten their closing fence.
                     if (!isMdBlock(blockLang) && innerDepth === 0) {
                         const t = line.trim();
-                        if (/^#{1,3}\s/.test(t) || /^---$/.test(t)) {
+                        const isLikelyHeading = /^#{2,3}\s/.test(t) || /^---$/.test(t);
+                        const hasKnownLang = blockLang !== '';
+                        if (isLikelyHeading && !hasKnownLang) {
                             out.push(buildBlock(blockLang, contentLines.join('\n')));
                             inBlock = false;
                             out.push(line);
