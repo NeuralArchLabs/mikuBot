@@ -410,7 +410,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
 
                     // ⚡ INTELLIGENT CONTRAST DETECTOR ⚡
                     const parseColorToBrightness = (colorStr: string): number | null => {
-                        if (!colorStr) return null;
+                        if (!colorStr || /gradient/i.test(colorStr)) return null;
                         let hexMatch = colorStr.match(/#([0-9a-fA-F]{3,8})\b/);
                         if (hexMatch) {
                             let hex = hexMatch[1];
@@ -432,9 +432,13 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                         return null;
                     };
 
-                    const ensureContrast = (tag: string): string => {
+                    const parentBgMatch = openTag.match(/(?:background|background-color)\s*:\s*([^;>"]+)/i);
+                    const parentBgBrightness = parentBgMatch ? parseColorToBrightness(parentBgMatch[1]) : null;
+                    const isParentBgLight = parentBgBrightness !== null ? parentBgBrightness > 128 : null;
+
+                    const ensureContrast = (tag: string, parentBgLight: boolean | null = null): string => {
                         let bgMatch = tag.match(/(?:background|background-color)\s*:\s*([^;>"]+)/i);
-                        let colorMatch = tag.match(/\bcolor\s*:\s*([^;>"]+)/i);
+                        let colorMatch = tag.match(/(?<![a-zA-Z-])color\s*:\s*([^;>"]+)/i);
                         
                         let bgBrightness = bgMatch ? parseColorToBrightness(bgMatch[1]) : null;
                         let textBrightness = colorMatch ? parseColorToBrightness(colorMatch[1]) : null;
@@ -462,9 +466,20 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                                 }
                             }
                         } else if (colorMatch) {
-                            // No explicit background detected. Assume standard dark theme.
-                            if (textBrightness !== null && textBrightness <= 128) {
-                                tag = tag.replace(colorMatch[0], 'color: #f8fafc');
+                            // No explicit background detected on this element.
+                            // Use parent background context if available (defaults to standard dark theme).
+                            const effectiveBgLight = parentBgLight !== null ? parentBgLight : false;
+                            
+                            if (effectiveBgLight) {
+                                // Parent background is LIGHT. We MUST ensure text is DARK.
+                                if (textBrightness !== null && textBrightness > 128) {
+                                    tag = tag.replace(colorMatch[0], 'color: #0f172a');
+                                }
+                            } else {
+                                // Parent background is DARK. We MUST ensure text is LIGHT.
+                                if (textBrightness !== null && textBrightness <= 128) {
+                                    tag = tag.replace(colorMatch[0], 'color: #f8fafc');
+                                }
                             }
                         }
 
@@ -472,9 +487,9 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                     };
 
                     openTag = ensureContrast(openTag);
-                    // Apply to all inline tags inside the inner content
-                    inner = inner.replace(/<(ul|ol|li|p|span|div)\b([^>]*)>/gi, (m: string) => {
-                        return ensureContrast(m);
+                    // Apply to all inline tags inside the inner content, respecting the parent background context
+                    inner = inner.replace(/<(ul|ol|li|p|span|div|td|th|h[1-6]|strong|em|a)\b([^>]*)>/gi, (m: string) => {
+                        return ensureContrast(m, isParentBgLight);
                     });
 
                     // ⚡ RESPONSIVE GRID FIX ⚡
@@ -1162,6 +1177,26 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
             html = html.split(placeholder).join(pieces[i]);
         }
     }
+
+    // Sync progress bar colors with preceding semantic text colors (e.g. CPU/RAM/Disk stats)
+    html = html.replace(/(?:style=["'][^"']*(?<![a-zA-Z-])color\s*:\s*(#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)|[a-zA-Z]+)[^"']*["'][^>]*>)([^<]*?(?:<[^>]+>)*?[^<]*?)<progress\b([^>]*)>/gi, (match, color, midText, progressAttrs) => {
+        if (midText.includes('\n\n')) return match;
+        if (progressAttrs.includes('accent-color')) return match;
+        
+        let newProgress = `<progress`;
+        if (progressAttrs.includes('style=')) {
+            let styledAttrs = progressAttrs;
+            if (!progressAttrs.includes('border-radius')) {
+                styledAttrs = styledAttrs.replace(/(style=['"])/i, `$1border-radius: 10px; `);
+            }
+            newProgress += styledAttrs.replace(/(style=['"])/i, `$1accent-color: ${color}; --progress-color: ${color}; `);
+        } else {
+            newProgress += ` style="accent-color: ${color}; --progress-color: ${color}; border-radius: 10px;"${progressAttrs}`;
+        }
+        newProgress += '>';
+        
+        return match.replace(/<progress\b[^>]*>/i, newProgress);
+    });
 
     // 14c. Clean up escaped characters
     // 14c. Clean up escaped characters

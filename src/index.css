@@ -576,20 +576,19 @@ pre code .hl-directive { color: #fb7185 !important; font-weight: 700; }
   color: inherit;
 }
 
-/* Children of styled containers inherit color correctly if not specified */
-.markdown-body [style*="background"] th,
-.markdown-body [style*="background"] td,
-.markdown-body [style*="background"] strong,
-.markdown-body [style*="background"] em,
-.markdown-body [style*="background"] span,
-.markdown-body [style*="background"] p,
-.markdown-body [style*="background"] h1,
-.markdown-body [style*="background"] h2,
-.markdown-body [style*="background"] h3,
-.markdown-body [style*="background"] h4,
-.markdown-body [style*="background"] li,
-.markdown-body [style*="background"] small,
-.markdown-body [style*="background"] div:not([style*="background"]) {
+.markdown-body [style*="background"] th:not([style*="color"]),
+.markdown-body [style*="background"] td:not([style*="color"]),
+.markdown-body [style*="background"] strong:not([style*="color"]),
+.markdown-body [style*="background"] em:not([style*="color"]),
+.markdown-body [style*="background"] span:not([style*="color"]),
+.markdown-body [style*="background"] p:not([style*="color"]),
+.markdown-body [style*="background"] h1:not([style*="color"]),
+.markdown-body [style*="background"] h2:not([style*="color"]),
+.markdown-body [style*="background"] h3:not([style*="color"]),
+.markdown-body [style*="background"] h4:not([style*="color"]),
+.markdown-body [style*="background"] li:not([style*="color"]),
+.markdown-body [style*="background"] small:not([style*="color"]),
+.markdown-body [style*="background"] div:not([style*="background"]):not([style*="color"]) {
   color: inherit;
 }
 
@@ -3454,3 +3453,33 @@ select.premium-input option {
 .theme-cloud .bg-slate-700\/90 .markdown-body td:not([style]) strong:not([style]) {
     color: #22d3ee; /* Use light cyan for emphasis in dark islands */
 }
+
+/* Progress Bar Premium Styling */
+.markdown-body progress {
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 999px;
+  overflow: hidden;
+  border: none;
+}
+
+.markdown-body progress::-webkit-progress-bar {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border-radius: 999px;
+}
+
+.theme-cloud .markdown-body progress::-webkit-progress-bar {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.markdown-body progress::-webkit-progress-value {
+  background-color: var(--progress-color, currentColor);
+  border-radius: 999px;
+  transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.markdown-body progress::-moz-progress-bar {
+  background-color: var(--progress-color, currentColor);
+  border-radius: 999px;
+}
+
