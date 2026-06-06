@@ -637,7 +637,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
 
                 fullTagContent = `<div class="image-container relative group/img w-full flex flex-col items-center justify-center my-4" style="text-align:center;">` +
                     `<div class="relative overflow-hidden rounded-2xl border border-white/10 shadow-2xl" style="${style}">` +
-                        `<img src="${src}" alt="${alt}" ${width} ${height} class="max-w-full h-auto transition-all duration-500 ease-out group-hover/img:scale-[1.03] hover:shadow-cyan-500/10 cursor-pointer" onclick="window.openImageFullscreen(this.src, this.alt || '')" />` +
+                        `<img src="${src}" alt="${alt}" ${width} ${height} class="max-w-full h-auto transform scale-100 will-change-transform transition-all duration-500 ease-out group-hover/img:scale-[1.03] hover:shadow-cyan-500/10 cursor-pointer" onclick="window.openImageFullscreen(this.src, this.alt || '')" />` +
                         `<div class="absolute top-3 right-3 flex gap-2 z-10 opacity-0 group-hover/img:opacity-100 transition-opacity duration-300">` +
                             `<button class="w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-cyan-500/80 text-white rounded-lg cursor-pointer transition border border-white/10" title="Ampliar imagen" onclick="window.openImageFullscreen(this.closest('.relative').querySelector('img').src, this.closest('.relative').querySelector('img').alt || '')">` +
                                 `<i class="fas fa-expand text-xs"></i>` +
@@ -756,14 +756,19 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                     // ⚡ RESPONSIVE GRID FIX ⚡
                     // If the model creates an explicit grid layout, ensure it is responsive and doesn't blow out
                     if (/display\s*:\s*grid/i.test(openTag)) {
-                        // Strip rigid columns
+                        // Detect the number of columns from inline style if specified
+                        const colsMatch = openTag.match(/grid-template-columns\s*:\s*repeat\(\s*(\d+)\s*,\s*1fr\)/i);
+                        const numCols = colsMatch ? parseInt(colsMatch[1], 10) : 2;
+
+                        // Strip rigid columns from inline style
                         openTag = openTag.replace(/grid-template-columns\s*:[^"';]+;?/i, '');
                         
-                        // Add Tailwind responsive grid + max-width limits
+                        // Add Tailwind responsive grid based on detected column count
+                        const responsiveColsClass = `grid grid-cols-1 md:grid-cols-${numCols} w-full max-w-full gap-4`;
                         if (!openTag.includes('class=')) {
-                            openTag = openTag.replace(/<div/i, '<div class="grid grid-cols-1 lg:grid-cols-2 w-full max-w-full gap-4"');
+                            openTag = openTag.replace(/<div/i, `<div class="${responsiveColsClass}"`);
                         } else {
-                            openTag = openTag.replace(/class="/i, 'class="grid grid-cols-1 lg:grid-cols-2 w-full max-w-full gap-4 ');
+                            openTag = openTag.replace(/class="/i, `class="${responsiveColsClass} `);
                         }
                         
                         // Prevent CSS Grid Blowout: Add min-w-0 to all immediate child containers
@@ -1223,7 +1228,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         const extra = isStreaming ? 'data-animated="true" is-visible' : '';
         pieces.push(`<div ${extra} class="image-container relative group/img w-full flex flex-col items-center justify-center my-4" style="text-align:center;">` +
             `<div class="relative overflow-hidden rounded-2xl border border-white/10 shadow-2xl">` +
-                `<img src="${url}" alt="${cleanAlt}" ${width} ${height} class="max-w-full h-auto transition-all duration-500 ease-out group-hover/img:scale-[1.03] hover:shadow-cyan-500/10 cursor-pointer" onclick="window.openImageFullscreen(this.src, this.alt || '')" />` +
+                `<img src="${url}" alt="${cleanAlt}" ${width} ${height} class="max-w-full h-auto transform scale-100 will-change-transform transition-all duration-500 ease-out group-hover/img:scale-[1.03] hover:shadow-cyan-500/10 cursor-pointer" onclick="window.openImageFullscreen(this.src, this.alt || '')" />` +
                 `<div class="absolute top-3 right-3 flex gap-2 z-10 opacity-0 group-hover/img:opacity-100 transition-opacity duration-300">` +
                     `<button class="w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-cyan-500/80 text-white rounded-lg cursor-pointer transition border border-white/10" title="Ampliar imagen" onclick="window.openImageFullscreen(this.closest('.relative').querySelector('img').src, this.closest('.relative').querySelector('img').alt || '')">` +
                         `<i class="fas fa-expand text-xs"></i>` +

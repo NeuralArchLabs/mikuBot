@@ -162,7 +162,7 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
             innerWrapper.setAttribute('style', styleAttr);
             
             // Add hover/click styles to image + premium transitions
-            img.classList.add('max-w-full', 'h-auto', 'transition-all', 'duration-500', 'ease-out', 'group-hover/img:scale-[1.03]', 'hover:shadow-cyan-500/10', 'cursor-pointer');
+            img.classList.add('max-w-full', 'h-auto', 'transform', 'scale-100', 'will-change-transform', 'transition-all', 'duration-500', 'ease-out', 'group-hover/img:scale-[1.03]', 'hover:shadow-cyan-500/10', 'cursor-pointer');
             img.style.transition = 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.5s ease-out';
             
             // Setup click to inspect
