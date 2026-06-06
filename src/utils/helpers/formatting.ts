@@ -1390,7 +1390,7 @@ function processInlineMarkdown(text: string): string {
     // Protect HTML tags first to avoid parsing markdown within attributes (e.g. underscores in URLs)
     const htmlBlocks: string[] = [];
     result = result.replace(/<[^>]+>/g, (tag) => {
-        const id = `__INLINE_HTML_${htmlBlocks.length}__`;
+        const id = `‹INLINE_HTML_${htmlBlocks.length}›`;
         htmlBlocks.push(tag);
         return id;
     });
@@ -1446,7 +1446,7 @@ function processInlineMarkdown(text: string): string {
 
     // Restore protected HTML tags (using split/join to prevent any $ interpretation)
     for (let i = 0; i < htmlBlocks.length; i++) {
-        result = result.split(`__INLINE_HTML_${i}__`).join(htmlBlocks[i]);
+        result = result.split(`‹INLINE_HTML_${i}›`).join(htmlBlocks[i]);
     }
 
     return result;
