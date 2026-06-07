@@ -695,7 +695,13 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
 
                     const parentBgMatch = openTag.match(/(?:background|background-color)\s*:\s*([^;>"]+)/i);
                     const parentBgBrightness = parentBgMatch ? parseColorToBrightness(parentBgMatch[1]) : null;
-                    const isParentBgLight = parentBgBrightness !== null ? parentBgBrightness > 128 : null;
+                    let isParentBgLight = parentBgBrightness !== null ? parentBgBrightness > 128 : null;
+                    if (isParentBgLight === null) {
+                        const hasLightBgClass = /\bclass=['"][^'"]*?\bbg-(?:white|slate-(?:50|100|200)|gray-(?:50|100|200)|zinc-(?:50|100|200)|neutral-(?:50|100|200)|stone-(?:50|100|200)|red-(?:50|100|200)|orange-(?:50|100|200)|amber-(?:50|100|200)|yellow-(?:50|100|200)|lime-(?:50|100|200)|green-(?:50|100|200)|emerald-(?:50|100|200)|teal-(?:50|100|200)|cyan-(?:50|100|200)|sky-(?:50|100|200)|blue-(?:50|100|200)|indigo-(?:50|100|200)|violet-(?:50|100|200)|purple-(?:50|100|200)|fuchsia-(?:50|100|200)|pink-(?:50|100|200)|rose-(?:50|100|200))\b/i.test(openTag);
+                        if (hasLightBgClass) {
+                            isParentBgLight = true;
+                        }
+                    }
 
                     const ensureContrast = (tag: string, parentBgLight: boolean | null = null): string => {
                         let bgMatch = tag.match(/(?:background|background-color)\s*:\s*([^;>"]+)/i);
@@ -703,6 +709,14 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                         
                         let bgBrightness = bgMatch ? parseColorToBrightness(bgMatch[1]) : null;
                         let textBrightness = colorMatch ? parseColorToBrightness(colorMatch[1]) : null;
+
+                        if (parentBgLight === true) {
+                            // Replace light text classes with dark ones
+                            const lightTextClassRegex = /\btext-(?:white|slate|gray|zinc|neutral|stone)-(?:50|100|200|300|400)\b/gi;
+                            if (lightTextClassRegex.test(tag)) {
+                                tag = tag.replace(lightTextClassRegex, 'text-slate-900');
+                            }
+                        }
 
                         if (bgBrightness !== null) {
                             let isBgLight = bgBrightness > 128;
@@ -728,15 +742,13 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                             }
                         } else if (colorMatch) {
                             // No explicit background detected on this element.
-                            // Use parent background context if available (defaults to standard dark theme).
-                            const effectiveBgLight = parentBgLight !== null ? parentBgLight : false;
-                            
-                            if (effectiveBgLight) {
+                            // Only force colors if parent background brightness is known.
+                            if (parentBgLight === true) {
                                 // Parent background is LIGHT. We MUST ensure text is DARK.
                                 if (textBrightness !== null && textBrightness > 128) {
                                     tag = tag.replace(colorMatch[0], 'color: #0f172a');
                                 }
-                            } else {
+                            } else if (parentBgLight === false) {
                                 // Parent background is DARK. We MUST ensure text is LIGHT.
                                 if (textBrightness !== null && textBrightness <= 128) {
                                     tag = tag.replace(colorMatch[0], 'color: #f8fafc');
