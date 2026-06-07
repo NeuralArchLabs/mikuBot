@@ -537,7 +537,8 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
             inner = inner.substring(1, inner.length - 1);
         }
         const escapedCode = inner.replace(/</g, '‹').replace(/>/g, '›').replace(/\$/g, '‹DOLLAR›');
-        pieces.push(`<code class="bg-indigo-500/10 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-[0.9em] border border-indigo-400/20 mx-1 shadow-[0_0_8px_rgba(99,102,241,0.1)]">${escapedCode}</code>`);
+        const codeWithShy = escapedCode.replace(/([\/_\.-])/g, '$1<span class="shy"></span>');
+        pieces.push(`<code class="bg-indigo-500/10 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-[0.9em] border border-indigo-400/20 mx-1 shadow-[0_0_8px_rgba(99,102,241,0.1)]">${codeWithShy}</code>`);
         return id;
     });
 
@@ -637,7 +638,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
 
                 fullTagContent = `<div class="image-container relative group/img w-full flex flex-col items-center justify-center my-4" style="text-align:center;">` +
                     `<div class="relative overflow-hidden rounded-2xl border border-white/10 shadow-2xl" style="${style}">` +
-                        `<img src="${src}" alt="${alt}" ${width} ${height} class="max-w-full h-auto transform scale-100 will-change-transform transition-all duration-500 ease-out group-hover/img:scale-[1.03] hover:shadow-cyan-500/10 cursor-pointer" onclick="window.openImageFullscreen(this.src, this.alt || '')" />` +
+                        `<img src="${src}" alt="${alt}" ${width} ${height} class="max-w-full h-auto cursor-pointer" onclick="window.openImageFullscreen(this.src, this.alt || '')" />` +
                         `<div class="absolute top-3 right-3 flex gap-2 z-10 opacity-0 group-hover/img:opacity-100 transition-opacity duration-300">` +
                             `<button class="w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-cyan-500/80 text-white rounded-lg cursor-pointer transition border border-white/10" title="Ampliar imagen" onclick="window.openImageFullscreen(this.closest('.relative').querySelector('img').src, this.closest('.relative').querySelector('img').alt || '')">` +
                                 `<i class="fas fa-expand text-xs"></i>` +
@@ -647,7 +648,6 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                             `</button>` +
                         `</div>` +
                     `</div>` +
-                    (alt ? `<span class="mt-2 text-[10px] text-slate-500 font-mono tracking-tight opacity-0 group-hover/img:opacity-100 transition-opacity italic">${alt}</span>` : '') +
                     `</div>`;
             } else if (tagName === 'iframe') {
                 const hasAlign = /\balign\s*=|float\s*:\s*(?!none)|margin-left\s*:\s*auto|margin-right\s*:\s*auto|margin\s*:[^;]*auto|text-align\s*:\s*(?:left|right|center)|justify-content\s*:/.test(fullTagContent);
@@ -756,15 +756,9 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                     // ⚡ RESPONSIVE GRID FIX ⚡
                     // If the model creates an explicit grid layout, ensure it is responsive and doesn't blow out
                     if (/display\s*:\s*grid/i.test(openTag)) {
-                        // Detect the number of columns from inline style if specified
-                        const colsMatch = openTag.match(/grid-template-columns\s*:\s*repeat\(\s*(\d+)\s*,\s*1fr\)/i);
-                        const numCols = colsMatch ? parseInt(colsMatch[1], 10) : 2;
-
-                        // Strip rigid columns from inline style
-                        openTag = openTag.replace(/grid-template-columns\s*:[^"';]+;?/i, '');
-                        
-                        // Add Tailwind responsive grid based on detected column count
-                        const responsiveColsClass = `grid grid-cols-1 md:grid-cols-${numCols} w-full max-w-full gap-4`;
+                        // Keep the original style including grid-template-columns so it remains horizontal.
+                        // Add Tailwind display layout properties but do not force single column grid-cols-1.
+                        const responsiveColsClass = `grid w-full max-w-full gap-2`;
                         if (!openTag.includes('class=')) {
                             openTag = openTag.replace(/<div/i, `<div class="${responsiveColsClass}"`);
                         } else {
@@ -1228,7 +1222,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         const extra = isStreaming ? 'data-animated="true" is-visible' : '';
         pieces.push(`<div ${extra} class="image-container relative group/img w-full flex flex-col items-center justify-center my-4" style="text-align:center;">` +
             `<div class="relative overflow-hidden rounded-2xl border border-white/10 shadow-2xl">` +
-                `<img src="${url}" alt="${cleanAlt}" ${width} ${height} class="max-w-full h-auto transform scale-100 will-change-transform transition-all duration-500 ease-out group-hover/img:scale-[1.03] hover:shadow-cyan-500/10 cursor-pointer" onclick="window.openImageFullscreen(this.src, this.alt || '')" />` +
+                `<img src="${url}" alt="${cleanAlt}" ${width} ${height} class="max-w-full h-auto cursor-pointer" onclick="window.openImageFullscreen(this.src, this.alt || '')" />` +
                 `<div class="absolute top-3 right-3 flex gap-2 z-10 opacity-0 group-hover/img:opacity-100 transition-opacity duration-300">` +
                     `<button class="w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-cyan-500/80 text-white rounded-lg cursor-pointer transition border border-white/10" title="Ampliar imagen" onclick="window.openImageFullscreen(this.closest('.relative').querySelector('img').src, this.closest('.relative').querySelector('img').alt || '')">` +
                         `<i class="fas fa-expand text-xs"></i>` +
@@ -1238,7 +1232,6 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                     `</button>` +
                 `</div>` +
             `</div>` +
-            (cleanAlt ? `<span class="mt-2 text-[10px] text-slate-500 font-mono tracking-tight opacity-0 group-hover/img:opacity-100 transition-opacity italic">${cleanAlt}</span>` : '') +
             `</div>`);
         return `\n${id}\n`;
     });
@@ -1442,6 +1435,31 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
 
     // 13h. Apply cached abbreviations to text
     html = applyAbbreviationsToHtml(html);
+
+    // 13i. Cross-browser client-side Spanish/English text hyphenator
+    // Guarantees clean justification even on platforms (like Chrome/Windows) lacking native dictionaries.
+    const htmlParts = html.split(/(<[^>]+>)/g);
+    for (let i = 0; i < htmlParts.length; i++) {
+        if (i % 2 === 0) {
+            htmlParts[i] = htmlParts[i].replace(/[a-záéíóúüñ]{7,}/gi, (word) => {
+                return word
+                    .replace(/([aeoáéó])([aeoáéó])/gi, '$1\u00ad$2')
+                    .replace(/([aeiouáéíóúü])([bcdfghjklmnñpqrstvwxyz][aeiouáéíóúü])/gi, '$1\u00ad$2')
+                    .replace(/([aeiouáéíóúü][bcdfghjklmnñpqrstvwxyz])([bcdfghjklmnñpqrstvwxyz][aeiouáéíóúü])/gi, (m, p1, p2) => {
+                        const first = p1[p1.length - 1].toLowerCase();
+                        const second = p2[0].toLowerCase();
+                        if ((second === 'l' || second === 'r') && 'bcfgptd'.includes(first)) {
+                            return p1 + p2;
+                        }
+                        if (first === 'c' && second === 'h') return p1 + p2;
+                        if (first === 'l' && second === 'l') return p1 + p2;
+                        if (first === 'r' && second === 'r') return p1 + p2;
+                        return p1 + '\u00ad' + p2;
+                    });
+            });
+        }
+    }
+    html = htmlParts.join('');
 
     // 14. Restoration: inject protected blocks back
     // Use multi-pass for nested blocks (e.g., inline code inside details)

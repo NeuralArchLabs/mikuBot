@@ -183,7 +183,7 @@ body, html {
 /* Markdown Styles overrides (Tailwind typography plugin usage recommended instead but keeping existing custom styles) */
 .markdown-body {
   overflow-wrap: break-word;
-  word-break: break-word;
+  word-break: normal;
   min-width: 0;
   font-size: 1.0125rem;
   line-height: 1.55;
@@ -442,6 +442,15 @@ pre code .hl-directive { color: #fb7185 !important; font-weight: 700; }
   width: 100%;
 }
 
+.image-container img {
+  transition: transform 0.45s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.45s cubic-bezier(0.25, 1, 0.5, 1) !important;
+  will-change: transform;
+}
+
+.image-container:hover img {
+  transform: scale(1.035) !important;
+}
+
 /* Figure centering — Tailwind preflight sets img to display:block,
    so text-align:center on parent won't work. Use margin auto instead. */
 .markdown-body figure {
@@ -467,6 +476,22 @@ pre code .hl-directive { color: #fb7185 !important; font-weight: 700; }
   font-size: 0.85em;
   border: 1px solid var(--border-color);
   font-weight: 600;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.markdown-body code .shy::after {
+  content: "\00ad";
+  color: var(--text-secondary) !important;
+  font-family: var(--chat-font) !important;
+  font-weight: normal !important;
+  font-size: 1.1em;
+  margin-left: 1px;
+}
+
+.markdown-body a {
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 /* Underline — ensure <u> tag always shows underline */

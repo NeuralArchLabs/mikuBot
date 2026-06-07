@@ -1,4 +1,5 @@
 import React, { useMemo, useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { toHtml, renderMermaidBlocks, renderSingleMermaidBlock } from '../../utils';
 import { formatFinalResponse } from '../../services/formatters';
@@ -94,6 +95,7 @@ const globalAnimationQueue = new AnimationQueueManager();
 // This component manages the final sanitization and HTML injection.
 // DO NOT ALTER recursion logic or sanitizer settings.
 const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content: string, isStreaming?: boolean, mode?: 'full' | 'minimal' | 'none' }) => {
+    const { i18n } = useTranslation();
     const containerRef = useRef<HTMLDivElement>(null);
     // Tracks how many characters of content have been committed to the DOM via append.
     // Existing DOM content is NEVER touched — only new paragraphs get appended.
@@ -162,8 +164,7 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
             innerWrapper.setAttribute('style', styleAttr);
             
             // Add hover/click styles to image + premium transitions
-            img.classList.add('max-w-full', 'h-auto', 'transform', 'scale-100', 'will-change-transform', 'transition-all', 'duration-500', 'ease-out', 'group-hover/img:scale-[1.03]', 'hover:shadow-cyan-500/10', 'cursor-pointer');
-            img.style.transition = 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.5s ease-out';
+            img.classList.add('max-w-full', 'h-auto', 'cursor-pointer');
             
             // Setup click to inspect
             img.addEventListener('click', (e) => {
@@ -209,15 +210,6 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
             innerWrapper.appendChild(img);
             innerWrapper.appendChild(btnContainer);
             wrapper.appendChild(innerWrapper);
-
-            // Add alt subtitle if present
-            const alt = img.alt;
-            if (alt) {
-                const altText = document.createElement('span');
-                altText.className = 'mt-2 text-[10px] text-slate-500 font-mono tracking-tight opacity-0 group-hover/img:opacity-100 transition-opacity italic';
-                altText.textContent = alt;
-                wrapper.appendChild(altText);
-            }
         });
         const observer = new IntersectionObserver(
             (entries) => {
@@ -471,7 +463,7 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
             <div
                 ref={containerRef}
                 className={`${mode !== 'none' ? 'markdown-body' : ''} font-mono px-1 is-streaming`}
-                lang="es"
+                lang={i18n.language || 'en'}
             />
         );
     }
@@ -480,7 +472,7 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
         <div
             ref={containerRef}
             className={`${mode !== 'none' ? 'markdown-body' : ''} font-mono px-1`}
-            lang="es"
+            lang={i18n.language || 'en'}
             dangerouslySetInnerHTML={{ __html: html }}
         />
     );
@@ -534,6 +526,7 @@ interface InteractiveMarkdownRendererProps {
 // ⚡ ABSOLUTE PROTECTION: INTERACTIVE ENGINE & UI HOOKS
 // Manages the mutation of DOM elements for copy-buttons and checkboxes.
 const InteractiveMarkdownRendererBase = ({ content, isStreaming }: InteractiveMarkdownRendererProps) => {
+    const { i18n } = useTranslation();
     const containerRef = useRef<HTMLDivElement>(null);
     const [checkboxes, setCheckboxes] = useState<Record<string, boolean>>({});
 
@@ -579,7 +572,7 @@ const InteractiveMarkdownRendererBase = ({ content, isStreaming }: InteractiveMa
 
 
     return (
-        <div ref={containerRef} className="markdown-body font-mono px-1" lang="es">
+        <div ref={containerRef} className="markdown-body font-mono px-1" lang={i18n.language || 'en'}>
             {/* Render interactive checkboxes */}
             {checkboxElements.map(item => (
                 <CheckboxItem
