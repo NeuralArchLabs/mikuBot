@@ -48,6 +48,7 @@ contextBridge.exposeInMainWorld('electron', {
     extractFileContent: (data) => ipcRenderer.invoke('extract-file-content', data),
     selectFiles: () => ipcRenderer.invoke('select-files'),
     readFileData: (path) => ipcRenderer.invoke('read-file-data', path),
+    exportHtmlToPdf: (data) => ipcRenderer.invoke('export-html-to-pdf', data),
 
     // Network proxy (keys stay in main process)
     fetchProxy: (data) => ipcRenderer.invoke('fetch-proxy', data),

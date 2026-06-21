@@ -562,6 +562,12 @@
       "no_user_message": "no user message",
       "user_sent_attachment_one": "user attached {{count}} file",
       "user_sent_attachment_other": "user attached {{count}} files",
+      "vision_analyzing": "Analyzing visual context...",
+      "document_processing": "Document Processing",
+      "document_analyzing": "Extracting document contents...",
+      "multimodal_integration": "Multimodal Integration",
+      "multimodal_analyzing": "Synchronizing visual context and document content...",
+      "neural_syncing": "Synchronizing neural components...",
       "prompt": {
         "protocol_reinforcement": "PROTOCOL REINFORCEMENT",
         "useful_reminders": "USEFUL REMINDERS",

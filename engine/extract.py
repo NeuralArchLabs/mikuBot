@@ -22,9 +22,27 @@ except ImportError:
 
 def extract_url(url):
     """
-    Extracts text from a URL using internal O-ZEN engine (from searXena).
-    Maintained for backward compatibility and web research tasks.
+    Extracts text from a URL.
+    Uses MarkItDown for YouTube URLs to retrieve transcripts.
+    Otherwise, uses the internal O-ZEN engine.
     """
+    # YouTube handling via MarkItDown
+    if 'youtube.com' in url.lower() or 'youtu.be' in url.lower():
+        try:
+            from markitdown import MarkItDown
+            print(f"DEBUG: Extracting YouTube transcript with MarkItDown: {url}", file=sys.stderr)
+            md = MarkItDown()
+            result = md.convert(url)
+            print(f"DEBUG: YouTube Extraction success, length: {len(result.text_content)} chars", file=sys.stderr)
+            return {
+                "success": True,
+                "url": url,
+                "content": result.text_content,
+                "raw_text": result.text_content
+            }
+        except Exception as e:
+            return {"success": False, "error": f"YouTube transcription error: {str(e)}"}
+
     if not ozen_extract or not fetch_url:
         return {"success": False, "error": "Internal extraction engine (O-ZEN) not found in searXena core."}
     
@@ -50,46 +68,48 @@ def extract_url(url):
 
 def extract_file(file_path):
     """
-    New logic for local file extraction.
-    Supports PDF via PyMuPDF and common text formats via direct read.
+    Logic for local file extraction using MarkItDown with text fallback.
     """
     try:
         if not os.path.exists(file_path):
             return {"success": False, "error": f"File not found: {file_path}"}
             
-        ext = os.path.splitext(file_path)[1].lower()
-        
-        # 1. PDF Handling
-        if ext == '.pdf':
-            try:
-                import fitz # PyMuPDF
-                print(f"DEBUG: Opening PDF with PyMuPDF: {file_path}", file=sys.stderr)
-                doc = fitz.open(file_path)
-                text = ""
-                for page in doc:
-                    text += page.get_text()
-                doc.close()
-                print(f"DEBUG: Extraction success, length: {len(text)} chars", file=sys.stderr)
-                return {
-                    "success": True,
-                    "path": file_path,
-                    "content": text,
-                    "type": "pdf"
-                }
-            except ImportError:
-                return {"success": False, "error": "PyMuPDF (fitz) is not installed in the internal engine."}
-            except Exception as e:
-                return {"success": False, "error": f"PDF Extraction error: {str(e)}"}
-        else:
-            # Code/Text Handling
-            with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
-                content = f.read()
+        # First attempt: delegate to MarkItDown for any file type (handles pdf, docx, xlsx, pptx, txt, html, json, xml, zip, etc.)
+        try:
+            from markitdown import MarkItDown
+            print(f"DEBUG: Extracting file with MarkItDown: {file_path}", file=sys.stderr)
+            md = MarkItDown()
+            result = md.convert(file_path)
+            print(f"DEBUG: Extraction success, length: {len(result.text_content)} chars", file=sys.stderr)
             return {
                 "success": True,
                 "path": file_path,
-                "content": content,
-                "type": "text"
+                "content": result.text_content,
+                "type": "markdown"
             }
+        except Exception as e:
+            # Fallback only for plain text files / source code files that markitdown might not convert directly
+            _, ext = os.path.splitext(file_path.lower())
+            text_extensions = {
+                '.txt', '.md', '.markdown', '.json', '.xml', '.yaml', '.yml',
+                '.js', '.ts', '.jsx', '.tsx', '.py', '.html', '.htm', '.css',
+                '.csv', '.ini', '.cfg', '.conf', '.sh', '.bat', '.ps1', '.sql',
+                '.log', '.diff', '.patch', '.r', '.c', '.cpp', '.h', '.hpp',
+                '.java', '.go', '.rs', '.swift', '.kt', '.php', '.rb', '.pl'
+            }
+            if ext in text_extensions or not ext:
+                print(f"DEBUG: MarkItDown failed or unsupported, using text fallback: {str(e)}", file=sys.stderr)
+                with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+                    content = f.read()
+                return {
+                    "success": True,
+                    "path": file_path,
+                    "content": content,
+                    "type": "text"
+                }
+            else:
+                print(f"DEBUG: MarkItDown failed on binary file {file_path}: {str(e)}", file=sys.stderr)
+                return {"success": False, "error": f"MarkItDown failed to convert binary/document file ({ext}): {str(e)}"}
     except Exception as e:
         return {"success": False, "error": f"Error reading file {file_path}: {str(e)}"}
 

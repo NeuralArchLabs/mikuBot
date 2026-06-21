@@ -2421,8 +2421,22 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
 
             {/* Persistent UI Shell Container to prevent flashes on tab swap */}
             <main className="flex-1 flex flex-col min-w-0 relative" style={{ backgroundColor: 'var(--background-color)' }}>
+                {state.config.chatBackgroundImage && (
+                    <div 
+                        className={`absolute inset-0 pointer-events-none z-0 miku-app-wallpaper ${state.activeTab !== 'chat' ? 'blurred' : ''}`}
+                        style={{
+                            backgroundImage: (() => {
+                                let url = state.config.chatBackgroundImage.replace(/\\/g, '/');
+                                if (!url.startsWith('http') && !url.startsWith('data:') && !url.startsWith('local://')) {
+                                    url = `local:///${url.replace(/^\//, '')}`;
+                                }
+                                return `url("${url}")`;
+                            })(),
+                        }}
+                    />
+                )}
                 {/* Persistent View Stack: Each view stays mounted to preserve state and scroll position */}
-                <div className={`flex-1 flex flex-col h-full ${state.activeTab !== 'chat' ? 'hidden' : ''}`}>
+                <div className={`flex-1 flex flex-col h-full relative z-10 ${state.activeTab !== 'chat' ? 'hidden' : ''}`}>
                     <ChatArea
                         sessionId={state.sessionId || 'empty'}
                         onSend={(atts) => processMessage(useAgentStore.getState().input, false, false, false, atts)} 
@@ -2500,7 +2514,7 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                     />
                 </div>
 
-                <div className={`flex-1 flex flex-col h-full animate-slide-left-right ${state.activeTab !== 'cortex' ? 'hidden' : ''}`}>
+                <div className={`flex-1 flex flex-col h-full relative z-10 animate-slide-left-right ${state.activeTab !== 'cortex' ? 'hidden' : ''}`}>
                     <FileEditor
                         files={Object.fromEntries(Object.entries(state.files).filter(([n]) => !n.includes('/'))) as Record<string, string>} selectedFile={state.selectedFile}
                         setSelectedFile={(f) => setState(p => ({ ...p, selectedFile: f }))}
@@ -2512,7 +2526,7 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                     />
                 </div>
 
-                <div className={`flex-1 flex flex-col h-full animate-slide-left-right ${state.activeTab !== 'commands' ? 'hidden' : ''}`}>
+                <div className={`flex-1 flex flex-col h-full relative z-10 animate-slide-left-right ${state.activeTab !== 'commands' ? 'hidden' : ''}`}>
                     <FileEditor
                         files={Object.fromEntries(Object.entries(state.toolsFiles).filter(([n]) => !n.includes('/'))) as Record<string, string>}
                         selectedFile={state.selectedFile}
@@ -2525,7 +2539,7 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                     />
                 </div>
 
-                <div className={`flex-1 flex flex-col h-full animate-control-room ${state.activeTab !== 'settings' ? 'hidden' : ''}`}>
+                <div className={`flex-1 flex flex-col h-full relative z-10 animate-control-room ${state.activeTab !== 'settings' ? 'hidden' : ''}`}>
                     <SettingsPanel
                         config={state.config} updateConfig={updateConfig} models={models} loadingModels={loadingModels}
                         connectionStatus={connectionStatus} onTestConnection={handleTestConnection}
@@ -2546,7 +2560,7 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                     />
                 </div>
 
-                <div className={`flex-1 flex flex-col h-full animate-control-room ${state.activeTab !== 'scheduler' ? 'hidden' : ''}`}>
+                <div className={`flex-1 flex flex-col h-full relative z-10 animate-control-room ${state.activeTab !== 'scheduler' ? 'hidden' : ''}`}>
                     <div className="flex-1 overflow-y-auto custom-scrollbar">
                         <div className="max-w-4xl mx-auto p-6 md:p-10">
                             <div className="flex items-center justify-between mb-8 pb-6 border-b border-[var(--border-color)]">

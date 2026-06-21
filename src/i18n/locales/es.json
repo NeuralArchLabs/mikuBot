@@ -557,6 +557,12 @@
       "no_user_message": "sin mensaje de usuario",
       "user_sent_attachment_one": "usuario adjuntó {{count}} archivo",
       "user_sent_attachment_other": "usuario adjuntó {{count}} archivos",
+      "vision_analyzing": "Analizando contexto visual...",
+      "document_processing": "Procesamiento de Documentos",
+      "document_analyzing": "Extrayendo contenido del documento...",
+      "multimodal_integration": "Integración Multimodal",
+      "multimodal_analyzing": "Sincronizando contexto visual y datos del documento...",
+      "neural_syncing": "Sincronizando componentes neurales...",
       "prompt": {
         "protocol_reinforcement": "REFUERZO DE PROTOCOLO",
         "useful_reminders": "RECORDATORIOS ÚTILES",

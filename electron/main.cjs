@@ -2353,9 +2353,9 @@ ipcMain.handle('select-files', async () => {
     return await dialog.showOpenDialog({
         properties: ['openFile', 'multiSelections'],
         filters: [
-            { name: 'All Supported Files', extensions: ['pdf', 'txt', 'md', 'py', 'js', 'ts', 'tsx', 'jsx', 'json', 'c', 'cpp', 'h', 'rs', 'go', 'rb', 'php', 'sql', 'html', 'css', 'yaml', 'yml', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'ps1'] },
+            { name: 'All Supported Files', extensions: ['pdf', 'docx', 'xlsx', 'pptx', 'csv', 'xml', 'zip', 'txt', 'md', 'py', 'js', 'ts', 'tsx', 'jsx', 'json', 'c', 'cpp', 'h', 'rs', 'go', 'rb', 'php', 'sql', 'html', 'css', 'yaml', 'yml', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'ps1'] },
             { name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp'] },
-            { name: 'Documents', extensions: ['pdf', 'txt', 'md', 'json', 'yaml', 'yml'] },
+            { name: 'Documents', extensions: ['pdf', 'docx', 'xlsx', 'pptx', 'csv', 'xml', 'zip', 'txt', 'md', 'json', 'yaml', 'yml'] },
             { name: 'Code', extensions: ['py', 'js', 'ts', 'tsx', 'jsx', 'c', 'cpp', 'h', 'rs', 'go', 'rb', 'php', 'sql', 'html', 'css'] }
         ]
     });
@@ -2372,7 +2372,13 @@ ipcMain.handle('read-file-data', async (event, filePath) => {
         const mimeMap = {
             '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', 
             '.gif': 'image/gif', '.webp': 'image/webp', '.pdf': 'application/pdf',
-            '.txt': 'text/plain', '.md': 'text/markdown', '.json': 'application/json'
+            '.txt': 'text/plain', '.md': 'text/markdown', '.json': 'application/json',
+            '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            '.csv': 'text/csv',
+            '.xml': 'application/xml',
+            '.zip': 'application/zip'
         };
         const mimeType = mimeMap[ext] || 'application/octet-stream';
         
@@ -2418,6 +2424,406 @@ ipcMain.handle('extract-file-content', async (event, { path: filePath }) => {
                 console.error('[Main Process] Failed to parse extraction JSON:', e.message, stdout);
                 resolve({ ok: false, error: 'Failed to parse extraction results' });
             }
+        });
+    });
+});
+
+const activePdfWindows = new Set();
+
+ipcMain.handle('export-html-to-pdf', async (event, { html, title, cssRules, bodyClass, htmlClass, bodyStyle, htmlStyle }) => {
+    const { dialog, BrowserWindow } = require('electron');
+    const fs = require('fs');
+    const path = require('path');
+    const os = require('os');
+    
+    // Get focused window to anchor the modal dialog
+    const parentWin = BrowserWindow.getFocusedWindow();
+    const { filePath, canceled } = await dialog.showSaveDialog(parentWin, {
+        title: 'Exportar PDF',
+        defaultPath: `${title || 'documento'}.pdf`,
+        filters: [{ name: 'PDF Document', extensions: ['pdf'] }]
+    });
+
+    if (canceled || !filePath) return { ok: false, canceled: true };
+
+    const cleanHtmlStyle = (htmlStyle || '')
+        .replace(/background-color\s*:[^;]+;?/gi, '')
+        .replace(/background\s*:[^;]+;?/gi, '')
+        .replace(/color\s*:[^;]+;?/gi, '');
+    const cleanBodyStyle = (bodyStyle || '')
+        .replace(/background-color\s*:[^;]+;?/gi, '')
+        .replace(/background\s*:[^;]+;?/gi, '')
+        .replace(/color\s*:[^;]+;?/gi, '');
+
+    const styledHtml = `
+    <!DOCTYPE html>
+    <html class="${htmlClass || ''}" style="${cleanHtmlStyle}">
+    <head>
+    <meta charset="utf-8">
+    <title>${title || 'Documento'}</title>
+    <style>
+        /* Inject all active app styles */
+        ${cssRules || ''}
+        
+        /* Custom overrides for printing */
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        
+        /* Enforce absolute white background for page and body (including theme specifics) */
+        html, body, 
+        html.theme-miku, body.theme-miku, 
+        html.theme-midnight, body.theme-midnight, 
+        html.theme-cyberpunk, body.theme-cyberpunk, 
+        html.theme-forest, body.theme-forest,
+        html.theme-cloud, body.theme-cloud {
+            background-color: #ffffff !important;
+            background: #ffffff !important;
+            color: #0f172a !important;
+        }
+        
+        body {
+            padding: 45px 55px !important;
+            margin: 0 !important;
+            width: auto !important;
+            height: auto !important;
+            font-family: 'Outfit', -apple-system, sans-serif !important;
+        }
+        .markdown-body {
+            background: transparent !important;
+            color: #0f172a !important;
+        }
+        
+        /* Override light text/headers from dark themes and clear clipping transparent text */
+        h1, h2, h3, h4, h5, h6 {
+            color: #0f172a !important;
+            background: none !important;
+            -webkit-background-clip: initial !important;
+            background-clip: initial !important;
+            -webkit-text-fill-color: #0f172a !important;
+            text-fill-color: #0f172a !important;
+            text-shadow: none !important;
+            border-bottom-color: #cbd5e1 !important;
+        }
+        h1.pdf-title { 
+            font-size: 0.75em !important; 
+            font-weight: 600 !important; 
+            color: #64748b !important; 
+            border-bottom: 1px solid #e2e8f0 !important; 
+            padding-bottom: 6px !important; 
+            margin-top: 0 !important;
+            margin-bottom: 24px !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.15em !important;
+            opacity: 0.8 !important;
+        }
+        
+        /* Enforce gradient dividers/separators to show up on white backgrounds */
+        .markdown-body div[style*="linear-gradient"] {
+            background: linear-gradient(to right, transparent 0%, rgba(6, 182, 212, 0.6) 2%, rgba(6, 182, 212, 0.6) 98%, transparent 100%) !important;
+            height: 2px !important;
+            opacity: 1 !important;
+            display: block !important;
+            margin-top: 8px !important;
+            margin-bottom: 1.5rem !important;
+        }
+        
+        /* Force animated divider lines and side dots to be visible on print */
+        .divider-container {
+            opacity: 1 !important;
+            display: flex !important;
+            margin: 24px 0 !important;
+        }
+        .divider-container .divider-line {
+            width: 100% !important;
+            opacity: 1 !important;
+            background: linear-gradient(
+                90deg,
+                transparent 0%,
+                rgba(148, 163, 184, 0.3) 15%,
+                rgba(6, 182, 212, 0.6) 50%,
+                rgba(168, 85, 247, 0.4) 85%,
+                transparent 100%
+            ) !important;
+            box-shadow: 0 0 4px rgba(6, 182, 212, 0.3) !important;
+            height: 1px !important;
+        }
+        .divider-line::before,
+        .divider-line::after {
+            content: '' !important;
+            opacity: 1 !important;
+            display: block !important;
+            width: 6px !important;
+            height: 6px !important;
+            border-radius: 50% !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+        }
+        .divider-line::before {
+            left: -2px !important;
+            background: #06b6d4 !important; /* Force solid cyan dot */
+            box-shadow: 0 0 6px rgba(6, 182, 212, 0.6) !important;
+        }
+        .divider-line::after {
+            right: -2px !important;
+            background: #a855f7 !important; /* Force solid purple dot */
+            box-shadow: 0 0 6px rgba(168, 85, 247, 0.6) !important;
+        }
+        p, li, span, code, pre, td, th, div {
+            color: #1e293b !important;
+        }
+        a {
+            color: #2563eb !important;
+            text-decoration: underline !important;
+        }
+        
+        /* Format list elements properly */
+        ul, ol {
+            padding-left: 24px !important;
+            margin-bottom: 16px !important;
+        }
+        li {
+            margin-bottom: 6px !important;
+        }
+        
+        /* Style code blocks cleanly for white page contrast */
+        pre {
+            background-color: #f8fafc !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 12px !important;
+            padding: 16px !important;
+            margin: 16px 0 !important;
+            overflow-x: auto !important;
+        }
+        code {
+            background-color: #f1f5f9 !important;
+            color: #0f172a !important;
+            font-family: monospace !important;
+            font-size: 0.9em !important;
+        }
+        pre code {
+            background-color: transparent !important;
+            padding: 0 !important;
+            border: none !important;
+        }
+        
+        /* Highlight code block tokens cleanly */
+        .token.comment, .token.prolog, .token.doctype, .token.cdata { color: #64748b !important; }
+        .token.punctuation { color: #475569 !important; }
+        .token.property, .token.tag, .token.boolean, .token.number, .token.constant, .token.symbol { color: #b45309 !important; }
+        .token.selector, .token.attr-name, .token.string, .token.char, .token.builtin, .token.inserted { color: #15803d !important; }
+        .token.operator, .token.entity, .token.url, .language-css .token.string, .style .token.string { color: #0369a1 !important; }
+        .token.atrule, .token.attr-value, .token.keyword { color: #09333f !important; font-weight: bold !important; }
+        .token.function, .token.class-name { color: #7c3aed !important; }
+        
+        /* Tables styling */
+        table {
+            border-collapse: collapse !important;
+            width: 100% !important;
+            margin-bottom: 20px !important;
+            border-color: #cbd5e1 !important;
+        }
+        th, td {
+            border: 1px solid #cbd5e1 !important;
+            padding: 10px 12px !important;
+            text-align: left !important;
+        }
+        th {
+            background-color: #f1f5f9 !important;
+            color: #0f172a !important;
+            font-weight: bold !important;
+        }
+        tr:nth-child(even) {
+            background-color: #f8fafc !important;
+        }
+        
+        /* Hide AI signatures/interactives in standard PDFs */
+        .signature-wrapper, .non-typing, [onclick] {
+            display: none !important;
+        }
+        
+        /* Blockquotes / Custom alerts styling */
+        blockquote {
+            border-left: 4px solid rgba(6, 182, 212, 0.4) !important;
+            background-color: #f1f5f9 !important;
+            color: #0f172a !important;
+            padding: 12px 16px !important;
+            margin: 16px 0 !important;
+            border-radius: 0 8px 8px 0 !important;
+        }
+        blockquote * {
+            color: #0f172a !important;
+        }
+        blockquote blockquote {
+            border-left: 3px solid rgba(99, 102, 241, 0.3) !important;
+            background-color: #e2e8f0 !important;
+            margin: 8px 0 !important;
+        }
+
+        /* Force code blocks and animated elements to be fully visible on print */
+        .code-block-anim, .divider-container {
+            opacity: 1 !important;
+            transform: none !important;
+            scale: 1 !important;
+            filter: none !important;
+            transition: none !important;
+        }
+
+        /* Strip dark wrapper background on code boxes and force light styling for clean PDF contrast */
+        div[class*="group/code"] {
+            background-color: #f8fafc !important;
+            background: #f8fafc !important;
+            border: 1px solid #cbd5e1 !important;
+            box-shadow: none !important;
+            padding: 12px !important;
+            margin: 16px 0 !important;
+            border-radius: 12px !important;
+            width: auto !important;
+            max-width: 100% !important;
+            overflow-x: visible !important; /* Hide scrollbars, wrap instead */
+        }
+        div[class*="group/code"] > div {
+            background-color: transparent !important;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border-radius: 0 !important;
+            width: auto !important;
+            max-width: 100% !important;
+            overflow-x: visible !important;
+        }
+        pre, code {
+            background-color: transparent !important;
+            background: transparent !important;
+            white-space: pre-wrap !important; /* Wrap long lines */
+            word-wrap: break-word !important;
+            word-break: break-word !important;
+            color: #0f172a !important;
+        }
+
+        /* Force Mermaid nodes to be readable in printed PDF (light backgrounds) */
+        .mermaid svg {
+            background-color: transparent !important;
+            background: transparent !important;
+        }
+        .mermaid .node rect,
+        .mermaid .node circle,
+        .mermaid .node polygon,
+        .mermaid .node path,
+        .mermaid .node .label-container,
+        .mermaid .node .label-container rect {
+            fill: #f1f5f9 !important;
+            stroke: #cbd5e1 !important;
+            stroke-width: 1px !important;
+        }
+        .mermaid .node .label,
+        .mermaid .node .label *,
+        .mermaid .node *,
+        .mermaid .node text,
+        .mermaid .node text * {
+            color: #0f172a !important;
+            fill: #0f172a !important;
+        }
+        .mermaid .edgePath .path,
+        .mermaid .edgePath path {
+            stroke: #64748b !important;
+            stroke-width: 1.5px !important;
+        }
+        .mermaid .edgeLabel rect {
+            fill: #ffffff !important;
+        }
+        .mermaid .edgeLabel span,
+        .mermaid .edgeLabel * {
+            color: #475569 !important;
+        }
+        .mermaid .cluster rect {
+            fill: #f8fafc !important;
+            stroke: #cbd5e1 !important;
+            stroke-width: 1px !important;
+        }
+
+        /* Force blockquote typing placeholder state to be fully visible on print */
+        .blockquote-placeholder {
+            visibility: visible !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            position: static !important;
+        }
+        .blockquote-typing {
+            display: none !important;
+        }
+    </style>
+    </head>
+    <body class="${bodyClass || ''}" style="${bodyStyle || ''}">
+        <h1 class="pdf-title">${title || 'Documento'}</h1>
+        <div class="markdown-body">
+            ${html}
+        </div>
+    </body>
+    </html>
+    `;
+
+    const tempFilePath = path.join(os.tmpdir(), `temp_pdf_${Date.now()}.html`);
+    try {
+        fs.writeFileSync(tempFilePath, styledHtml, 'utf8');
+    } catch (writeErr) {
+        console.error('[Main Process] Temp HTML write failed:', writeErr);
+        return { ok: false, error: `Failed to create temporary print file: ${writeErr.message}` };
+    }
+
+    return new Promise((resolve) => {
+        let pdfWindow = new BrowserWindow({
+            show: false,
+            webPreferences: {
+                nodeIntegration: false,
+                contextIsolation: true
+            }
+        });
+
+        // Store global reference to prevent V8 Garbage Collection
+        activePdfWindows.add(pdfWindow);
+
+        pdfWindow.loadFile(tempFilePath);
+
+        const cleanUp = () => {
+            activePdfWindows.delete(pdfWindow);
+            try {
+                fs.unlinkSync(tempFilePath);
+            } catch (e) {}
+        };
+
+        pdfWindow.webContents.on('did-finish-load', async () => {
+            try {
+                // Ensure page layout is loaded and fonts are styled
+                await new Promise(r => setTimeout(r, 600));
+                
+                const data = await pdfWindow.webContents.printToPDF({
+                    marginsType: 0, // Use default margins safely
+                    pageSize: 'A4',
+                    printBackground: true
+                });
+                
+                fs.writeFileSync(filePath, data);
+                pdfWindow.destroy();
+                cleanUp();
+                
+                resolve({ ok: true, path: filePath });
+            } catch (err) {
+                console.error('[Main Process] printToPDF failed:', err);
+                pdfWindow.destroy();
+                cleanUp();
+                resolve({ ok: false, error: `PDF generation failed: ${err.message}` });
+            }
+        });
+
+        pdfWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+            console.error('[Main Process] printToPDF window failed to load:', errorDescription);
+            pdfWindow.destroy();
+            cleanUp();
+            resolve({ ok: false, error: `Failed to load page: ${errorDescription} (${errorCode})` });
         });
     });
 });

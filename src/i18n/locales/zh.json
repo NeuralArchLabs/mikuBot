@@ -534,6 +534,12 @@
       "status_batch": "直接",
       "no_user_message": "无用户消息",
       "user_sent_attachment_other": "用户附加了 {{count}} 个文件",
+      "vision_analyzing": "正在分析视觉上下文...",
+      "document_processing": "文档处理",
+      "document_analyzing": "正在提取文档内容...",
+      "multimodal_integration": "多模态集成",
+      "multimodal_analyzing": "正在同步视觉上下文并提取文档内容...",
+      "neural_syncing": "正在同步神经组件...",
       "prompt": {
         "protocol_reinforcement": "协议强化",
         "useful_reminders": "有用提醒",

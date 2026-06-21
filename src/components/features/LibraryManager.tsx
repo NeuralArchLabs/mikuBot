@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { AppConfig } from '../../types';
 import { hydrateTemplate, extractVariablesFromConfig } from '../../services/core/BlueprintHydrator';
 import { useUIStore } from '../../stores/useUIStore';
+import { toHtml } from '../../utils';
+import { formatFinalResponse } from '../../services/formatters';
 
 interface Blueprint {
     id: string;
@@ -211,6 +213,82 @@ export const LibraryManager = ({
             }
         }
     }, [askConfirm, onDelete, viewFile]);
+
+    const handleExportPDF = useCallback(async (name: string) => {
+        if (!name || !files[name]) return;
+        const markdown = files[name];
+        
+        // Create an off-screen container to render code blocks and diagrams
+        const tempDiv = document.createElement('div');
+        tempDiv.className = 'markdown-body';
+        tempDiv.style.position = 'absolute';
+        tempDiv.style.left = '-9999px';
+        tempDiv.style.top = '-9999px';
+        tempDiv.style.width = '850px'; // fixed standard width for correct diagram layout
+        tempDiv.innerHTML = toHtml(formatFinalResponse(markdown), false, 'full');
+        document.body.appendChild(tempDiv);
+
+        try {
+            // Import and run mermaid renderer on the temporary element
+            const { renderMermaidBlocks } = await import('../../utils/helpers/mermaid');
+            await renderMermaidBlocks(tempDiv);
+            
+            // Wait for requestAnimationFrame frames of the mermaid render engine to execute and commit SVGs to DOM
+            await new Promise(resolve => setTimeout(resolve, 400));
+        } catch (mermaidErr) {
+            console.error('[Library PDF Export] Failed to render mermaid diagrams:', mermaidErr);
+        }
+
+        const html = tempDiv.innerHTML;
+        document.body.removeChild(tempDiv);
+
+        // Capture stylesheets currently active in the app to match theme visuals
+        let cssRules = '';
+        try {
+            cssRules = Array.from(document.styleSheets)
+                .map(sheet => {
+                    try {
+                        return Array.from(sheet.cssRules)
+                            .map(rule => rule.cssText)
+                            .join('\n');
+                    } catch (e) {
+                        return '';
+                    }
+                })
+                .join('\n');
+        } catch (err) {}
+
+        const bodyClass = document.body.className;
+        const htmlClass = document.documentElement.className;
+        const bodyStyle = document.body.getAttribute('style') || '';
+        const htmlStyle = document.documentElement.getAttribute('style') || '';
+
+        try {
+            const electronAPI = (window as any).electron;
+            if (electronAPI?.exportHtmlToPdf) {
+                const res = await electronAPI.exportHtmlToPdf({
+                    html,
+                    title: name.replace(/\.md$/i, ''),
+                    cssRules,
+                    bodyClass,
+                    htmlClass,
+                    bodyStyle,
+                    htmlStyle
+                });
+                if (res) {
+                    if (res.ok) {
+                        console.log('[Library PDF Export] Saved successfully to:', res.path);
+                    } else if (res.error) {
+                        alert(`Error al guardar PDF: ${res.error}`);
+                    }
+                }
+            }
+        } catch (err: any) {
+            console.error('[Library PDF Export] Error:', err);
+            alert(`Error al exportar PDF: ${err.message}`);
+        }
+    }, [files]);
+
 
 
     if (!isOpen) return null;
@@ -436,12 +514,21 @@ export const LibraryManager = ({
                                                 </button>
                                             </>
                                         ) : (
-                                            <button
-                                                onClick={() => handleStartEdit(viewFile)}
-                                                className="px-3 py-1 bg-[var(--hover-color)] [.theme-cloud_&]:bg-slate-700/40 hover:bg-[var(--border-color)]/20 text-[var(--text-secondary)] [.theme-cloud_&]:text-slate-300 hover:text-[var(--text-primary)] [.theme-cloud_&]:hover:text-slate-100 rounded text-[10px] font-medium transition-colors flex items-center gap-1"
-                                            >
-                                                <Icon name="edit" /> {t('editor.edit')}
-                                            </button>
+                                            <>
+                                                <button
+                                                    onClick={() => handleExportPDF(viewFile)}
+                                                    className="px-3 py-1 bg-pink-600/10 hover:bg-pink-600/20 text-pink-400 rounded text-[10px] font-medium transition-colors flex items-center gap-1 border border-pink-500/20 mr-1"
+                                                    title="Export PDF"
+                                                >
+                                                    <Icon name="file-pdf" /> PDF
+                                                </button>
+                                                <button
+                                                    onClick={() => handleStartEdit(viewFile)}
+                                                    className="px-3 py-1 bg-[var(--hover-color)] [.theme-cloud_&]:bg-slate-700/40 hover:bg-[var(--border-color)]/20 text-[var(--text-secondary)] [.theme-cloud_&]:text-slate-300 hover:text-[var(--text-primary)] [.theme-cloud_&]:hover:text-slate-100 rounded text-[10px] font-medium transition-colors flex items-center gap-1"
+                                                >
+                                                    <Icon name="edit" /> {t('editor.edit')}
+                                                </button>
+                                            </>
                                         )}
                                     </div>
                                 </div>

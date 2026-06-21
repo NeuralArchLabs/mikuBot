@@ -213,20 +213,35 @@ const ChatInputControls = React.memo(({
                                         </div>
                                     </>
                                 ) : (
-                                    <div className="flex flex-col items-center justify-center gap-0.5">
-                                        <Icon 
-                                            name={
-                                                att.name.endsWith('.pdf') ? "file-pdf" : 
-                                                att.name.endsWith('.json') || att.name.endsWith('.yaml') || att.name.endsWith('.yml') ? "file-code" :
-                                                "file-alt"
-                                            } 
-                                            className={`text-[16px] ${
-                                                att.name.endsWith('.pdf') ? "text-rose-400" : 
-                                                att.name.endsWith('.json') ? "text-amber-400" :
-                                                "text-slate-400"
-                                            }`} 
-                                        />
-                                        <span className="text-[6px] uppercase font-bold text-slate-500 truncate max-w-[32px]">{att.name.split('.').pop()}</span>
+                                    <div className="relative w-full h-full flex items-center justify-center">
+                                        <div className="flex flex-col items-center justify-center gap-0.5">
+                                            <Icon 
+                                                name={
+                                                    att.name.endsWith('.pdf') ? "file-pdf" : 
+                                                    att.name.endsWith('.json') || att.name.endsWith('.yaml') || att.name.endsWith('.yml') ? "file-code" :
+                                                    "file-alt"
+                                                } 
+                                                className={`text-[16px] ${
+                                                    att.name.endsWith('.pdf') ? "text-rose-400" : 
+                                                    att.name.endsWith('.json') ? "text-amber-400" :
+                                                    "text-slate-400"
+                                                } ${att.isAnalyzing ? 'blur-[0.5px] opacity-40' : ''}`} 
+                                            />
+                                            <span className="text-[6px] uppercase font-bold text-slate-500 truncate max-w-[32px]">{att.name.split('.').pop()}</span>
+                                        </div>
+                                        {att.isAnalyzing && (
+                                            <div className="absolute inset-0 flex items-center justify-center">
+                                                <div className="absolute inset-0 bg-blue-500/10 animate-pulse rounded" />
+                                                <div className="w-4 h-4 rounded-full border border-blue-400/20 border-t-blue-400 animate-spin" />
+                                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 shadow-[0_0_10px_#3b82f6] animate-scan-fast" />
+                                            </div>
+                                        )}
+                                        {att.analysisError && !att.isAnalyzing && (
+                                            <div className="absolute inset-0 flex items-center justify-center" title={att.analysisError}>
+                                                <div className="absolute inset-0 bg-red-900/40 rounded" />
+                                                <Icon name="exclamation-triangle" className="text-red-400 text-xs z-10" />
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                                 </div>
@@ -692,110 +707,105 @@ export const ChatArea = ({
         reader.readAsDataURL(file);
     };
 
-    const handleNativeFileSelect = async (filePaths: string[]) => {
+    const handleNativeFileSelect = (filePaths: string[]) => {
         if (!(window as any).electron) return;
         
-        for (const filePath of filePaths) {
-            try {
-                // 1. Get visual data (pre-loading preview)
-                const fileInfo = await (window as any).electron.readFileData(filePath);
-                if (!fileInfo.ok) {
-                    console.error(`[Native Selection] Failed to read file data for ${filePath}:`, fileInfo.error);
-                    continue;
-                }
+        filePaths.forEach(filePath => {
+            const attachmentId = Date.now().toString() + Math.random().toString();
+            const parts = filePath.split(/[\\/]/);
+            const guessedName = parts[parts.length - 1] || 'document';
+            const extension = guessedName.split('.').pop()?.toLowerCase() || '';
+            const guessedType = extension === 'pdf' ? 'application/pdf' :
+                                ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(extension) ? `image/${extension}` :
+                                'text/plain';
 
-                let extractedContent: string | undefined = undefined;
-                const attachmentId = Date.now().toString() + Math.random().toString();
+            // Add placeholder attachment immediately with isAnalyzing: true
+            setAttachments(prev => [...prev, {
+                id: attachmentId,
+                name: guessedName,
+                type: guessedType,
+                data: undefined,
+                isAnalyzing: true
+            }]);
 
-                // 2. Vision Runtime Phase (Vortex Visual)
-                // Determine the effective model that will handle this message
-                const activeProvider = (agentMode === 'agent' && config.agentProvider && config.agentModel)
-                    ? config.agentProvider
-                    : (config.chatProvider && config.chatModel)
-                        ? config.chatProvider
-                        : config.provider;
+            // Execute the processing flow asynchronously
+            (async () => {
+                try {
+                    // 1. Get file data
+                    const fileInfo = await (window as any).electron.readFileData(filePath);
+                    if (!fileInfo.ok) {
+                        throw new Error(fileInfo.error || 'Failed to read file data');
+                    }
 
-                const activeModel = (agentMode === 'agent' && config.agentProvider && config.agentModel)
-                    ? config.agentModel
-                    : (config.chatProvider && config.chatModel)
-                        ? config.chatModel
-                        : config.model;
+                    // Update metadata with actual read data
+                    setAttachments(prev => prev.map(a => 
+                        a.id === attachmentId 
+                            ? { 
+                                ...a, 
+                                name: fileInfo.name, 
+                                type: fileInfo.type,
+                                data: fileInfo.type.startsWith('image/') ? fileInfo.data : undefined 
+                              } 
+                            : a
+                    ));
 
-                // Vortex activates ONLY when configured with a DIFFERENT model than the active runtime.
-                // If the vision model is the same as chat/agent, we skip the extra API call
-                // and let the image flow natively through the main multimodal pipeline.
-                const isVortexDistinct = config.visionProvider && config.visionModel
-                    && !(config.visionProvider === activeProvider && config.visionModel === activeModel);
+                    // 2. Determine Vision / Vortex runtime logic
+                    const activeProvider = (agentMode === 'agent' && config.agentProvider && config.agentModel)
+                        ? config.agentProvider
+                        : (config.chatProvider && config.chatModel)
+                            ? config.chatProvider
+                            : config.provider;
 
-                const isImage = fileInfo.type.startsWith('image/');
+                    const activeModel = (agentMode === 'agent' && config.agentProvider && config.agentModel)
+                        ? config.agentModel
+                        : (config.chatProvider && config.chatModel)
+                            ? config.chatModel
+                            : config.model;
 
-                if (isImage && isVortexDistinct) {
-                    // Create pending attachment with analyzing state
-                    setAttachments(prev => [...prev, {
-                        id: attachmentId,
-                        name: fileInfo.name,
-                        type: fileInfo.type,
-                        data: fileInfo.data,
-                        isAnalyzing: true
-                    }]);
+                    const isVortexDistinct = config.visionProvider && config.visionModel
+                        && !(config.visionProvider === activeProvider && config.visionModel === activeModel);
 
-                    // Perform background analysis
-                    VisionService.describeImage(config, fileInfo.data, fileInfo.type, models)
-                        .then(description => {
-                            setAttachments(prev => prev.map(a => 
-                                a.id === attachmentId 
-                                    ? { ...a, extractedContent: description, isAnalyzing: false } 
-                                    : a
-                            ));
-                        })
-                        .catch(err => {
-                            console.error('[Vision Runtime] Analysis failed:', err);
-                            setAttachments(prev => prev.map(a => 
-                                a.id === attachmentId 
-                                    ? { ...a, isAnalyzing: false, analysisError: err.message || 'Vision analysis failed' } 
-                                    : a
-                            ));
-                        });
-                    
-                    continue; // Skip the standard extractor phase for this image as we just handled it
-                }
+                    const isImage = fileInfo.type.startsWith('image/');
 
-                // 3. Standard Extractor Phase (for non-images or native mode)
-                if (!isImage) {
-                    try {
+                    if (isImage && isVortexDistinct) {
+                        // Describe image in background
+                        const description = await VisionService.describeImage(config, fileInfo.data, fileInfo.type, models);
+                        setAttachments(prev => prev.map(a => 
+                            a.id === attachmentId 
+                                ? { ...a, extractedContent: description, isAnalyzing: false } 
+                                : a
+                        ));
+                    } else if (isImage) {
+                        // Standard image path (no description needed)
+                        setAttachments(prev => prev.map(a => 
+                            a.id === attachmentId 
+                                ? { ...a, isAnalyzing: false } 
+                                : a
+                        ));
+                    } else {
+                        // 3. Extract non-image document content using MarkItDown
                         const result = await (window as any).electron.extractFileContent({ path: filePath });
                         if (result.ok && result.data.success) {
-                            extractedContent = result.data.content;
                             console.log(`[Universal Extraction] Success for ${fileInfo.name} (${result.data.type})`);
+                            setAttachments(prev => prev.map(a => 
+                                a.id === attachmentId 
+                                    ? { ...a, extractedContent: result.data.content, isAnalyzing: false } 
+                                    : a
+                            ));
                         } else {
-                            console.warn(`[Universal Extraction] Native extraction failed for ${fileInfo.name}:`, result.error || result.data?.error);
-                            // Fallback for simple text files since we have the path now
-                            if (fileInfo.type.startsWith('text/') || fileInfo.name.match(/\.(ts|tsx|js|jsx|json|md|py|c|cpp|h|rs|go|ps1)$/i)) {
-                                // Already have the Base64 in fileInfo.data, but extraction is usually cleaner.
-                                // If extraction failed, we use the original content if possible.
-                            }
+                            throw new Error(result.error || result.data?.error || 'Extraction failed');
                         }
-                    } catch (err) {
-                        console.error(`[Universal Extraction] Critical error extracting ${fileInfo.name}:`, err);
                     }
+                } catch (err: any) {
+                    console.error(`[Native Selection] Error processing ${filePath}:`, err);
+                    setAttachments(prev => prev.map(a => 
+                        a.id === attachmentId 
+                            ? { ...a, isAnalyzing: false, analysisError: err.message || 'Analysis failed' } 
+                            : a
+                    ));
                 }
-
-                setAttachments(prev => {
-                    const newAttachment = {
-                        id: attachmentId,
-                        name: fileInfo.name,
-                        type: fileInfo.type,
-                        // Clear binary data for non-images after extraction to save RAM
-                        data: fileInfo.type.startsWith('image/') ? fileInfo.data : undefined,
-                        extractedContent: extractedContent
-                    };
-                    return [...prev, newAttachment];
-                });
-
-            } catch (err) {
-                console.error(`[Native Selection] Error processing ${filePath}:`, err);
-            }
-        }
+            })();
+        });
     };
 
     const handleRemoveAttachment = (id: string) => {
@@ -1373,22 +1383,6 @@ export const ChatArea = ({
                 </div>
             )}
 
-            {config.chatBackgroundImage && (
-                <div className="absolute inset-0 pointer-events-none z-0 transition-opacity duration-500"
-                    style={{
-                        backgroundImage: (() => {
-                            let url = config.chatBackgroundImage.replace(/\\/g, '/');
-                            if (!url.startsWith('http') && !url.startsWith('data:') && !url.startsWith('local://')) {
-                                url = `local:///${url.replace(/^\//, '')}`;
-                            }
-                            return `url("${url}")`;
-                        })(),
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                    }}
-                />
-            )}
-
             <div
                 id="chat-scroll-container"
                 key={sessionId}
@@ -1740,34 +1734,70 @@ export const ChatArea = ({
                         );
                     })}
 
-                    {/* 👁️ VISION RUNTIME: Viewing Bubble — Shows while Vortex Visual is processing */}
-                    {isViewing && (
-                        <div id="vision-viewing-bubble" className="flex justify-center w-full animate-slide-up my-4">
-                            <div className="max-w-[85%] sm:max-w-[75%] lg:max-w-[65%]">
-                                <div className="bg-slate-900/70 backdrop-blur-md rounded-2xl px-6 py-4 border vision-neon-pulse-border">
-                                    <div className="flex items-center gap-3">
-                                        <div className="relative">
-                                            <Icon name="eye" className="text-xl text-emerald-400 animate-pulse" />
-                                            <div className="absolute inset-0 rounded-full bg-emerald-400/20 animate-ping" />
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span className="text-emerald-300 text-xs font-bold tracking-widest uppercase">
-                                                Vortex Visual
-                                            </span>
-                                            <span className="text-slate-400 text-[10px] italic mt-0.5">
-                                                {t('chat.labels.vision_analyzing', { defaultValue: 'Analyzing visual context...' })}
-                                            </span>
-                                        </div>
-                                        <div className="flex gap-1 ml-4">
-                                            {[0, 150, 300].map(ms => (
-                                                <div key={ms} className="w-1.5 h-1.5 rounded-full bg-emerald-400/60" style={{ animation: `pulse 1.4s ease-in-out ${ms}ms infinite` }} />
-                                            ))}
+                    {/* 👁️ VISION & DOCUMENT RUNTIME: Viewing Bubble */}
+                    {isViewing && (() => {
+                        const analyzingImages = attachments.filter(a => a.isAnalyzing && a.type.startsWith('image/')).length;
+                        const analyzingDocs = attachments.filter(a => a.isAnalyzing && !a.type.startsWith('image/')).length;
+                        const hasBoth = analyzingImages > 0 && analyzingDocs > 0;
+
+                        let title = "Neural Link Sync";
+                        let description = t('chat.labels.neural_syncing', { defaultValue: 'Synchronizing neural components...' });
+                        let iconName = "sync";
+                        let glowColorClass = "border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)]";
+                        let textColorClass = "text-blue-300";
+                        let bulletColorClass = "bg-blue-400/60";
+
+                        if (hasBoth) {
+                            title = t('chat.labels.multimodal_integration', { defaultValue: 'Multimodal Integration' });
+                            description = t('chat.labels.multimodal_analyzing', { defaultValue: 'Synchronizing visual context and extracting document data...' });
+                            iconName = "compress-arrows-alt";
+                            glowColorClass = "border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.3)]";
+                            textColorClass = "text-indigo-300";
+                            bulletColorClass = "bg-indigo-400/60";
+                        } else if (analyzingImages > 0) {
+                            title = "Vortex Visual";
+                            description = t('chat.labels.vision_analyzing', { defaultValue: 'Analyzing visual context...' });
+                            iconName = "eye";
+                            glowColorClass = "border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.3)]";
+                            textColorClass = "text-emerald-300";
+                            bulletColorClass = "bg-emerald-400/60";
+                        } else if (analyzingDocs > 0) {
+                            title = t('chat.labels.document_processing', { defaultValue: 'Document Processing' });
+                            description = t('chat.labels.document_analyzing', { defaultValue: 'Extracting document contents via MarkItDown...' });
+                            iconName = "file-invoice";
+                            glowColorClass = "border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.3)]";
+                            textColorClass = "text-cyan-300";
+                            bulletColorClass = "bg-cyan-400/60";
+                        }
+
+                        return (
+                            <div id="vision-viewing-bubble" className="flex justify-center w-full animate-slide-up my-4">
+                                <div className="max-w-[85%] sm:max-w-[75%] lg:max-w-[65%]">
+                                    <div className={`bg-slate-900/70 backdrop-blur-md rounded-2xl px-6 py-4 border ${glowColorClass}`}>
+                                        <div className="flex items-center gap-3">
+                                            <div className="relative flex items-center justify-center">
+                                                <Icon name={iconName} className={`text-xl ${textColorClass} animate-pulse`} />
+                                                <div className={`absolute inset-0 rounded-full ${bulletColorClass.replace('/60', '/20')} animate-ping`} />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className={`${textColorClass} text-xs font-bold tracking-widest uppercase`}>
+                                                    {title}
+                                                </span>
+                                                <span className="text-slate-400 text-[10px] italic mt-0.5">
+                                                    {description}
+                                                </span>
+                                            </div>
+                                            <div className="flex gap-1 ml-4">
+                                                {[0, 150, 300].map(ms => (
+                                                    <div key={ms} className={`w-1.5 h-1.5 rounded-full ${bulletColorClass}`} style={{ animation: `pulse 1.4s ease-in-out ${ms}ms infinite` }} />
+                                                ))}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        );
+                    })()}
                     {/* Spacer to push chat up just enough for the initial unexpanded Agent Status Bar */}
                     <div className={`transition-all duration-300 ${(isLoading || pendingApproval) ? 'h-[36px]' : 'h-0'}`} />
                     

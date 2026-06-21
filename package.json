@@ -89,6 +89,7 @@
     "@tailwindcss/vite": "^4.1.18",
     "i18next": "^26.0.2",
     "mermaid": "^11.14.0",
+    "pdf-lib": "^1.17.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-i18next": "^17.0.1",

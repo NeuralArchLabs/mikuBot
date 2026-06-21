@@ -3508,3 +3508,23 @@ select.premium-input option {
   border-radius: 999px;
 }
 
+/* Custom App Background Wallpaper */
+.miku-app-wallpaper {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-size: cover;
+  background-position: center;
+  filter: blur(0px) brightness(1);
+  transform: scale(1);
+  transition: filter 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: filter, transform;
+}
+
+.miku-app-wallpaper.blurred {
+  filter: blur(24px) brightness(0.45);
+  transform: scale(1.05); /* Prevents white margins/edges during blur */
+}
+
+

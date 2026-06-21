@@ -1,7 +1,7 @@
 import React, { useMemo, useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
-import { toHtml, renderMermaidBlocks, renderSingleMermaidBlock } from '../../utils';
+import { toHtml } from '../../utils';
 import { formatFinalResponse } from '../../services/formatters';
 
 export const Icon = ({ name, className = "" }: { name: string; className?: string }) => {
@@ -248,7 +248,9 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
                                         el.classList.remove('is-typing');
                                         el.removeAttribute('data-queued-ui');
                                     } else if (el.classList.contains('mermaid')) {
-                                        renderSingleMermaidBlock(el);
+                                        import('../../utils/helpers/mermaid').then(({ renderSingleMermaidBlock }) => {
+                                            renderSingleMermaidBlock(el);
+                                        });
                                     } else if (el.classList.contains('code-block-anim')) {
                                         el.classList.remove('opacity-0', 'scale-95', 'blur-sm');
                                         el.classList.add('opacity-100', 'scale-100', 'blur-0', 'is-visible');
@@ -389,10 +391,12 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
                                         resolve();
                                     }
                                 } else if (el.classList.contains('mermaid')) {
-                                    renderSingleMermaidBlock(el);
-                                    el.setAttribute('data-animated', 'true');
-                                    el.removeAttribute('data-enqueued');
-                                    resolve();
+                                    import('../../utils/helpers/mermaid').then(({ renderSingleMermaidBlock }) => {
+                                        renderSingleMermaidBlock(el);
+                                        el.setAttribute('data-animated', 'true');
+                                        el.removeAttribute('data-enqueued');
+                                        resolve();
+                                    });
                                 } else if (el.classList.contains('code-block-anim')) {
                                     el.classList.remove('opacity-0', 'scale-95', 'blur-sm');
                                     el.classList.add('opacity-100', 'scale-100', 'blur-0', 'is-visible');
