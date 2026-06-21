@@ -47,6 +47,33 @@ PRESERVE_IMG_CLEANING = {"figure", "picture", "source"}
 CODE_INDICATORS = ["{", "(\"", "('", "\n    "]
 
 
+IFRAME_WHITELIST = {
+    "youtube.com",
+    "youtu.be",
+    "youtube-nocookie.com",
+    "vimeo.com",
+    "twitter.com",
+    "x.com",
+    "instagram.com",
+    "tiktok.com",
+    "facebook.com",
+    "spotify.com",
+    "soundcloud.com",
+}
+
+
+def _is_whitelisted_embed(element: _Element) -> bool:
+    if element.tag not in ("iframe", "embed"):
+        return False
+    for attr in ("src", "data-src", "data-lazy-src"):
+        src = element.get(attr)
+        if src:
+            src_lower = src.lower()
+            if any(domain in src_lower for domain in IFRAME_WHITELIST):
+                return True
+    return False
+
+
 def tree_cleaning(tree: HtmlElement, options: Extractor) -> HtmlElement:
     "Prune the tree by discarding unwanted elements."
     # determine cleaning strategy, use lists to keep it deterministic
@@ -69,14 +96,18 @@ def tree_cleaning(tree: HtmlElement, options: Extractor) -> HtmlElement:
     if options.focus == "recall" and tree.find(".//p") is not None:
         tcopy = deepcopy(tree)
         for expression in cleaning_list:
-            for element in tree.iter(expression):
+            for element in list(tree.iter(expression)):
+                if expression in ("iframe", "embed") and _is_whitelisted_embed(element):
+                    continue
                 delete_element(element)
         if tree.find(".//p") is None:
             tree = tcopy
     # delete targeted elements
     else:
         for expression in cleaning_list:
-            for element in tree.iter(expression):
+            for element in list(tree.iter(expression)):
+                if expression in ("iframe", "embed") and _is_whitelisted_embed(element):
+                    continue
                 delete_element(element)
 
     return prune_html(tree, options.focus)
@@ -421,8 +452,6 @@ def convert_tags(
             elem.tag = "graphic"
 
     return tree
-
-
 HTML_CONVERSIONS = {
     "list": "ul",
     "item": "li",
@@ -430,9 +459,11 @@ HTML_CONVERSIONS = {
     "quote": "blockquote",
     "head": lambda elem: f"h{int(elem.get('rend', 'h3')[1:])}",
     "lb": "br",
-    "img": "graphic",
+    "graphic": "img",
     "ref": "a",
     "hi": lambda elem: HTML_TAG_MAPPING[elem.get("rend", "#i")],
+    "row": "tr",
+    "cell": lambda elem: "th" if elem.get("role") == "head" else "td",
 }
 
 
@@ -448,6 +479,37 @@ def convert_to_html(tree: _Element) -> _Element:
         # handle attributes
         if elem.tag == "a":
             elem.set("href", elem.attrib.pop("target", ""))
+        elif elem.tag == "img":
+            src = elem.attrib.get("src", "")
+            alt = elem.attrib.get("alt", "")
+            title = elem.attrib.get("title", "")
+            # Fallback: try srcset or data-srcset if src is missing/relative
+            if not src or not (src.startswith("http://") or src.startswith("https://")):
+                for srcset_attr in ("srcset", "data-srcset"):
+                    srcset_val = elem.attrib.get(srcset_attr, "")
+                    if srcset_val:
+                        # Pick the first URL from srcset (format: "url 300w, url2 600w")
+                        first_entry = srcset_val.strip().split(",")[0].strip().split(" ")[0]
+                        if first_entry.startswith("http"):
+                            src = first_entry
+                            break
+            # Try data-src if still no src
+            if not src or not (src.startswith("http://") or src.startswith("https://")):
+                data_src = elem.attrib.get("data-src", "")
+                if data_src.startswith("http"):
+                    src = data_src
+            elem.attrib.clear()
+            if src and (src.startswith("http://") or src.startswith("https://")):
+                from urllib.parse import quote_plus
+                elem.set("src", f"/proxify?url={quote_plus(src)}")
+                elem.set("loading", "lazy")
+            elif src:
+                elem.set("src", src)
+                elem.set("loading", "lazy")
+            if alt:
+                elem.set("alt", alt)
+            if title:
+                elem.set("title", title)
         else:
             elem.attrib.clear()
     tree.tag = "body"

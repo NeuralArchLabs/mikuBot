@@ -453,6 +453,32 @@ def handle_table(table_elem: _Element, potential_tags: Set[str], options: Extrac
     return None
 
 
+def handle_embed(element: Optional[_Element], options: Optional[Extractor] = None) -> Optional[_Element]:
+    "Process iframe and embed elements."
+    if element is None:
+        return None
+
+    processed_element = Element(element.tag)
+    for attr in ("src", "data-src", "width", "height", "allowfullscreen", "frameborder"):
+        val = element.get(attr)
+        if val is not None:
+            processed_element.set(attr, val)
+
+    src = processed_element.get("src") or processed_element.get("data-src")
+    if src and not src.startswith("http"):
+        if options is not None and options.url is not None:
+            src = urljoin(options.url, src)
+            processed_element.set("src", src)
+
+    if not processed_element.get("src") and processed_element.get("data-src"):
+        processed_element.set("src", processed_element.get("data-src"))
+
+    if not processed_element.get("src"):
+        return None
+
+    return processed_element
+
+
 def handle_image(element: Optional[_Element], options: Optional[Extractor] = None) -> Optional[_Element]:
     "Process image elements and their relevant attributes."
     if element is None:
@@ -519,6 +545,8 @@ def handle_textelem(element: _Element, potential_tags: Set[str], options: Extrac
         new_element = handle_table(element, potential_tags, options)
     elif element.tag == 'graphic' and 'graphic' in potential_tags:
         new_element = handle_image(element, options)
+    elif element.tag in ('iframe', 'embed') and element.tag in potential_tags:
+        new_element = handle_embed(element, options)
     else:
         # other elements (div, ??, ??)
         new_element = handle_other_elements(element, potential_tags, options)
@@ -589,7 +617,7 @@ def _extract(tree: HtmlElement, options: Extractor) -> Tuple[_Element, str, Set[
     if options.tables is True:
         potential_tags.update(['table', 'td', 'th', 'tr'])
     if options.images is True:
-        potential_tags.add('graphic')
+        potential_tags.update(['graphic', 'iframe', 'embed'])
     if options.links is True:
         potential_tags.add('ref')
     result_body = Element('body')

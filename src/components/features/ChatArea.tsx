@@ -1434,9 +1434,9 @@ export const ChatArea = ({
                                 {msg.role === 'system' ? (
                                     <div className={`max-w-[70%] rounded-md px-3 py-2 text-[11px] font-mono border ${msg.isScheduler
                                         ? (msg.isScheduledResponse
-                                            ? 'bg-indigo-900/20 border-indigo-500/30 text-indigo-300'
-                                            : 'bg-orange-900/20 border-orange-500/30 text-orange-300')
-                                        : 'bg-amber-900/20 border-amber-800/30 text-amber-300/80'
+                                            ? 'bg-indigo-950/85 border-indigo-500/40 text-indigo-200'
+                                            : 'bg-orange-950/85 border-orange-500/40 text-orange-200')
+                                        : 'bg-amber-950/85 border-amber-800/40 text-amber-200'
                                         }`}>
                                         <MarkdownRenderer content={msg.text} />
                                     </div>

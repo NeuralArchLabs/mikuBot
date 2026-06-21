@@ -132,6 +132,8 @@ OVERALL_DISCARD_XPATH = [XPath(x) for x in (
     or contains(@class, "outbrain") or contains(@class, "taboola")
     or contains(@class, "criteo") or contains(@class, "options") or contains(@class, "expand")
     or contains(@class, "consent") or contains(@class, "modal-content")
+    or contains(@class, "feed-") or contains(@class, "most-read")
+    or contains(@class, "related-themes") or contains(@class, "recommend")
     or contains(@class, " ad ") or contains(@class, "permission")
     or contains(@class, "next-") or contains(@class, "-stories")
     or contains(@class, "most-popular") or contains(@class, "mol-factbox")

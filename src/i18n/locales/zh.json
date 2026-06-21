@@ -538,6 +538,7 @@
         "protocol_reinforcement": "协议强化",
         "useful_reminders": "有用提醒",
         "user_message": "用户消息",
+        "scheduled_task": "已分配任务",
         "contained_files": "包含文件上下文",
         "file": "文件",
         "content": "内容"

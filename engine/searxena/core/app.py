@@ -104,6 +104,7 @@ async def save_settings(request: Request):
     general = current.get("general", {})
     general["safe_search"] = int(form.get("safesearch", 0))
     general["default_lang"] = form.get("language", "es")
+    general["default_region"] = form.get("region", "MX").upper()
     general["autocomplete"] = form.get("autocomplete", "google")
     current["general"] = general
 
@@ -119,24 +120,34 @@ from fastapi.responses import StreamingResponse
 @app.get("/proxify")
 async def proxify(url: str):
     """Proxy local para imágenes y recursos externos para proteger la IP del usuario."""
-    if not url: return Response(status_code=400)
-    
-    # Intentar limpiar URLs de Google que a veces vienen mal
+    if not url:
+        return Response(status_code=400)
+
+    # Limpiar URLs de Google redirect
     if "google.com/url?q=" in url:
-        from urllib.parse import unquote
         url = unquote(url.split("?q=")[1].split("&")[0])
-        
+
     # Arreglar URLs relativas de Wikipedia
     if url.startswith("//"):
         url = "https:" + url
 
+    # Rechazar URLs que no sean HTTP(S) — evita SSRF a recursos internos
+    if not url.startswith("http://") and not url.startswith("https://"):
+        return Response(status_code=400)
+
     async def stream_resource():
         client = await manager.get_client()
         try:
-            # Limitar tamaño de descarga a 10MB para evitar OOM y abusos
             max_size = 10 * 1024 * 1024
             downloaded = 0
-            async with client.stream("GET", url, timeout=10.0) as resp:
+            from utils import gen_useragent
+            headers = {
+                "User-Agent": gen_useragent(),
+                "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+                "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
+                "Connection": "keep-alive"
+            }
+            async with client.stream("GET", url, headers=headers, timeout=10.0) as resp:
                 if resp.status_code == 200:
                     async for chunk in resp.aiter_bytes():
                         downloaded += len(chunk)
@@ -146,10 +157,9 @@ async def proxify(url: str):
         except Exception:
             pass
 
-    headers = {
-        "Cache-Control": "public, max-age=604800" # Cachear localmente por una semana
-    }
-    return StreamingResponse(stream_resource(), media_type="image/png", headers=headers)
+    headers = {"Cache-Control": "public, max-age=604800"}
+    return StreamingResponse(stream_resource(), media_type="image/jpeg", headers=headers)
+
 
 # Meta-búsqueda orquestada con paginación
 @app.get("/search")
@@ -169,6 +179,11 @@ async def search(request: Request):
 
     lang = manager.settings.get("general", {}).get("default_lang", "es")
 
+    # Detect reload/refresh request headers to bypass caching
+    cache_control = request.headers.get("Cache-Control", "")
+    pragma = request.headers.get("Pragma", "")
+    bypass_cache = "no-cache" in cache_control or "max-age=0" in cache_control or "no-cache" in pragma
+
     # Sistema de Bangs (SearXNG style)
     if q.startswith("!"):
         parts = q.split(" ", 1)
@@ -187,9 +202,9 @@ async def search(request: Request):
         search_q = q if any(w in q.lower() for w in ["comprar", "precio", "oferta", "tienda"]) else f"{q} comprar"
         
         # Petición única y normal, sin paginaciones dobles raras.
-        results, infoboxes = await manager.search(search_q, category=category, pageno=pageno, lang=lang)
+        results, infoboxes = await manager.search(search_q, category=category, pageno=pageno, lang=lang, bypass_cache=bypass_cache)
     else:
-        results, infoboxes = await manager.search(q, category=category, pageno=pageno, lang=lang)
+        results, infoboxes = await manager.search(q, category=category, pageno=pageno, lang=lang, bypass_cache=bypass_cache)
     
     # Filtrado y reorganización inteligente para compras
     reorganized = []
@@ -229,12 +244,26 @@ async def search(request: Request):
             
     if category == "shopping":
         results = reorganized
-    
+
+    # Sanitizar img_src y thumbnail_src: eliminar URLs relativas o inválidas
+    # antes de que lleguen al template para evitar loops de recarga en onerror
+    def _is_valid_img_url(u):
+        return bool(u) and (u.startswith("http://") or u.startswith("https://") or u.startswith("data:image/"))
+
+    for r in results + infoboxes:
+        if not _is_valid_img_url(r.get("img_src")):
+            r.pop("img_src", None)
+        if not _is_valid_img_url(r.get("thumbnail_src")):
+            r.pop("thumbnail_src", None)
+        if "domain" not in r and r.get("url"):
+            r["domain"] = urlparse(r["url"]).netloc.lower()
+
     # Los infoboxes (como OSM) son esenciales en General y Mapas
     if category in ["general", "maps"]:
         full_results = infoboxes + results
     else:
         full_results = results
+
 
     # Sistema de Sugerencias Pro dinámicas
     tips_pool = [
@@ -266,11 +295,6 @@ async def search(request: Request):
     return response
 
 # --- API endpoints para IA / LLMs ---
-
-@app.get("/api/v1/status")
-async def api_status():
-    """Endpoint de salud del motor."""
-    return {"status": "online", "version": "1.4.0"}
 
 class ToolSearchRequest(BaseModel):
     query: str = Field(..., description="Término de búsqueda.")

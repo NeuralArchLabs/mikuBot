@@ -1795,7 +1795,7 @@ To see all your additional enabled skills and their full technical parameters, y
             if (ctx.isScheduled && instructionData.scheduledReinforcement) {
                 combinedReinforcement.push(instructionData.scheduledReinforcement);
             }
-            if (instructionData.reinforcement) {
+            if (instructionData.reinforcement && !ctx.isScheduled) {
                 combinedReinforcement.push(instructionData.reinforcement);
             }
 
@@ -1817,7 +1817,10 @@ To see all your additional enabled skills and their full technical parameters, y
             }
 
             let finalUserText = userMsgText;
-            if (combinedReinforcement.length > 0) {
+            if (ctx.isScheduled) {
+                const taskLabel = t('chat.labels.prompt.scheduled_task', { defaultValue: 'TAREA ASIGNADA' });
+                finalUserText = `${instructionData.scheduledReinforcement || ''}\n\n[${taskLabel}]\n${userMsgText}${attachmentsBlock}`;
+            } else if (combinedReinforcement.length > 0) {
                 const isAgent = ctx.getEffectiveMode(currentState.agentMode) !== 'chat';
                 const headerKey = isAgent ? 'chat.labels.prompt.protocol_reinforcement' : 'chat.labels.prompt.useful_reminders';
                 const headerLabel = t(headerKey, { defaultValue: isAgent ? 'PROTOCOL REINFORCEMENT' : 'USEFUL REMINDERS' });

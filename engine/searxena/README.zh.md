@@ -5,8 +5,12 @@
 
   <img src="core/static/searxena-banner-v2.svg" alt="searXena Logo" width="600"/>
 
+**Search locally, search privately, search the old way.**
+
   <p>
-    **Search locally, search privately, search the old way.**
+    
+  <br><p>
+   
 
   <p>
     <img src="https://img.shields.io/badge/O--ZEN_Engine-2.0.0-6a00ff?style=for-the-badge&logoColor=white" alt="O-ZEN Engine"/>

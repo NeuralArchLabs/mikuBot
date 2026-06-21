@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ {'en': 'Preferences', 'zh': '偏好设置'}.get(lang, 'Preferencias') }} - searXena</title>
-    
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css?v=3.7">
     <link rel="icon" type="image/jpeg" href="/static/favIcon.jpg">
     <meta name="referrer" content="no-referrer">
@@ -122,6 +122,27 @@
                             </option>
                             <option value="zh" {% if general.get('default_lang')=='zh' %}selected{% endif %}>中文
                                 (Chinese)</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <h3>{{ {'en': 'Search Region', 'zh': '搜索地区'}.get(lang, 'Región de búsqueda') }}</h3>
+                            <p>{{ {'en': 'Filter and prioritize results by country or region.', 'zh': '按国家或地区过滤并优先显示结果。'}.get(lang,
+                                'Filtrar y priorizar resultados por país o región.') }}</p>
+                        </div>
+                        <select name="region" class="select-custom" title="Seleccionar región">
+                            <option value="MX" {% if general.get('default_region', 'MX')=='MX' %}selected{% endif %}>México (MX)</option>
+                            <option value="ES" {% if general.get('default_region')=='ES' %}selected{% endif %}>España (ES)</option>
+                            <option value="US" {% if general.get('default_region')=='US' %}selected{% endif %}>United States (US)</option>
+                            <option value="BR" {% if general.get('default_region')=='BR' %}selected{% endif %}>Brasil (BR)</option>
+                            <option value="AR" {% if general.get('default_region')=='AR' %}selected{% endif %}>Argentina (AR)</option>
+                            <option value="CL" {% if general.get('default_region')=='CL' %}selected{% endif %}>Chile (CL)</option>
+                            <option value="CO" {% if general.get('default_region')=='CO' %}selected{% endif %}>Colombia (CO)</option>
+                            <option value="GB" {% if general.get('default_region')=='GB' %}selected{% endif %}>United Kingdom (GB)</option>
+                            <option value="DE" {% if general.get('default_region')=='DE' %}selected{% endif %}>Deutschland (DE)</option>
+                            <option value="FR" {% if general.get('default_region')=='FR' %}selected{% endif %}>France (FR)</option>
+                            <option value="IT" {% if general.get('default_region')=='IT' %}selected{% endif %}>Italia (IT)</option>
                         </select>
                     </div>
 

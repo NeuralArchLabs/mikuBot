@@ -17,6 +17,8 @@ def request(query, params):
     }
     params["url"] = f"https://search.yahoo.com/search?{urlencode(query_params)}"
     params["headers"]["Accept-Language"] = f"{lang_code},{lang};q=0.9,en;q=0.8"
+    params["headers"]["Accept-Encoding"] = "gzip, deflate"
+    params["headers"]["Referer"] = "https://search.yahoo.com/"
 
 def response(resp):
     results = []
@@ -31,15 +33,15 @@ def response(resp):
             # Yahoo suele usar redirecciones
             if "r.search.yahoo.com" in url:
                 try:
-                    # Intento de limpieza rapida
                     if '/RU=' in url:
                         url = unquote(url.split('/RU=')[1].split('/RK=')[0])
                 except: pass
-                
-            results.append({
-                "title": title_node.text().strip(),
-                "url": url,
-                "content": snippet_node.text().strip() if snippet_node else "Información de Yahoo Search.",
-                "source": "yahoo"
-            })
+
+            if url and url.startswith('http') and "yahoo.com" not in url:
+                results.append({
+                    "title": title_node.text().strip(),
+                    "url": url,
+                    "content": snippet_node.text().strip() if snippet_node else "Información de Yahoo Search.",
+                    "source": "yahoo"
+                })
     return results

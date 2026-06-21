@@ -4,6 +4,7 @@ from urllib.parse import urlencode
 
 CATEGORIES = ["images"]
 WEIGHT = 2.0
+HTTP2 = True
 
 async def request(query, params):
     # Usar el cliente compartido para obtener el VQD

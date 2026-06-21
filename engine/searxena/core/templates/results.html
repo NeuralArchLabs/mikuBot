@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ query }} - searXena</title>
-    
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css?v=3.6">
     <link rel="icon" type="image/jpeg" href="/static/favIcon.jpg">
     <meta name="referrer" content="no-referrer">
@@ -83,10 +83,10 @@
                     {% if featured.source == 'wikipedia' or 'wikimedia' in featured.img_src %}
                     <img src="{{ featured.img_src if featured.img_src.startswith('http') else 'https:' ~ featured.img_src }}"
                         alt="Info Image" class="featured-image"
-                        onerror="this.onerror=null; this.src='/static/placeholder.png'; this.style.opacity='0';">
+                        onerror="this.onerror=null; this.style.opacity='0'; this.style.display='none';">
                     {% else %}
                     <img src="/proxify?url={{ featured.img_src | urlencode }}" alt="Info Image" class="featured-image"
-                        onerror="this.onerror=null; this.src='/static/placeholder.png'; this.style.opacity='0';">
+                        onerror="this.onerror=null; this.style.opacity='0'; this.style.display='none';">
                     {% endif %}
                     {% endif %}
                     <div class="infobox-body-main">
@@ -126,9 +126,10 @@
                     data-content="{{ result.source|default('') }}" 
                     data-url="{{ result.url|e }}"
                     data-full-img="/proxify?url={{ (result.img_src or result.thumbnail_src) | urlencode }}"
-                    data-icon="https://www.google.com/s2/favicons?sz=64&domain={{ result.url|urlencode }}">
+                    data-icon="/proxify?url={{ ('https://www.google.com/s2/favicons?sz=64&domain=' ~ result.domain) | urlencode }}"
+                    data-domain="{{ result.domain }}">
                     <img src="/proxify?url={{ (result.thumbnail_src or result.img_src) | urlencode }}"
-                        alt="{{ result.title }}" loading="lazy" onerror="this.src='/static/placeholder.png';">
+                        alt="{{ result.title }}" loading="lazy" onerror="this.onerror=null; this.src='/static/placeholder.png';">
                     <div class="image-info">
                         <div class="image-source">{{ result.sources|join(', ') }}</div>
                         <div class="image-title-text">{{ result.title }}</div>
@@ -146,11 +147,12 @@
                     data-title="{{ result.title|striptags|e }}" 
                     data-content="{{ result.content|striptags|e }}" 
                     data-url="{{ result.url|e }}"
-                    data-icon="https://www.google.com/s2/favicons?sz=64&domain={{ result.url|urlencode }}">
+                    data-icon="/proxify?url={{ ('https://www.google.com/s2/favicons?sz=64&domain=' ~ result.domain) | urlencode }}"
+                    data-domain="{{ result.domain }}">
                     {% if result.img_src or result.thumbnail_src %}
                     <a href="{{ result.url }}" target="_blank" rel="noopener noreferrer nofollow">
                         <img src="/proxify?url={{ (result.img_src or result.thumbnail_src) | urlencode }}"
-                            class="video-thumb" alt="{{ result.title }}" onerror="this.src='/static/placeholder.png';">
+                            class="video-thumb" alt="{{ result.title }}" onerror="this.onerror=null; this.src='/static/placeholder.png';">
                     </a>
                     {% endif %}
                     <div class="video-details">
@@ -160,8 +162,18 @@
                         </div>
                         <a href="{{ result.url }}" class="video-title" target="_blank"
                             rel="noopener noreferrer nofollow">{{ result.title|safe }}</a>
-                        <p class="result-content">{{ result.content|safe }}</p>
+                        <div class="result-url-line">
+                            <span class="result-url-text" title="{{ result.url }}">{{ result.url }}</span>
+                        </div>
+                        <p class="result-content" style="margin-bottom: 0;">{{ result.content|safe }}</p>
                     </div>
+                    <a href="/extract?url={{ result.url | urlencode }}" class="reader-link-badge video-badge" onclick="event.stopPropagation();" title="{{ {'en': 'Reader Mode', 'zh': 'Modo Lectura'}.get(lang, 'Modo Lectura') }}">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                        <span>{{ {'en': 'Watch', 'zh': '观看'}.get(lang, 'Ver') }}</span>
+                    </a>
                 </div>
                 {% endfor %}
             </div>
@@ -174,21 +186,34 @@
                     data-title="{{ result.title|striptags|e }}" 
                     data-content="{{ result.content|striptags|e }}" 
                     data-url="{{ result.url|e }}"
-                    data-icon="https://www.google.com/s2/favicons?sz=64&domain={{ result.url|urlencode }}">
+                    data-icon="/proxify?url={{ ('https://www.google.com/s2/favicons?sz=64&domain=' ~ result.domain) | urlencode }}"
+                    data-domain="{{ result.domain }}"
+                    {% if result.img_src or result.thumbnail_src %}
+                    data-full-img="/proxify?url={{ (result.img_src or result.thumbnail_src) | urlencode }}"
+                    {% endif %}>
                     {% if result.img_src or result.thumbnail_src %}
                     <div class="shopping-image-container">
                         <img src="/proxify?url={{ (result.img_src or result.thumbnail_src) | urlencode }}"
                             class="shopping-thumb" alt="{{ result.title }}"
-                            onerror="this.parentElement.style.display='none';">
+                            onerror="this.onerror=null; this.parentElement.style.display='none';">
                     </div>
                     {% else %}
                     <div class="shopping-image-container no-image">
-                        <img src="/proxify?url={{ ('https://www.google.com/s2/favicons?sz=128&domain=' ~ result.url) | urlencode }}"
-                            class="shopping-store-icon" alt="Favicon" onerror="this.style.display='none';">
+                        <img src="/proxify?url={{ ('https://www.google.com/s2/favicons?sz=128&domain=' ~ result.domain) | urlencode }}"
+                            class="shopping-store-icon" alt="Favicon" 
+                            onerror="handleFaviconError(this, '{{ result.domain }}')">
                     </div>
                     {% endif %}
                     <div class="shopping-body">
                         <div class="shopping-title">{{ result.title|safe }}</div>
+                        {% if result.rating %}
+                        <div class="shopping-rating" title="{{ result.rating }}">
+                            <span class="stars">★</span> {{ result.rating.split(' ')[0] }}
+                            {% if result.reviews %}
+                            <span class="shopping-reviews">({{ result.reviews }})</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
                         {% if result.price %}
                         <div class="shopping-price">{{ result.price }}</div>
                         {% endif %}
@@ -239,23 +264,30 @@
                 data-content="{{ result.content|striptags|e }}" 
                 data-url="{{ result.url|e }}"
                 data-source="{{ result.sources|join(', ')|e }}"
-                data-icon="https://www.google.com/s2/favicons?sz=64&domain={{ result.url|urlencode }}">
+                data-icon="/proxify?url={{ ('https://www.google.com/s2/favicons?sz=64&domain=' ~ result.domain) | urlencode }}"
+                data-domain="{{ result.domain }}"
+                {% if result.img_src or result.thumbnail_src %}
+                data-full-img="/proxify?url={{ (result.img_src or result.thumbnail_src) | urlencode }}"
+                {% endif %}>
                 <div class="result-card-inner">
                     <div class="result-body">
                         <div class="result-header">
                             <div class="title-container">
-                                <img src="/proxify?url={{ ('https://www.google.com/s2/favicons?sz=32&domain=' ~ result.url) | urlencode }}"
-                                    alt="Favicon" class="result-favicon" onerror="this.style.opacity='0';">
+                                <img src="/proxify?url={{ ('https://www.google.com/s2/favicons?sz=32&domain=' ~ result.domain) | urlencode }}"
+                                    alt="Favicon" class="result-favicon" 
+                                    onerror="handleFaviconError(this, '{{ result.domain }}')">
                                 <a href="{{ result.url }}" class="result-title" target="_blank"
                                     rel="noopener noreferrer nofollow">{{ result.title|safe }}</a>
                             </div>
                         </div>
                         <div class="result-url-line">
                             <span class="result-url-text" title="{{ result.url }}">{{ result.url }}</span>
+                            {% if not (result.img_src or result.thumbnail_src) %}
                             <a href="/extract?url={{ result.url | urlencode }}" class="reader-link-badge" title="{{ {'en': 'Reader Mode', 'zh': '阅读模式'}.get(lang, 'Modo Lectura') }}">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
                                 <span>{{ {'en': 'Read', 'zh': '阅读'}.get(lang, 'Leer') }}</span>
                             </a>
+                            {% endif %}
                         </div>
 
                         {% if result.price %}
@@ -271,10 +303,16 @@
                         </div>
                     </div>
                     {% if result.img_src or result.thumbnail_src %}
-                    <div class="result-thumbnail-container">
-                        <img src="/proxify?url={{ (result.thumbnail_src or result.img_src) | urlencode }}"
-                            alt="{{ result.title }}" class="result-thumbnail"
-                            onerror="this.parentElement.style.display='none';">
+                    <div class="result-aside">
+                        <div class="result-thumbnail-container">
+                            <img src="/proxify?url={{ (result.thumbnail_src or result.img_src) | urlencode }}"
+                                alt="{{ result.title }}" class="result-thumbnail"
+                                onerror="this.onerror=null; this.parentElement.style.display='none';">
+                        </div>
+                        <a href="/extract?url={{ result.url | urlencode }}" class="reader-link-badge" title="{{ {'en': 'Reader Mode', 'zh': '阅读模式'}.get(lang, 'Modo Lectura') }}">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                            <span>{{ {'en': 'Read', 'zh': '阅读'}.get(lang, 'Leer') }}</span>
+                        </a>
                     </div>
                     {% endif %}
                 </div>
@@ -311,10 +349,10 @@
                 {% if info.img_src %}
                 {% if info.source == 'wikipedia' or 'wikimedia' in info.img_src %}
                 <img src="{{ info.img_src if info.img_src.startswith('http') else 'https:' ~ info.img_src }}" alt=""
-                    class="infobox-image" onerror="this.style.display='none';">
+                    class="infobox-image" onerror="this.onerror=null; this.style.display='none';">
                 {% else %}
                 <img src="/proxify?url={{ info.img_src | urlencode }}" alt="" class="infobox-image"
-                    onerror="this.style.display='none';">
+                    onerror="this.onerror=null; this.style.display='none';">
                 {% endif %}
                 {% endif %}
                 <p class="infobox-content-sidebar">{{ info.content|striptags }}</p>
@@ -337,20 +375,21 @@
                 <div id="preview-pane" class="preview-container sidebar-box">
                     <div class="preview-close-btn" onclick="closePreview()">×</div>
                     <div class="preview-header">
-                        <img id="preview-icon" src="" alt="" class="preview-favicon">
+                        <img id="preview-icon" src="" alt="" class="preview-favicon" onerror="handleFaviconError(this, this.dataset.domain)">
                         <h3 id="preview-title" class="preview-title"></h3>
                     </div>
                     <div id="preview-url" class="preview-url"></div>
                     
                     <!-- Area para preview de imagen grande -->
                     <div id="preview-image-container" class="preview-image-container" onclick="openLightbox()">
-                        <img id="preview-image-main" src="" alt="Full Preview" class="preview-image-main">
+                        <img id="preview-image-main" src="" alt="" class="preview-image-main"
+                            onerror="this.onerror=null; this.parentElement.style.display='none';">
                     </div>
 
                     <p id="preview-content" class="preview-content-text"></p>
                     <div class="preview-actions">
                         <a id="preview-link" href="#" target="_blank" class="preview-btn-main">{{ {'en': 'Visit Website', 'zh': '访问网站'}.get(lang, 'Visitar Sitio Web') }}</a>
-                        <a id="preview-reader-link" href="#" class="preview-btn-reader">{{ {'en': 'Reader Mode', 'zh': 'Modo Lectura'}.get(lang, 'Modo Lectura') }}</a>
+                        <a id="preview-reader-link" href="#" class="preview-btn-reader">{{ {'en': 'Read with O-Zen', 'zh': '使用 O-Zen 阅读'}.get(lang, 'Leer con O-Zen') }}</a>
                     </div>
                 </div>
 

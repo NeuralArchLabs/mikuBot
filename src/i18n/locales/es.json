@@ -561,6 +561,7 @@
         "protocol_reinforcement": "REFUERZO DE PROTOCOLO",
         "useful_reminders": "RECORDATORIOS ÚTILES",
         "user_message": "MENSAJE DEL USUARIO",
+        "scheduled_task": "TAREA ASIGNADA",
         "contained_files": "CONTEXTO DE ARCHIVOS ADJUNTOS",
         "file": "ARCHIVO",
         "content": "CONTENIDO"

@@ -2,17 +2,16 @@ from selectolax.parser import HTMLParser
 from urllib.parse import urlencode
 from utils import LANGUAGE_MAP
 
-CATEGORIES = ["general"]
-WEIGHT = 3.0
+CATEGORIES = ["news"]
+WEIGHT = 1.0
 
 def request(query, params):
-    # Startpage requires POST for search recently to prevent basic scraping
     lang = params.get("language", "es")
     sp_lang = LANGUAGE_MAP.get("startpage", {}).get(lang, "english")
     
     query_params = {
         "query": query,
-        "cat": "web",
+        "cat": "news",
         "cmd": "process_search",
         "language": sp_lang,
         "engine0": "v1all",
@@ -34,18 +33,26 @@ def response(resp):
     results = []
     tree = HTMLParser(resp.text)
 
-    # Selectores modernos y fallback
-    for node in tree.css('div.result, article.result, .w-gl__result'):
-        title_link = node.css_first('a.w-gl__result-title, a.result-link, a.result-title, h2 a, h3 a')
-        snippet_node = node.css_first('p.w-gl__result-description, p.description, .result-snippet, .description')
+    # Startpage News
+    for node in tree.css('div.article, .article, div.result, article.result'):
+        title_link = node.css_first('a.article-title, a.result-link, h3 a, h2 a')
+        snippet_node = node.css_first('p.article-snippet, p.description, .result-snippet')
+        source_node = node.css_first('span.article-source, .source')
+        time_node = node.css_first('span.article-date, .time, .date')
 
         if title_link:
             url = title_link.attributes.get('href', '')
             if url and url.startswith('http') and "startpage.com" not in url:
+                source_txt = source_node.text().strip() if source_node else "Noticia"
+                time_txt = time_node.text().strip() if time_node else ""
+                
+                content_prefix = f"{source_txt} ({time_txt}): " if time_txt else f"{source_txt}: "
+                snippet_txt = snippet_node.text().strip() if snippet_node else ""
+                
                 results.append({
                     "title": title_link.text().strip(),
                     "url": url,
-                    "content": snippet_node.text().strip() if snippet_node else "",
-                    "source": "startpage"
+                    "content": content_prefix + snippet_txt,
+                    "source": "startpage_news"
                 })
     return results

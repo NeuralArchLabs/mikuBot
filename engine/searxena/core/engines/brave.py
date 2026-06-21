@@ -9,6 +9,7 @@ def request(query, params):
     lang = params.get("language", "es")
     params["url"] = f"https://search.brave.com/search?q={query}&offset={offset}&source=web&hl={lang}"
     params["headers"]["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+    params["headers"]["Accept-Encoding"] = "gzip, deflate"
 
 def response(resp):
     results = []

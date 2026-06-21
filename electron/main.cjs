@@ -580,6 +580,78 @@ function reinitSafePathResolver(workspacePath) {
 function ensureWorkspaceStructure(targetPath) {
     const paths = getEffectivePaths();
     if (!fs.existsSync(paths.sessions)) fs.mkdirSync(paths.sessions, { recursive: true });
+
+    try {
+        const coreBasePath = path.join(resourcesPath, 'core', 'base');
+        const backgroundsBasePath = path.join(resourcesPath, 'backgrounds');
+        const workspaceCommandsPath = path.join(targetPath, 'commands');
+        const workspaceBackgroundsPath = path.join(targetPath, 'backgrounds');
+
+        // 1. Copy modes.md, tool_usage_library.md, tools.md
+        const staticFiles = ['MODES.md', 'TOOL_USAGE_LIBRARY.md', 'TOOLS.MD'];
+        if (fs.existsSync(coreBasePath)) {
+            if (!fs.existsSync(workspaceCommandsPath)) {
+                fs.mkdirSync(workspaceCommandsPath, { recursive: true });
+            }
+            for (const file of staticFiles) {
+                const srcFile = path.join(coreBasePath, file);
+                if (fs.existsSync(srcFile)) {
+                    let destFile = path.join(workspaceCommandsPath, file);
+                    try {
+                        const existingFiles = fs.readdirSync(workspaceCommandsPath);
+                        const matched = existingFiles.find(f => f.toLowerCase() === file.toLowerCase());
+                        if (matched) {
+                            destFile = path.join(workspaceCommandsPath, matched);
+                        }
+                    } catch (readErr) {
+                        // Directory might not exist yet
+                    }
+                    console.log(`[AutoUpdate] Overwriting static file in workspace: ${destFile}`);
+                    fs.cpSync(srcFile, destFile, { force: true });
+                }
+            }
+
+            // 2. Copy skills folder (item by item)
+            const srcSkills = path.join(coreBasePath, 'skills');
+            const destSkills = path.join(workspaceCommandsPath, 'skills');
+            if (fs.existsSync(srcSkills)) {
+                if (!fs.existsSync(destSkills)) {
+                    fs.mkdirSync(destSkills, { recursive: true });
+                }
+                try {
+                    const items = fs.readdirSync(srcSkills);
+                    for (const item of items) {
+                        const srcItem = path.join(srcSkills, item);
+                        const destItem = path.join(destSkills, item);
+                        console.log(`[AutoUpdate] Overwriting/Adding skill item in workspace: ${item}`);
+                        fs.cpSync(srcItem, destItem, { recursive: true, force: true });
+                    }
+                } catch (readErr) {
+                    console.error('[AutoUpdate] Failed to read/copy skills items:', readErr.message);
+                }
+            }
+        }
+
+        // 3. Copy backgrounds folder (item by item)
+        if (fs.existsSync(backgroundsBasePath)) {
+            if (!fs.existsSync(workspaceBackgroundsPath)) {
+                fs.mkdirSync(workspaceBackgroundsPath, { recursive: true });
+            }
+            try {
+                const items = fs.readdirSync(backgroundsBasePath);
+                for (const item of items) {
+                    const srcItem = path.join(backgroundsBasePath, item);
+                    const destItem = path.join(workspaceBackgroundsPath, item);
+                    console.log(`[AutoUpdate] Overwriting/Adding background item in workspace: ${item}`);
+                    fs.cpSync(srcItem, destItem, { recursive: true, force: true });
+                }
+            } catch (readErr) {
+                console.error('[AutoUpdate] Failed to read/copy background items:', readErr.message);
+            }
+        }
+    } catch (e) {
+        console.error('[AutoUpdate] Failed to sync static files/folders:', e.message);
+    }
 }
 
 // Structural check moved to app.whenReady

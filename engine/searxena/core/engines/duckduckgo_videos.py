@@ -4,6 +4,7 @@ from urllib.parse import urlencode
 
 CATEGORIES = ["videos"]
 WEIGHT = 1.3
+HTTP2 = True
 
 async def request(query, params):
     client = params['client']

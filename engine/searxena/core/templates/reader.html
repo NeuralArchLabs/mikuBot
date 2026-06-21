@@ -4,50 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ data.metadata.title }} | searXena Reader</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;600&family=Outfit:wght@300;400;700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/jpeg" href="/static/favIcon.jpg">
     <style>
-        @font-face {
-            font-family: 'Outfit';
-            src: url('/static/fonts/Outfit-Regular.ttf') format('truetype');
-            font-weight: 400;
-            font-style: normal;
-        }
-        @font-face {
-            font-family: 'Outfit';
-            src: url('/static/fonts/Outfit-Bold.ttf') format('truetype');
-            font-weight: 700;
-            font-style: normal;
-        }
-        @font-face {
-            font-family: 'Lexend';
-            src: url('/static/fonts/Lexend-300.ttf') format('truetype');
-            font-weight: 300;
-            font-style: normal;
-        }
-        @font-face {
-            font-family: 'Lexend';
-            src: url('/static/fonts/Lexend-400.ttf') format('truetype');
-            font-weight: 400;
-            font-style: normal;
-        }
-        @font-face {
-            font-family: 'Lexend';
-            src: url('/static/fonts/Lexend-600.ttf') format('truetype');
-            font-weight: 600;
-            font-style: normal;
-        }
-
         :root {
             --bg: #0a0a0c;
             --surface: #121216;
+            --surface-2: #1a1a20;
             --accent: #ff4d4d;
+            --accent-dim: rgba(255, 77, 77, 0.15);
             --text-primary: #f0f0f5;
             --text-secondary: #a0a0aa;
+            --text-body: #d1d1d8;
             --glass: rgba(255, 255, 255, 0.03);
             --border: rgba(255, 255, 255, 0.08);
+            --border-strong: rgba(255, 255, 255, 0.14);
             --font-outfit: 'Outfit', sans-serif;
             --font-lexend: 'Lexend', sans-serif;
+            --max-width: 780px;
+            --img-radius: 14px;
         }
+
+        * { box-sizing: border-box; }
 
         body {
             margin: 0;
@@ -55,31 +33,35 @@
             background: var(--bg);
             color: var(--text-primary);
             font-family: var(--font-lexend);
-            line-height: 1.7;
+            line-height: 1.75;
             overflow-x: hidden;
         }
 
+        /* ── Background ambiance ── */
         .gradient-blur {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle at 10% 20%, rgba(255, 77, 77, 0.05) 0%, transparent 40%),
-                        radial-gradient(circle at 90% 80%, rgba(255, 77, 77, 0.05) 0%, transparent 40%);
+            background:
+                radial-gradient(circle at 10% 20%, rgba(255, 77, 77, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(255, 77, 77, 0.04) 0%, transparent 40%);
             z-index: -1;
             pointer-events: none;
         }
 
+        /* ── Sticky header ── */
         header {
             position: sticky;
             top: 0;
             z-index: 100;
-            background: rgba(10, 10, 12, 0.8);
+            background: rgba(10, 10, 12, 0.85);
             -webkit-backdrop-filter: blur(20px);
             backdrop-filter: blur(20px);
             border-bottom: 1px solid var(--border);
-            padding: 1rem 2rem;
+            padding: 0.85rem 2rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 1rem;
         }
 
         .back-btn {
@@ -89,46 +71,75 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            transition: color 0.3s;
+            transition: color 0.25s;
+            white-space: nowrap;
         }
-
-        .back-btn:hover {
-            color: var(--accent);
-        }
+        .back-btn:hover { color: var(--accent); }
 
         .source-tag {
             background: var(--glass);
-            padding: 0.3rem 0.8rem;
+            padding: 0.3rem 0.9rem;
             border-radius: 20px;
             font-size: 0.8rem;
             color: var(--text-secondary);
             border: 1px solid var(--border);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 260px;
         }
 
+        /* ── Layout ── */
         .container {
-            max-width: 800px;
-            margin: 4rem auto;
-            padding: 0 2rem;
-            animation: fadeInUp 0.8s ease-out;
+            max-width: var(--max-width);
+            margin: 3.5rem auto 6rem;
+            padding: 0 1.5rem;
+            animation: fadeInUp 0.7s ease-out;
         }
 
         @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+            from { opacity: 0; transform: translateY(18px); }
+            to   { opacity: 1; transform: translateY(0); }
         }
 
+        /* ── Hero image ── */
+        .hero-image-wrap {
+            margin: 0 0 3rem;
+            overflow: hidden;
+            border-radius: var(--img-radius);
+            max-height: 460px;
+            position: relative;
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+        }
+        .hero-image-wrap::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to bottom, transparent 50%, rgba(10,10,12,0.85) 100%);
+        }
+        .hero-image-wrap img {
+            width: 100%;
+            height: 460px;
+            object-fit: cover;
+            display: block;
+            border: none;
+            margin: 0;
+        }
+
+        /* ── Article header ── */
         .hero-meta {
             text-align: center;
-            margin-bottom: 4rem;
+            margin-bottom: 3.5rem;
         }
 
         .hero-meta h1 {
             font-family: var(--font-outfit);
-            font-size: 3rem;
+            font-size: clamp(1.9rem, 5vw, 3.2rem);
             font-weight: 700;
             line-height: 1.1;
             margin-bottom: 1.5rem;
-            background: linear-gradient(135deg, #fff 0%, #a0a0aa 100%);
+            background: linear-gradient(135deg, #ffffff 0%, #a0a0aa 100%);
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -137,45 +148,158 @@
         .meta-chips {
             display: flex;
             justify-content: center;
-            gap: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem 1.5rem;
             color: var(--text-secondary);
-            font-size: 0.9rem;
+            font-size: 0.875rem;
         }
-
         .meta-chips span {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.4rem;
         }
 
+        /* ── Article body ── */
         .content {
-            font-size: 1.15rem;
-            color: #d1d1d8;
+            font-size: 1.1rem;
+            color: var(--text-body);
         }
 
-        .content img.article-img {
+        /* --- Inline images (extracted by O-ZEN) --- */
+        .content img {
             max-width: 100%;
             height: auto;
-            border-radius: 12px;
-            margin: 2rem 0;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border-radius: var(--img-radius);
+            margin: 2rem auto;
             display: block;
             border: 1px solid var(--border);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+            background: var(--surface-2);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .content img:hover {
+            transform: scale(1.01);
+            box-shadow: 0 14px 48px rgba(0,0,0,0.5);
         }
 
-        .content p {
-            margin-bottom: 2rem;
+        /* --- figure + figcaption --- */
+        .content figure,
+        figure.reader-recovered-img {
+            margin: 2.5rem 0;
+            padding: 0;
+        }
+        .content figure img,
+        figure.reader-recovered-img img {
+            margin-bottom: 0.6rem;
+        }
+        .content figcaption,
+        figcaption.reader-img-caption {
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-style: italic;
+            margin-top: 0.5rem;
+            line-height: 1.4;
         }
 
-        .content h1, .content h2, .content h3 {
+        /* --- Videos / iFrames --- */
+        .content video,
+        .content embed,
+        .content object {
+            width: 100% !important;
+            max-width: 100% !important;
+            height: auto !important;
+            aspect-ratio: 16 / 9 !important;
+            border-radius: var(--img-radius);
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+            margin: 2.5rem 0;
+            background: #000;
+            display: block;
+        }
+
+        .content iframe {
+            width: 100% !important;
+            max-width: 100% !important;
+            border-radius: var(--img-radius);
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+            margin: 2.5rem 0;
+            background: #000;
+            display: block;
+        }
+
+        /* Default aspect ratio for video iframes (like YouTube, Vimeo) to keep them responsive */
+        .content iframe[src*="youtube.com"],
+        .content iframe[src*="youtu.be"],
+        .content iframe[src*="vimeo.com"],
+        .content iframe[src*="dailymotion.com"] {
+            aspect-ratio: 16 / 9;
+            height: auto;
+        }
+
+        /* --- Paragraphs / headings / lists --- */
+        .content p { margin-bottom: 1.75rem; }
+
+        .content h1, .content h2, .content h3,
+        .content h4, .content h5 {
             font-family: var(--font-outfit);
             color: #fff;
-            margin-top: 3rem;
+            margin-top: 2.8rem;
+            margin-bottom: 1.2rem;
+            line-height: 1.2;
+        }
+        .content h2 {
+            border-left: 3px solid var(--accent);
+            padding-left: 1rem;
+        }
+        .content h3 { color: var(--text-primary); }
+
+        .content ul, .content ol {
+            padding-left: 1.8rem;
             margin-bottom: 1.5rem;
         }
+        .content li { margin-bottom: 0.5rem; }
 
-        .content h2 { border-left: 3px solid var(--accent); padding-left: 1rem; }
+        .content a {
+            color: var(--accent);
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255,77,77,0.3);
+            transition: border-color 0.2s;
+        }
+        .content a:hover { border-color: var(--accent); }
 
+        /* --- Blockquote --- */
+        .content blockquote {
+            border-left: 3px solid var(--accent);
+            margin: 2rem 0;
+            padding: 1rem 1.5rem;
+            background: var(--surface-2);
+            border-radius: 0 10px 10px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        /* --- Code / pre --- */
+        .content pre {
+            background: #000;
+            padding: 1.5rem;
+            border-radius: 10px;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.88rem;
+            line-height: 1.6;
+        }
+        .content code {
+            background: var(--surface-2);
+            padding: 0.15em 0.4em;
+            border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9em;
+        }
+
+        /* --- Tables --- */
         .content table {
             width: 100%;
             border-collapse: separate;
@@ -185,83 +309,125 @@
             border-radius: 12px;
             overflow: hidden;
             background: var(--surface);
-            font-size: 0.95rem;
+            font-size: 0.93rem;
         }
-
         .content th, .content td {
-            padding: 1rem;
+            padding: 0.9rem 1rem;
             text-align: left;
             border-bottom: 1px solid var(--border);
         }
-
         .content th {
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(255,255,255,0.05);
             font-weight: 600;
             color: var(--accent);
         }
-
         .content tr:last-child td { border-bottom: none; }
-        .content tr:nth-child(even) { background: rgba(255, 255, 255, 0.02); }
+        .content tr:nth-child(even) { background: rgba(255,255,255,0.02); }
 
-        .content pre {
-            background: #000;
-            padding: 1.5rem;
-            border-radius: 8px;
-            overflow-x: auto;
+        /* ── Recovered images section ── */
+        .recovered-images-section {
+            margin-top: 3rem;
+        }
+        .recovered-images-section figure.reader-recovered-img {
+            margin: 2rem 0;
+        }
+        .recovered-images-section figure.reader-recovered-img img {
+            max-width: 100%;
+            height: auto;
+            border-radius: var(--img-radius);
+            display: block;
             border: 1px solid var(--border);
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 0.9rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+            background: var(--surface-2);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .recovered-images-section figure.reader-recovered-img img:hover {
+            transform: scale(1.01);
+            box-shadow: 0 14px 48px rgba(0,0,0,0.5);
         }
 
+        .reader-divider {
+            border: none;
+            border-top: 1px solid var(--border-strong);
+            margin: 3rem 0 2rem;
+        }
+
+        /* ── Image loading shimmer ── */
+        img[loading="lazy"] {
+            min-height: 60px;
+            background: linear-gradient(90deg, var(--surface) 25%, var(--surface-2) 50%, var(--surface) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+        @keyframes shimmer {
+            0%   { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        img[loading="lazy"].loaded { background: none; animation: none; }
+
+        /* ── Footer ── */
         footer.article-footer {
-            margin-top: 6rem;
-            padding-top: 3rem;
+            margin-top: 5rem;
+            padding-top: 2.5rem;
             border-top: 1px solid var(--border);
             text-align: center;
             color: var(--text-secondary);
-            font-size: 0.9rem;
+            font-size: 0.875rem;
         }
-
-        .actions {
-            position: fixed;
-            bottom: 2rem;
-            right: 2rem;
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
+        footer.article-footer a {
+            color: var(--accent);
+            text-decoration: none;
         }
+        footer.article-footer a:hover { text-decoration: underline; }
 
+        /* ── FAB actions ── */
         .action-btn {
             background: var(--accent);
             color: white;
             border: none;
-            width: 50px;
-            height: 50px;
+            width: 48px;
+            height: 48px;
             border-radius: 50%;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 10px 20px rgba(255, 77, 77, 0.3);
-            transition: transform 0.3s;
+            box-shadow: 0 8px 20px rgba(255,77,77,0.35);
+            transition: transform 0.25s, box-shadow 0.25s;
+            z-index: 50;
         }
-
         .action-btn:hover {
-            transform: scale(1.1);
+            transform: scale(1.12);
+            box-shadow: 0 12px 28px rgba(255,77,77,0.5);
         }
 
-        footer.article-footer a {
-            color: var(--accent);
-            text-decoration: none;
+        .print-btn {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
         }
 
-        footer.article-footer a:hover {
-            text-decoration: underline;
+        #back-to-top {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translate(-50%, 10px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s, transform 0.3s, background-color 0.25s, box-shadow 0.25s;
+        }
+        #back-to-top.visible {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translate(-50%, 0);
         }
 
-        @media (max-width: 768px) {
-            .hero-meta h1 { font-size: 2rem; }
-            .container { margin: 2rem auto; }
+        /* ── Responsive ── */
+        @media (max-width: 700px) {
+            .hero-meta h1 { font-size: 1.7rem; }
+            .container { margin: 2rem auto 4rem; padding: 0 1rem; }
+            .hero-image-wrap { margin: 0 0 2rem; }
+            header { padding: 0.75rem 1rem; }
         }
     </style>
 </head>
@@ -278,50 +444,235 @@
 
     <main class="container">
         <article>
+            {# ── Hero image (og:image from metadata, only if not already in body) ── #}
+            {% if data.metadata.hero_image %}
+            <div class="hero-image-wrap">
+                <img src="/proxify?url={{ data.metadata.hero_image | urlencode }}"
+                     alt="{{ data.metadata.title }}"
+                     loading="lazy">
+            </div>
+            {% endif %}
+
+            {# ── Article header ── #}
             <div class="hero-meta">
                 <h1>{{ data.metadata.title }}</h1>
                 <div class="meta-chips">
                     {% if data.metadata.author %}
                     <span>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                         {{ data.metadata.author }}
                     </span>
                     {% endif %}
-                    
+
                     {% if data.metadata.date %}
                     <span>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
                         {{ data.metadata.date }}
                     </span>
                     {% endif %}
 
                     <span>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                         {{ data.word_count }} {{ {'en': 'words', 'zh': '字'}.get(lang, 'palabras') }}
                     </span>
                 </div>
             </div>
 
+            {# ── Article content ── #}
             <div class="content">
                 {{ data.content | safe }}
             </div>
 
             <footer class="article-footer">
-                <p>{{ {'en': 'Extracted with <b>O-ZEN Engine</b> from', 'zh': '使用 <b>O-ZEN Engine</b> 提取自'}.get(lang, 'Extraído con <b>O-ZEN Engine</b> desde') | safe }} <a href="{{ url }}" target="_blank">{{ data.metadata.site_name }}</a></p>
+                <p>{{ {'en': 'Extracted with <b>O-ZEN Engine</b> from', 'zh': '使用 <b>O-ZEN Engine</b> 提取自'}.get(lang, 'Extraído con <b>O-ZEN Engine</b> desde') | safe }}
+                <a href="{{ url }}" target="_blank" rel="noopener">{{ data.metadata.site_name }}</a></p>
+                {% if data.metadata.author or data.metadata.date %}
                 <p>© {{ data.metadata.author }} {{ data.metadata.date }}</p>
+                {% endif %}
             </footer>
         </article>
     </main>
 
-    <div class="actions">
-        <button class="action-btn" onclick="window.print()" title="Imprimir">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-        </button>
-    </div>
+    <button class="action-btn print-btn" onclick="window.print()" title="{{ {'en':'Print','zh':'打印'}.get(lang,'Imprimir') }}">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+    </button>
+    <button class="action-btn" id="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="{{ {'en':'Top','zh':'顶部'}.get(lang,'Inicio') }}">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg>
+    </button>
 
     <script>
-        // Convertir saltos de línea dobles en párrafos si es necesario
-        // (Ya lo hacemos un poco con <br> pero los párrafos son mejores)
+        // Dynamic platform script injection for reader view (Twitter, Instagram, TikTok)
+        const contentHtml = document.querySelector('.content');
+        if (contentHtml) {
+            if (contentHtml.querySelector('.twitter-tweet') && !document.getElementById('twitter-wjs')) {
+                const s = document.createElement('script');
+                s.id = 'twitter-wjs';
+                s.src = 'https://platform.twitter.com/widgets.js';
+                s.async = true;
+                document.body.appendChild(s);
+            }
+            if (contentHtml.querySelector('.instagram-media') && !document.getElementById('instagram-wjs')) {
+                const s = document.createElement('script');
+                s.id = 'instagram-wjs';
+                s.src = 'https://www.instagram.com/embed.js';
+                s.async = true;
+                document.body.appendChild(s);
+            }
+            if (contentHtml.querySelector('.tiktok-embed') && !document.getElementById('tiktok-wjs')) {
+                const s = document.createElement('script');
+                s.id = 'tiktok-wjs';
+                s.src = 'https://www.tiktok.com/embed.js';
+                s.async = true;
+                document.body.appendChild(s);
+            }
+        }
+
+        // Dynamic iframe resizing & scrolling behavior
+        function resizeIframe(iframe) {
+            try {
+                if (iframe.contentWindow && iframe.contentWindow.document) {
+                    const doc = iframe.contentWindow.document;
+                    const height = Math.max(
+                        doc.body.scrollHeight,
+                        doc.documentElement.scrollHeight,
+                        doc.body.offsetHeight,
+                        doc.documentElement.offsetHeight
+                    );
+                    if (height > 0) {
+                        iframe.style.height = height + 'px';
+                        iframe.style.overflow = 'hidden';
+                        iframe.setAttribute('scrolling', 'no');
+                    }
+                }
+            } catch (e) {
+                // Cross-origin, cannot access document
+            }
+        }
+
+        // Setup message listener for platform dynamic height updates (Twitter, Instagram, TikTok, etc)
+        window.addEventListener('message', function(e) {
+            try {
+                let data = e.data;
+                if (typeof data === 'string') {
+                    if (data.startsWith('{')) {
+                        try { data = JSON.parse(data); } catch(err) {}
+                    } else if (data.startsWith('height:')) {
+                        let parsedH = parseInt(data.split(':')[1], 10);
+                        if (!isNaN(parsedH)) {
+                            setIframeHeight(e.source, parsedH);
+                        }
+                        return;
+                    }
+                }
+                
+                if (data && typeof data === 'object') {
+                    let height = null;
+                    
+                    // Twitter / X widgets height
+                    if (data.action === 'twttr.private.setHeight' && data.params && data.params[0]) {
+                        height = data.params[0].height;
+                    } else if (data.method === 'resize' && data.params && data.params[0]) {
+                        height = data.params[0].height;
+                    }
+                    // Instagram MEASURE
+                    else if (data.type === 'MEASURE' && data.details && data.details.height) {
+                        height = data.details.height;
+                    }
+                    // TikTok height
+                    else if ((data.type === 'embed-size' || data.type === 'resize') && data.height) {
+                        height = data.height;
+                    }
+                    // General properties
+                    else if (data.height) {
+                        height = data.height;
+                    } else if (data.details && data.details.height) {
+                        height = data.details.height;
+                    }
+
+                    if (height) {
+                        setIframeHeight(e.source, height);
+                    }
+                }
+            } catch (err) {}
+        });
+
+        function setIframeHeight(sourceWindow, height) {
+            const iframes = document.querySelectorAll('.content iframe');
+            for (const iframe of iframes) {
+                if (iframe.contentWindow === sourceWindow) {
+                    iframe.style.height = height + 'px';
+                    iframe.style.overflow = 'hidden';
+                    iframe.setAttribute('scrolling', 'no');
+                    break;
+                }
+            }
+        }
+
+        // Initialize iframe sizing
+        document.querySelectorAll('.content iframe').forEach(iframe => {
+            // Apply scrolling="no" by default to prevent ugly scrollbars while loading/resizing
+            iframe.setAttribute('scrolling', 'no');
+            iframe.style.overflow = 'hidden';
+
+            iframe.addEventListener('load', () => {
+                resizeIframe(iframe);
+                try {
+                    if (iframe.contentWindow && iframe.contentWindow.document) {
+                        const observer = new MutationObserver(() => resizeIframe(iframe));
+                        observer.observe(iframe.contentWindow.document.body, {
+                            childList: true,
+                            subtree: true,
+                            attributes: true
+                        });
+                    }
+                } catch(e) {}
+            });
+
+            resizeIframe(iframe);
+
+            // Default min-height for non-video cross-origin iframes without explicit height
+            if (!iframe.style.height && !iframe.getAttribute('height')) {
+                const src = iframe.getAttribute('src') || '';
+                const isVideo = src.includes('youtube.com') || src.includes('youtu.be') || src.includes('vimeo.com') || src.includes('dailymotion.com');
+                if (!isVideo) {
+                    iframe.style.height = '600px'; 
+                }
+            }
+        });
+
+        // Mark lazy images as loaded once they finish loading (removes shimmer)
+        document.querySelectorAll('img[loading="lazy"]').forEach(img => {
+            if (img.complete) {
+                img.classList.add('loaded');
+            } else {
+                img.addEventListener('load', () => img.classList.add('loaded'));
+                img.addEventListener('error', () => {
+                    // Hide broken images gracefully
+                    img.closest('figure') ? img.closest('figure').style.display = 'none'
+                                           : img.style.display = 'none';
+                });
+            }
+        });
+
+        // Hero image error handler
+        const heroImg = document.querySelector('.hero-image-wrap img');
+        if (heroImg) {
+            heroImg.addEventListener('error', () => {
+                heroImg.closest('.hero-image-wrap').style.display = 'none';
+            });
+        }
+
+        // Back to top button visibility scroll listener
+        const backToTopBtn = document.getElementById('back-to-top');
+        if (backToTopBtn) {
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 300) {
+                    backToTopBtn.classList.add('visible');
+                } else {
+                    backToTopBtn.classList.remove('visible');
+                }
+            });
+        }
     </script>
 </body>
 </html>

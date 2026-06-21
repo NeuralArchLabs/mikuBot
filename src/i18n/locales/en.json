@@ -566,6 +566,7 @@
         "protocol_reinforcement": "PROTOCOL REINFORCEMENT",
         "useful_reminders": "USEFUL REMINDERS",
         "user_message": "USER MESSAGE",
+        "scheduled_task": "ASSIGNED TASK",
         "file": "FILE",
         "content": "CONTENT"
       }

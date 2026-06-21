@@ -82,14 +82,14 @@ export const CollapsibleMessage: React.FC<CollapsibleMessageProps> = ({ message,
 
     // Role-specific styling for the collapsed state
     const bgClass = isUser
-        ? hasCustomBg ? 'bg-blue-900/60 border-blue-400/40' : 'bg-blue-900/10 border-transparent hover:bg-blue-900/20 hover:border-blue-500/30'
+        ? hasCustomBg ? 'bg-blue-900/60 border-blue-400/40' : 'bg-blue-900/80 border-transparent hover:bg-blue-900/90 hover:border-blue-500/30'
         : isScheduler
             ? (message as any).isScheduledResponse
-                ? hasCustomBg ? 'bg-indigo-950/60 border-indigo-400/40' : 'bg-indigo-950/20 border-transparent hover:bg-indigo-900/30 hover:border-indigo-500/40'
-                : hasCustomBg ? 'bg-orange-950/60 border-orange-400/40' : 'bg-orange-950/20 border-transparent hover:bg-orange-900/30 hover:border-orange-500/40'
+                ? hasCustomBg ? 'bg-indigo-950/80 border-indigo-400/40' : 'bg-indigo-950/80 border-transparent hover:bg-indigo-900/50 hover:border-indigo-500/40'
+                : hasCustomBg ? 'bg-orange-950/80 border-orange-400/40' : 'bg-orange-950/80 border-transparent hover:bg-orange-900/50 hover:border-orange-500/40'
             : isSystem
-                ? hasCustomBg ? 'bg-amber-950/60 border-amber-500/40' : 'bg-amber-950/10 border-transparent hover:bg-amber-900/20 hover:border-amber-500/30'
-                : hasCustomBg ? 'bg-slate-900/60 border-slate-700/60' : 'bg-slate-800/30 border-transparent hover:bg-slate-800/50 hover:border-slate-600/50';
+                ? hasCustomBg ? 'bg-amber-950/80 border-amber-500/40' : 'bg-amber-950/80 border-transparent hover:bg-amber-900/50 hover:border-amber-500/30'
+                : hasCustomBg ? 'bg-slate-900/80 border-slate-700/60' : 'bg-slate-800/80 border-transparent hover:bg-slate-800/90 hover:border-slate-600/50';
 
     const iconColorClass = isUser ? (hasCustomBg ? 'text-blue-300' : 'text-blue-400') : (isScheduler ? ((message as any).isScheduledResponse ? 'text-indigo-400' : 'text-orange-400') : (isSystem ? 'text-amber-500' : 'text-slate-500'));
     const iconName = isUser ? 'user' : (isScheduler ? ((message as any).isScheduledResponse ? 'brain' : 'bell') : (isSystem ? 'shield-alt' : 'brain'));

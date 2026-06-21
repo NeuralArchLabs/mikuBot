@@ -3,6 +3,28 @@
  * Enfocado en privacidad local y rendimiento.
  */
 
+/**
+ * Fallback handler for result and preview favicons.
+ * Cascade: Google s2 (proxified) -> DuckDuckGo ip3 (proxified) -> Inline SVG Globe
+ */
+function handleFaviconError(img, domain) {
+    if (!domain) {
+        img.onerror = null;
+        img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%2394a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>';
+        return;
+    }
+    
+    if (!img.dataset.attempt) {
+        img.dataset.attempt = '1';
+        img.src = '/proxify?url=' + encodeURIComponent('https://icons.duckduckgo.com/ip3/' + domain + '.ico');
+    } else if (img.dataset.attempt === '1') {
+        img.dataset.attempt = '2';
+        img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%2394a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>';
+    } else {
+        img.onerror = null;
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const input = document.getElementById('search-input');
     const sbox = document.getElementById('suggestions-box');
@@ -227,17 +249,32 @@ function setPreview(el) {
     const content = el.getAttribute('data-content');
     const url = el.getAttribute('data-url');
     const icon = el.getAttribute('data-icon');
+    const domain = el.getAttribute('data-domain');
 
     // Actualizar elementos del pane
     document.getElementById('preview-title').innerText = title;
     document.getElementById('preview-content').innerText = content;
     document.getElementById('preview-url').innerText = url;
-    document.getElementById('preview-icon').src = icon;
+    
+    const previewIcon = document.getElementById('preview-icon');
+    if (previewIcon) {
+        previewIcon.removeAttribute('data-attempt');
+        previewIcon.dataset.domain = domain || '';
+        previewIcon.src = icon;
+    }
     document.getElementById('preview-link').href = url;
     
     const readerLink = document.getElementById('preview-reader-link');
     if (readerLink) {
         readerLink.href = `/extract?url=${encodeURIComponent(url)}`;
+        if (!readerLink.hasAttribute('data-original-text')) {
+            readerLink.setAttribute('data-original-text', readerLink.textContent);
+        }
+        if (el.classList.contains('video-card')) {
+            readerLink.textContent = 'Ver con O-ZEN';
+        } else {
+            readerLink.textContent = readerLink.getAttribute('data-original-text');
+        }
     }
 
     // Manejar preview de imagen grande

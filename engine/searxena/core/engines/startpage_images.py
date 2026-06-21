@@ -2,17 +2,16 @@ from selectolax.parser import HTMLParser
 from urllib.parse import urlencode
 from utils import LANGUAGE_MAP
 
-CATEGORIES = ["general"]
-WEIGHT = 3.0
+CATEGORIES = ["images"]
+WEIGHT = 1.0
 
 def request(query, params):
-    # Startpage requires POST for search recently to prevent basic scraping
     lang = params.get("language", "es")
     sp_lang = LANGUAGE_MAP.get("startpage", {}).get(lang, "english")
     
     query_params = {
         "query": query,
-        "cat": "web",
+        "cat": "pics",
         "cmd": "process_search",
         "language": sp_lang,
         "engine0": "v1all",
@@ -34,18 +33,22 @@ def response(resp):
     results = []
     tree = HTMLParser(resp.text)
 
-    # Selectores modernos y fallback
-    for node in tree.css('div.result, article.result, .w-gl__result'):
-        title_link = node.css_first('a.w-gl__result-title, a.result-link, a.result-title, h2 a, h3 a')
-        snippet_node = node.css_first('p.w-gl__result-description, p.description, .result-snippet, .description')
-
-        if title_link:
-            url = title_link.attributes.get('href', '')
-            if url and url.startswith('http') and "startpage.com" not in url:
+    # Startpage Images
+    for node in tree.css('div.image-container, .image, .result-image'):
+        img_node = node.css_first('img')
+        link_node = node.css_first('a')
+        
+        if img_node and link_node:
+            url = link_node.attributes.get('href', '')
+            src = img_node.attributes.get('src') or img_node.attributes.get('data-src')
+            
+            if url and src:
                 results.append({
-                    "title": title_link.text().strip(),
+                    "template": "images.html",
+                    "title": img_node.attributes.get('alt', 'Startpage Image'),
                     "url": url,
-                    "content": snippet_node.text().strip() if snippet_node else "",
-                    "source": "startpage"
+                    "img_src": src,
+                    "thumbnail_src": src,
+                    "source": "startpage_images"
                 })
     return results
