@@ -530,25 +530,7 @@ export const ChatArea = ({
             if (activeAudioRef.current === audio) {
                 activeAudioRef.current = null;
             }
-
-            // Punctuation-aware delay logic to ensure natural pauses between segments
-            const chunkText = chunks[chunkIndex].trim();
-            let delayMs = 0;
-            if (/[.!?:]/.test(chunkText.slice(-1)) || /[.!?:]["')\]]*$/.test(chunkText)) {
-                delayMs = 650; // Pause for period, question, exclamation, colon
-            } else if (/[,;]/.test(chunkText.slice(-1)) || /[,;]["')\]]*$/.test(chunkText)) {
-                delayMs = 300; // Pause for comma, semicolon
-            }
-
-            if (delayMs > 0) {
-                setTimeout(() => {
-                    if (sessionId === currentSessionIdRef.current) {
-                        playChunk(messageIndex, chunkIndex + 1, sessionId);
-                    }
-                }, delayMs);
-            } else {
-                playChunk(messageIndex, chunkIndex + 1, sessionId);
-            }
+            playChunk(messageIndex, chunkIndex + 1, sessionId);
         };
 
         audio.onerror = (e) => {
