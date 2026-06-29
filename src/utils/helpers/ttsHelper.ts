@@ -93,6 +93,9 @@ export function cleanTtsText(text: string, lang: string = 'es'): string {
     clean = clean.replace(/^\s*\|[|:\-\s]+\|\s*$/gm, '');
 
     // 12. Replace table cell pipes with commas/spaces so table content flows naturally
+    // Replaces trailing pipes with a period to end the row's sentence, removes leading pipes, and replaces middle ones with a comma.
+    clean = clean.replace(/\|\s*$/gm, '.');
+    clean = clean.replace(/^\s*\|/gm, '');
     clean = clean.replace(/\|/g, ', ');
 
     // 13. Remove markdown dividers (e.g. ---, ***, ___)

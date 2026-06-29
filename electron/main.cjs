@@ -2173,6 +2173,8 @@ function tgCleanTtsText(text, lang = 'es') {
 
     // Remove table separators
     clean = clean.replace(/^\s*\|[|:\-\s]+\|\s*$/gm, '');
+    clean = clean.replace(/\|\s*$/gm, '.');
+    clean = clean.replace(/^\s*\|/gm, '');
     clean = clean.replace(/\|/g, ', ');
 
     // Remove dividers
