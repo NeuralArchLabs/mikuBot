@@ -109,12 +109,9 @@ class TelegramService {
         }
     }
 
-    /**
-     * Sends a plain text message (with HTML support) to a Telegram chat.
-     */
     async sendMessage(token: string, chatId: string, text: string): Promise<void> {
         try {
-            await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+            const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -123,6 +120,24 @@ class TelegramService {
                     parse_mode: 'HTML'
                 })
             });
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                console.error('[TelegramService] sendMessage HTML attempt failed:', errData);
+                
+                // Fallback to sending as plain text if HTML parsing fails (e.g. unclosed tags)
+                const fallbackRes = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: chatId,
+                        text
+                    })
+                });
+                if (!fallbackRes.ok) {
+                    const fbErrData = await fallbackRes.json().catch(() => ({}));
+                    console.error('[TelegramService] sendMessage plain-text fallback failed:', fbErrData);
+                }
+            }
         } catch (e) {
             console.error('[TelegramService] sendMessage failed:', e);
         }
@@ -249,8 +264,9 @@ class TelegramService {
                                 console.log('[TelegramService] Voice transcribed:', res.text);
                                 const voiceMsg = {
                                     ...update.message,
-                                    text: `[Mensaje de Voz] ${res.text}`
-                                };
+                                    text: `[Mensaje de Voz] ${res.text}`,
+                                    isVoiceRequest: true
+                                } as any;
                                 if (TelegramService.onMessage) {
                                     await TelegramService.onMessage(voiceMsg, update.update_id);
                                 }

@@ -301,20 +301,37 @@ export const AgentStatusPanel = React.memo(({
                 </div>
             )}
 
-            {(status.streamedText || status.streamedReasoning) && (
-                <div className="border-t border-slate-700/50">
-                    <div ref={streamContainerRef} className="max-h-60 overflow-y-auto custom-scrollbar p-2 bg-slate-900/20 text-slate-400 italic">
-                        {status.streamedReasoning && (
-                            <div className="mb-1 text-cyan-500/80 border-l-2 border-cyan-500/20 pl-2 text-[10px] animate-in fade-in slide-in-from-left-2 duration-500">
-                                [{t('status.phases.thinking')}] <StreamedMarkdown text={status.streamedReasoning} className="inline" />
-                            </div>
-                        )}
-                        {status.streamedText && (
-                            <StreamedMarkdown text={status.streamedText} className="whitespace-pre-wrap break-words" />
-                        )}
+            {(() => {
+                let displayReasoning = status.streamedReasoning || '';
+                let displayText = status.streamedText || '';
+
+                if (displayText && !displayReasoning) {
+                    const thinkingRegex = /<(?:thinking|thought|reflection|think|\\think)(?:\s[^>]*)?>([\s\S]*?)(?:<\\?\/(?:thinking|thought|reflection|think|\\think)>|$)/gi;
+                    thinkingRegex.lastIndex = 0;
+                    const match = thinkingRegex.exec(displayText);
+                    if (match) {
+                        displayReasoning = match[1].trim();
+                        displayText = displayText.replace(thinkingRegex, '').trim();
+                    }
+                }
+
+                if (!displayText && !displayReasoning) return null;
+
+                return (
+                    <div className="border-t border-slate-700/50">
+                        <div ref={streamContainerRef} className="max-h-60 overflow-y-auto custom-scrollbar p-2 bg-slate-900/20 text-slate-400 italic">
+                            {displayReasoning && (
+                                <div className="mb-1 text-cyan-500/80 border-l-2 border-cyan-500/20 pl-2 text-[10px] animate-in fade-in slide-in-from-left-2 duration-500">
+                                    [{t('status.phases.thinking')}] <StreamedMarkdown text={displayReasoning} className="inline" />
+                                </div>
+                            )}
+                            {displayText && (
+                                <StreamedMarkdown text={displayText} className="whitespace-pre-wrap break-words" />
+                            )}
+                        </div>
                     </div>
-                </div>
-            )}
+                );
+            })()}
         </div>
     );
 });

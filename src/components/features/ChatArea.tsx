@@ -12,6 +12,7 @@ import { TypewriterIdle } from '../common/TypewriterIdle';
 import { useAgentStore, selectInput, selectMessages, selectAgentStatus, selectIsLoading, selectIsViewing, selectPendingToolApproval, selectExecutingSessionId } from '../../stores/useAgentStore';
 import { persistence, VisionService } from '../../services';
 import { PROVIDERS } from '../../constants/providers';
+import { cleanTtsText, splitTextIntoExactPartitionChunks } from '../../utils/helpers/ttsHelper';
 
 interface ChatAreaProps {
     sessionId: string;
@@ -424,6 +425,168 @@ export const ChatArea = ({
     const [modeFlash, setModeFlash] = useState(false);
     const modelSelectorRef = useRef<HTMLDivElement>(null);
     const modeSelectorRef = useRef<HTMLDivElement>(null);
+
+    // local TTS Audio Engine
+    const [playingMessageIndex, setPlayingMessageIndex] = useState<number | null>(null);
+    const activeAudioRef = useRef<HTMLAudioElement | null>(null);
+    const currentChunkIndexRef = useRef<number>(0);
+    const chunksRef = useRef<string[]>([]);
+    const prefetchPromisesRef = useRef<Promise<HTMLAudioElement | null>[]>([]);
+    const currentSessionIdRef = useRef<number>(0);
+
+    const stopAudio = () => {
+        currentSessionIdRef.current++; // Invalidate any running pipeline sessions
+        setPlayingMessageIndex(null);
+        if (activeAudioRef.current) {
+            activeAudioRef.current.pause();
+            activeAudioRef.current = null;
+        }
+        prefetchPromisesRef.current = [];
+    };
+
+    const PREFETCH_WINDOW = 3; // Limit active synthesis requests to at most 3 in parallel to avoid CPU spikes
+    const triggerPrefetch = (currentIndex: number, sessionId: number) => {
+        if (sessionId !== currentSessionIdRef.current) return;
+
+        const chunks = chunksRef.current;
+        // Limit initial prefetch to Chunk 0 only, to minimize starting latency (TTFA).
+        // Subsequent prefetches (currentIndex > 0) use the full parallel window.
+        const windowSize = currentIndex === 0 ? 1 : PREFETCH_WINDOW;
+        const end = Math.min(currentIndex + windowSize, chunks.length);
+
+        for (let i = currentIndex; i < end; i++) {
+            if (!prefetchPromisesRef.current[i]) {
+                const chunkIndex = i;
+                const chunkText = chunks[chunkIndex];
+
+                console.log(`%c[TTS Pipeline] Triggering sliding-window prefetch for Chunk ${chunkIndex} (Length: ${chunkText.length} chars)...`, "color: #2196F3;");
+                prefetchPromisesRef.current[chunkIndex] = (async () => {
+                    if (sessionId !== currentSessionIdRef.current) return null;
+
+                    const t0 = performance.now();
+                    try {
+                        const res = await (window as any).electron.synthesizeText({
+                            text: chunkText,
+                            lang: config.language || 'es',
+                            voice: config.voice || null,
+                            speed: config.speed || 1.0
+                        });
+
+                        if (sessionId !== currentSessionIdRef.current) return null;
+
+                        if (res && res.ok && res.dataUrl) {
+                            const t1 = performance.now();
+                            console.log(`%c[TTS Pipeline] Finished parallel synthesis for Chunk ${chunkIndex} in ${((t1 - t0) / 1000).toFixed(3)}s. Loading audio...`, "color: #4CAF50;");
+                            const audio = new Audio(res.dataUrl);
+                            audio.load();
+                            return audio;
+                        }
+                        return null;
+                    } catch (err) {
+                        console.error(`Failed to prefetch chunk ${chunkIndex}:`, err);
+                        return null;
+                    }
+                })();
+            }
+        }
+    };
+
+    const playChunk = async (messageIndex: number, chunkIndex: number, sessionId: number) => {
+        if (sessionId !== currentSessionIdRef.current) return;
+
+        const chunks = chunksRef.current;
+        if (chunkIndex >= chunks.length) {
+            console.log("[TTS Player] Finished playing all chunks.");
+            stopAudio();
+            return;
+        }
+
+        currentChunkIndexRef.current = chunkIndex;
+
+        // Trigger prefetch of the sliding window starting at the next index (to download ahead in parallel)
+        triggerPrefetch(chunkIndex + 1, sessionId);
+
+        let audio: HTMLAudioElement | null = null;
+
+        console.log(`%c[TTS Player] Waiting for Chunk ${chunkIndex} to be ready...`, "color: #FF9800;");
+        const promise = prefetchPromisesRef.current[chunkIndex];
+        if (promise) {
+            audio = await promise;
+        }
+
+        if (sessionId !== currentSessionIdRef.current) return;
+
+        if (!audio) {
+            console.warn(`[TTS Player] Chunk ${chunkIndex} promise returned null, skipping...`);
+            playChunk(messageIndex, chunkIndex + 1, sessionId);
+            return;
+        }
+
+        activeAudioRef.current = audio;
+        console.log(`%c[TTS Player] Playing Chunk ${chunkIndex} (${chunks[chunkIndex].substring(0, 30)}...)`, "color: #9C27B0; font-weight: bold;");
+
+        audio.onended = () => {
+            console.log(`%c[TTS Player] Chunk ${chunkIndex} finished playing.`, "color: #9C27B0;");
+            if (activeAudioRef.current === audio) {
+                activeAudioRef.current = null;
+            }
+            playChunk(messageIndex, chunkIndex + 1, sessionId);
+        };
+
+        audio.onerror = (e) => {
+            console.error("Audio chunk playback error:", e);
+            if (activeAudioRef.current === audio) {
+                activeAudioRef.current = null;
+            }
+            playChunk(messageIndex, chunkIndex + 1, sessionId);
+        };
+
+        try {
+            await audio.play();
+        } catch (err) {
+            console.error("Failed to play audio chunk:", err);
+            if (activeAudioRef.current === audio) {
+                activeAudioRef.current = null;
+            }
+            playChunk(messageIndex, chunkIndex + 1, sessionId);
+        }
+    };
+
+    const handleReadAloud = async (index: number, text: string) => {
+        if (playingMessageIndex === index) {
+            stopAudio();
+            return;
+        }
+
+        stopAudio();
+
+        // 1. Split text into chunks using the exact partition grouping helper
+        const chunks = splitTextIntoExactPartitionChunks(text, config.language || 'es');
+
+        console.log("[TTS Debug] Final chunks:", chunks);
+
+        if (chunks.length === 0) return;
+
+        const sessionId = currentSessionIdRef.current;
+
+        setPlayingMessageIndex(index);
+        chunksRef.current = chunks;
+        currentChunkIndexRef.current = 0;
+        prefetchPromisesRef.current = new Array(chunks.length);
+
+        // Start prefetching initial window (Chunk 0, 1, 2) in parallel
+        triggerPrefetch(0, sessionId);
+
+        // Start playback
+        playChunk(index, 0, sessionId);
+    };
+
+    // Stop audio on unmount
+    useEffect(() => {
+        return () => {
+            stopAudio();
+        };
+    }, []);
 
     // Trigger flash on mode change
     useEffect(() => {
@@ -1312,65 +1475,80 @@ export const ChatArea = ({
                             const lastHistoryMsg = [...messages].reverse().find(m => m.rawHistory);
                             const displayHistory = (isLoading || !lastHistoryMsg) ? agentStatus.rawMessages : lastHistoryMsg.rawHistory;
 
-                            return displayHistory?.map((m: any, i: number) => (
-                                <div key={i} className="bg-black/40 border border-white/5 rounded-xl p-4 font-mono text-[11px] space-y-2">
-                                    <div className={`flex items-center gap-2 font-bold uppercase tracking-wider ${m.role === 'system' ? 'text-amber-500' :
-                                        m.role === 'assistant' ? 'text-blue-400' :
-                                            m.role === 'tool' ? 'text-emerald-400' : 'text-purple-400'
-                                        }`}>
-                                        <Icon name={
-                                            m.role === 'system' ? 'shield-alt' :
-                                                m.role === 'assistant' ? 'brain' :
-                                                    m.role === 'tool' ? 'cog' : 'user'
-                                        } />
-                                        [{t(`chat.labels.role_${m.role}`)}]
-                                        {m.timestamp && (
-                                            <span className="ml-auto opacity-30 font-normal text-[9px] tabular-nums">
-                                                {new Date(m.timestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div className={`text-slate-400 leading-relaxed font-mono border-l-2 border-white/10 pl-4 overflow-hidden ${m.role === 'tool' ? 'bg-black/30 rounded-r-lg py-2' : ''}`}>
-                                        <div className="max-h-[450px] overflow-y-auto custom-scrollbar pr-2 whitespace-pre-wrap break-all text-[10px]">
-                                            {(m.thought || m.reasoning_content || m.reasoning) && (
-                                                <div className="mb-3 p-3 bg-fuchsia-500/5 rounded border border-fuchsia-500/20 text-fuchsia-300/80 italic text-[9px]">
-                                                    <div className="flex items-center gap-2 mb-1 opacity-60">
-                                                        <Icon name="brain" />
-                                                        <strong>[{t('chat.labels.active_reasoning')?.toUpperCase() || 'ACTIVE REASONING'}]</strong>
+                            return displayHistory?.map((m: any, i: number) => {
+                                let displayThought = m.thought || m.reasoning_content || m.reasoning || '';
+                                let displayContent = m.content;
+
+                                if (m.role === 'assistant' && typeof m.content === 'string') {
+                                    const thinkingRegex = /<(?:thinking|thought|reflection|think)>([\s\S]*?)<\/(?:thinking|thought|reflection|think)>/gi;
+                                    thinkingRegex.lastIndex = 0;
+                                    const match = thinkingRegex.exec(m.content);
+                                    if (match) {
+                                        displayThought = match[1].trim();
+                                        displayContent = m.content.replace(thinkingRegex, '').trim();
+                                    }
+                                }
+
+                                return (
+                                    <div key={i} className="bg-black/40 border border-white/5 rounded-xl p-4 font-mono text-[11px] space-y-2">
+                                        <div className={`flex items-center gap-2 font-bold uppercase tracking-wider ${m.role === 'system' ? 'text-amber-500' :
+                                            m.role === 'assistant' ? 'text-blue-400' :
+                                                m.role === 'tool' ? 'text-emerald-400' : 'text-purple-400'
+                                            }`}>
+                                            <Icon name={
+                                                m.role === 'system' ? 'shield-alt' :
+                                                    m.role === 'assistant' ? 'brain' :
+                                                        m.role === 'tool' ? 'cog' : 'user'
+                                            } />
+                                            [{t(`chat.labels.role_${m.role}`)}]
+                                            {m.timestamp && (
+                                                <span className="ml-auto opacity-30 font-normal text-[9px] tabular-nums">
+                                                    {new Date(m.timestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className={`text-slate-400 leading-relaxed font-mono border-l-2 border-white/10 pl-4 overflow-hidden ${m.role === 'tool' ? 'bg-black/30 rounded-r-lg py-2' : ''}`}>
+                                            <div className="max-h-[450px] overflow-y-auto custom-scrollbar pr-2 whitespace-pre-wrap break-all text-[10px]">
+                                                {displayThought && (
+                                                    <div className="mb-3 p-3 bg-fuchsia-500/5 rounded border border-fuchsia-500/20 text-fuchsia-300/80 italic text-[9px]">
+                                                        <div className="flex items-center gap-2 mb-1 opacity-60">
+                                                            <Icon name="brain" />
+                                                            <strong>[{t('chat.labels.active_reasoning')?.toUpperCase() || 'ACTIVE REASONING'}]</strong>
+                                                        </div>
+                                                        {displayThought}
                                                     </div>
-                                                    {m.thought || m.reasoning_content || m.reasoning}
+                                                )}
+                                                {Array.isArray(displayContent) 
+                                                    ? displayContent.map((c: any, ci: number) => (
+                                                        <div key={ci} className="mb-2">
+                                                            {c.type === 'text' && c.text}
+                                                            {c.type === 'thinking' && (
+                                                                <div className="mb-2 p-3 bg-fuchsia-500/5 rounded border border-fuchsia-500/20 text-fuchsia-300/80 italic text-[9px]">
+                                                                    <div className="flex items-center gap-2 mb-1 opacity-60">
+                                                                        <Icon name="brain" />
+                                                                        <strong>[{t('chat.labels.active_reasoning')?.toUpperCase() || 'ACTIVE REASONING'}]</strong>
+                                                                    </div>
+                                                                    {c.thinking}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ))
+                                                    : (displayContent || (m.role === 'tool' && m.error ? m.error : t('chat.labels.empty_body')))
+                                                }
+                                            </div>
+                                            {m.tool_calls && (
+                                                <div className="mt-2 p-2 bg-blue-500/10 rounded border border-blue-500/20 text-blue-300/80 text-[10px]">
+                                                    <div className="flex items-center gap-2 mb-1 opacity-60">
+                                                        <Icon name="cog" />
+                                                        <strong>{t('chat.labels.tool_calls')?.toUpperCase()}:</strong>
+                                                    </div>
+                                                    <pre className="whitespace-pre-wrap break-all opacity-80">{JSON.stringify(m.tool_calls, null, 2)}</pre>
                                                 </div>
                                             )}
-                                            {Array.isArray(m.content) 
-                                                ? m.content.map((c: any, ci: number) => (
-                                                    <div key={ci} className="mb-2">
-                                                        {c.type === 'text' && c.text}
-                                                        {c.type === 'thinking' && (
-                                                            <div className="mb-2 p-3 bg-fuchsia-500/5 rounded border border-fuchsia-500/20 text-fuchsia-300/80 italic text-[9px]">
-                                                                <div className="flex items-center gap-2 mb-1 opacity-60">
-                                                                    <Icon name="brain" />
-                                                                    <strong>[{t('chat.labels.active_reasoning')?.toUpperCase() || 'ACTIVE REASONING'}]</strong>
-                                                                </div>
-                                                                {c.thinking}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ))
-                                                : (m.content || (m.role === 'tool' && m.error ? m.error : t('chat.labels.empty_body')))
-                                            }
                                         </div>
-                                        {m.tool_calls && (
-                                            <div className="mt-2 p-2 bg-blue-500/10 rounded border border-blue-500/20 text-blue-300/80 text-[10px]">
-                                                <div className="flex items-center gap-2 mb-1 opacity-60">
-                                                    <Icon name="cog" />
-                                                    <strong>{t('chat.labels.tool_calls')?.toUpperCase()}:</strong>
-                                                </div>
-                                                <pre className="whitespace-pre-wrap break-all opacity-80">{JSON.stringify(m.tool_calls, null, 2)}</pre>
-                                            </div>
-                                        )}
                                     </div>
-                                </div>
-                            ));
+                                );
+                            });
                         })()}
 
                         {(!agentStatus.rawMessages?.length && !messages.some(m => m.rawHistory)) && (
@@ -1451,18 +1629,32 @@ export const ChatArea = ({
                                                 </button>
                                             )}
                                             {msg.role === 'assistant' && (
-                                                <button
-                                                    onClick={() => {
-                                                        navigator.clipboard.writeText(msg.text);
-                                                        const btn = document.activeElement as HTMLButtonElement;
-                                                        const origText = btn.innerHTML;
-                                                        btn.innerHTML = t('chat.actions.copied');
-                                                        setTimeout(() => btn.innerHTML = origText, 2000);
-                                                    }}
-                                                    className="bg-slate-900 border border-slate-700/80 text-blue-400 hover:text-blue-300 px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-md"
-                                                >
-                                                    <Icon name="copy" /> {t('chat.actions.copy')}
-                                                </button>
+                                                <>
+                                                    <button
+                                                        onClick={() => {
+                                                            navigator.clipboard.writeText(msg.text);
+                                                            const btn = document.activeElement as HTMLButtonElement;
+                                                            const origText = btn.innerHTML;
+                                                            btn.innerHTML = t('chat.actions.copied');
+                                                            setTimeout(() => btn.innerHTML = origText, 2000);
+                                                        }}
+                                                        className="bg-slate-900 border border-slate-700/80 text-blue-400 hover:text-blue-300 px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-md"
+                                                    >
+                                                        <Icon name="copy" /> {t('chat.actions.copy')}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleReadAloud(index, msg.text)}
+                                                        className={`bg-slate-900 border border-slate-700/80 px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-md transition-colors ${
+                                                            playingMessageIndex === index 
+                                                                ? 'text-pink-500 hover:text-pink-400 border-pink-500/50' 
+                                                                : 'text-emerald-400 hover:text-emerald-300'
+                                                        }`}
+                                                        title={playingMessageIndex === index ? t('chat.actions.stop_reading') : t('chat.actions.read_aloud')}
+                                                    >
+                                                        <Icon name={playingMessageIndex === index ? "stop" : "volume-up"} /> 
+                                                        {playingMessageIndex === index ? t('chat.actions.stop_reading') : t('chat.actions.read_aloud')}
+                                                    </button>
+                                                </>
                                             )}
                                         </div>
 

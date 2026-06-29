@@ -1870,6 +1870,619 @@ ipcMain.handle('telegram:process-voice', async (event, fileId) => {
 
 
 
+// ── Local Kokoro TTS Caching Engine ────────────────────────────────
+const crypto = require('crypto');
+const ttsCache = new Map(); // Map textHash -> outWavPath
+
+function getTtsCacheKey(text, lang, voice, speed) {
+    const raw = `${lang || 'es'}_${voice || ''}_${speed || 1.0}_${text}`;
+    return crypto.createHash('md5').update(raw).digest('hex');
+}
+
+// ── Persistent Kokoro TTS Process Management ───────────────────────
+let ttsProcess = null;
+let ttsReadyPromise = null;
+let ttsInactivityTimeout = null;
+
+function resetTtsInactivityTimeout() {
+    if (ttsInactivityTimeout) {
+        clearTimeout(ttsInactivityTimeout);
+    }
+    ttsInactivityTimeout = setTimeout(() => {
+        if (ttsProcess) {
+            console.log('[TTS] Closing idle Python TTS Engine to free memory.');
+            try {
+                ttsProcess.kill();
+            } catch (e) {
+                console.error('[TTS] Error killing process:', e);
+            }
+            ttsProcess = null;
+            ttsReadyPromise = null;
+        }
+    }, 15 * 60 * 1000); // 15 minutes of inactivity
+}
+
+async function getTtsProcess(eventForProgress) {
+    resetTtsInactivityTimeout();
+    
+    if (ttsReadyPromise) {
+        return ttsReadyPromise;
+    }
+    
+    if (ttsProcess && ttsProcess.exitCode === null) {
+        return ttsProcess;
+    }
+    
+    ttsProcess = null;
+    ttsReadyPromise = new Promise((resolve, reject) => {
+        const pythonExe = ENGINE_PYTHON_EXE;
+        const engineScript = path.join(resourcesPath, 'engine', 'tts_engine.py');
+        
+        if (!fs.existsSync(pythonExe)) return reject(new Error('Internal Python not found.'));
+        if (!fs.existsSync(engineScript)) return reject(new Error('TTS engine script missing.'));
+        
+        console.log('[TTS] Spawning persistent Python TTS Engine...');
+        const { spawn } = require('child_process');
+        const proc = spawn(pythonExe, ['-u', engineScript]);
+        
+        const rl = readline.createInterface({ input: proc.stdout });
+        let isReady = false;
+        
+        rl.on('line', (line) => {
+            if (!line.trim()) return;
+            try {
+                const msg = JSON.parse(line);
+                if (msg.status === 'downloading' || msg.status === 'downloaded') {
+                    if (eventForProgress && eventForProgress.sender) {
+                        eventForProgress.sender.send('voice:tts-progress', msg);
+                    }
+                } else if (msg.status === 'ready') {
+                    console.log('[TTS] Python TTS Engine ready.');
+                    isReady = true;
+                    ttsReadyPromise = null;
+                    resolve(proc);
+                } else if (msg.status === 'success' || msg.status === 'error') {
+                    proc.emit('tts-response', msg);
+                }
+            } catch (e) {
+                console.warn('[TTS Engine] JSON Parse error:', e, 'Line:', line);
+            }
+        });
+        
+        proc.stderr.on('data', (data) => {
+            console.error('[TTS Engine Error]:', data.toString());
+        });
+        
+        proc.on('close', (code) => {
+            console.log('[TTS] Python TTS Engine closed with code:', code);
+            if (ttsProcess === proc) {
+                ttsProcess = null;
+                ttsReadyPromise = null;
+            }
+            if (!isReady) {
+                reject(new Error(`TTS process exited with code ${code} during initialization`));
+            }
+        });
+        
+        proc.on('error', (err) => {
+            if (ttsProcess === proc) {
+                ttsProcess = null;
+                ttsReadyPromise = null;
+            }
+            if (!isReady) {
+                reject(err);
+            }
+        });
+        
+        ttsProcess = proc;
+    });
+    
+    return ttsReadyPromise;
+}
+
+async function performTtsSynthesis(event, { text, lang, voice, speed, output_path }) {
+    try {
+        const proc = await getTtsProcess(event);
+        resetTtsInactivityTimeout();
+        
+        return new Promise((resolve) => {
+            let completed = false;
+            
+            const onResponse = (msg) => {
+                if (msg.output_path === output_path) {
+                    completed = true;
+                    proc.off('tts-response', onResponse);
+                    proc.off('close', onClose);
+                    if (msg.status === 'success') {
+                        resolve({ ok: true });
+                    } else {
+                        resolve({ ok: false, error: msg.error });
+                    }
+                }
+            };
+            
+            const onClose = (code) => {
+                if (!completed) {
+                    completed = true;
+                    proc.off('tts-response', onResponse);
+                    resolve({ ok: false, error: `TTS process closed unexpectedly with code ${code}` });
+                }
+            };
+            
+            proc.on('tts-response', onResponse);
+            proc.once('close', onClose);
+            
+            proc.stdin.on('error', (err) => {
+                console.error('[TTS Process Stdin Error]:', err);
+            });
+            
+            proc.stdin.write(JSON.stringify({
+                text,
+                lang: lang || 'es',
+                voice: voice || null,
+                speed: speed || 1.0,
+                output_path
+            }) + '\n');
+        });
+    } catch (err) {
+        return { ok: false, error: err.message };
+    }
+}
+
+// ── Local Kokoro TTS Synthesis ──────────────────────────────────────
+ipcMain.handle('voice:synthesize-text', async (event, { text, lang, voice, speed }) => {
+    const pythonExe = ENGINE_PYTHON_EXE;
+    const engineScript = path.join(resourcesPath, 'engine', 'tts_engine.py');
+
+    if (!fs.existsSync(pythonExe)) return { ok: false, error: 'Internal Python not found. Please reinstall the application.' };
+    if (!fs.existsSync(engineScript)) return { ok: false, error: 'TTS engine script missing.' };
+
+    const cacheKey = getTtsCacheKey(text, lang, voice, speed);
+    if (ttsCache.has(cacheKey)) {
+        const cachedPath = ttsCache.get(cacheKey);
+        if (fs.existsSync(cachedPath)) {
+            try {
+                const data = fs.readFileSync(cachedPath);
+                const base64 = data.toString('base64');
+                return { ok: true, dataUrl: `data:audio/wav;base64,${base64}`, path: cachedPath };
+            } catch (err) {
+                console.warn('[TTS Cache] Failed to read cached file:', err);
+            }
+        } else {
+            ttsCache.delete(cacheKey);
+        }
+    }
+
+    const tempDir = path.join(app.getPath('temp'), 'miku_voice_temp');
+    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+    
+    const outWavName = `tts_${Date.now()}_${Math.random().toString(36).substring(7)}.wav`;
+    const outWavPath = path.join(tempDir, outWavName);
+
+    const result = await performTtsSynthesis(event, { text, lang, voice, speed, output_path: outWavPath });
+    if (result.ok) {
+        try {
+            const data = fs.readFileSync(outWavPath);
+            const base64 = data.toString('base64');
+            ttsCache.set(cacheKey, outWavPath);
+            return { ok: true, dataUrl: `data:audio/wav;base64,${base64}`, path: outWavPath };
+        } catch (err) {
+            return { ok: false, error: `Failed to read output WAV: ${err.message}` };
+        }
+    } else {
+        if (fs.existsSync(outWavPath)) {
+            try {
+                fs.unlinkSync(outWavPath);
+            } catch (e) {}
+        }
+        return result;
+    }
+});
+
+ipcMain.handle('voice:warmup', async (event) => {
+    try {
+        await getTtsProcess(event);
+        return { ok: true };
+    } catch (err) {
+        return { ok: false, error: err.message };
+    }
+});
+
+// ── Telegram Voice Response Upload ──────────────────────────────────
+function tgCleanTtsText(text, lang = 'es') {
+    if (!text) return '';
+
+    let clean = text.normalize('NFC');
+
+    clean = clean.replace(/&amp;/g, '&')
+                 .replace(/&lt;/g, '<')
+                 .replace(/&gt;/g, '>')
+                 .replace(/&quot;/g, '"')
+                 .replace(/&#39;/g, "'")
+                 .replace(/&aacute;/g, 'á')
+                 .replace(/&eacute;/g, 'é')
+                 .replace(/&iacute;/g, 'í')
+                 .replace(/&oacute;/g, 'ó')
+                 .replace(/&uacute;/g, 'ú')
+                 .replace(/&ntilde;/g, 'ñ')
+                 .replace(/&Aacute;/g, 'Á')
+                 .replace(/&Eacute;/g, 'É')
+                 .replace(/&Iacute;/g, 'Í')
+                 .replace(/&Oacute;/g, 'Ó')
+                 .replace(/&Uacute;/g, 'Ú')
+                 .replace(/&Ntilde;/g, 'Ñ');
+
+    clean = clean.replace(/a[´']/g, 'á')
+                 .replace(/e[´']/g, 'é')
+                 .replace(/i[´']/g, 'í')
+                 .replace(/o[´']/g, 'ó')
+                 .replace(/u[´']/g, 'ú')
+                 .replace(/A[´']/g, 'Á')
+                 .replace(/E[´']/g, 'É')
+                 .replace(/I[´']/g, 'Í')
+                 .replace(/O[´']/g, 'Ó')
+                 .replace(/U[´']/g, 'Ú');
+
+    // SIGNATURE SHIELD: Protect the assistant's visual signature
+    // Remove standard {{ ... }} with signature DNA
+    clean = clean.replace(/[`"']{0,2}(?:\{\{)\s*((?:(?!\n\n)[\s\S])+?)\s*(?:\}\}|\)\}|\}\)|[}\)])[ \t]*[)\}]*[ \t]*[`"']{0,2}/g, (match, signContent) => {
+        if (signContent.includes('≈') || signContent.includes('┬') || signContent.includes('~')) {
+            return '';
+        }
+        return match;
+    });
+
+    // Remove core signature DNA pattern ≈̼^.┬.̼^≈‿⟆ with surrounding junk/emojis
+    clean = clean.replace(/[`"']{0,2}(?:\{\{)?(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E|\w|[:_])*)(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*(≈̼\^\.┬\.̼\^≈‿⟆)(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E|\w|[:_])*)(?:(?!\n\n)\s)*(?:\}\}|\)\}|\}\)|[}\)])?[ \t]*[)\}]*[ \t]*[`"']{0,2}/gu, '');
+
+    // Fallbacks for generic curly/bracket structures
+    clean = clean.replace(/\{\{[\s\S]*?\}\}/g, '');
+    clean = clean.replace(/\[\[[\s\S]*?\]\]/g, '');
+
+    // Remove leftover leading punctuation and symbols resulting from signature removal
+    clean = clean.replace(/^[.,;:!?()\-—\s]+/, '');
+
+    // Remove Mermaid diagram blocks completely
+    clean = clean.replace(/```mermaid[\s\S]*?```/g, '');
+
+    // Remove standard code blocks completely
+    clean = clean.replace(/```[\s\S]*?```/g, '');
+
+    // Remove inline code backticks (keep the text)
+    clean = clean.replace(/`([^`]+)`/g, '$1');
+
+    // Remove markdown bold, italic, and strikethrough formatting markers
+    clean = clean.replace(/\*\*([^*]+)\*\*/g, '$1')
+                 .replace(/__([^_]+)__/g, '$1')
+                 .replace(/\*([^*]+)\*/g, '$1')
+                 .replace(/_([^_]+)_/g, '$1')
+                 .replace(/~~([^~]+)~~/g, '$1')
+                 .replace(/[\*_~]/g, '');
+
+    // Remove markdown images
+    clean = clean.replace(/!\[.*?\]\(.*?\)/g, '');
+
+    // Remove markdown links
+    clean = clean.replace(/\[(.*?)\]\(.*?\)/g, '$1');
+
+    // Remove Markdown alerts/callouts
+    clean = clean.replace(/^\s*>\s*\[!(TIP|NOTE|IMPORTANT|WARNING|CAUTION)\]/gmi, '');
+
+    // Remove HTML tags
+    clean = clean.replace(/<[^>]*>/g, '');
+
+    // Remove table separators
+    clean = clean.replace(/^\s*\|[|:\-\s]+\|\s*$/gm, '');
+    clean = clean.replace(/\|/g, ', ');
+
+    // Remove dividers
+    clean = clean.replace(/^[-\*_]{3,}\s*$/gm, '');
+
+    // Ensure lines/paragraphs without punctuation at the end get a period if they represent a boundary (headers, list items, or end of text)
+    const rawLines = clean.split(/\r?\n/);
+    const processedLines = [];
+    for (let i = 0; i < rawLines.length; i++) {
+        const currentLine = rawLines[i].trim();
+        if (!currentLine) {
+            processedLines.push('');
+            continue;
+        }
+
+        const endsWithPunctuation = /[.,;:!?]["')\]]*$/.test(currentLine);
+        if (endsWithPunctuation) {
+            processedLines.push(currentLine);
+        } else {
+            let nextNonEmptyLine = null;
+            let hasEmptyLineInBetween = false;
+            for (let j = i + 1; j < rawLines.length; j++) {
+                if (rawLines[j].trim()) {
+                    nextNonEmptyLine = rawLines[j].trim();
+                    break;
+                } else {
+                    hasEmptyLineInBetween = true;
+                }
+            }
+
+            const startsWithMarker = /^\s*([-*+]|#+|>\s*\[!|\d+\.)\s+/i.test(currentLine);
+            const nextStartsWithMarker = nextNonEmptyLine && /^\s*([-*+]|#+|>\s*\[!|\d+\.)\s+/i.test(nextNonEmptyLine);
+
+            if (startsWithMarker || nextStartsWithMarker || hasEmptyLineInBetween || !nextNonEmptyLine) {
+                processedLines.push(currentLine + '.');
+            } else {
+                processedLines.push(currentLine);
+            }
+        }
+    }
+    clean = processedLines.join('\n');
+
+    // Remove list markers
+    clean = clean.replace(/^\s*[-*+]\s+/gm, '');
+    clean = clean.replace(/^\s*\d+\.\s+/gm, '');
+    clean = clean.replace(/^[#\s+\-*>]+\s+/gm, '');
+
+    clean = clean.replace(/[\u2013\u2014]/g, '-');
+
+    // Replace newlines with spaces so it flows continuously
+    clean = clean.replace(/\r?\n/g, ' ');
+
+    // Expand decimal points in numbers so they are spoken natively (e.g. "1.99" -> "1 punto 99" / "1 point 99")
+    if (lang.toLowerCase().startsWith('es')) {
+        clean = clean.replace(/(\d+)\.(\d+)/g, '$1 punto $2');
+    } else {
+        clean = clean.replace(/(\d+)\.(\d+)/g, '$1 point $2');
+    }
+
+    // Expand ampersand to spoken text based on language
+    if (lang.toLowerCase().startsWith('es')) {
+        clean = clean.replace(/&/g, ' y ');
+    } else {
+        clean = clean.replace(/&/g, ' and ');
+    }
+
+    // Keep: %, $, €, &, /, °, +, *
+    clean = clean.replace(/[^\s0-9a-zA-Z\u00A0-\u00FF\u4e00-\u9fa5.,;:!?()'"\-%$€&/°+*]/gu, ' ');
+
+    clean = clean.replace(/\s+/g, ' ');
+    clean = clean.replace(/\s+([.,;:!?])/g, '$1');
+
+    clean = clean.replace(/\.+/g, '.');
+    clean = clean.replace(/,+/g, ',');
+    clean = clean.replace(/!+/g, '!');
+    clean = clean.replace(/\?+/g, '?');
+
+    return clean.trim();
+}
+
+function tgSplitSentenceIntoTwo(s, limit, allowWordSplit) {
+    if (s.length <= limit) return [s, ""];
+
+    // Use a soft threshold to avoid splitting sentences that are only slightly over the limit.
+    // If allowWordSplit is true (Chunk 0 & 1), we allow up to 95 chars to respect natural sentences while keeping them brief.
+    // If allowWordSplit is false (Chunk 2+), we allow up to 190 chars.
+    const softLimit = allowWordSplit ? 95 : 190;
+    if (s.length <= softLimit) {
+        return [s, ""];
+    }
+
+    // Try splitting by clause punctuation first: , ; : —
+    const regex = /(?<=[,;:—])\s+/g;
+    let match;
+    let lastSplitIndex = -1;
+
+    // First pass: find the best punctuation split before the limit
+    while ((match = regex.exec(s)) !== null) {
+        const splitPos = match.index;
+        const minPartLen = allowWordSplit ? 15 : 40;
+        if (splitPos <= limit) {
+            const firstPartLen = splitPos;
+            const secondPartLen = s.length - splitPos;
+            if (firstPartLen >= minPartLen && secondPartLen >= minPartLen) {
+                lastSplitIndex = splitPos;
+            }
+        } else {
+            break;
+        }
+    }
+
+    // Second pass: if no split was found before the limit, check if there is one slightly after the limit (up to limit + 45)
+    if (lastSplitIndex === -1) {
+        regex.lastIndex = 0;
+        const extendedLimit = limit + 45;
+        while ((match = regex.exec(s)) !== null) {
+            const splitPos = match.index;
+            const minPartLen = allowWordSplit ? 15 : 40;
+            if (splitPos <= extendedLimit) {
+                const firstPartLen = splitPos;
+                const secondPartLen = s.length - splitPos;
+                if (firstPartLen >= minPartLen && secondPartLen >= minPartLen) {
+                    lastSplitIndex = splitPos;
+                }
+            } else {
+                break;
+            }
+        }
+    }
+
+    if (lastSplitIndex !== -1) {
+        return [s.substring(0, lastSplitIndex).trim(), s.substring(lastSplitIndex).trim()];
+    }
+
+    if (allowWordSplit) {
+        const lastSpace = s.substring(0, limit).lastIndexOf(" ");
+        if (lastSpace !== -1 && lastSpace > 15) {
+            return [s.substring(0, lastSpace).trim(), s.substring(lastSpace).trim()];
+        }
+    }
+
+    if (allowWordSplit || s.length > 220) {
+        const firstSplitAfter = s.substring(limit).indexOf(" ");
+        if (firstSplitAfter !== -1) {
+            const splitIndex = limit + firstSplitAfter;
+            if (s.length - splitIndex >= 30) {
+                return [s.substring(0, splitIndex).trim(), s.substring(splitIndex).trim()];
+            }
+        }
+    }
+
+    return [s, ""];
+}
+
+function tgSplitTextIntoExactPartitionChunks(text, lang = 'es') {
+    const cleanedText = tgCleanTtsText(text, lang);
+    if (!cleanedText) return [];
+    const sentenceSplitRegex = /(?<=(?<!\b\d+|\b[a-zA-Z]{1,3}|\b(?:ej|etc|vs|dr|sr|sra|ref|pág|pag|vol|min|seg|approx|ca|art))[.?!;¿¡]["')\]]*)\s+/i;
+    const rawSentences = cleanedText.split(sentenceSplitRegex).map(s => s.trim()).filter(Boolean);
+
+    const chunks = [];
+    let currentGroup = "";
+
+    while (rawSentences.length > 0) {
+        const sentence = rawSentences.shift();
+        const currentChunkIndex = chunks.length;
+        const targetLimit = currentChunkIndex === 0 ? 80 : 160;
+        const allowWordSplit = currentChunkIndex === 0; // Only allow word splits for Chunk 0
+
+        if (!currentGroup) {
+            if (sentence.length > targetLimit) {
+                const parts = tgSplitSentenceIntoTwo(sentence, targetLimit, allowWordSplit);
+                currentGroup = parts[0];
+                if (parts[1]) {
+                    rawSentences.unshift(parts[1]);
+                }
+            } else {
+                currentGroup = sentence;
+            }
+        } else {
+            if (currentGroup.length + sentence.length + 1 > targetLimit) {
+                chunks.push(currentGroup);
+                currentGroup = "";
+                rawSentences.unshift(sentence);
+            } else {
+                currentGroup += " " + sentence;
+            }
+        }
+    }
+
+    if (currentGroup) {
+        chunks.push(currentGroup);
+    }
+
+    return chunks;
+}
+
+ipcMain.handle('telegram:send-voice', async (event, { token, chatId, text, lang, voice }) => {
+    const pythonExe = ENGINE_PYTHON_EXE;
+    const engineScript = path.join(resourcesPath, 'engine', 'tts_engine.py');
+
+    if (!fs.existsSync(pythonExe)) return { ok: false, error: 'Internal Python not found.' };
+    if (!fs.existsSync(engineScript)) return { ok: false, error: 'TTS engine script missing.' };
+
+    const chunks = tgSplitTextIntoExactPartitionChunks(text, lang);
+    if (chunks.length === 0) return { ok: true };
+
+    console.log(`[Telegram Voice] Splitting voice message into ${chunks.length} chunks. Sending in order...`);
+
+    const tempDir = path.join(app.getPath('temp'), 'miku_voice_temp');
+    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+
+    try {
+        // Start all synthesis requests in parallel to pipeline work
+        const synthPromises = chunks.map(async (chunkText, i) => {
+            const cacheKey = getTtsCacheKey(chunkText, lang, voice, 1.0);
+            let targetWavPath = null;
+            if (ttsCache.has(cacheKey)) {
+                const p = ttsCache.get(cacheKey);
+                if (fs.existsSync(p)) {
+                    targetWavPath = p;
+                } else {
+                    ttsCache.delete(cacheKey);
+                }
+            }
+
+            const uniqueId = `${Date.now()}_${i}_${Math.random().toString(36).substring(7)}`;
+            const outWavPath = targetWavPath || path.join(tempDir, `tg_tts_${uniqueId}.wav`);
+
+            if (!targetWavPath) {
+                const wavResult = await performTtsSynthesis(event, { text: chunkText, lang, voice, speed: 1.0, output_path: outWavPath });
+                if (wavResult.ok) {
+                    ttsCache.set(cacheKey, outWavPath);
+                } else {
+                    if (fs.existsSync(outWavPath)) {
+                        try { fs.unlinkSync(outWavPath); } catch (e) {}
+                    }
+                    throw new Error(`Synthesis failed for chunk ${i}: ${wavResult.error}`);
+                }
+            }
+            return { wavPath: outWavPath, targetWavPath };
+        });
+
+        // Convert and upload sequentially in order
+        for (let i = 0; i < chunks.length; i++) {
+            const { wavPath, targetWavPath } = await synthPromises[i];
+            
+            const uniqueId = `${Date.now()}_${i}_${Math.random().toString(36).substring(7)}`;
+            const outOggPath = path.join(tempDir, `tg_tts_${uniqueId}.ogg`);
+
+            // 2. Convert WAV to OGG Opus
+            await new Promise((resolve, reject) => {
+                ffmpeg(wavPath)
+                    .audioCodec('libopus')
+                    .toFormat('ogg')
+                    .on('end', resolve)
+                    .on('error', reject)
+                    .save(outOggPath);
+            });
+
+            // 3. Upload to Telegram via FormData with retry
+            const formData = new FormData();
+            formData.append('chat_id', chatId);
+            const fileBuffer = fs.readFileSync(outOggPath);
+            const fileBlob = new Blob([fileBuffer], { type: 'audio/ogg' });
+            formData.append('voice', fileBlob, `voice_${i}.ogg`);
+
+            let uploadSuccess = false;
+            let uploadError = "";
+
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                try {
+                    const response = await fetch(`https://api.telegram.org/bot${token}/sendVoice`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const resData = await response.json();
+                    if (resData.ok) {
+                        uploadSuccess = true;
+                        break;
+                    } else {
+                        uploadError = resData.description || "Unknown error";
+                    }
+                } catch (e) {
+                    uploadError = e.message;
+                }
+                if (attempt < 3) {
+                    await new Promise((r) => setTimeout(r, 1000));
+                }
+            }
+
+            // Cleanup WAV only if it was newly created (not from cache)
+            if (!targetWavPath && fs.existsSync(wavPath)) {
+                try { fs.unlinkSync(wavPath); } catch (e) {}
+            }
+            if (fs.existsSync(outOggPath)) {
+                try { fs.unlinkSync(outOggPath); } catch (e) {}
+            }
+
+            if (!uploadSuccess) {
+                return { ok: false, error: `Telegram upload failed for chunk ${i} after 3 attempts: ${uploadError}` };
+            }
+        }
+
+        return { ok: true };
+    } catch (err) {
+        return { ok: false, error: err.message };
+    }
+});
+
 // File System Native Handlers
 ipcMain.handle('fs-select-folder', async () => {
     const result = await dialog.showOpenDialog({
@@ -3861,6 +4474,7 @@ if (!gotTheLock) {
                      deferWindowShow = false; // Allow window to be shown
                      if (mainWin && !mainWin.isVisible()) mainWin.show();
                      await startSearXena();
+                 getTtsProcess().catch(err => console.warn("[TTS Pre-spawn] failed:", err));
                  } else {
                      console.error('[Main Process] Auto-installation failed:', installResult.error);
                      sendSearXenaStatus('installation', { installing: false, error: installResult.error });
@@ -3872,6 +4486,7 @@ if (!gotTheLock) {
                  deferWindowShow = false; // No need to defer
                  createWindow(); // Create and show window since SearXena is ready
                  await startSearXena();
+             getTtsProcess().catch(err => console.warn("[TTS Pre-spawn] failed:", err));
              }
         } catch (err) {
             console.error('[Main Process] Auto-start sequence error:', err);
@@ -3893,6 +4508,12 @@ if (!gotTheLock) {
     app.on('before-quit', () => {
         isQuitting = true;
         stopSearXenaSync(); // Use sync version to ensure it happens before exit
+
+        if (ttsProcess) {
+            try {
+                ttsProcess.kill();
+            } catch (e) {}
+        }
 
         // Flush all pending session saves synchronously to prevent data loss
         for (const [sessionId, entry] of sessionSaveTimers.entries()) {

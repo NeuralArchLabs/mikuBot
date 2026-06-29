@@ -487,6 +487,8 @@
       "rewind": "Edit & Rewind",
       "copy": "Copy",
       "copied": "Copied!",
+      "read_aloud": "Read aloud",
+      "stop_reading": "Stop reading",
       "abort": "Abort Neural Process",
       "send": "Send Signal",
       "send_instruction": "Send as Instruction",

@@ -121,7 +121,7 @@ export async function sendAgentMessage(
         }
     }
 
-    // --- TOKEN OPTIMIZATION / HISTORICAL CONTEXT ---
+    // --- HISTORICAL CONTEXT (PRESERVED FULL CHAT HISTORY) ---
     const historicalContext = chatMessages.map(m => {
         const msg = { ...m } as any;
         // Inject timestamp ONLY for user messages for temporal reference
@@ -145,58 +145,11 @@ export async function sendAgentMessage(
                 msg.content = `[${ts}] ${content}`;
             }
         }
-        if (msg.role === 'assistant' && msg.tool_calls && msg.tool_calls.length > 0) {
-            try {
-                const calls = msg.tool_calls;
-                const totalArgsLen = JSON.stringify(calls).length;
-                if (totalArgsLen > 300) {
-                    const callSummaries = calls.map((tc: any) => {
-                        const name = tc.function?.name || tc.tool_name || 'unknown';
-                        const args = tc.function?.arguments || tc.tool_args || {};
-                        let desc = `${name}`;
-                        if (args.filename) desc += `("${args.filename}")`;
-                        else if (args.query) desc += `("${args.query}")`;
-                        else if (args.command) desc += `("${args.command}")`;
-                        return desc;
-                    }).join(', ');
-                    msg.content = (msg.content || '') + `\n\n🤖 [HISTORIAL OPTIMIZADO] Se ejecutaron: ${callSummaries}. (Detalles técnicos comprimidos para ahorrar memoria).`;
-                    delete msg.tool_calls;
-                }
-            } catch { }
-        }
-        if (msg.role === 'tool' && msg.content) {
-            try {
-                if (!msg.content.trim().startsWith('{') || msg.content.length < 150) return m;
-                const parsed = JSON.parse(msg.content);
-                const isSuccess = parsed.success !== false;
-                const toolName = msg.tool_name || 'unknown_tool';
-                let summary = `${isSuccess ? '✅' : '❌'} [HISTÓRICO] ${toolName}`;
-                const args = msg.tool_args || {}; 
-                const filename = parsed.data?.filename || args.filename;
-                const query = parsed.data?.query || args.query;
-                const cmd = parsed.data?.command || args.command;
-                if (filename) summary += `: "${filename}"`;
-                else if (query) summary += `: "${query}"`;
-                else if (cmd) summary += `: "${cmd} ${args.args || ''}"`;
-                else if (parsed.message) summary += `: ${parsed.message.substring(0, 80)}...`;
-                if (isSuccess) summary += ` | Status: SUCCESS`;
-                else summary += ` | Status: ERROR (${(parsed.error || parsed.data?.error || 'Falló').substring(0, 100)})`;
-                // IMPROVED: Preserve tool metadata for future tool-aware processing
-                // Convert to user role for model compatibility, but keep original tool context
-                return { role: 'user', content: `[LOG DE SISTEMA] ${summary}`, tool_name: toolName, original_role: 'tool' };
-            } catch { return m; }
-        }
         return msg;
     });
 
+    // Do not truncate the history to preserve full conversation context.
     let activeContext = historicalContext;
-    if (isAgentMode || isInstructionMode) {
-        const filtered = historicalContext.filter(m => !m.content.startsWith('⚠️ Command Executed:'));
-        // INCREASED CONTEXT WINDOW: Changed from 10/30 to 40/60 to preserve reinforcement injections
-        // Larger window ensures Protocol Reinforcement messages are retained longer
-        const windowSize = isInstructionMode ? 40 : 60;
-        activeContext = filtered.slice(-windowSize);
-    }
 
     let agentMessages: any[] = [
         { role: 'system', content: systemPrompt },
@@ -408,6 +361,7 @@ export async function sendAgentMessage(
             let content: string;
             let nativeToolCalls: any[];
             let nativeReasoning: string | undefined;
+            let nativeThoughtSignature: string | undefined = undefined;
             try {
                 // TAG VALIDATION: Ensure Protocol Reinforcement tags survive to API call
                 // This is critical for verifying the injection pipeline works end-to-end
@@ -426,6 +380,7 @@ export async function sendAgentMessage(
                 content = res.content;
                 nativeToolCalls = res.toolCalls;
                 nativeReasoning = res.reasoning;
+                nativeThoughtSignature = (res as any).thought_signature || (res as any).thoughtSignature;
 
                 // DETECT TRUNCATION (Loop Protection & Continuity)
                 if (res.finishReason === 'length' || res.finishReason === 'MAX_TOKENS') {
@@ -474,7 +429,13 @@ export async function sendAgentMessage(
             positionalCalls = positionalCalls.filter(pc => uniqueToolCalls.some(utc => utc.id === pc.toolCall.id));
 
             const iterationBlocks: MessageBlock[] = [];
-            if (nativeReasoning && nativeReasoning.trim()) iterationBlocks.push({ type: 'thought', content: nativeReasoning.trim() });
+            if (nativeReasoning && nativeReasoning.trim()) {
+                iterationBlocks.push({
+                    type: 'thought',
+                    content: nativeReasoning.trim(),
+                    thought_signature: nativeThoughtSignature || undefined
+                } as any);
+            }
             let curIdx = 0;
             const seenFpForInterleaving = new Set<string>();
             for (const rc of [...positionalCalls].sort((a, b) => a.start - b.start)) {
@@ -520,12 +481,23 @@ export async function sendAgentMessage(
                 allNarrative += (allNarrative ? '\n\n' : '') + cleanTurnNarrative;
             }
 
-            agentMessages.push({
+            const cleanedReasoning = (nativeReasoning || '').trim()
+                .replace(/<\/?(?:thinking|thought|reflection|think)>/gi, '')
+                .trim();
+                
+            const contentForHistory = cleanedReasoning
+                ? `<thinking>\n${cleanedReasoning}\n</thinking>\n\n${cleanTurnNarrative || ''}`.trim()
+                : (cleanTurnNarrative || ' ');
+
+            const assistantMsg: any = {
                 role: 'assistant',
-                content: cleanTurnNarrative || ' ',
-                reasoning: nativeReasoning || undefined,
-                tool_calls: uniqueToolCalls.length > 0 ? JSON.parse(JSON.stringify(uniqueToolCalls)) : undefined,
-            });
+                content: contentForHistory,
+                thought_signature: nativeThoughtSignature || undefined,
+            };
+            if (uniqueToolCalls.length > 0) {
+                assistantMsg.tool_calls = JSON.parse(JSON.stringify(uniqueToolCalls));
+            }
+            agentMessages.push(assistantMsg);
 
             // Update UI with FULL cumulative narrative
             onChunk(allNarrative || ' ', true, [...allBlocks, ...mergedBlocks]);
@@ -767,6 +739,7 @@ export async function sendAgentMessage(
                         thought_signature: (tc as any).thought_signature
                     });
                     turnHasDenial = true;
+                    onChunk(allNarrative || ' ', true, [...allBlocks]);
                     continue;
                 }
                 toolsToExecute.push(tc);
@@ -826,6 +799,7 @@ export async function sendAgentMessage(
                         if (tc.function.name === 'delete_file') delete store[cf];
                     }
                 }
+                onChunk(allNarrative || ' ', true, [...allBlocks]);
             };
 
             // ─── EXECUTION STRATEGY (SAFE vs BATCH) ───

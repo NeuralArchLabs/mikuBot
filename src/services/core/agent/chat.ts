@@ -51,32 +51,90 @@ export function cleanTechnicalNoise(text: string, signatureRegex?: RegExp): stri
 export function segmentThoughtsAndNarrative(text: string, signatureRegex: RegExp, skipCleaning: boolean = false): MessageBlock[] {
     if (!text) return [];
     
-    // Check for <think> tags
-    const thinkRegex = /<think>([\s\S]*?)(?:<\/think>|$)/gi;
     const blocks: MessageBlock[] = [];
+
+    // Phase 1: Extract well-formed think blocks (opening + closing tags)
+    // Matches: <thinking>content</thinking>, <think type="reasoning">content</think>, <\think>content</\think>, etc.
+    const thinkRegex = /<(?:thinking|thought|reflection|think|\\think)(?:\s[^>]*)?>([\s\S]*?)<\\?\/(?:thinking|thought|reflection|think|\\think)>/gi;
+    
     let lastIdx = 0;
     let match;
 
     while ((match = thinkRegex.exec(text)) !== null) {
-        // Text before the <think> tag
+        // Text before the thought tag
         const preamble = text.substring(lastIdx, match.index);
         if (preamble.trim()) {
             const cleaned = skipCleaning ? preamble.trim() : cleanTechnicalNoise(preamble, signatureRegex);
-            if (cleaned) blocks.push({ type: 'answer', content: cleaned, isFromNarrative: true });
+            if (cleaned) {
+                blocks.push({
+                    type: 'answer',
+                    content: cleaned,
+                    isFromNarrative: true
+                });
+            }
         }
-        
+
         // The thought content itself
         if (match[1].trim()) {
-            blocks.push({ type: 'thought', content: match[1].trim() });
+            let thoughtContent = match[1].trim();
+            // Strip any nested/orphaned thinking tags
+            thoughtContent = thoughtContent.replace(/<\\?\/?(?:thinking|thought|reflection|think|\\think)(?:\s[^>]*)?>/gi, '').trim();
+            if (thoughtContent.startsWith('>')) thoughtContent = thoughtContent.substring(1).trim();
+            if (thoughtContent) {
+                blocks.push({
+                    type: 'thought',
+                    content: thoughtContent
+                });
+            }
         }
         lastIdx = thinkRegex.lastIndex;
     }
 
-    // Remaining text after last <think> tag
-    const remaining = text.substring(lastIdx);
+    // Remaining text after last well-formed block
+    let remaining = text.substring(lastIdx);
+
+    // Phase 2: Check for streaming partial — opening tag without closing tag
+    const partialOpenRegex = /<(?:thinking|thought|reflection|think|\\think)(?:\s[^>]*)?>([\s\S]*)$/i;
+    const partialMatch = remaining.match(partialOpenRegex);
+    if (partialMatch) {
+        const beforePartial = remaining.substring(0, partialMatch.index);
+        if (beforePartial.trim()) {
+            const cleaned = skipCleaning ? beforePartial.trim() : cleanTechnicalNoise(beforePartial, signatureRegex);
+            if (cleaned) {
+                blocks.push({
+                    type: 'answer',
+                    content: cleaned,
+                    isFromNarrative: true
+                });
+            }
+        }
+
+        if (partialMatch[1].trim()) {
+            let thoughtContent = partialMatch[1].trim();
+            thoughtContent = thoughtContent.replace(/<\\?\/?(?:thinking|thought|reflection|think|\\think)(?:\s[^>]*)?>/gi, '').trim();
+            if (thoughtContent.startsWith('>')) thoughtContent = thoughtContent.substring(1).trim();
+            if (thoughtContent) {
+                blocks.push({
+                    type: 'thought',
+                    content: thoughtContent
+                });
+            }
+        }
+        return blocks;
+    }
+
+    // Phase 3: Strip orphaned closing/opening tags
+    remaining = remaining.replace(/<\\?\/?(?:thinking|thought|reflection|think|\\think)(?:\s[^>]*)?>/gi, '').trim();
+
     if (remaining.trim()) {
         const cleaned = skipCleaning ? remaining.trim() : cleanTechnicalNoise(remaining, signatureRegex);
-        if (cleaned) blocks.push({ type: 'answer', content: cleaned, isFromNarrative: true });
+        if (cleaned) {
+            blocks.push({
+                type: 'answer',
+                content: cleaned,
+                isFromNarrative: true
+            });
+        }
     }
 
     return blocks;

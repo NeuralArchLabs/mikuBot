@@ -388,7 +388,7 @@ export const SettingsPanel = ({
                                     ].map(lang => (
                                         <button
                                             key={lang.id}
-                                            onClick={() => updateConfig('language', lang.id)}
+                                            onClick={() => { updateConfig('language', lang.id); updateConfig('voice', null); }}
                                             className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${(config.language || 'es') === lang.id
                                                 ? 'bg-[var(--primary-color)] text-white shadow-lg shadow-[var(--primary-color)]/40'
                                                 : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
@@ -1608,6 +1608,72 @@ export const SettingsPanel = ({
                                                     title={t('settings.vosk.active_model')}
                                                     dropDirection="down"
                                                 />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4 pt-4 md:pt-6">
+                                <label className="text-sm font-black text-[var(--text-primary)] uppercase tracking-[0.2em] flex items-center gap-2">
+                                    <Icon name="volume-up" className="text-pink-400" /> {i18n.language === 'es' ? 'Síntesis de Voz TTS (Kokoro)' : 'TTS Speech Synthesis (Kokoro)'}
+                                </label>
+
+                                <div className="premium-card premium-pink p-8 relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-pink-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-pink-500/10 transition-colors" />
+
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 relative z-10">
+                                        <div className="space-y-4">
+                                            <h3 className="text-lg font-black text-[var(--text-primary)] tracking-tight">
+                                                {i18n.language === 'es' ? 'Perfil de Voz Neural' : 'Neural Voice Profile'}
+                                            </h3>
+                                            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                                                {i18n.language === 'es'
+                                                    ? 'Elige el perfil de voz para la lectura del chat y respuestas de Telegram. La lista se filtra automáticamente según tu idioma global.'
+                                                    : 'Choose the voice profile for chat readout and Telegram replies. The list is automatically filtered by your global language.'}
+                                            </p>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block ml-1">
+                                                {i18n.language === 'es' ? 'Voz Activa' : 'Active Voice'}
+                                            </label>
+                                            <div className="flex flex-wrap gap-2 bg-black/20 p-1.5 rounded-2xl border border-white/5 w-full">
+                                                {(() => {
+                                                    const currentLang = config.language || 'es';
+                                                    const voices = currentLang === 'es'
+                                                        ? [
+                                                            { id: null, label: i18n.language === 'es' ? 'Predeterminado (ef_dora)' : 'Default (ef_dora)' },
+                                                            { id: 'em_alex', label: 'Alex (em_alex)' },
+                                                            { id: 'em_santa', label: 'Santa (em_santa)' }
+                                                        ]
+                                                        : currentLang === 'zh'
+                                                        ? [
+                                                            { id: null, label: i18n.language === 'es' ? 'Predeterminado (zf_xiaoxiao)' : 'Default (zf_xiaoxiao)' },
+                                                            { id: 'zf_xiaoyi', label: 'Xiaoyi (zf_xiaoyi)' }
+                                                        ]
+                                                        : [
+                                                            { id: null, label: i18n.language === 'es' ? 'Predeterminado (af_heart)' : 'Default (af_heart)' },
+                                                            { id: 'af_bella', label: 'Bella (af_bella)' },
+                                                            { id: 'af_nicole', label: 'Nicole (af_nicole)' },
+                                                            { id: 'am_adam', label: 'Adam (am_adam)' },
+                                                            { id: 'am_michael', label: 'Michael (am_michael)' }
+                                                        ];
+
+                                                    return voices.map(voice => (
+                                                        <button
+                                                            key={voice.id || 'default'}
+                                                            onClick={() => updateConfig('voice', voice.id)}
+                                                            className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                                                                (config.voice || null) === voice.id
+                                                                    ? 'bg-[var(--primary-color)] text-white shadow-lg shadow-[var(--primary-color)]/40'
+                                                                    : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                                                            }`}
+                                                        >
+                                                            {voice.label}
+                                                        </button>
+                                                    ));
+                                                })()}
                                             </div>
                                         </div>
                                     </div>

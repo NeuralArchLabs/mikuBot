@@ -73,6 +73,8 @@ export interface AppConfig {
     theme?: string;
     chatBackgroundImage?: string;
     chatFont?: string;
+    voice?: string | null;
+    speed?: number;
 }
 
 /** Application State */

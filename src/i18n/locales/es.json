@@ -482,6 +482,8 @@
       "rewind": "Editar y Rebobinar",
       "copy": "Copiar",
       "copied": "¡Copiado!",
+      "read_aloud": "Leer en voz alta",
+      "stop_reading": "Detener lectura",
       "abort": "Abortar Proceso Neural",
       "send": "Enviar Señal",
       "send_instruction": "Enviar como Instrucción",

@@ -108,6 +108,17 @@ contextBridge.exposeInMainWorld('electron', {
     // Telegram Voice Processing
     processTelegramVoice: (fileId) => ipcRenderer.invoke('telegram:process-voice', fileId),
 
+    // Kokoro TTS
+    synthesizeText: (data) => ipcRenderer.invoke('voice:synthesize-text', data),
+    warmupTts: () => ipcRenderer.invoke('voice:warmup'),
+    sendTelegramVoiceResponse: (data) => ipcRenderer.invoke('telegram:send-voice', data),
+    onTtsProgress: (callback) => {
+        const listener = (event, data) => callback(data);
+        ipcRenderer.on('voice:tts-progress', listener);
+        return () => ipcRenderer.removeListener('voice:tts-progress', listener);
+    },
+
+
     // searXena Search Engine
     startSearXena: () => ipcRenderer.invoke('searxena:start'),
     stopSearXena: () => ipcRenderer.invoke('searxena:stop'),

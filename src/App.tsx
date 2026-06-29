@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { InteractionContext } from './services/core/InteractionContext';
-import { AppState, AgentStatus, Message, PendingToolApproval, AgentMode, ModelInfo, FileSystemDirectoryHandle, FileSystemFileHandle, FileTarget, Session, ApprovalMode, SessionMetadata, PermissionStatus, Provider, AppConfig, Attachment, ToolCall } from './types';
+import { AppState, AgentStatus, Message, PendingToolApproval, AgentMode, ModelInfo, FileSystemDirectoryHandle, FileSystemFileHandle, FileTarget, Session, ApprovalMode, SessionMetadata, PermissionStatus, Provider, AppConfig, Attachment, ToolCall, MessageBlock } from './types';
 import { DEFAULT_CONFIG, DEFAULT_FILES, AGENT_TOOLS, PROVIDERS } from './constants';
 import { createDefaultAgentStatus } from './utils';
 import { useAgentStore, selectMessages, selectAgentStatus, selectIsLoading, selectInput, selectPendingToolApproval } from './stores/useAgentStore';
@@ -32,6 +32,7 @@ import {
     executeCommand,
     formatTelegramResponse
 } from './services';
+import { cleanTtsText, splitTextIntoExactPartitionChunks } from './utils/helpers/ttsHelper';
 
 const electron = (window as any).electron;
 
@@ -65,6 +66,117 @@ const stripHeavyAttachments = (messages: Message[]): Message[] => {
         };
     });
 };
+
+/**
+ * BLOCKS -> AGENT MESSAGES RECONSTRUCTION
+ * Converts stored blocks (single source of truth) into the API
+ * message sequence expected by all providers.
+ */
+function blocksToAgentMessages(blocks: MessageBlock[]): any[] {
+    const messages: any[] = [];
+    if (!blocks || blocks.length === 0) return messages;
+
+    let currentAssistant: any = null;
+    let queuedToolResponses: any[] = [];
+
+    const finalizeCurrentAssistant = () => {
+        if (currentAssistant) {
+            messages.push(currentAssistant);
+            currentAssistant = null;
+        }
+        if (queuedToolResponses.length > 0) {
+            messages.push(...queuedToolResponses);
+            queuedToolResponses = [];
+        }
+    };
+
+    for (const b of blocks) {
+        if (b.type === 'thought') {
+            if (queuedToolResponses.length > 0) {
+                finalizeCurrentAssistant();
+            }
+            if (!currentAssistant) {
+                currentAssistant = { role: 'assistant', content: '' };
+            }
+            const sig = (b as any).thought_signature || (b as any).thoughtSignature || (b.toolCall as any)?.thought_signature || (b.toolCall as any)?.thoughtSignature;
+            if (sig) {
+                currentAssistant.thought_signature = sig;
+            }
+            const thinkingText = `<thinking>\n${b.content.trim()}\n</thinking>`;
+            currentAssistant.content = currentAssistant.content
+                ? `${currentAssistant.content}\n\n${thinkingText}`
+                : thinkingText;
+        } else if (b.type === 'text' || b.type === 'answer') {
+            if (queuedToolResponses.length > 0) {
+                finalizeCurrentAssistant();
+            }
+            if (!currentAssistant) {
+                currentAssistant = { role: 'assistant', content: '' };
+            }
+            currentAssistant.content = currentAssistant.content
+                ? `${currentAssistant.content}\n\n${b.content.trim()}`
+                : b.content.trim();
+        } else if (b.type === 'tool_call') {
+            const tc = b.toolCall;
+            if (tc && tc.id) {
+                if (!currentAssistant) {
+                    currentAssistant = { role: 'assistant', content: null };
+                }
+                if (!currentAssistant.tool_calls) {
+                    currentAssistant.tool_calls = [];
+                }
+                const sig = (tc as any).thought_signature || (tc as any).thoughtSignature || (b as any).thought_signature || (b as any).thoughtSignature;
+                const toolCall: any = {
+                    id: tc.id,
+                    type: 'function',
+                    function: {
+                        name: tc.function.name,
+                        arguments: tc.function.arguments ?? {}
+                    }
+                };
+                if (sig) {
+                    toolCall.thought_signature = sig;
+                    if (!currentAssistant.thought_signature) {
+                        currentAssistant.thought_signature = sig;
+                    }
+                }
+                currentAssistant.tool_calls.push(toolCall);
+
+                // Reconstruct tool response
+                let rawOutput = '';
+                if (b.result) {
+                    if (b.status === 'success') {
+                        rawOutput = typeof b.result.data === 'string' ? b.result.data : JSON.stringify(b.result.data ?? b.result);
+                    } else {
+                        rawOutput = b.result.error || 'Execution failed';
+                    }
+                } else {
+                    rawOutput = b.status === 'denied' ? 'manual mode error: user denied tool excecution' : '';
+                }
+
+                const toolResponse: any = {
+                    role: 'tool',
+                    tool_name: tc.function.name,
+                    tool_call_id: tc.id,
+                    content: rawOutput
+                };
+                if (sig) {
+                    toolResponse.thought_signature = sig;
+                }
+                queuedToolResponses.push(toolResponse);
+            }
+        }
+    }
+
+    finalizeCurrentAssistant();
+
+    return messages.map(m => {
+        if (m.role === 'assistant' && typeof m.content === 'string') {
+            m.content = m.content.trim() || null;
+        }
+        return m;
+    });
+}
 
 export const App = () => {
     const { i18n, t } = useTranslation();
@@ -166,6 +278,7 @@ export const App = () => {
     const processMessageRef = useRef<(text: string, force: boolean, remote: boolean) => Promise<void>>(async () => { });
     const sendToTelegramRef = useRef<(text: string) => void>(() => { });
     const pendingToolApprovalRef = useRef<((approved: boolean) => void) | null>(null);
+    const isVoiceRequestRef = useRef<boolean>(false);
 
     useEffect(() => {
         stateRef.current = state;
@@ -482,6 +595,7 @@ export const App = () => {
                         }
 
                         // Always use the latest processMessage closure via ref
+                        isVoiceRequestRef.current = (msg as any).isVoiceRequest || false;
                         await processMessageRef.current(msg.text, false, true);
                     }
                 },
@@ -1396,6 +1510,31 @@ To see all your additional enabled skills and their full technical parameters, y
             return;
         }
 
+        if (isVoiceRequestRef.current && (window as any).electron?.sendTelegramVoiceResponse) {
+            isVoiceRequestRef.current = false;
+            const cleanText = cleanTtsText(text, state.config.language || 'es');
+            if (!cleanText) return;
+
+            (window as any).electron.sendTelegramVoiceResponse({
+                token: state.config.telegramBotToken,
+                chatId: state.config.telegramChatId,
+                text: cleanText,
+                lang: state.config.language || 'es',
+                voice: state.config.voice || null
+            }).then((res: any) => {
+                if (!res.ok) {
+                    console.error("Failed to send voice response to Telegram:", res.error);
+                    telegramService.sendMessage(state.config.telegramBotToken!, state.config.telegramChatId!, text);
+                }
+            }).catch((err: any) => {
+                console.error("Error sending voice response:", err);
+                telegramService.sendMessage(state.config.telegramBotToken!, state.config.telegramChatId!, text);
+            });
+            return;
+        }
+
+        isVoiceRequestRef.current = false;
+
         const chunks = formatTelegramResponse(text);
         
         // Use a simple loop to send chunks sequentially
@@ -1436,6 +1575,11 @@ To see all your additional enabled skills and their full technical parameters, y
 
         // Allow scheduled background tasks to bypass the isLoading guard
         if ((!text.trim() && userAttachments.length === 0) || (useAgentStore.getState().isLoading && !ctx.isScheduled)) return;
+
+        // Warm up the local TTS Engine in the background to minimize latency for the first chunk
+        if ((window as any).electron?.warmupTts) {
+            (window as any).electron.warmupTts().catch((err) => console.warn('[TTS Warmup] failed:', err));
+        }
 
         // Register this session as the executing one
         setExecutingSessionId(ctxSessionId);
@@ -1719,9 +1863,14 @@ To see all your additional enabled skills and their full technical parameters, y
         let chatHistoryLocal: { role: string; content: string; timestamp: number; attachments?: Attachment[] }[] = [];
 
         try {
-            chatHistoryLocal = useAgentStore.getState().messages
-                .filter(m => !m.excludeFromContext && m.id !== modelMsgId && m.id !== userMsgId)
-                .map(m => {
+            const storeMessages = useAgentStore.getState().messages
+                .filter(m => !m.excludeFromContext && m.id !== modelMsgId && m.id !== userMsgId);
+
+            for (const m of storeMessages) {
+                if (m.role === 'assistant' && m.blocks && m.blocks.length > 0) {
+                    const reconstructed = blocksToAgentMessages(m.blocks);
+                    chatHistoryLocal.push(...reconstructed);
+                } else {
                     let content = m.text.trim() ? m.text : `(${t('chat.labels.no_user_message', { defaultValue: 'no user message' })})`;
 
                     if (m.attachments && m.attachments.length > 0) {
@@ -1740,8 +1889,13 @@ To see all your additional enabled skills and their full technical parameters, y
                             }
                         }
                     }
-                    return { role: m.role, content, timestamp: m.timestamp };
-                });
+                    const msg: any = { role: m.role, content, timestamp: m.timestamp };
+                    if (m.role === 'assistant' && m.toolCalls && m.toolCalls.length > 0) {
+                        msg.tool_calls = m.toolCalls;
+                    }
+                    chatHistoryLocal.push(msg);
+                }
+            }
 
             const isAgentLoop = useAgentEngine;
             const isChatTools = effectiveMode === 'chat';
@@ -2073,7 +2227,11 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                 updateMessageStreaming(modelMsgId, false);
             }
             // Always persist final state to the executing session (even if user switched away)
-            localMessages = localMessages.map(m => m.id === modelMsgId ? { ...m, isStreaming: false } : m);
+            const latestMsgState = useAgentStore.getState().messages.find(m => m.id === modelMsgId);
+            localMessages = localMessages.map(m => m.id === modelMsgId 
+                ? { ...m, isStreaming: false, text: finalAssistantText || m.text, blocks: latestMsgState?.blocks || m.blocks } 
+                : m
+            );
             persistence.saveSession({ id: ctxSessionId, title: sessions.find(s => s.id === ctxSessionId)?.title || t('common.new_neural_branch'), messages: localMessages, timestamp: Date.now() });
 
             // [AUTO-NAME] On 3rd turn (approx 6 messages)

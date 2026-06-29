@@ -10,7 +10,9 @@ export interface ProviderResponse {
     content: string;
     toolCalls: any[];
     reasoning?: string;
+    thought_signature?: string;
     finishReason?: string;
+    usage?: { promptTokens: number; completionTokens: number; totalTokens: number };
 }
 
 export interface ProviderOptions {
@@ -23,11 +25,26 @@ export interface ProviderOptions {
     isElectronProxy: boolean;
 }
 
+/**
+ * Extracts the content of a <thinking> block from a message content string.
+ * The <thinking> block is the single source of truth for reasoning in stored history.
+ * Returns the thinking text and the remainder (visible response) separately.
+ */
+function extractThinkingBlock(content: string): { thinking: string; rest: string } {
+    const match = content.match(/^<thinking>\n?([\s\S]*?)\n?<\/thinking>\n*/m);
+    if (match) {
+        return { thinking: match[1].trim(), rest: content.slice(match[0].length).trim() };
+    }
+    return { thinking: '', rest: content };
+}
+
 export abstract class ModelProvider {
     protected fullContent = '';
     protected fullReasoning = '';
+    protected thoughtSignature = '';
     protected toolCallsDeltas: any[] = [];
     protected lastFinishReason = '';
+    protected lastUsage?: { promptTokens: number; completionTokens: number; totalTokens: number };
 
     constructor(protected options: ProviderOptions) {}
 
@@ -137,7 +154,9 @@ export abstract class ModelProvider {
             content: this.fullContent,
             toolCalls: this.getToolCalls(),
             reasoning: this.fullReasoning,
-            finishReason: this.lastFinishReason
+            thought_signature: this.thoughtSignature,
+            finishReason: this.lastFinishReason,
+            usage: this.lastUsage
         };
     }
 
@@ -159,7 +178,9 @@ export abstract class ModelProvider {
             content: this.fullContent,
             toolCalls: this.getToolCalls(),
             reasoning: this.fullReasoning,
-            finishReason: this.lastFinishReason
+            thought_signature: this.thoughtSignature,
+            finishReason: this.lastFinishReason,
+            usage: this.lastUsage
         };
     }
 }
@@ -233,6 +254,13 @@ export class OpenAICompatibleProvider extends ModelProvider {
                 if (tcDelta.function?.name) this.toolCallsDeltas[idx].function.name += tcDelta.function.name;
                 if (tcDelta.function?.arguments) this.toolCallsDeltas[idx].function.arguments += tcDelta.function.arguments;
             }
+        }
+        if (fullParsed?.usage) {
+            this.lastUsage = {
+                promptTokens: fullParsed.usage.prompt_tokens,
+                completionTokens: fullParsed.usage.completion_tokens,
+                totalTokens: fullParsed.usage.total_tokens
+            };
         }
     }
 
@@ -316,6 +344,13 @@ export class ZAIProvider extends ModelProvider {
                 if (tcDelta.function?.name) this.toolCallsDeltas[idx].function.name += tcDelta.function.name;
                 if (tcDelta.function?.arguments) this.toolCallsDeltas[idx].function.arguments += tcDelta.function.arguments;
             }
+        }
+        if (fullParsed?.usage) {
+            this.lastUsage = {
+                promptTokens: fullParsed.usage.prompt_tokens,
+                completionTokens: fullParsed.usage.completion_tokens,
+                totalTokens: fullParsed.usage.total_tokens
+            };
         }
     }
 
@@ -404,11 +439,26 @@ export class OllamaProvider extends ModelProvider {
         if (fullParsed?.message?.content) {
             this.fullContent += fullParsed.message.content;
         }
+        if (fullParsed?.message?.thought) {
+            this.fullReasoning += fullParsed.message.thought;
+        }
         if (fullParsed?.message?.thinking) {
             this.fullReasoning += fullParsed.message.thinking;
         }
+        if (fullParsed?.message?.reasoning) {
+            this.fullReasoning += fullParsed.message.reasoning;
+        }
         if (fullParsed?.message?.tool_calls) {
             this.toolCallsDeltas = [...this.toolCallsDeltas, ...fullParsed.message.tool_calls];
+        }
+        if (fullParsed?.prompt_eval_count !== undefined) {
+            const prompt = fullParsed.prompt_eval_count;
+            const comp = fullParsed.eval_count || 0;
+            this.lastUsage = {
+                promptTokens: prompt,
+                completionTokens: comp,
+                totalTokens: prompt + comp
+            };
         }
     }
 
@@ -505,15 +555,27 @@ export class GeminiProvider extends ModelProvider {
                     ...(sig ? { thought_signature: sig } : {})
                 });
             } else if (m.role === 'assistant' && m.tool_calls && Array.isArray(m.tool_calls) && m.tool_calls.length > 0 && this.supportsNativeTools()) {
-                if (m.content) parts.push({ text: m.content });
+                const { thinking: thinkingText0, rest: narrativeText0 } = extractThinkingBlock(m.content || '');
+                const sig = m.thought_signature || m.thoughtSignature;
+                if (thinkingText0 && sig) {
+                    parts.push({ text: thinkingText0, thought: true, thoughtSignature: sig });
+                    if (narrativeText0) {
+                        parts.push({ text: narrativeText0 });
+                    }
+                } else {
+                    if (m.content) {
+                        parts.push({ text: m.content });
+                    }
+                }
+
                 m.tool_calls.forEach((tc: any) => {
-                    const sig = tc.thought_signature || tc.thoughtSignature;
+                    const callSig = tc.thought_signature || tc.thoughtSignature;
                     parts.push({
                         functionCall: {
                             name: tc.function.name,
                             args: typeof tc.function.arguments === 'string' ? JSON.parse(tc.function.arguments) : tc.function.arguments
                         },
-                        ...(sig ? { thought_signature: sig } : {})
+                        ...(callSig ? { thought_signature: callSig } : {})
                     });
                 });
             } else {
@@ -537,8 +599,18 @@ export class GeminiProvider extends ModelProvider {
                     text = `[SYSTEM_INSTRUCTIONS]\n${systemPromptContent}\n[/SYSTEM_INSTRUCTIONS]\n\n${antiHallucination}${jsonInstruction}\n\n[USER_QUERY]\n${text}`;
                 }
 
-                if (text) parts.push({ text });
-                if (m.reasoning) parts.push({ thought: m.reasoning });
+                if (m.role === 'assistant') {
+                    const { thinking: thinkingText1, rest: visibleText1 } = extractThinkingBlock(text);
+                    const sig = m.thought_signature || m.thoughtSignature;
+                    if (thinkingText1 && sig) {
+                        parts.push({ text: thinkingText1, thought: true, thoughtSignature: sig });
+                        parts.push({ text: visibleText1 || '[Procesando...]' });
+                    } else {
+                        parts.push({ text: text || '[Procesando...]' });
+                    }
+                } else {
+                    if (text) parts.push({ text });
+                }
 
                 const imageAttachments = m.attachments?.filter((a: any) => a.type?.startsWith('image/') && a.data && !a.extractedContent) || [];
                 imageAttachments.forEach((img: any) => {
@@ -579,6 +651,8 @@ export class GeminiProvider extends ModelProvider {
                     if (part.text && !this.fullReasoning.endsWith(part.text)) {
                         this.fullReasoning += part.text;
                     }
+                    const sig = part.thoughtSignature || part.thought_signature;
+                    if (sig) this.thoughtSignature = sig;
                 } else if (part.text) {
                     // Normal text block
                     if (!this.fullContent.endsWith(part.text)) {
@@ -587,14 +661,14 @@ export class GeminiProvider extends ModelProvider {
                 }
 
                 // Fallback for older/alternate Gemini versions that pass string directly
-                if (typeof part.thought === 'string') {
-                    if (!this.fullReasoning.endsWith(part.thought)) {
-                        this.fullReasoning += part.thought;
-                    }
-                } else if (typeof part.thought_content === 'string') {
-                    if (!this.fullReasoning.endsWith(part.thought_content)) {
-                        this.fullReasoning += part.thought_content;
-                    }
+                if (typeof part.thought === 'string' && !this.fullReasoning.endsWith(part.thought)) {
+                    this.fullReasoning += part.thought;
+                    const sig = part.thoughtSignature || part.thought_signature;
+                    if (sig) this.thoughtSignature = sig;
+                } else if (typeof part.thought_content === 'string' && !this.fullReasoning.endsWith(part.thought_content)) {
+                    this.fullReasoning += part.thought_content;
+                    const sig = part.thoughtSignature || part.thought_signature;
+                    if (sig) this.thoughtSignature = sig;
                 }
                 if (part.functionCall) {
                     // Check if this tool call is already indexed
@@ -615,6 +689,13 @@ export class GeminiProvider extends ModelProvider {
                     }
                 }
             });
+        }
+        if (fullParsed?.usageMetadata) {
+            this.lastUsage = {
+                promptTokens: fullParsed.usageMetadata.promptTokenCount,
+                completionTokens: fullParsed.usageMetadata.candidatesTokenCount,
+                totalTokens: fullParsed.usageMetadata.totalTokenCount
+            };
         }
     }
 
