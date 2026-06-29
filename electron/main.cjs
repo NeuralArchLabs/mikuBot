@@ -2088,7 +2088,7 @@ ipcMain.handle('voice:warmup', async (event) => {
     }
 });
 
-const SPANISH_PHONETIC_DICT = require(path.join(__dirname, '../src/utils/helpers/ttsPhoneticDict.json'));
+const SPANISH_PHONETIC_DICT = require('./ttsPhoneticDict.json');
 
 // ── Telegram Voice Response Upload ──────────────────────────────────
 function tgCleanTtsText(text, lang = 'es') {

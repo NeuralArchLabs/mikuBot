@@ -1,4 +1,4 @@
-import SPANISH_PHONETIC_DICT from './ttsPhoneticDict.json';
+import SPANISH_PHONETIC_DICT from '../../../electron/ttsPhoneticDict.json';
 
 /**
  * Normalizes and cleans text to remove Markdown, HTML, code blocks, 
