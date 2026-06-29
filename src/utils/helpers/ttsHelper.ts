@@ -165,20 +165,22 @@ export function cleanTtsText(text: string, lang: string = 'es'): string {
 
     // 16. Remove all characters that are NOT letters, digits, spaces, or basic punctuation/symbols.
     // This strips emojis, drawings, and weird unicode symbols while PRESERVING essential symbols:
-    // .,;:!?()'"- and %, $, €, &, /, °, +, *
-    clean = clean.replace(/[^\s0-9a-zA-Z\u00A0-\u00FF\u4e00-\u9fa5.,;:!?()'"\-%$€&/°+*]/gu, ' ');
+    // .,;:!?¡¿()'"- and %, $, €, &, /, °, +, *
+    clean = clean.replace(/[^\s0-9a-zA-Z\u00A0-\u00FF\u4e00-\u9fa5.,;:!?¡¿()'"\-%$€&/°+*]/gu, ' ');
 
     // 17. Clean up multiple spaces/newlines
     clean = clean.replace(/\s+/g, ' ');
 
     // 18. Clean up spaces before punctuation marks to make speech synthesis flow better
-    clean = clean.replace(/\s+([.,;:!?])/g, '$1');
+    clean = clean.replace(/\s+([.,;:!?¡¿])/g, '$1');
 
     // 19. Remove duplicate punctuation (e.g. "... ." or ", ,")
     clean = clean.replace(/\.+/g, '.');
     clean = clean.replace(/,+/g, ',');
     clean = clean.replace(/!+/g, '!');
     clean = clean.replace(/\?+/g, '?');
+    clean = clean.replace(/¡+/g, '¡');
+    clean = clean.replace(/¿+/g, '¿');
 
     return clean.trim();
 }

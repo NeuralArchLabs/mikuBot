@@ -2242,15 +2242,17 @@ function tgCleanTtsText(text, lang = 'es') {
     }
 
     // Keep: %, $, €, &, /, °, +, *
-    clean = clean.replace(/[^\s0-9a-zA-Z\u00A0-\u00FF\u4e00-\u9fa5.,;:!?()'"\-%$€&/°+*]/gu, ' ');
+    clean = clean.replace(/[^\s0-9a-zA-Z\u00A0-\u00FF\u4e00-\u9fa5.,;:!?¡¿()'"\-%$€&/°+*]/gu, ' ');
 
     clean = clean.replace(/\s+/g, ' ');
-    clean = clean.replace(/\s+([.,;:!?])/g, '$1');
+    clean = clean.replace(/\s+([.,;:!?¡¿])/g, '$1');
 
     clean = clean.replace(/\.+/g, '.');
     clean = clean.replace(/,+/g, ',');
     clean = clean.replace(/!+/g, '!');
     clean = clean.replace(/\?+/g, '?');
+    clean = clean.replace(/¡+/g, '¡');
+    clean = clean.replace(/¿+/g, '¿');
 
     return clean.trim();
 }
