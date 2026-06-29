@@ -645,6 +645,31 @@ export const ChatArea = ({
 
     const isExecutingThisSession = !executingSessionId || executingSessionId === sessionId;
 
+    // Listen to local voice read-text commands/events (e.g. from slash commands)
+    useEffect(() => {
+        const handleReadTextEvent = (e: Event) => {
+            const customText = (e as CustomEvent).detail?.text;
+            if (customText) {
+                handleReadAloud(-999, customText);
+            } else {
+                // Find last assistant message
+                const assistantMessages = messages.filter(m => m.role === 'assistant');
+                if (assistantMessages.length > 0) {
+                    const lastMsg = assistantMessages[assistantMessages.length - 1];
+                    const idx = messages.indexOf(lastMsg);
+                    if (idx !== -1) {
+                        handleReadAloud(idx, lastMsg.text);
+                    }
+                }
+            }
+        };
+
+        window.addEventListener('voice:read-text', handleReadTextEvent);
+        return () => {
+            window.removeEventListener('voice:read-text', handleReadTextEvent);
+        };
+    }, [messages, handleReadAloud]);
+
     // ── SESSION LOAD GUARD ──────────────────────────────────────────
     // Prevents auto-save from firing with mixed state during session switches.
     // When sessionId changes, there's a window where Zustand has updated messages

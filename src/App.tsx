@@ -279,6 +279,7 @@ export const App = () => {
     const sendToTelegramRef = useRef<(text: string) => void>(() => { });
     const pendingToolApprovalRef = useRef<((approved: boolean) => void) | null>(null);
     const isVoiceRequestRef = useRef<boolean>(false);
+    const lastResponseTextRef = useRef<string>("");
 
     useEffect(() => {
         stateRef.current = state;
@@ -582,6 +583,37 @@ export const App = () => {
                     if (msg && msg.text) {
                         const cmd = msg.text.trim().toLowerCase();
                         
+                        // Handler for voice/read commands (/voz, /voice, /leer, /read, /aloud)
+                        const ttsCmd = ['/voz', '/voice', '/leer', '/read', '/aloud'].find(c => cmd.startsWith(c));
+                        if (ttsCmd) {
+                            const restText = msg.text.substring(ttsCmd.length).trim();
+                            const textToRead = restText || lastResponseTextRef.current;
+                            if (textToRead) {
+                                const cleanText = cleanTtsText(textToRead, stateRef.current.config.language || 'es');
+                                if (cleanText) {
+                                    telegramService.sendMessage(stateRef.current.config.telegramBotToken!, stateRef.current.config.telegramChatId!, '🗣️ <i>Generando audio...</i>');
+                                    (window as any).electron.sendTelegramVoiceResponse({
+                                        token: stateRef.current.config.telegramBotToken,
+                                        chatId: stateRef.current.config.telegramChatId,
+                                        text: cleanText,
+                                        lang: stateRef.current.config.language || 'es',
+                                        voice: stateRef.current.config.voice || null
+                                    }).then((res: any) => {
+                                        if (!res.ok) {
+                                            console.error("Failed to send voice response to Telegram:", res.error);
+                                            telegramService.sendMessage(stateRef.current.config.telegramBotToken!, stateRef.current.config.telegramChatId!, '❌ No pude generar el audio.');
+                                        }
+                                    }).catch((err: any) => {
+                                        console.error("Error generating voice response:", err);
+                                        telegramService.sendMessage(stateRef.current.config.telegramBotToken!, stateRef.current.config.telegramChatId!, '❌ Error generando el audio.');
+                                    });
+                                }
+                            } else {
+                                telegramService.sendMessage(stateRef.current.config.telegramBotToken!, stateRef.current.config.telegramChatId!, '⚠️ No hay mensaje reciente ni texto proporcionado para leer.');
+                            }
+                            return;
+                        }
+
                         // Handler for text-based approval commands (/approve, /decline, etc.)
                         if (['/approve', '/ok', '/yes', '/decline', '/reject', '/no'].some(c => cmd.startsWith(c))) {
                             if (pendingToolApprovalRef.current) {
@@ -608,6 +640,34 @@ export const App = () => {
                     lastProcessedUpdateIdRef.current = updateId;
 
                     if (callback && callback.data) {
+                        // Callback for read aloud last text
+                        if (callback.data === 'read_aloud_last') {
+                            await telegramService.answerCallback(stateRef.current.config.telegramBotToken!, callback.id, 'Generando audio... 🗣️');
+                            if (lastResponseTextRef.current) {
+                                const cleanText = cleanTtsText(lastResponseTextRef.current, stateRef.current.config.language || 'es');
+                                if (cleanText) {
+                                    (window as any).electron.sendTelegramVoiceResponse({
+                                        token: stateRef.current.config.telegramBotToken,
+                                        chatId: stateRef.current.config.telegramChatId,
+                                        text: cleanText,
+                                        lang: stateRef.current.config.language || 'es',
+                                        voice: stateRef.current.config.voice || null
+                                    }).then((res: any) => {
+                                        if (!res.ok) {
+                                            console.error("Failed to send voice response to Telegram:", res.error);
+                                            telegramService.sendMessage(stateRef.current.config.telegramBotToken!, stateRef.current.config.telegramChatId!, '❌ No pude generar el audio.');
+                                        }
+                                    }).catch((err: any) => {
+                                        console.error("Error generating voice response:", err);
+                                        telegramService.sendMessage(stateRef.current.config.telegramBotToken!, stateRef.current.config.telegramChatId!, '❌ Error generando el audio.');
+                                    });
+                                }
+                            } else {
+                                telegramService.sendMessage(stateRef.current.config.telegramBotToken!, stateRef.current.config.telegramChatId!, '⚠️ No hay mensaje reciente para leer.');
+                            }
+                            return;
+                        }
+
                         // 1. Tool Approval Callbacks
                         if (callback.data.includes('_tool') && pendingToolApprovalRef.current) {
                             const approved = callback.data === 'approve_tool';
@@ -1510,29 +1570,10 @@ To see all your additional enabled skills and their full technical parameters, y
             return;
         }
 
-        if (isVoiceRequestRef.current && (window as any).electron?.sendTelegramVoiceResponse) {
-            isVoiceRequestRef.current = false;
-            const cleanText = cleanTtsText(text, state.config.language || 'es');
-            if (!cleanText) return;
+        // Save last response text for later TTS command or callback
+        lastResponseTextRef.current = text;
 
-            (window as any).electron.sendTelegramVoiceResponse({
-                token: state.config.telegramBotToken,
-                chatId: state.config.telegramChatId,
-                text: cleanText,
-                lang: state.config.language || 'es',
-                voice: state.config.voice || null
-            }).then((res: any) => {
-                if (!res.ok) {
-                    console.error("Failed to send voice response to Telegram:", res.error);
-                    telegramService.sendMessage(state.config.telegramBotToken!, state.config.telegramChatId!, text);
-                }
-            }).catch((err: any) => {
-                console.error("Error sending voice response:", err);
-                telegramService.sendMessage(state.config.telegramBotToken!, state.config.telegramChatId!, text);
-            });
-            return;
-        }
-
+        const wasVoiceRequest = isVoiceRequestRef.current;
         isVoiceRequestRef.current = false;
 
         const chunks = formatTelegramResponse(text);
@@ -1556,6 +1597,18 @@ To see all your additional enabled skills and their full technical parameters, y
                             const errData = await res.json().catch(() => ({}));
                             console.error("Telegram API Error:", errData);
                             askAlert(t('dialogs.telegram_error', { index: index + 1, error: errData.description || res.statusText }));
+                        } else {
+                            // If this was a voice request and it's the last chunk, send the interactive button
+                            if (wasVoiceRequest && index === chunks.length - 1) {
+                                setTimeout(() => {
+                                    telegramService.sendMessageWithButtons(
+                                        state.config.telegramBotToken!,
+                                        state.config.telegramChatId!,
+                                        '¿Leer en voz alta?',
+                                        [[{ text: '🗣️ Leer en voz alta', data: 'read_aloud_last' }]]
+                                    );
+                                }, 500);
+                            }
                         }
                     })
                     .catch(err => console.error("Remote response error:", err));
@@ -1585,6 +1638,13 @@ To see all your additional enabled skills and their full technical parameters, y
         setExecutingSessionId(ctxSessionId);
 
         // [COMMAND INTERCEPTOR]
+        const uiTtsCmd = ['/voz', '/voice', '/leer', '/read', '/aloud'].find(c => text.trim().toLowerCase().startsWith(c));
+        if (uiTtsCmd) {
+            const rest = text.substring(uiTtsCmd.length).trim();
+            window.dispatchEvent(new CustomEvent('voice:read-text', { detail: { text: rest } }));
+            return;
+        }
+
         if (text.startsWith('/')) {
             const result = await executeCommand(text, {
                 state: currentState,
