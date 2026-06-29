@@ -1,4 +1,9 @@
 @import "tailwindcss";
+@source not "../engine";
+@source not "../release";
+@source not "../dist";
+@source not "../core";
+@source not "../backgrounds";
 
 /* Categorized Local Fonts (@fontsource) */
 /* Sans-Serif */

@@ -72,6 +72,9 @@
     "electron:build": "npm run build && electron-builder"
   },
   "dependencies": {
+    "unzipper": "^0.12.3"
+  },
+  "devDependencies": {
     "@fontsource/architects-daughter": "^5.2.7",
     "@fontsource/comfortaa": "^5.2.8",
     "@fontsource/fira-code": "^5.2.7",
@@ -87,27 +90,24 @@
     "@fontsource/sacramento": "^5.2.8",
     "@fortawesome/fontawesome-free": "^7.1.0",
     "@tailwindcss/vite": "^4.1.18",
-    "i18next": "^26.0.2",
-    "mermaid": "^11.14.0",
-    "pdf-lib": "^1.17.1",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "react-i18next": "^17.0.1",
-    "unzipper": "^0.12.3",
-    "zustand": "^5.0.12"
-  },
-  "devDependencies": {
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.4.24",
     "concurrently": "^9.2.1",
     "electron": "^40.2.1",
     "electron-builder": "^26.7.0",
+    "i18next": "^26.0.2",
+    "mermaid": "^11.14.0",
+    "pdf-lib": "^1.17.1",
     "postcss": "^8.5.6",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-i18next": "^17.0.1",
     "tailwindcss": "^4.1.18",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
-    "wait-on": "^9.0.4"
+    "wait-on": "^9.0.4",
+    "zustand": "^5.0.12"
   },
   "optionalDependencies": {
     "@types/fluent-ffmpeg": "^2.1.28",
