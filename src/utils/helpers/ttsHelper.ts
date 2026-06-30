@@ -167,10 +167,11 @@ export function cleanTtsText(text: string, lang: string = 'es'): string {
 
     // English-to-Spanish phonetic dictionary for common tech terms
     if (lang.toLowerCase().startsWith('es')) {
-        for (const [englishWord, spanishPhonetic] of Object.entries(SPANISH_PHONETIC_DICT)) {
-            const regex = new RegExp(`\\b${englishWord}\\b`, 'gi');
-            clean = clean.replace(regex, spanishPhonetic);
-        }
+        const sortedKeys = Object.keys(SPANISH_PHONETIC_DICT).sort((a, b) => b.length - a.length);
+        const dictRegex = new RegExp(`\\b(${sortedKeys.map(k => k.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')).join('|')})\\b`, 'gi');
+        clean = clean.replace(dictRegex, (match) => {
+            return SPANISH_PHONETIC_DICT[match.toLowerCase()] || match;
+        });
     }
 
     // 16. Remove all characters that are NOT letters, digits, spaces, or basic punctuation/symbols.
