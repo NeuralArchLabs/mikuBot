@@ -20,6 +20,8 @@ export interface ModelInfo {
     id: string;
     name: string;
     provider: Provider;
+    /** Provider-advertised capabilities (for example Ollama's `vision`). */
+    capabilities?: string[];
 }
 
 /** Application Configuration */
@@ -31,6 +33,13 @@ export interface AppConfig {
     chatModel?: string;
     agentProvider?: Provider;
     agentModel?: string;
+    /**
+     * Runtime selected by the active Chat/Agent mode for long-running skills.
+     * It remains stable even if the conversational request itself is retried
+     * through the master fallback.
+     */
+    activeModeProvider?: Provider;
+    activeModeModel?: string;
     visionProvider?: Provider;
     visionModel?: string;
     apiKeys: Record<Provider, string>;
@@ -86,7 +95,7 @@ export interface AppState {
     toolsFiles: Record<string, string>;
     rootFiles: Record<string, string>;
     selectedLibraryFiles: string[];
-    activeTab: 'chat' | 'cortex' | 'commands' | 'settings' | 'skills';
+    activeTab: 'chat' | 'editor' | 'cortex' | 'commands' | 'settings' | 'skills';
     selectedFile: string;
     isLibraryExpanded: boolean;
     unsavedChanges: Record<string, string>;

@@ -68,13 +68,13 @@
     "clean_install_desc": "Remove old sessions and data found in the Workspace.",
     "config_error": "Configuration Error",
     "fatal_error": "Fatal Error",
-    "connection_lost": "The connection to the Neural Engine was lost. Check terminal for details.",
-    "new_neural_branch": "New Neural Branch",
+    "connection_lost": "The connection to the AI engine was lost. Check the terminal for details.",
+    "new_neural_branch": "New conversation",
     "active_session": "Active Session",
     "rewind_confirm": "Rewind conversation to this point? All subsequent messages will be lost.",
-    "config_import_success": "Neural Engine: Configuration imported and synchronized successfully.",
+    "config_import_success": "Configuration imported and synchronized successfully.",
     "no_folder_configured": "No folder configured for \"{{target}}\". Select one in Settings.",
-    "subsystems_online": "Neural Subsystems Online!\n\nLinkages restored automatically via internal framework.",
+    "subsystems_online": "System services online!\n\nConnections restored automatically.",
     "aborted_execution": "Aborted Execution",
     "denied_execution": "Execution Denied",
     "untitled_session": "Untitled Session",
@@ -111,7 +111,7 @@
     "voice_model_delete_confirm": "Are you sure you want to delete the model {{name}}?",
     "voice_model_select": "Select a model first.",
     "setup_complete": "✅ Setup Complete!\n\nYour environment is ready. Please go to Settings to link the folders created at {{path}}",
-    "subsystems_online": "✅ Neural Subsystems Online!\n\nYour environment is fully linked and ready to operate."
+    "subsystems_online": "✅ System services online!\n\nYour environment is fully linked and ready to operate."
   },
   "tools": {
     "metrics_summary": "System metrics obtained: {{platform}} [CPU: {{cpu}}%, RAM: {{ram}}]",
@@ -129,8 +129,66 @@
     "batch_summary": "Batch operation ({{operation}}) performed on \"{{source_path}}\".",
     "web_research_summary": "Web research completed for: \"{{query}}\" in categories: [{{categories}}]. Analyzed {{count}} sites.",
     "deep_research_summary": "Deep research finalized: Technical dossier generated with {{count}} validated sources across categories [{{categories}}].",
+    "deep_research_plan_ready": "Research plan ready for review: {{topic}}",
+    "deep_research_completed": "Deep research completed: {{topic}}",
     "outline_summary": "Structural map of \"{{filename}}\" generated successfully.",
     "default_summary": "Operation \"{{name}}\" completed."
+  },
+  "deep_research": {
+    "completion_notice": "The research finished successfully. You can review it by opening the right-hand side panel or checking the file created in Library: {{file}}.",
+    "library_report": "the Markdown report saved in Library",
+    "plan_title_proposed": "Proposed research plan",
+    "plan_title": "Research plan",
+    "runtime_planned": "It will run with",
+    "runtime_running": "This research is running with",
+    "runtime_completed": "This research was completed with",
+    "objectives": "Objectives",
+    "work_phases": "Work phases",
+    "approve_start": "Approve plan and start",
+    "open_investigation": "Open research",
+    "checking": "Checking…",
+    "starting": "Starting…",
+    "request_adjustments": "Request changes",
+    "adjust_placeholder": "Describe what should change in the plan…",
+    "cancel": "Cancel",
+    "send_adjustments": "Send changes",
+    "configure_runtime": "Configure a provider and model for {{mode}} mode before starting Deep Research.",
+    "configure_adjustments_runtime": "Configure a provider and model for {{mode}} mode before requesting changes.",
+    "engine_unavailable": "The skills engine or commands folder is unavailable.",
+    "runtime_missing": "The plan does not retain the model that created it. Generate a new plan before starting the research.",
+    "execution_error": "Deep Research could not be started.",
+    "skill_error": "Deep Research returned an error.",
+    "adjust_error": "The plan could not be changed.",
+    "pdf_unavailable": "The PDF exporter is unavailable.",
+    "panel_title": "Deep Research",
+    "research_default": "Research",
+    "stage_planning": "Planning",
+    "stage_execution": "Execution",
+    "stage_verification": "Verification",
+    "stage_synthesis": "Synthesis",
+    "approved_timeline": "Plan approved by the user. Preparing research subagents…",
+    "resume_stage": "Resuming research",
+    "export_pdf": "Export PDF",
+    "generating_pdf": "Generating…",
+    "convert_pdf_title": "Convert research to PDF",
+    "close_panel": "Close panel",
+    "interrupted": "Research interrupted",
+    "research_interrupted": "The research was interrupted.",
+    "checkpoint_available": "The checkpoint is still available.",
+    "resuming": "Resuming…",
+    "resume_checkpoint": "Resume from checkpoint",
+    "markdown_failed": "Could not save to Library",
+    "markdown_saved": "Markdown saved to Library",
+    "markdown_saved_copy": "The Markdown copy was saved successfully.",
+    "pdf_saved": "PDF saved: {{path}}",
+    "pdf_error": "PDF export error: {{error}}",
+    "approved_plan": "Approved plan",
+    "activity": "Activity",
+    "sources_count": "{{count}} sources",
+    "preparing_log": "Preparing the research log…",
+    "draft_in_progress": "Draft in progress",
+    "validated_sources": "Validated sources ({{count}})",
+    "source_default": "Source {{count}}"
   },
   "onboarding": {
     "title": "System Initialization",
@@ -243,7 +301,7 @@
       "no_context": "No context."
     },
     "engines": {
-      "title": "NEURAL ENGINES",
+      "title": "AI ENGINES",
       "subtitle": "Model and Fallback Configuration",
       "chat_title": "Chat Interface",
       "chat_desc": "Main model for rapid conversation.",
@@ -254,7 +312,7 @@
       "fallback_title": "Master Fallback",
       "fallback_desc": "Emergency routing if primary fails.",
       "select_provider": "Provider",
-      "select_model": "Neural Model",
+      "select_model": "AI Model",
       "typing_placeholder": "Model name...",
       "common_models": "Detected Models"
     },
@@ -321,7 +379,7 @@
     "tabs": {
       "core": "Core System",
       "core_desc": "Platform Configuration & Runtime Keys",
-      "skills": "Neural Skills",
+      "skills": "Skills",
       "skills_desc": "Synaptic Core Architecture"
     },
     "actions": {
@@ -333,7 +391,7 @@
       "save_sync": "Save"
     },
     "pathways": {
-      "title": "Neural System Pathways",
+      "title": "System Pathways",
       "workspace": "WorkSpace",
       "workspace_desc": "PRIMARY DIRECTORY",
       "core": "Core",
@@ -345,7 +403,7 @@
       "select": "Select"
     },
     "orchestration": {
-      "title": "Neural Orchestration Model Routing",
+      "title": "AI Model Routing",
       "chat_runtime": "Chat Runtime",
       "agent_runtime": "Agent Runtime",
       "vision_runtime": "Visual Vortex (Vision)",
@@ -357,7 +415,7 @@
       "select_model": "Select Target Architecture..."
     },
     "security": {
-      "title": "Neural Security & Main Engine Settings",
+      "title": "Security & Main Engine Settings",
       "vault_title": "Secure Credential Vault",
       "vault_desc": "Manage master logic fallbacks and encrypted API keys",
       "fallback_title": "Master Fallback Routing",
@@ -386,7 +444,13 @@
       "ollama_main_gpu": "Main GPU (index)",
       "ollama_main_gpu_desc": "In multi-GPU systems, defines which card will be used for primary tasks.",
       "ollama_threads": "CPU Threads (num_thread)",
-      "ollama_threads_desc": "Number of threads for computation. 0 is automatic."
+      "ollama_threads_desc": "Number of threads for computation. 0 is automatic.",
+      "ollama_zero_overhead_title": "Unlock VRAM limit (no reserve)",
+      "ollama_zero_overhead_desc": "Lets Ollama use all available VRAM with no additional reserve. Use only on GPUs dedicated to inference; changing it restarts Ollama.",
+      "ollama_zero_overhead_enabled": "Effective state: no additional VRAM reserve.",
+      "ollama_zero_overhead_disabled": "Effective state: 512 MB safety reserve active.",
+      "ollama_zero_overhead_pending": "Pending change: it will be applied when you confirm the changes.",
+      "ollama_zero_overhead_syncing": "Checking Ollama's effective state…"
     },
     "vosk": {
       "title": "Vosk Recognition Engine",
@@ -434,8 +498,8 @@
       "mintotray_desc": "Closing the app hides it in the tray"
     },
     "backup": {
-      "title": "Neural Maintenance & Backup",
-      "subtitle": "Neural Workspace Backup",
+      "title": "Maintenance & Backup",
+      "subtitle": "Workspace Backup",
       "desc": "Export a complete copy of your environment (configurations, sessions, scheduled tasks, commands, and skills) in a single compressed file. Ideal for migrations or additional security.",
       "export_btn": "Export Backup",
       "restore_btn": "Restore Backup",
@@ -449,30 +513,33 @@
     "reset_btn": "Reset & Re-run Setup",
     "save_btn": "Save",
     "alerts": {
-      "ollama_error_title": "Local Neural Engine Unresponsive",
+      "ollama_error_title": "Local Engine Unresponsive",
       "ollama_error_desc": "Verify Ollama is active on {{url}} and that at least one model is initialized."
     }
   },
   "sidebar": {
     "tabs": {
-      "chat": "Neural Chat",
-      "cortex": "Cortex Editor",
-      "commands": "Command Editor",
-      "scheduler": "Neural Tasks",
+      "chat": "Conversation",
+      "editor": "Cortex Editor",
+      "cortex": "Core",
+      "commands": "Commands",
+      "scheduler": "Automations",
       "settings": "Control Room"
     },
     "tooltips": {
       "new_session": "New Session",
       "import_session": "Import Session",
-      "sessions": "Neural Sessions",
+      "sessions": "Sessions",
       "library": "Context Library",
       "expand_library": "Expand Library",
       "new_doc": "New Context Document",
       "delete_file": "Delete {{filename}}",
-      "close_manager": "Close Session Manager"
-    },
+    "close_manager": "Close Session Manager",
+    "collapse_sidebar": "Collapse sidebar",
+    "expand_sidebar": "Expand sidebar"
+  },
     "footer": {
-      "no_cortex": "No cortex expansion"
+      "no_cortex": "No files"
     }
   },
   "chat": {
@@ -483,13 +550,136 @@
       "analyzing": "Analyzing Parameters...",
       "live_rec": "LISTENING..."
     },
+    "welcome": {
+      "greeting": "Hello, {{name}}",
+      "greetings": {
+        "one": "Hello, {{name}}",
+        "two": "Good to see you, {{name}}",
+        "three": "Ready when you are, {{name}}",
+        "four": "It’s great to see you, {{name}}",
+        "five": "I’m listening, {{name}}",
+        "six": "Let’s create something great, {{name}}",
+        "seven": "I’m here to help, {{name}}"
+      },
+      "messages": {
+        "one": "What would you like to explore, create, or solve today?",
+        "two": "I’m ready to turn an idea into a clear plan.",
+        "three": "We can research, analyze, write, or build something together.",
+        "four": "Give me a challenge and we’ll find the next step.",
+        "five": "Your next question can open a new path forward."
+      },
+      "suggestions": {
+        "learn": {
+          "label": "Learn about a topic",
+          "label_alt": "Discover something new",
+          "prompt": "Help me learn about: . Explain the essential concepts with clear examples and adapt the depth to my level."
+        },
+        "research": {
+          "label": "Research in depth",
+          "label_alt": "Compare sources on a topic",
+          "prompt": "Do deep research on: "
+        },
+        "news": {
+          "label": "Explore the latest news",
+          "label_alt": "Catch up on the latest news",
+          "prompt": "Research the latest news about: . Summarize what happened, when it happened, and which sources support each point."
+        },
+        "organize": {
+          "label": "Organize an idea or project",
+          "label_alt": "Turn an idea into steps",
+          "prompt": "Help me organize: . Turn what I share into goals, priorities, and concrete next steps."
+        },
+        "ideas": {
+          "label": "Develop new ideas",
+          "label_alt": "Explore creative alternatives",
+          "prompt": "Help me generate ideas for: . Suggest several alternatives, compare their strengths, and recommend where to start."
+        },
+        "analyze": {
+          "label": "Analyze information",
+          "label_alt": "Find patterns and risks",
+          "prompt": "Analyze: . Identify the key points, risks, open questions, and a reasoned conclusion."
+        },
+        "plan": {
+          "label": "Create an action plan",
+          "label_alt": "Design a step-by-step path",
+          "prompt": "Help me create a plan for: . Tell me what you want to achieve and I’ll suggest clear first steps."
+        },
+        "widget": {
+          "label": "Create a widget",
+          "label_alt": "Design an interactive widget",
+          "prompt": "Help me create a widget for: . Briefly describe what you want it to show or do."
+        },
+        "food": {
+          "label": "Prepare a meal",
+          "label_alt": "Come up with a recipe",
+          "prompt": "Help me prepare a meal with: . Tell me which ingredients you have or what you feel like eating."
+        },
+        "schedule": {
+          "label": "Schedule a task",
+          "label_alt": "Create a recurring task",
+          "prompt": "Help me schedule a task for: . Say when it should repeat and what it should do."
+        },
+        "repair": {
+          "label": "Repair something",
+          "label_alt": "Fix a problem",
+          "prompt": "Help me repair: . Tell me what is not working and what should happen instead."
+        },
+        "workflow": {
+          "label": "Improve my workflow",
+          "label_alt": "Make my work easier",
+          "prompt": "Help me improve my workflow: . Tell me how you do it now and what you would like to simplify."
+        },
+        "emotions": {
+          "label": "Sort through my feelings",
+          "label_alt": "Talk through a difficult situation",
+          "prompt": "Help me with what I am feeling: . Tell me what is going on and what kind of support you want."
+        },
+        "personal": {
+          "label": "Work through something personal",
+          "label_alt": "Think through a personal situation",
+          "prompt": "Help me with a personal situation: . Tell me what happened and what you would like to decide or resolve."
+        },
+        "something": {
+          "label": "Something happened",
+          "label_alt": "I need to tell you something",
+          "prompt": "Something happened."
+        },
+        "decision": {
+          "label": "I don’t know what to do",
+          "label_alt": "Help me decide",
+          "prompt": "I don’t know what to do."
+        },
+        "conversation": {
+          "label": "I need to talk about something",
+          "label_alt": "I need to get something off my chest",
+          "prompt": "I need to talk about something."
+        },
+        "idea": {
+          "label": "I have an idea",
+          "label_alt": "I want to develop an idea",
+          "prompt": "I have an idea I want to develop."
+        },
+        "goal": {
+          "label": "I want to achieve something",
+          "label_alt": "I have a goal in mind",
+          "prompt": "I want to achieve something and I don’t know where to start."
+        },
+        "question": {
+          "label": "I have a question",
+          "label_alt": "I want to ask something",
+          "prompt": "I have a question."
+        }
+      }
+    },
     "actions": {
       "rewind": "Edit & Rewind",
       "copy": "Copy",
       "copied": "Copied!",
       "read_aloud": "Read aloud",
+      "pause_reading": "Pause reading",
+      "resume_reading": "Resume reading",
       "stop_reading": "Stop reading",
-      "abort": "Abort Neural Process",
+      "abort": "Abort process",
       "send": "Send Signal",
       "send_instruction": "Send as Instruction",
       "send_instruction_desc": "Send as Direct Instruction (Forces tool call)",
@@ -524,7 +714,7 @@
       "mic_error": "❌ Could not access microphone: {{error}}",
       "no_voice_model": "⚠️ No voice model selected. Configure it in Core System settings.",
       "voice_start_error": "❌ Error starting recording: {{error}}",
-      "logs_copied": "✅ Neural Logs: Full history successfully copied to clipboard."
+      "logs_copied": "✅ Logs: full history successfully copied to clipboard."
     },
     "modes": {
       "chat": "Chat",
@@ -534,13 +724,13 @@
       "select_model": "SELECT MODEL",
       "temporary_change": "Temporary change (not saved)",
       "no_models_available": "No models available",
-      "debug_interface": "Neural Debugging Interface",
+      "debug_interface": "Debugging Interface",
       "debug_desc": "Raw Context & Internal Log Streaming",
-      "no_data": "No raw neural data has been recorded for this session yet.",
+      "no_data": "No raw data has been recorded for this session yet.",
       "steps_executed_one": "{{count}} action",
       "steps_executed_other": "{{count}} actions",
       "free_conversation": "Free Conversation",
-      "link_intermittent": "Neural Link Intermittent: Local directories sleeping.",
+      "link_intermittent": "Connection intermittent: local directories are inactive.",
       "wake_up": "Wake Up Linkages",
       "mode": "MODE:",
       "telegram": "telegram",
@@ -569,7 +759,7 @@
       "document_analyzing": "Extracting document contents...",
       "multimodal_integration": "Multimodal Integration",
       "multimodal_analyzing": "Synchronizing visual context and document content...",
-      "neural_syncing": "Synchronizing neural components...",
+      "neural_syncing": "Synchronizing components...",
       "prompt": {
         "protocol_reinforcement": "PROTOCOL REINFORCEMENT",
         "useful_reminders": "USEFUL REMINDERS",
@@ -623,7 +813,13 @@
     }
   },
   "editor": {
-    "title": "Storage Explorer",
+    "title": "Cortex Editor",
+    "workspace_desc": "Assistant instructions and personality",
+    "file_list_title": "Files",
+    "scopes": {
+      "core": "Core",
+      "commands": "Commands"
+    },
     "cancel": "Cancel",
     "edit": "Edit",
     "editor": "Editor",
@@ -636,11 +832,11 @@
     "unsaved": "Unsaved",
     "discard": "Discard",
     "save": "Save",
-    "placeholder": "Type neural logic here...",
-    "standby_title": "Neural Standby",
+    "placeholder": "Type here...",
+    "standby_title": "Editor standby",
     "standby_desc": "Select a file to begin editing",
     "confirm": {
-      "delete_warning": "⚠️ WARNING: Deleting files from the Cortex or Command paths is a high-risk operation. Removing essential system files or custom commands could break mikuCentral functionality or result in data loss that cannot be undone.",
+      "delete_warning": "⚠️ WARNING: Deleting files from the Core or Commands paths is a high-risk operation. Removing essential system files or custom commands could break mikuCentral functionality or result in data loss that cannot be undone.",
       "delete_last": "Are you absolutely sure you want to permanently delete \"{{filename}}\"? This action is irreversible."
     }
   },
@@ -672,7 +868,7 @@
     }
   },
   "scheduler": {
-    "title": "Neural Tasks",
+    "title": "Automations",
     "subtitle": "Automate repetitive tasks and system maintenance",
     "add_btn": "Add New Task",
     "save_btn": "Save Task",
@@ -690,7 +886,7 @@
       "prompt_placeholder": "What should the agent do when this task runs? Be specific...",
       "interval": "Interval",
       "command": "Command",
-      "experimental": "Experimental: Background execution via neural hooks...",
+      "experimental": "Experimental: background execution via internal hooks...",
       "schedule_type": "Schedule Type",
       "interval_label": "Interval (minutes)",
       "cron_label": "Cron Expression",
@@ -835,7 +1031,7 @@
     "file": "File",
     "edit": "Edit",
     "view": "View",
-    "neural_engine": "Neural Engine",
+    "neural_engine": "AI Engine",
     "help": "Help",
     "options": {
       "new_session": "New Session",
@@ -873,36 +1069,36 @@
     "audio_engine": "Audio Engine",
     "vosk_url": "https://alphacephei.com/vosk/",
     "security_layer": "Security Layer",
-    "security_sandbox": "Neural Sandbox",
+    "security_sandbox": "Secure Environment",
     "python_runtime_internal": "Python 3.11 (Internal)"
   },
   "skills": {
     "repository": "Synaptic Repository",
     "properties": "Properties",
-    "neural_logic": "Neural Logic",
-    "blueprints_title": "Neural Blueprints",
+    "neural_logic": "System Logic",
+    "blueprints_title": "Blueprints",
     "blueprints_desc": "Select a foundation for deployment",
-    "configure_title": "Configure Neural Skill",
+    "configure_title": "Configure Skill",
     "configure_desc": "Assign a unique identifier for deployment",
     "placeholder_id": "Skill ID...",
     "btn_back": "Back",
     "btn_deploy": "Deploy",
-    "standby_title": "Neural Standby",
-    "standby_desc": "Awaiting selection to initialize neural Pathways",
+    "standby_title": "Standby",
+    "standby_desc": "Awaiting a selection to initialize the pathways",
     "delete_confirm": "Are you sure you want to permanently delete the skill \"{{name}}\"? This action cannot be undone.",
     "delete_btn": "Delete Skill",
     "automatic_title": "AUTOMATIC EXECUTION SYSTEM",
-    "automatic_desc": "Neural parameters are managed dynamically by the core engine.",
+    "automatic_desc": "Parameters are managed dynamically by the core engine.",
     "email_identity": "Email Identity",
     "app_password": "App Password",
-    "error_loading": "Error loading neural skills.",
+    "error_loading": "Error loading skills.",
     "error_creating": "Error in skill creation pipeline.",
     "error_saving": "Failed to save skill files, check permissions.",
     "widget_manager_title": "Widget Manager",
     "widget_manager_back": "Back to Skill",
     "widget_launch": "Initialize Element",
-    "widget_delete_confirm": "A neural component will be permanently erased. Proceed?",
-    "widget_empty_title": "No Neural Widgets",
+    "widget_delete_confirm": "A component will be permanently erased. Proceed?",
+    "widget_empty_title": "No widgets",
     "widget_empty_desc": "Ask Miku to generate a new widget to get started."
   }
 }

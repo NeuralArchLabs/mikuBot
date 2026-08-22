@@ -74,7 +74,10 @@ export async function sendAgentMessage(
         isAgentMode: boolean;
         isInstructionMode: boolean;
         systemPrompt: string;
-    }>
+        activeModeProvider?: Provider;
+        activeModeModel?: string;
+    }>,
+    sessionId?: string
 ): Promise<void> {
 
     // Start of turn
@@ -90,7 +93,7 @@ export async function sendAgentMessage(
         messages: any[],
         useTools: boolean,
         customOnStatus?: (status: Partial<AgentStatus>) => void
-    ): Promise<{ content: string; toolCalls: any[]; reasoning?: string; finishReason?: string }> {
+    ): Promise<{ content: string; toolCalls: any[]; reasoning?: string; reasoningFollowsContent?: boolean; finishReason?: string }> {
         const provider = config.provider;
         const isElectronProxy = !!(window as any).electron?.apiStream;
 
@@ -189,6 +192,12 @@ export async function sendAgentMessage(
     };
 
     let lastStreamUpdate = 0;
+    const cleanNativeReasoningForDisplay = (text?: string): string => (text || '')
+        // Native reasoning sometimes arrives wrapped in the same tags used by
+        // text-mode models. Keep its content, never render the transport tags.
+        .replace(/<\\?\/?(?:thinking|thought|reflection|think)\b[^>]*>/gi, '')
+        .trim();
+
     const bridgedOnStatus = (status: Partial<AgentStatus>) => {
         localOnStatus(status);
         if (status.phase === 'streaming' && (status.streamedText !== undefined || status.streamedReasoning !== undefined)) {
@@ -196,12 +205,22 @@ export async function sendAgentMessage(
             if (now - lastStreamUpdate > 80) {
                 lastStreamUpdate = now;
                 const tempIterationBlocks: MessageBlock[] = [];
-                if (status.streamedReasoning && status.streamedReasoning.trim()) {
-                    tempIterationBlocks.push({ type: 'thought', content: status.streamedReasoning.trim() });
-                }
+                const streamedReasoning = cleanNativeReasoningForDisplay(status.streamedReasoning);
                 if (status.streamedText) {
                     const segmented = segmentThoughtsAndNarrative(status.streamedText, signatureRegex);
-                    tempIterationBlocks.push(...segmented);
+                    if (status.streamedReasoningFollowsText) {
+                        tempIterationBlocks.push(...segmented);
+                    } else {
+                        if (streamedReasoning) {
+                            tempIterationBlocks.push({ type: 'thought', content: streamedReasoning });
+                        }
+                        tempIterationBlocks.push(...segmented);
+                    }
+                }
+                if (status.streamedReasoningFollowsText && streamedReasoning) {
+                    tempIterationBlocks.push({ type: 'thought', content: streamedReasoning });
+                } else if (!status.streamedText && streamedReasoning) {
+                    tempIterationBlocks.push({ type: 'thought', content: streamedReasoning });
                 }
                 const elapsedMs = Date.now() - startTime;
                 if (tempIterationBlocks.length > 0) {
@@ -221,6 +240,7 @@ export async function sendAgentMessage(
     let memorySaved = false;
     let hasFatalError = false;
     let allNarrative = '';
+    let hasFinalToolVisual = false;
 
     // Helper function to remove previous nudge messages from history to prevent loops
     const cleanNudgesFromHistory = () => {
@@ -274,6 +294,10 @@ export async function sendAgentMessage(
                     isAgentMode = fresh.isAgentMode;
                     isInstructionMode = fresh.isInstructionMode;
                     tools = fresh.tools;
+                    if (fresh.activeModeProvider && fresh.activeModeModel) {
+                        config.activeModeProvider = fresh.activeModeProvider;
+                        config.activeModeModel = fresh.activeModeModel;
+                    }
                     
                     // Update system instruction in-place to reflect new identity/protocol
                     if (agentMessages[0] && agentMessages[0].role === 'system') {
@@ -361,6 +385,7 @@ export async function sendAgentMessage(
             let content: string;
             let nativeToolCalls: any[];
             let nativeReasoning: string | undefined;
+            let nativeReasoningFollowsContent = false;
             let nativeThoughtSignature: string | undefined = undefined;
             try {
                 // TAG VALIDATION: Ensure Protocol Reinforcement tags survive to API call
@@ -380,6 +405,7 @@ export async function sendAgentMessage(
                 content = res.content;
                 nativeToolCalls = res.toolCalls;
                 nativeReasoning = res.reasoning;
+                nativeReasoningFollowsContent = res.reasoningFollowsContent === true;
                 nativeThoughtSignature = (res as any).thought_signature || (res as any).thoughtSignature;
 
                 // DETECT TRUNCATION (Loop Protection & Continuity)
@@ -426,13 +452,28 @@ export async function sendAgentMessage(
                 }
             }
             uniqueToolCalls.reverse(); // Maintain original model execution order (Top-to-Bottom)
+
+            // A provider may emit multiple Deep Research variants in one response
+            // (for example one approved call and one resume call). Only the first
+            // proposal request is meaningful; retaining the rest would start
+            // duplicate skill processes before the plan boundary can stop the loop.
+            let hasDeepResearchCall = false;
+            for (let index = 0; index < uniqueToolCalls.length; index++) {
+                if (uniqueToolCalls[index].function.name !== 'deep_research') continue;
+                if (hasDeepResearchCall) {
+                    uniqueToolCalls.splice(index, 1);
+                    index--;
+                }
+                else hasDeepResearchCall = true;
+            }
             positionalCalls = positionalCalls.filter(pc => uniqueToolCalls.some(utc => utc.id === pc.toolCall.id));
 
             const iterationBlocks: MessageBlock[] = [];
-            if (nativeReasoning && nativeReasoning.trim()) {
+            const displayNativeReasoning = cleanNativeReasoningForDisplay(nativeReasoning);
+            if (displayNativeReasoning && !nativeReasoningFollowsContent) {
                 iterationBlocks.push({
                     type: 'thought',
-                    content: nativeReasoning.trim(),
+                    content: displayNativeReasoning,
                     thought_signature: nativeThoughtSignature || undefined
                 } as any);
             }
@@ -457,6 +498,13 @@ export async function sendAgentMessage(
             }
             const finalBlocks = segmentThoughtsAndNarrative((content || '').substring(curIdx), signatureRegex);
             iterationBlocks.push(...finalBlocks);
+            if (displayNativeReasoning && nativeReasoningFollowsContent) {
+                iterationBlocks.push({
+                    type: 'thought',
+                    content: displayNativeReasoning,
+                    thought_signature: nativeThoughtSignature || undefined
+                } as any);
+            }
 
             const mergedBlocks: MessageBlock[] = [];
             iterationBlocks.forEach(block => {
@@ -481,9 +529,7 @@ export async function sendAgentMessage(
                 allNarrative += (allNarrative ? '\n\n' : '') + cleanTurnNarrative;
             }
 
-            const cleanedReasoning = (nativeReasoning || '').trim()
-                .replace(/<\/?(?:thinking|thought|reflection|think)>/gi, '')
-                .trim();
+            const cleanedReasoning = displayNativeReasoning;
                 
             const contentForHistory = cleanedReasoning
                 ? `<thinking>\n${cleanedReasoning}\n</thinking>\n\n${cleanTurnNarrative || ''}`.trim()
@@ -509,6 +555,14 @@ export async function sendAgentMessage(
                     log('warn', `Max consecutive nudges reached (${MAX_CONSECUTIVE_NUDGES}). Stopping to prevent loop.`);
                     localOnStatus({ phase: 'error', errorCount: retries, elapsedMs: Date.now() - startTime, rawMessages: [...agentMessages] });
                     onChunk('\n\n⚠️ El asistente ha generado múltiples respuestas vacías. Deteniendo para evitar bucle infinito.', true, []);
+                    break;
+                }
+
+                // A generated image is already a complete, visible response. Some
+                // providers legitimately emit no follow-up tokens after a tool;
+                // do not create an artificial EMPTY RESPONSE retry in that case.
+                if ((!content || content.trim() === '') && hasFinalToolVisual) {
+                    onChunk(allNarrative, true, allBlocks);
                     break;
                 }
 
@@ -746,6 +800,10 @@ export async function sendAgentMessage(
             }
 
             // 2. EXECUTION PHASE
+            // Deep Research is a two-stage interaction. Once its proposal tool
+            // settles, this orchestration turn must end so the model cannot call
+            // the skill a second time or approve/resume it on the user's behalf.
+            let shouldStopAtDeepResearchBoundary = false;
             const executeAndLog = async (tc: ToolCall) => {
                 const res = await executeToolCall(
                     tc, 
@@ -759,10 +817,40 @@ export async function sendAgentMessage(
                     config, 
                     onAddTask,
                     isAgentMode,
-                    isInstructionMode
+                    isInstructionMode,
+                    sessionId
                 );
                 const b = allBlocks.find(x => x.toolCall?.id === tc.id);
                 if (b) { b.result = res; b.status = res.success ? 'success' : 'error'; }
+
+                if (tc.function.name === 'deep_research') {
+                    shouldStopAtDeepResearchBoundary = true;
+                    if (!res.success) {
+                        // Failure and checkpoint recovery belong to the dedicated
+                        // Deep Research UI; avoid an additional model turn that can
+                        // compete with or duplicate that state.
+                        allNarrative = '';
+                    }
+                }
+
+                const skillData = res.data as any;
+                const imageUrls = skillData?.image_urls;
+                if (res.success && tc.function.name === 'image_generator' && Array.isArray(imageUrls) && imageUrls.length > 0) {
+                    const count = imageUrls.length;
+                    const visualMessage = count === 1
+                        ? 'Imagen generada correctamente.'
+                        : `${count} imágenes generadas correctamente.`;
+                    allNarrative = allNarrative
+                        ? `${allNarrative}\n\n${visualMessage}`
+                        : visualMessage;
+                    allBlocks.push({
+                        type: 'answer',
+                        content: visualMessage,
+                        status: 'success',
+                        isFromFinalTool: true
+                    });
+                    hasFinalToolVisual = true;
+                }
 
                 if (!res.success) {
                     turnHasFailure = true;
@@ -818,6 +906,12 @@ export async function sendAgentMessage(
                 if (useAgentStore.getState().agentStatus.phase !== 'aborted') {
                     await Promise.all(toolsToExecute.map(tc => executeAndLog(tc)));
                 }
+            }
+
+            if (shouldStopAtDeepResearchBoundary) {
+                log('info', 'Stopping agent orchestrator at the Deep Research plan boundary.');
+                onChunk(allNarrative || ' ', true, [...allBlocks]);
+                break;
             }
 
             if (turnHasFailure) {

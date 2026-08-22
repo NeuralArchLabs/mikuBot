@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { THEMES } from '../../constants/themes';
+import { THEMES, normalizeTheme } from '../../constants/themes';
 import { useUIStore } from '../../stores/useUIStore';
 
 interface ThemeManagerProps {
@@ -15,7 +15,8 @@ export const ThemeManager: React.FC<ThemeManagerProps> = ({ theme = 'miku', chat
   const isOverlayActive = useUIStore((state) => state.isOverlayActive);
 
   useEffect(() => {
-    const selectedTheme = THEMES[theme] || THEMES.miku;
+    const normalizedTheme = normalizeTheme(theme);
+    const selectedTheme = THEMES[normalizedTheme] || THEMES.miku;
     const root = document.documentElement;
 
     // Apply color variables
@@ -36,7 +37,7 @@ export const ThemeManager: React.FC<ThemeManagerProps> = ({ theme = 'miku', chat
     root.style.setProperty('--chat-font', chatFont === 'Outfit' ? "'Outfit', sans-serif" : `'${chatFont}', ${fallbacks}`);
     
     // Add a class for specific theme targeting if needed
-    document.body.className = `theme-${theme}`;
+    document.body.className = `theme-${normalizedTheme}`;
 
     // Update native window controls color (Windows only)
     if ((window as any).electron?.updateTitleBar && (window as any).electron?.platform === 'win32') {
@@ -51,7 +52,7 @@ export const ThemeManager: React.FC<ThemeManagerProps> = ({ theme = 'miku', chat
         // Standard theme-based colors
         (window as any).electron.updateTitleBar({
           color: selectedTheme['--background-color'],
-          symbolColor: theme === 'cloud' ? '#334155' : selectedTheme['--text-secondary'],
+          symbolColor: normalizedTheme === 'cloud' ? '#334155' : selectedTheme['--text-secondary'],
           height: 35
         });
       }

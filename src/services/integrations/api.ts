@@ -1,5 +1,27 @@
 import { Provider, AppConfig, ModelInfo, Attachment } from '../../types';
 import { safeFetch, streamViaProxy } from '../../utils';
+import { hasVisionCapability, inferOllamaCapabilities, inferProviderModelCapabilities } from './modelCapabilities';
+
+const enrichOllamaModel = async (url: string, model: ModelInfo): Promise<ModelInfo> => {
+    // Most recent Ollama versions already include this in /api/tags. Avoid a
+    // second request in that common case.
+    if (hasVisionCapability(model.capabilities)) return model;
+
+    try {
+        const showResponse = await safeFetch(`${url}/api/show`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: model.id })
+        });
+        const capabilities = inferOllamaCapabilities(showResponse);
+        return capabilities.length > 0 ? { ...model, capabilities } : model;
+    } catch (error) {
+        // Metadata enrichment is best-effort. The model list should remain
+        // usable if an older Ollama build does not support /api/show.
+        console.warn(`[Models] Could not inspect Ollama model ${model.id}:`, error);
+        return model;
+    }
+};
 
 export async function fetchModels(provider: Provider, config: AppConfig): Promise<ModelInfo[]> {
     try {
@@ -19,32 +41,54 @@ export async function fetchModels(provider: Provider, config: AppConfig): Promis
                 const data = await safeFetch('https://api.groq.com/openai/v1/models', {
                     headers: { 'Authorization': `Bearer ${config.apiKeys.groq}` }
                 });
-                return data.data.map((m: any) => ({ id: m.id, name: m.id, provider: 'groq' }));
+                return Array.isArray(data?.data)
+                    ? data.data.map((m: any) => ({
+                        id: m.id,
+                        name: m.id,
+                        provider: 'groq',
+                        capabilities: inferProviderModelCapabilities('groq', m)
+                    }))
+                    : [];
             }
             case 'gemini': {
                 const data = await safeFetch(
                     `https://generativelanguage.googleapis.com/v1beta/models?key=${config.apiKeys.gemini}`
                 );
-                return data.models
+                return (Array.isArray(data?.models) ? data.models : [])
                     .filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
                     .map((m: any) => ({
                         id: m.name.replace('models/', ''),
                         name: m.displayName,
-                        provider: 'gemini'
+                        provider: 'gemini',
+                        capabilities: inferProviderModelCapabilities('gemini', m)
                     }));
             }
             case 'ollama': {
-                const url = config.ollamaUrl || 'http://localhost:11434';
+                const url = (config.ollamaUrl || 'http://localhost:11434').trim().replace(/\/+$/, '');
                 const data = await safeFetch(`${url}/api/tags`);
-                if (!data || !data.models) return [];
-                return data.models.map((m: any) => ({ id: m.name, name: m.name, provider: 'ollama' }));
+                if (!data || !Array.isArray(data.models)) return [];
+                const models: ModelInfo[] = data.models.map((m: any) => ({
+                    id: m.name,
+                    name: m.name,
+                    provider: 'ollama',
+                    capabilities: Array.isArray(m.capabilities) ? m.capabilities : []
+                }));
+                // /api/tags is intentionally kept as the fast list endpoint;
+                // /api/show fills the capability gap only for models that do
+                // not advertise vision there (Gemma 3/4 are common examples).
+                return Promise.all(models.map(model => enrichOllamaModel(url, model)));
             }
             case 'zai': {
                 const data = await safeFetch('https://api.z.ai/api/coding/paas/v4/models', {
                     headers: { 'Authorization': `Bearer ${config.apiKeys.zai}` }
                 });
-                if (!data || !data.data) return [];
-                return data.data.map((m: any) => ({ id: m.id, name: m.id, provider: 'zai' }));
+                if (!data || !Array.isArray(data.data)) return [];
+                return data.data.map((m: any) => ({
+                    id: m.id,
+                    name: m.id,
+                    provider: 'zai',
+                    capabilities: inferProviderModelCapabilities('zai', m)
+                }));
             }
             default:
                 return [];

@@ -1,17 +1,45 @@
 {
     "name": "deep_research",
-    "description": "Exhaustive multi-language research tool. Performs cross-searches (Spanish and English), filters irrelevant information, and extracts core technical content from multiple sources to report precise and updated data.",
+    "description": "Exhaustive multi-language research tool using multi-agent planning, execution, verification, iterative section-by-section report writing, final source review, and scoped Smart Patch editing. Proposes a plan first for user approval before full execution.",
     "parameters": {
         "type": "object",
         "properties": {
             "topic": {
                 "type": "string",
-                "description": "Technical/complex topic."
+                "description": "Technical or complex topic to investigate."
+            },
+            "approved": {
+                "type": "boolean",
+                "description": "Set to true only if the user has approved the research plan. If false or omitted, the tool will propose a plan first.",
+                "default": false
+            },
+            "feedback": {
+                "type": "string",
+                "description": "User feedback or specific notes for adjusting the research plan."
+            },
+            "resume": {
+                "type": "boolean",
+                "description": "Resume the same research session from its latest validated checkpoint instead of restarting.",
+                "default": false
+            },
+            "plan": {
+                "type": "object",
+                "properties": {
+                    "objectives": {
+                        "type": "array",
+                        "items": { "type": "string" }
+                    },
+                    "steps": {
+                        "type": "array",
+                        "items": { "type": "string" }
+                    }
+                },
+                "description": "The approved research plan structure (objectives and steps) to guide the search subagents."
             },
             "categories": {
                 "type": "array",
-                "items": { "type": "string", "enum": ["general", "images", "videos", "news", "maps", "shopping", "it", "social"] },
-                "description": "SearXena categories. Default: ['general']. Combinations like ['it', 'general'] are recommended.",
+                "items": { "type": "string", "enum": ["general", "images", "videos", "news", "maps", "shopping"] },
+                "description": "SearXena search categories. Default: ['general'].",
                 "default": ["general"]
             },
             "target_language": {
@@ -26,5 +54,6 @@
         ]
     },
     "runtime": "python",
+    "pythonModules": ["requests", "PIL", "bs4", "markdownify", "markitdown"],
     "entry": "main.py"
 }

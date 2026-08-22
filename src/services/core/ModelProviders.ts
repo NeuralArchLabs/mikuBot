@@ -10,6 +10,8 @@ export interface ProviderResponse {
     content: string;
     toolCalls: any[];
     reasoning?: string;
+    /** Preserves the first observed channel order for providers that interleave them. */
+    reasoningFollowsContent?: boolean;
     thought_signature?: string;
     finishReason?: string;
     usage?: { promptTokens: number; completionTokens: number; totalTokens: number };
@@ -41,6 +43,9 @@ function extractThinkingBlock(content: string): { thinking: string; rest: string
 export abstract class ModelProvider {
     protected fullContent = '';
     protected fullReasoning = '';
+    protected firstContentSequence?: number;
+    protected firstReasoningSequence?: number;
+    protected streamSequence = 0;
     protected thoughtSignature = '';
     protected toolCallsDeltas: any[] = [];
     protected lastFinishReason = '';
@@ -96,8 +101,16 @@ export abstract class ModelProvider {
             }
 
             try {
+                const contentLengthBeforeDelta = this.fullContent.length;
+                const reasoningLengthBeforeDelta = this.fullReasoning.length;
                 const parsed = JSON.parse(data);
                 this.processDelta(parsed.choices?.[0]?.delta, parsed);
+                if (this.fullContent.length > contentLengthBeforeDelta && this.firstContentSequence === undefined) {
+                    this.firstContentSequence = ++this.streamSequence;
+                }
+                if (this.fullReasoning.length > reasoningLengthBeforeDelta && this.firstReasoningSequence === undefined) {
+                    this.firstReasoningSequence = ++this.streamSequence;
+                }
                 hasChanges = true;
             } catch { }
         }
@@ -112,6 +125,7 @@ export abstract class ModelProvider {
             this.options.onStatus({ 
                 streamedText: this.fullContent, 
                 streamedReasoning: this.fullReasoning.length > 0 ? this.fullReasoning : undefined,
+                streamedReasoningFollowsText: this.reasoningFollowsContent(),
                 phase: 'streaming' 
             });
         }
@@ -154,6 +168,7 @@ export abstract class ModelProvider {
             content: this.fullContent,
             toolCalls: this.getToolCalls(),
             reasoning: this.fullReasoning,
+            reasoningFollowsContent: this.reasoningFollowsContent(),
             thought_signature: this.thoughtSignature,
             finishReason: this.lastFinishReason,
             usage: this.lastUsage
@@ -178,10 +193,17 @@ export abstract class ModelProvider {
             content: this.fullContent,
             toolCalls: this.getToolCalls(),
             reasoning: this.fullReasoning,
+            reasoningFollowsContent: this.reasoningFollowsContent(),
             thought_signature: this.thoughtSignature,
             finishReason: this.lastFinishReason,
             usage: this.lastUsage
         };
+    }
+
+    protected reasoningFollowsContent(): boolean {
+        return this.firstContentSequence !== undefined
+            && this.firstReasoningSequence !== undefined
+            && this.firstReasoningSequence > this.firstContentSequence;
     }
 }
 
@@ -516,6 +538,9 @@ export class OllamaProvider extends ModelProvider {
                 this.fullContent = '';
                 this.fullReasoning = '';
                 this.toolCallsDeltas = [];
+                this.firstContentSequence = undefined;
+                this.firstReasoningSequence = undefined;
+                this.streamSequence = 0;
                 return execute(false);
             }
             throw err;

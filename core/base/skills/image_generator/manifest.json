@@ -1,0 +1,40 @@
+{
+    "name": "image_generator",
+    "description": "Generador de imágenes por Inteligencia Artificial 100% gratuito y de alta velocidad. Soporta modelos fotorrealistas, arte digital y generación ultra rápida mediante FLUX.1 y SDXL sin requerir claves ni suscripciones de pago.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "prompt": {
+                "type": "string",
+                "description": "La descripción detallada de la imagen a generar en inglés (recomendado) o español."
+            },
+            "model": {
+                "type": "string",
+                "enum": [
+                    "flux",
+                    "flux-realism",
+                    "turbo"
+                ],
+                "default": "flux",
+                "description": "El motor o estilo de generación: 'flux' (Arte/Ilustración HD), 'flux-realism' (Fotografía realista), 'turbo' (Generación instantánea)."
+            },
+            "aspect_ratio": {
+                "type": "string",
+                "enum": ["1:1", "3:4", "4:3", "9:16", "16:9"],
+                "default": "1:1",
+                "description": "La relación de aspecto (proporciones) de la imagen generada."
+            },
+            "numberOfImages": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4,
+                "default": 1,
+                "description": "Número de imágenes a generar (1-4)."
+            }
+        },
+        "required": ["prompt"]
+    },
+    "runtime": "python",
+    "entry": "main.py"
+}
+

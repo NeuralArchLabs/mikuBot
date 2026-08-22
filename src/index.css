@@ -40,7 +40,7 @@
 :root {
   --primary-color: #60a5fa;
   --secondary-color: #38bdf8;
-  --background-color: #0f172a;
+  --background-color: #0b1120;
   --surface-color: rgba(30, 41, 59, 0.7);
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
@@ -120,6 +120,31 @@ body, html {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(71, 85, 105, 0.6);
   border: 2px solid transparent;
+}
+
+/* Keep the chat scrollbar from appearing through the Deep Research overlay
+   while it is entering or completing its exit animation. */
+@property --chat-scrollbar-alpha {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 1;
+}
+
+.chat-area-scroll {
+  --chat-scrollbar-alpha: 1;
+  scrollbar-color: rgb(71 85 105 / calc(0.4 * var(--chat-scrollbar-alpha))) transparent;
+  transition: --chat-scrollbar-alpha 0.36s ease;
+}
+
+.chat-area-scroll::-webkit-scrollbar-thumb {
+  background-color: rgb(71 85 105 / calc(0.3 * var(--chat-scrollbar-alpha)));
+  transition: background-color 0.36s ease;
+}
+
+@media (max-width: 1279px) {
+  .deep-research-chat-scroll-fading {
+    --chat-scrollbar-alpha: 0;
+  }
 }
 /* Specialized Scrollbar for Chat Input - No arrows to avoid clipping with rounded corners */
 .chat-input-scrollbar::-webkit-scrollbar {
@@ -1213,6 +1238,80 @@ pre code .hl-directive { color: #fb7185 !important; font-weight: 700; }
   animation-fill-mode: forwards;
 }
 
+/* Deep Research panel: keep the panel mounted during exit so closing is
+   animated instead of disappearing from the flex layout immediately. */
+@keyframes deep-research-panel-enter-kf {
+  from {
+    opacity: 0;
+    transform: translate3d(100%, 0, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes deep-research-panel-exit-kf {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translate3d(100%, 0, 0);
+  }
+}
+
+.deep-research-panel-enter,
+.deep-research-panel-exit {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+.deep-research-panel-enter {
+  animation: deep-research-panel-enter-kf 0.36s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.deep-research-panel-exit {
+  animation: deep-research-panel-exit-kf 0.36s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  pointer-events: none;
+}
+
+/* On compact windows the panel is an overlay, but the report itself remains
+   a readable, centered column instead of stretching across the whole chat. */
+.deep-research-panel-surface {
+  width: 100%;
+}
+
+.deep-research-panel-content {
+  width: min(760px, calc(100% - 2rem));
+}
+
+@media (max-width: 639px) {
+  .deep-research-panel-content {
+    width: calc(100% - 1rem);
+  }
+}
+
+@media (min-width: 1280px) {
+  .deep-research-panel-content {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deep-research-panel-enter,
+  .deep-research-panel-exit {
+    animation-duration: 0.01ms;
+  }
+
+  .miku-sidebar-shell {
+    transition-duration: 0.01ms;
+  }
+}
+
 .fade-in {
   animation-name: fade-in-kf;
 }
@@ -1385,6 +1484,166 @@ pre code .hl-directive { color: #fb7185 !important; font-weight: 700; }
   will-change: transform, opacity;
 }
 
+@keyframes welcome-suggestion-enter-kf {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.welcome-suggestion-enter {
+  animation: welcome-suggestion-enter-kf 0.45s ease-out both;
+  will-change: transform, opacity;
+}
+
+@keyframes welcome-message-sink-kf {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translate3d(0, 22px, 0);
+  }
+}
+
+.welcome-message-sink {
+  animation: welcome-message-sink-kf 0.32s ease-in forwards;
+  will-change: transform, opacity;
+}
+
+.welcome-message-viewport {
+  display: inline-flex;
+  max-width: 100%;
+  height: 1.35em;
+  overflow: visible;
+  align-items: center;
+}
+
+.welcome-message-sink-viewport {
+  overflow: hidden;
+}
+
+.typewriter-text {
+  white-space: pre-wrap;
+}
+
+.typewriter-char {
+  display: inline-block;
+  animation: typewriter-char-in-kf 0.16s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform, opacity, filter;
+}
+
+.typewriter-char-space {
+  display: inline;
+  animation: none;
+}
+
+@keyframes typewriter-char-in-kf {
+  from {
+    opacity: 0;
+    filter: blur(1.5px);
+    transform: translate3d(0, 0.12em, 0);
+  }
+
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.welcome-name-reveal {
+  position: absolute;
+  inset: 0;
+  display: inline-flex;
+  align-items: baseline;
+  white-space: pre;
+  perspective: 700px;
+  pointer-events: none;
+}
+
+.welcome-name-slot {
+  position: relative;
+  display: inline-block;
+  white-space: pre;
+}
+
+.welcome-name-base {
+  display: inline-block;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+}
+
+.welcome-name-base-fade-out {
+  animation: welcome-name-base-fade-out-kf var(--welcome-name-fade-duration, 620ms) ease-out forwards;
+}
+
+@keyframes welcome-name-base-fade-out-kf {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.welcome-name-reveal-char {
+  display: inline-block;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  opacity: 0;
+  filter: blur(6px);
+  transform: translate3d(0, 0.55em, 0) rotateX(-70deg);
+  transform-origin: 50% 100%;
+  animation: welcome-name-char-reveal-kf 0.62s cubic-bezier(0.19, 1, 0.22, 1) var(--welcome-name-delay, 0ms) both;
+  will-change: transform, opacity, filter, text-shadow;
+}
+
+.welcome-name-reveal-char-final {
+  animation: none;
+  opacity: 1;
+  filter: none;
+  transform: none;
+  text-shadow: none;
+}
+
+@keyframes welcome-name-char-reveal-kf {
+  0% {
+    opacity: 0;
+    filter: blur(6px);
+    transform: translate3d(0, 0.55em, 0) rotateX(-70deg);
+    text-shadow: 0 0 0 transparent;
+  }
+
+  58% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translate3d(0, -0.06em, 0) rotateX(10deg);
+    text-shadow: 0 0 13px var(--welcome-name-glow), 0 0 4px var(--welcome-name-glow);
+  }
+
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translate3d(0, 0, 0) rotateX(0);
+    text-shadow: 0 0 0 transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-name-reveal-char {
+    animation: none;
+    opacity: 1;
+    filter: none;
+    transform: none;
+  }
+}
+
 @keyframes chat-reveal-kf {
   0% {
     transform: scaleX(0) scaleY(0.01);
@@ -1546,13 +1805,27 @@ pre code .hl-directive { color: #fb7185 !important; font-weight: 700; }
 }
 
 /* Layout Isolation */
+.miku-sidebar-shell {
+  overflow: hidden;
+  isolation: isolate;
+}
+
 .miku-sidebar-isolate {
   contain: layout;
   height: 100%;
   /* Ensure sidebar repaints don't leak outside its own boundary boxes */
   will-change: transform;
-  /* Smooth Shadow Transition Hardening */
-  transition: box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Width, flex layout and shadow must share one transition declaration. A
+   second transition shorthand on this element would override the width
+   animation and make the sidebar snap. */
+.miku-sidebar-shell.miku-sidebar-isolate {
+  will-change: width, flex-basis, box-shadow;
+  transition:
+    width 0.42s cubic-bezier(0.2, 0.8, 0.2, 1),
+    flex-basis 0.42s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sidebar-shadow-chat {
@@ -2995,6 +3268,16 @@ select.premium-input option {
   background: rgba(96, 165, 250, 0.45);
 }
 
+/* Keep the chat-specific fade ahead of the generic scrollbar refinement. */
+.chat-area-scroll::-webkit-scrollbar-thumb {
+  background: rgb(71 85 105 / calc(0.3 * var(--chat-scrollbar-alpha))) !important;
+  transition: background-color 0.36s ease;
+}
+
+.chat-area-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgb(96 165 250 / calc(0.45 * var(--chat-scrollbar-alpha))) !important;
+}
+
 @keyframes float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-5px); }
@@ -3336,28 +3619,42 @@ select.premium-input option {
     color: var(--text-secondary);
 }
 
-/* ── Forest Theme Refinements ─────────────────────────── */
-.theme-forest .premium-card {
+/* Inline code must remain legible inside Cloud's dark assistant bubbles. */
+.theme-cloud .markdown-body code:not(pre code) {
+    background-color: rgba(15, 23, 42, 0.78) !important;
+    color: #dbeafe !important;
+    border-color: rgba(147, 197, 253, 0.5) !important;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.24) !important;
+}
+
+.theme-cloud .markdown-body code:not(pre code) a,
+.theme-cloud .markdown-body code:not(pre code) a:hover {
+    color: #bfdbfe !important;
+    text-decoration-color: rgba(191, 219, 254, 0.75) !important;
+}
+
+/* ── Emerald Theme Refinements ─────────────────────────── */
+.theme-emerald .premium-card {
     box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.7), 0 10px 20px -10px rgba(0, 0, 0, 0.5);
     border-color: rgba(16, 185, 129, 0.1) !important;
 }
 
-.theme-forest .modern-select button {
+.theme-emerald .modern-select button {
     background-color: rgba(2, 44, 34, 0.9) !important;
     border: 1px solid transparent !important;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
 }
 
-.theme-forest .modern-select-portal {
+.theme-emerald .modern-select-portal {
     background-color: #022c22 !important; /* Even darker green */
     border: 1px solid transparent !important;
 }
 
-.theme-forest .modern-select-portal div:hover {
+.theme-emerald .modern-select-portal div:hover {
     background-color: rgba(16, 185, 129, 0.15) !important;
 }
 
-.theme-forest .modern-select-portal div[class*="bg-[var(--primary-color)]"] {
+.theme-emerald .modern-select-portal div[class*="bg-[var(--primary-color)]"] {
     background-color: rgba(16, 185, 129, 0.3) !important;
     color: #34d399 !important; /* emerald-400 */
 }
@@ -3532,4 +3829,139 @@ select.premium-input option {
   transform: scale(1.05); /* Prevents white margins/edges during blur */
 }
 
+/* The message itself stays visually quiet. Its outline is interactive only
+   while the action strip at the margin is actually under the pointer. */
+.message-bubble-wrapper:has(.message-margin-actions:hover) .message-bubble-bg {
+  border-color: color-mix(in srgb, var(--primary-color) 45%, transparent) !important;
+}
+
+.message-expanded-wrapper:has(.message-bottom-actions:hover) .message-bubble-bg {
+  border-color: color-mix(in srgb, var(--primary-color) 45%, transparent) !important;
+}
+
+.message-bubble-wrapper.message-bubble-user:has(.message-margin-actions:hover) .message-bubble-bg {
+  border-color: rgba(59, 130, 246, 0.6) !important;
+}
+
+.message-expanded-wrapper:has(.message-bottom-actions:hover) .message-bubble-wrapper.message-bubble-user .message-bubble-bg {
+  border-color: rgba(59, 130, 246, 0.6) !important;
+}
+
+@property --tts-pause-opacity {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 1;
+}
+
+@property --tts-speaker-glyph-opacity {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 1;
+}
+
+/* TTS transport feedback: only the active pause glyph breathes softly. */
+.tts-floating-glyph {
+  opacity: var(--tts-speaker-glyph-opacity);
+}
+
+.tts-pause-bar {
+  opacity: var(--tts-pause-opacity);
+}
+
+.tts-floating-action-playing .tts-pause-bar:first-of-type {
+  animation: tts-pause-breathe 2.8s ease-in-out infinite;
+}
+
+.tts-floating-action-playing .tts-pause-bar:nth-of-type(2) {
+  animation: tts-pause-breathe 2.8s ease-in-out 260ms infinite;
+}
+
+.tts-floating-action-playing .tts-floating-glyph {
+  animation: tts-pause-glyph-hide-for-speaker 12s ease-in-out infinite;
+}
+
+/* A quiet speaker cue appears occasionally over the active control. The
+   speaker keeps the current glyph color; only its opacity changes. */
+.tts-floating-speaker {
+  opacity: 0;
+  animation: tts-speaker-appear 12s ease-in-out infinite;
+}
+
+.tts-floating-speaker-body {
+  opacity: 0.9;
+}
+
+.tts-floating-speaker-wave {
+  opacity: 0;
+}
+
+.tts-floating-speaker-wave-one {
+  animation: tts-speaker-wave-one 12s linear infinite;
+}
+
+.tts-floating-speaker-wave-two {
+  animation: tts-speaker-wave-two 12s linear infinite;
+}
+
+.tts-floating-speaker-wave-three {
+  animation: tts-speaker-wave-three 12s linear infinite;
+}
+
+@keyframes tts-speaker-appear {
+  0%, 59% { opacity: 0; }
+  68%, 92% { opacity: 1; }
+  96%, 100% { opacity: 0; }
+}
+
+@keyframes tts-speaker-wave-one {
+  0%, 67% { opacity: 0; }
+  70% { opacity: 0.35; }
+  73% { opacity: 1; }
+  76% { opacity: 0.2; }
+  78%, 100% { opacity: 0; }
+}
+
+@keyframes tts-speaker-wave-two {
+  0%, 76% { opacity: 0; }
+  79% { opacity: 0.35; }
+  82% { opacity: 1; }
+  85% { opacity: 0.2; }
+  87%, 100% { opacity: 0; }
+}
+
+@keyframes tts-speaker-wave-three {
+  0%, 85% { opacity: 0; }
+  88% { opacity: 0.35; }
+  91% { opacity: 1; }
+  94% { opacity: 0.2; }
+  96%, 100% { opacity: 0; }
+}
+
+@keyframes tts-pause-breathe {
+  0%, 50%, 100% { --tts-pause-opacity: 0.98; }
+  25% { --tts-pause-opacity: 0.62; }
+  75% { --tts-pause-opacity: 0.62; }
+}
+
+@keyframes tts-pause-glyph-hide-for-speaker {
+  0%, 55% { --tts-speaker-glyph-opacity: 1; }
+  59%, 96% { --tts-speaker-glyph-opacity: 0; }
+  100% { --tts-speaker-glyph-opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tts-floating-action-playing .tts-pause-bar {
+    animation: none;
+  }
+
+  .tts-floating-action-playing .tts-floating-glyph {
+    animation: none;
+  }
+
+  .tts-floating-speaker,
+  .tts-floating-speaker-wave {
+    animation: none;
+    opacity: 0;
+  }
+}
 

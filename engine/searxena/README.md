@@ -58,7 +58,7 @@ searXena aprovecha tecnologías modernas y ultraligeras para permitir una ejecuc
 * 🤖 **Integración IA First:** Formato JSON y esquemas Tools pre-construidos nativos, listos para conectar tu despliegue LLM a internet sin overheads ni scraping de HTML innecesario.
 * 🛡️ **Protección de Privacidad:** Actúa como una interfaz neutral entre el usuario y la web global. Promueve el anonimato al centralizar las peticiones de forma transparente a través de su propio motor de red.
 * 📦 **100% Nativo en Windows:** Cero dependencias complejas. Solo clona, instala las librerías con `pip`, corre el archivo `.py` principal y tienes un buscador privado minimizando la telemetría externa hospedado localmente en tu sistema.
-* 📱 **UI/UX Moderna y Dinámica:** Animaciones fluidas, modo oscuro ultra refinado ("Space Violet"), interfaz responsiva y separada categóricamente en pestañas (General, TI/Ciencia, Mapas, Videos, Imágenes).
+* 📱 **UI/UX Moderna y Dinámica:** Animaciones fluidas, modo oscuro ultra refinado ("Space Violet"), interfaz responsiva y separada categóricamente en pestañas (General, Noticias, Compras, Mapas, Videos, Imágenes).
 * 🌎 **Rich Snippets Consolidados:** Lectura enriquecida consolidando datos de Wikipedia o Wikidata en recuadros laterales de rápido consumo ("Infoboxes").
 * 🧘 **O-ZEN Engine (Modo Lectura):** Motor de extracción industrial (AGPLv3) integrado para leer artículos y documentación técnica sin anuncios ni scripts intrusivos.
 
@@ -96,7 +96,7 @@ searXena elimina las barreras de acceso a la web para el desarrollo de Inteligen
 searXena prioriza que tus datos **jamás** se utilicen para el perfilado publicitario por parte de terceros, asumiendo un rol de protección técnica por debajo de la interfaz gráfica. Aún así, la arquitectura requiere ciertos consensos técnicos, reportados aquí transparentemente:
 
 ### Proxificación del DOM Absoluta
-Cuando buscas cualquier consulta general (Noticias, TI, Código), searXena protege tu identidad a través del motor asíncrono backend. Modificamos de forma sistemática los `User-Agent`. Toda URL de imagen devuelta por los motores comerciales pasa de manera coordinada por nuestro sistema interno de `/proxify`, asegurando que tu IP no se exponga directamente a servidores de terceros.
+Cuando buscas cualquier consulta general (Noticias, Código y otros temas públicos), searXena protege tu identidad a través del motor asíncrono backend. Modificamos de forma sistemática los `User-Agent`. Toda URL de imagen devuelta por los motores comerciales pasa de manera coordinada por nuestro sistema interno de `/proxify`, asegurando que tu IP no se exponga directamente a servidores de terceros.
 
 ### Módulo de Mapas: OSM (OpenStreetMap)
 Al interactuar con la pestaña especializada de Mapas, searXena implementa reglas un poco más permeables para lograr darte interactividad útil (arrastrar, hacer zoom), conservando el anonimato comercial:
@@ -118,7 +118,7 @@ A través de la ruta `/api/v1/search`, tu asistente puede automatizar consultas 
 * **Endpoints Listos para IA:**
   * `GET /api/v1/tools_schema`: Devuelve un esquema literal `function_declarations` inyectable directo hacia tu LLM con todos los parámetros habilitados disponibles.
   * `POST /api/v1/search`: Webhook de comunicación que ejecuta la búsqueda y devuelve metadata analítica de profundidad.
-* **Smart Ranking Anti-Alucinaciones:** El filtro heurístico procesa los retornos a favor del agente; bajo la categoría "TI", oculta de cara al LLM los sitios publicitarios y le alimenta directamente de documentación técnica oficial y repositorios de código abierto sustanciales.
+* **Smart Ranking Anti-Alucinaciones:** El filtro heurístico procesa los retornos a favor del agente, oculta sitios publicitarios y prioriza documentación oficial, fuentes enciclopédicas y repositorios de código abierto sustanciales.
 
 > **¿Construyendo un Agente RAG?** Echa un vistazo profundo a los payloads, headers preconstruidos y recomendaciones del System Prompt alojados en la [**Guía de Integración AI**](AI_INTEGRATION_GUIDE.md) incluida en este repositorio oficial.
 >

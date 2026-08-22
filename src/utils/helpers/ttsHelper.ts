@@ -1,4 +1,19 @@
 import SPANISH_PHONETIC_DICT from '../../../electron/ttsPhoneticDict.json';
+import '../../../shared/ttsChunkPlanner.cjs';
+
+type TtsChunkPlannerApi = {
+    planTtsChunks: (text: string, lang?: string) => string[];
+};
+
+const ttsChunkPlanner = (globalThis as typeof globalThis & {
+    __MIKUCENTRAL_TTS_CHUNK_PLANNER__?: TtsChunkPlannerApi;
+}).__MIKUCENTRAL_TTS_CHUNK_PLANNER__;
+
+if (!ttsChunkPlanner) {
+    throw new Error('Shared TTS chunk planner failed to initialize.');
+}
+
+const { planTtsChunks } = ttsChunkPlanner;
 
 /**
  * Normalizes and cleans text to remove Markdown, HTML, code blocks, 
@@ -43,9 +58,21 @@ export function cleanTtsText(text: string, lang: string = 'es'): string {
                  .replace(/O[´']/g, 'Ó')
                  .replace(/U[´']/g, 'Ú');
 
+    // Code examples take precedence over Signature Shield. Removing them here
+    // prevents signature-like literals from consuming part of a closing fence.
+    clean = clean.replace(/```mermaid[\s\S]*?```/g, '');
+    clean = clean.replace(/```[\s\S]*?```/g, '');
+
     // 3b. SIGNATURE SHIELD: Protect the assistant's visual signature
+    // Models may replace {{ }} with ( ). Unwrap that complete signature first
+    // so the opening parenthesis cannot survive the generic removal pass.
+    clean = clean.replace(
+        /[（(]([^()（）\r\n]*≈̼\^\.┬\.̼\^≈‿⟆[^()（）\r\n]*)[）)]/gu,
+        '$1'
+    );
+
     // Remove standard {{ ... }} with signature DNA
-    clean = clean.replace(/[`"']{0,2}(?:\{\{)\s*((?:(?!\n\n)[\s\S])+?)\s*(?:\}\}|\)\}|\}\)|[}\)])[ \t]*[)\}]*[ \t]*[`"']{0,2}/g, (match, signContent) => {
+    clean = clean.replace(/[`"']{0,2}(?:\{\{)\s*((?:(?!\n\n)[\s\S])+?)\s*(?:\}\}|\)\}|\}\)|\})[ \t]*[)\}]*[ \t]*[`"']{0,2}/g, (match, signContent) => {
         if (signContent.includes('≈') || signContent.includes('┬') || signContent.includes('~')) {
             return '';
         }
@@ -53,7 +80,13 @@ export function cleanTtsText(text: string, lang: string = 'es'): string {
     });
 
     // Remove core signature DNA pattern ≈̼^.┬.̼^≈‿⟆ with surrounding junk/emojis
-    clean = clean.replace(/[`"']{0,2}(?:\{\{)?(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E|\w|[:_])*)(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*(≈̼\^\.┬\.̼\^≈‿⟆)(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E|\w|[:_])*)(?:(?!\n\n)\s)*(?:\}\}|\)\}|\}\)|[}\)])?[ \t]*[)\}]*[ \t]*[`"']{0,2}/gu, '');
+    clean = clean.replace(/[`"']{0,2}(?:\{\{)?(?:(?!\n\n)\s)*[（(\[]*(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E|\w|[:_])*)(?:(?!\n\n)\s)*[（(\[]*(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*(≈̼\^\.┬\.̼\^≈‿⟆)(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*[）)\]]*(?:(?!\n\n)\s)*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E|\w|[:_])*)(?:(?!\n\n)\s)*[）)\]]*(?:(?!\n\n)\s)*(?:\}\}|\)\}|\}\)|[}\)])?[ \t]*[)\}]*[ \t]*[`"']{0,2}/gu, (match) => {
+        // Keep a structural boundary when the signature occupied its own line;
+        // otherwise adjacent sentences would become `Antes.Después` in TTS.
+        const occupiedOwnLine = /^[\t ]*\r?\n/.test(match) || /\r?\n[\t ]*$/.test(match);
+        if (occupiedOwnLine) return '\n';
+        return /^\s|\s$/.test(match) ? ' ' : '';
+    });
 
     // Fallbacks for generic curly/bracket structures
     clean = clean.replace(/\{\{[\s\S]*?\}\}/g, '');
@@ -61,12 +94,6 @@ export function cleanTtsText(text: string, lang: string = 'es'): string {
 
     // 3c. Remove leftover leading punctuation and symbols resulting from signature removal
     clean = clean.replace(/^[.,;:!?()\-—\s]+/, '');
-
-    // 4. Remove Mermaid diagram blocks completely
-    clean = clean.replace(/```mermaid[\s\S]*?```/g, '');
-
-    // 5. Remove standard code blocks completely
-    clean = clean.replace(/```[\s\S]*?```/g, '');
 
     // 6. Remove inline code backticks (keep the text)
     clean = clean.replace(/`([^`]+)`/g, '$1');
@@ -113,7 +140,7 @@ export function cleanTtsText(text: string, lang: string = 'es'): string {
             continue;
         }
 
-        const endsWithPunctuation = /[.,;:!?]["')\]]*$/.test(currentLine);
+        const endsWithPunctuation = /[.,;:!?。！？；：]["')\]）”’]*$/.test(currentLine);
         if (endsWithPunctuation) {
             processedLines.push(currentLine);
         } else {
@@ -132,7 +159,7 @@ export function cleanTtsText(text: string, lang: string = 'es'): string {
             const nextStartsWithMarker = nextNonEmptyLine && /^\s*([-*+]|#+|>\s*\[!|\d+\.)\s+/i.test(nextNonEmptyLine);
 
             if (startsWithMarker || nextStartsWithMarker || hasEmptyLineInBetween || !nextNonEmptyLine) {
-                processedLines.push(currentLine + '.');
+                processedLines.push(currentLine + (lang.toLowerCase().startsWith('zh') ? '。' : '.'));
             } else {
                 processedLines.push(currentLine);
             }
@@ -145,8 +172,8 @@ export function cleanTtsText(text: string, lang: string = 'es'): string {
     clean = clean.replace(/^\s*\d+\.\s+/gm, '');
     clean = clean.replace(/^[#\s+\-*>]+\s+/gm, ''); // headers/blockquotes
 
-    // 16. Normalize common dashes/hyphens to simple hyphens
-    clean = clean.replace(/[\u2013\u2014]/g, '-');
+    // Keep the spoken pause of an em dash while normalizing an en dash.
+    clean = clean.replace(/\u2014/g, ', ').replace(/\u2013/g, '-');
 
     // 17. Replace newlines with spaces so it flows continuously
     clean = clean.replace(/\r?\n/g, ' ');
@@ -154,6 +181,8 @@ export function cleanTtsText(text: string, lang: string = 'es'): string {
     // 18. Expand decimal points in numbers so they are spoken natively (e.g. "1.99" -> "1 punto 99" / "1 point 99")
     if (lang.toLowerCase().startsWith('es')) {
         clean = clean.replace(/(\d+)\.(\d+)/g, '$1 punto $2');
+    } else if (lang.toLowerCase().startsWith('zh')) {
+        clean = clean.replace(/(\d+)\.(\d+)/g, '$1点$2');
     } else {
         clean = clean.replace(/(\d+)\.(\d+)/g, '$1 point $2');
     }
@@ -161,6 +190,8 @@ export function cleanTtsText(text: string, lang: string = 'es'): string {
     // Expand ampersand to spoken text based on language
     if (lang.toLowerCase().startsWith('es')) {
         clean = clean.replace(/&/g, ' y ');
+    } else if (lang.toLowerCase().startsWith('zh')) {
+        clean = clean.replace(/&/g, ' 和 ');
     } else {
         clean = clean.replace(/&/g, ' and ');
     }
@@ -168,7 +199,9 @@ export function cleanTtsText(text: string, lang: string = 'es'): string {
     // English-to-Spanish phonetic dictionary for common tech terms
     if (lang.toLowerCase().startsWith('es')) {
         const sortedKeys = Object.keys(SPANISH_PHONETIC_DICT).sort((a, b) => b.length - a.length);
-        const dictRegex = new RegExp(`\\b(${sortedKeys.map(k => k.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')).join('|')})\\b`, 'gi');
+        // Use Unicode-aware boundaries so short keys cannot match inside words
+        // containing letters such as ñ or accented characters (e.g. os in años).
+        const dictRegex = new RegExp(`(?<![\\p{L}\\p{N}_])(${sortedKeys.map(k => k.replace(/[\/\\^$*+?.()|[\]{}]/g, '\\$&')).join('|')})(?![\\p{L}\\p{N}_])`, 'giu');
         clean = clean.replace(dictRegex, (match) => {
             return SPANISH_PHONETIC_DICT[match.toLowerCase()] || match;
         });
@@ -176,14 +209,15 @@ export function cleanTtsText(text: string, lang: string = 'es'): string {
 
     // 16. Remove all characters that are NOT letters, digits, spaces, or basic punctuation/symbols.
     // This strips emojis, drawings, and weird unicode symbols while PRESERVING essential symbols:
-    // .,;:!?¡¿()'"- and %, $, €, &, /, °, +, *
-    clean = clean.replace(/[^\s0-9a-zA-Z\u00A0-\u00FF\u4e00-\u9fa5.,;:!?¡¿()'"\-%$€&/°+*]/gu, ' ');
+    // Latin, CJK, and the punctuation required for the three supported TTS
+    // languages. Chinese punctuation must survive so it can form boundaries.
+    clean = clean.replace(/[^\s0-9a-zA-Z\u00A0-\u00FF\u3400-\u9FFF.,;:!?¡¿，。！？；：、】【（）“”‘’()'"\-%$€&/°+*]/gu, ' ');
 
     // 17. Clean up multiple spaces/newlines
     clean = clean.replace(/\s+/g, ' ');
 
     // 18. Clean up spaces before punctuation marks to make speech synthesis flow better
-    clean = clean.replace(/\s+([.,;:!?¡¿])/g, '$1');
+    clean = clean.replace(/\s+([.,;:!?¡¿，。！？；：、】【])/g, '$1');
 
     // 19. Remove duplicate punctuation (e.g. "... ." or ", ,")
     clean = clean.replace(/\.+/g, '.');
@@ -192,129 +226,16 @@ export function cleanTtsText(text: string, lang: string = 'es'): string {
     clean = clean.replace(/\?+/g, '?');
     clean = clean.replace(/¡+/g, '¡');
     clean = clean.replace(/¿+/g, '¿');
+    clean = clean.replace(/。+/g, '。');
+    clean = clean.replace(/，+/g, '，');
+    clean = clean.replace(/！+/g, '！');
+    clean = clean.replace(/？+/g, '？');
+    clean = clean.replace(/；+/g, '；');
 
     return clean.trim();
 }
 
-function splitSentenceIntoTwo(s: string, limit: number, allowWordSplit: boolean): [string, string] {
-    if (s.length <= limit) return [s, ""];
-
-    // Use a soft threshold to avoid splitting sentences that are only slightly over the limit.
-    // If allowWordSplit is true (Chunk 0 & 1), we allow up to 95 chars to respect natural sentences while keeping them brief.
-    // If allowWordSplit is false (Chunk 2+), we allow up to 190 chars.
-    const softLimit = allowWordSplit ? 95 : 190;
-    if (s.length <= softLimit) {
-        return [s, ""];
-    }
-
-    // Try splitting by clause punctuation first: , ; : —
-    const regex = /(?<=[,;:—])\s+/g;
-    let match;
-    let lastSplitIndex = -1;
-
-    // First pass: find the best punctuation split before the limit
-    while ((match = regex.exec(s)) !== null) {
-        const splitPos = match.index;
-        // Enforce a minimum length on both sides to prevent tiny fragments
-        // For Chunk 0 & 1, we allow smaller parts (e.g. 15 chars)
-        const minPartLen = allowWordSplit ? 15 : 40;
-        if (splitPos <= limit) {
-            const firstPartLen = splitPos;
-            const secondPartLen = s.length - splitPos;
-            if (firstPartLen >= minPartLen && secondPartLen >= minPartLen) {
-                lastSplitIndex = splitPos;
-            }
-        } else {
-            break;
-        }
-    }
-
-    // Second pass: if no split was found before the limit, check if there is one slightly after the limit (up to limit + 45)
-    if (lastSplitIndex === -1) {
-        regex.lastIndex = 0;
-        const extendedLimit = limit + 45;
-        while ((match = regex.exec(s)) !== null) {
-            const splitPos = match.index;
-            const minPartLen = allowWordSplit ? 15 : 40;
-            if (splitPos <= extendedLimit) {
-                const firstPartLen = splitPos;
-                const secondPartLen = s.length - splitPos;
-                if (firstPartLen >= minPartLen && secondPartLen >= minPartLen) {
-                    lastSplitIndex = splitPos;
-                }
-            } else {
-                break;
-            }
-        }
-    }
-
-    if (lastSplitIndex !== -1) {
-        return [s.substring(0, lastSplitIndex).trim(), s.substring(lastSplitIndex).trim()];
-    }
-
-    // If no punctuation split is found within the limit:
-    if (allowWordSplit) {
-        const lastSpace = s.substring(0, limit).lastIndexOf(" ");
-        if (lastSpace !== -1 && lastSpace > 15) {
-            return [s.substring(0, lastSpace).trim(), s.substring(lastSpace).trim()];
-        }
-    }
-
-    // Fallback split point to avoid word breakage (only if extremely long)
-    if (allowWordSplit || s.length > 220) {
-        const firstSplitAfter = s.substring(limit).indexOf(" ");
-        if (firstSplitAfter !== -1) {
-            const splitIndex = limit + firstSplitAfter;
-            if (s.length - splitIndex >= 30) {
-                return [s.substring(0, splitIndex).trim(), s.substring(splitIndex).trim()];
-            }
-        }
-    }
-
-    return [s, ""];
-}
-
 export function splitTextIntoExactPartitionChunks(text: string, lang: string = 'es'): string[] {
     const cleanedText = cleanTtsText(text, lang);
-    if (!cleanedText) return [];
-
-    // Use {1,3} for letter abbreviations so two-letter or three-letter ones like EE. or UU. or USA. don't trigger splits
-    const sentenceSplitRegex = /(?<=(?<!\b\d+|\b[a-zA-Z]{1,3}|\b(?:ej|etc|vs|dr|sr|sra|ref|pág|pag|vol|min|seg|approx|ca|art))[.?!;¿¡]["')\]]*)\s+/i;
-    const rawSentences = cleanedText.split(sentenceSplitRegex).map(s => s.trim()).filter(Boolean);
-
-    const chunks: string[] = [];
-    let currentGroup = "";
-
-    while (rawSentences.length > 0) {
-        const sentence = rawSentences.shift()!;
-        const currentChunkIndex = chunks.length;
-        const targetLimit = currentChunkIndex === 0 ? 80 : 160;
-        const allowWordSplit = currentChunkIndex === 0; // Only allow word splits for Chunk 0
-
-        if (!currentGroup) {
-            if (sentence.length > targetLimit) {
-                const parts = splitSentenceIntoTwo(sentence, targetLimit, allowWordSplit);
-                currentGroup = parts[0];
-                if (parts[1]) {
-                    rawSentences.unshift(parts[1]);
-                }
-            } else {
-                currentGroup = sentence;
-            }
-        } else {
-            if (currentGroup.length + sentence.length + 1 > targetLimit) {
-                chunks.push(currentGroup);
-                currentGroup = "";
-                rawSentences.unshift(sentence);
-            } else {
-                currentGroup += " " + sentence;
-            }
-        }
-    }
-
-    if (currentGroup) {
-        chunks.push(currentGroup);
-    }
-
-    return chunks;
+    return planTtsChunks(cleanedText, lang);
 }

@@ -2,7 +2,7 @@
  
 <img src="./public/mikuBotICON.png" width="120" style="border-radius: 24px" alt="mikuBot Icon" />
  
-# 🌟 mikuBot v2.4.2 — 科学计算与视觉资源更新版
+# 🌟 mikuBot v2.5.0 — 深度研究与多模态体验更新版
  
 ![状态](https://img.shields.io/badge/状态-稳定-green.svg?style=for-the-badge)
 ![平台](https://img.shields.io/badge/平台-Windows_10%2F11-0078D4.svg?style=for-the-badge&logo=windows)
@@ -18,8 +18,8 @@
  
 <br/>
  
-<a href="https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.4.2/MikuCentral.Setup.2.4.2.exe">
-  <img src="https://img.shields.io/badge/下载最新版本-v2.4.2-60A5FA?style=for-the-badge&logo=windows&logoColor=white" height="40" />
+<a href="https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.5.0/MikuCentral.Setup.2.5.0.exe">
+  <img src="https://img.shields.io/badge/下载最新版本-v2.5.0-60A5FA?style=for-the-badge&logo=windows&logoColor=white" height="40" />
 </a>
  
 <br/>
@@ -40,9 +40,12 @@
 *   **自主和操作模式：** mikuBot 提供绝对的技术主权。**代理模式 (Agent Mode)** 现在拥有完全开放的控制台（无命令限制），允许执行复杂任务所需的所有系统操作。**聊天模式 (Chat Mode)** 为日常使用保留了“宽松”的安全性（广泛的白名单）。两种模式均支持后台工具执行、计划任务，以及针对破坏性命令的**高风险保护**系统（需要手动批准）。
 *   **持久的多会话执行 (Studio Elite)：** Miku 在切换神经分支时不再停止。代理可以在后台自主完成复杂任务，同时您与其他会话交互，保持持久的反应式链接通知您其他分支的处理状态。
     <br/><img src="./public/readme_assets/mikuBot_chatView00.png" width="100%" style="border-radius: 8px; border: 1px solid #30363d" alt="Chat View" />
+*   **深度研究与多模态工具：** 全新的研究流程按计划审批、执行、验证和综合四个阶段运行，提供实时进度、已验证来源、可恢复检查点以及 PDF 报告导出。同时加入图像生成和带自动语言检测的本地视频转录。
+*   **全新的聊天体验：** 欢迎界面提供动态上下文建议、即时发送和渐进式神经签名动画。流式输出期间，回答、思考和工具内容能够更稳定地保留上下文。
+*   **统一编辑工作区：** Cortex 与 Commands 现在共享同一个工作区，可清晰切换范围，持久编辑并一致管理系统文件。
 *   **科学与符号计算 (Compute Skill)：** 基于 SymPy 的内置高级计算器，允许代理执行任意精度的算术运算、求解方程和方程组、以精确及数值形式对代数表达式求导和求积分。这可以防止代理在不属于其预训练语料的数学计算中犯错。
     <br/><img src="./public/readme_assets/mikuBot_computeView00.png" width="48%" style="border-radius: 8px; border: 1px solid #30363d" alt="Compute View" /> <img src="./public/readme_assets/mikuBot_computeDetailView00.png" width="48%" style="border-radius: 8px; border: 1px solid #30363d" alt="Compute Detail View" />
-*   **多维主题系统 (Atmosphere Engine)：** 5 款预置 of 精美主题（`Miku`、`Cloud`、`Midnight`、`Cyberpunk`、`Forest`）带来绝对的视觉个性化。每个主题都能完美适配整个界面，为您打造专属的沉浸式工作环境。
+*   **多维主题系统 (Atmosphere Engine)：** 5 款预置精美主题（`Miku`、`Cloud`、`Midnight`、`Synthwave`、`Emerald`）带来绝对的视觉个性化。本版本统一了 `Synthwave` 和 `Emerald` 名称，自动迁移旧配置，并改善 Cloud 中背景、气泡、控件和 inline code 的对比度。
     <br/><img src="./public/readme_assets/mikuBot_themeLangView00.png" width="31%" style="border-radius: 8px; border: 1px solid #30363d" alt="Theme View 1" /> <img src="./public/readme_assets/mikuBot_themeLangView01.png" width="31%" style="border-radius: 8px; border: 1px solid #30363d" alt="Theme View 2" /> <img src="./public/readme_assets/mikuBot_themeLangView03.png" width="31%" style="border-radius: 8px; border: 1px solid #30363d" alt="Theme View 3" />
 *   **神经凭据保险库：** 您的 API 密钥现在由 `processVault` 系统保护，自动进行静态加密。无需手动干预即可实现主权级安全。
 *   **上下文库 (Context Library):** 一个专门用于创建、存储和管理协议、技术文档和静态知识库的模块。它允许 Miku 访问特定任务的精选参考信息，而不会干扰动态记忆。
@@ -59,7 +62,7 @@
     *   **结构化知识管理 (Callouts):** 通用 Obsidian 风格支持 (`> [!TYPE]`)，具有 14 种响应式样式。
     *   **动力学与渐进式画布:** 有机动画系统，将信息揭示与助手的实时思考同步。
 *   **神经编辑 (Cortex & Command Editors):** mikuBot 包括专门用于修改助手指令和基础知识的编辑器。尽管您可以随时手动调整这些文件，但为了获得最佳效果，**建议遵循入门配置向导（Onboarding Wizard）**。诸如 `MODES.md` 等核心文件决定了代理的运行逻辑，手动修改需要加倍小心以维护系统稳定性。
-*   **语音、連接与专业背景：** 包括开箱即用的原生语音识别（Vosk）。此外，新增 **大气背景图库**，通过 `local://` 协议实现高性能加载，支持零延迟的背景自定义。还支持通过 Telegram (via BotFather) 全天候运行。
+*   **语音、连接与专业背景：** 包括开箱即用的原生语音识别（Vosk）、带智能分段的 TTS 流程以及 Telegram 连接。此外，新增 **大气背景图库**，通过 `local://` 协议实现高性能加载，支持零延迟的背景自定义。
     <br/><img src="./public/readme_assets/mikuBot_voskSearXenaView00.png" width="48%" style="border-radius: 8px; border: 1px solid #30363d" alt="Voice Engine" /> <img src="./public/readme_assets/mikuBot_schedulerView00.jpg" width="48%" style="border-radius: 8px; border: 1px solid #30363d" alt="Scheduler View" />
 *   **100% 多语言支持 (中/英/西)：** 与市场上其他通常仅限于单一语言的替代方案不同，mikuBot **经过完全翻译和优化**，可在**中文、英语和西班牙语**中完美运行。从界面到代理的推理，系统在所有三种语言中都提供原生且流畅的体验，赋予我们技术上的优越性和全球适用性。
 *   **便携性和备份：** 允许将完整内存转储到压缩文件中，以备份所有内容，包括会话、个性化、内存、*技能*和访问密钥。

@@ -1,4 +1,4 @@
-# ðŸ“š Toolkit Snippets Library (Neural JIT)
+# Toolkit Snippets Library (Neural JIT)
 
 This file contains valid JSON code snippets, contextual use cases, and parameter explanations for each tool in the MikuBot ecosystem. It is used by the `instruction_booklet` skill to provide detailed manuals to the agent dynamically.
 
@@ -15,7 +15,7 @@ This file contains valid JSON code snippets, contextual use cases, and parameter
 
 ### UI & App Navigation (User Guidance)
 If the user asks where to find features, use this layout:
-- **Control Room / Settings:** For managing API keys, themes (Miku, Midnight, Cyberpunk, Forest, Cloud), and Voice/Telegram.
+- **Control Room / Settings:** For managing API keys, themes (Miku, Midnight, Synthwave, Emerald, Cloud), and Voice/Telegram.
 - **Skills:**  Within Control Room tab you can find the Skills tab on the top right side, where the user can toogle ON\OFF the skills you have available Or create more themselves or ask you to create them, if so, Skills must be stored and accessed in @COMMANDS/Skills.
 - **Context Library:** Bottom-left sidebar (or Book icon). Where users create custom markdown protocols.
 - **Neural Sessions:** Top-left sidebar. Thread management.
@@ -223,7 +223,7 @@ If the user asks where to find features, use this layout:
 **When to use:** Use this when you need a quick fact, recent news, or general context without reading full articles.
 
 ### Categories
-Can be: `general`, `images`, `videos`, `news`, `maps`, `shopping`, `it`, `social`.
+Can be: `general`, `images`, `videos`, `news`, `maps`, `shopping`.
 
 ### Example
 ```json
@@ -231,7 +231,7 @@ Can be: `general`, `images`, `videos`, `news`, `maps`, `shopping`, `it`, `social
   "name": "web_search",
   "arguments": {
     "query": "claudecode vs antigravity comparison",
-    "category": "it"
+    "category": "general"
   }
 }
 ```
@@ -260,25 +260,60 @@ Can be: `general`, `images`, `videos`, `news`, `maps`, `shopping`, `it`, `social
   "name": "web_research",
   "arguments": {
     "query": "Microfrontends arch with Module Federation",
-    "categories": ["it", "general"],
+    "categories": ["general", "news"],
     "max_sites": 3
   }
 }
 ```
 
 ## [deep_research]
-**Purpose:** Exhaustive multi-language research skill. Performs cross-searches (Spanish and English) and extracts core technical content.
-**When to use:** Use this for deep, complex technical investigations where language barriers might hide the best documentation.
+**Purpose:** Exhaustive multi-language investigation with planning, source verification, iterative report writing and resumable checkpoints.
+**When to use:** Use this for deep, complex investigations. First request a plan; execute only after the user approves it. If interrupted, resume the same session instead of restarting.
 
-### Example
+### Plan request
 ```json
 {
   "name": "deep_research",
   "arguments": {
     "topic": "Rust memory safety in embedded systems",
-    "categories": ["it", "science", "general"],
-    "target_language": "both"
+    "categories": ["general"],
+    "target_language": "both",
+    "approved": false
   }
+}
+```
+
+### Execute the approved plan
+```json
+{
+  "name": "deep_research",
+  "arguments": {
+    "topic": "Rust memory safety in embedded systems",
+    "approved": true,
+    "plan": { "objectives": ["..."], "steps": ["..."] }
+  }
+}
+```
+
+## [video_transcriber]
+**Purpose:** Obtain captions/subtitles exposed by a YouTube video.
+**When to use:** Use when the user needs the captioned content of a YouTube URL. If the video has no available captions, report that politely; do not download audio or attempt local transcription.
+
+```json
+{
+  "name": "video_transcriber",
+  "arguments": { "url": "https://www.youtube.com/watch?v=...", "language": "auto" }
+}
+```
+
+## [image_generator]
+**Purpose:** Generate one or more images from a descriptive prompt and save them in the active workspace.
+**When to use:** Use when a user asks to create an illustration, image concept or visual asset.
+
+```json
+{
+  "name": "image_generator",
+  "arguments": { "prompt": "A bioluminescent botanical illustration", "aspect_ratio": "1:1" }
 }
 ```
 

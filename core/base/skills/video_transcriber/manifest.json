@@ -1,0 +1,23 @@
+{
+    "name": "video_transcriber",
+    "description": "Obtains available captions/subtitles from YouTube videos. It does not download audio or perform local transcription; when captions are unavailable, it returns a friendly message.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "url": {
+                "type": "string",
+                "description": "The URL of the video whose available captions/subtitles should be retrieved."
+            },
+            "language": {
+                "type": "string",
+                "enum": ["auto", "es", "en"],
+                "default": "auto",
+                "description": "Caption language to request. Use 'auto' to prefer Spanish, then English, or another available language."
+            }
+        },
+        "required": ["url"]
+    },
+    "runtime": "python",
+    "pythonModules": ["youtube_transcript_api"],
+    "entry": "main.py"
+}

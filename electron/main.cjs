@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const { Readable } = require('stream');
 const http = require('http');
+const { planTtsChunks } = require('../shared/ttsChunkPlanner.cjs');
 
 // --- DYNAMIC WIDGETS HOOK (Production App Support) ---
 // This hooks catches widget spawns when running as a compiled MikuCentral.exe
@@ -136,6 +137,8 @@ const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('ffmpeg-static');
 const readline = require('readline');
 const SafePathResolver = require('./SafePathResolver.cjs');
+const { resolveReviewedBuiltinEntry, prepareDeepResearchExecution } = require('./services/SkillSecretBridge.cjs');
+const { getSkillExecutionTimeoutMs, markDeepResearchInterrupted } = require('./services/DeepResearchCheckpoint.cjs');
 
 
 // Configure ffmpeg
@@ -1050,7 +1053,6 @@ async function startSearXena() {
 
     searxenaProcess = spawn(pythonExe, [appScript], {
         cwd: SEARXENA_DIR,
-        shell: true,
         windowsHide: true,
         env: {
             ...process.env,
@@ -2125,9 +2127,20 @@ function tgCleanTtsText(text, lang = 'es') {
                  .replace(/O[´']/g, 'Ó')
                  .replace(/U[´']/g, 'Ú');
 
+    // Code examples take precedence over Signature Shield. Removing them here
+    // prevents signature-like literals from consuming part of a closing fence.
+    clean = clean.replace(/```mermaid[\s\S]*?```/g, '');
+    clean = clean.replace(/```[\s\S]*?```/g, '');
     // SIGNATURE SHIELD: Protect the assistant's visual signature
+    // Models may replace {{ }} with ( ). Unwrap that complete signature first
+    // so the opening parenthesis cannot survive the generic removal pass.
+    clean = clean.replace(
+        /[（(]([^()（）\r\n]*≈̼\^\.┬\.̼\^≈‿⟆[^()（）\r\n]*)[）)]/gu,
+        '$1'
+    );
+
     // Remove standard {{ ... }} with signature DNA
-    clean = clean.replace(/[`"']{0,2}(?:\{\{)\s*((?:(?!\n\n)[\s\S])+?)\s*(?:\}\}|\)\}|\}\)|[}\)])[ \t]*[)\}]*[ \t]*[`"']{0,2}/g, (match, signContent) => {
+    clean = clean.replace(/[`"']{0,2}(?:\{\{)\s*((?:(?!\n\n)[\s\S])+?)\s*(?:\}\}|\)\}|\}\)|\})[ \t]*[)\}]*[ \t]*[`"']{0,2}/g, (match, signContent) => {
         if (signContent.includes('≈') || signContent.includes('┬') || signContent.includes('~')) {
             return '';
         }
@@ -2135,7 +2148,11 @@ function tgCleanTtsText(text, lang = 'es') {
     });
 
     // Remove core signature DNA pattern ≈̼^.┬.̼^≈‿⟆ with surrounding junk/emojis
-    clean = clean.replace(/[`"']{0,2}(?:\{\{)?(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E|\w|[:_])*)(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*(≈̼\^\.┬\.̼\^≈‿⟆)(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E|\w|[:_])*)(?:(?!\n\n)\s)*(?:\}\}|\)\}|\}\)|[}\)])?[ \t]*[)\}]*[ \t]*[`"']{0,2}/gu, '');
+    clean = clean.replace(/[`"']{0,2}(?:\{\{)?(?:(?!\n\n)\s)*[（(\[]*(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E|\w|[:_])*)(?:(?!\n\n)\s)*[（(\[]*(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*(≈̼\^\.┬\.̼\^≈‿⟆)(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*[）)\]]*(?:(?!\n\n)\s)*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E|\w|[:_])*)(?:(?!\n\n)\s)*[）)\]]*(?:(?!\n\n)\s)*(?:\}\}|\)\}|\}\)|[}\)])?[ \t]*[)\}]*[ \t]*[`"']{0,2}/gu, (match) => {
+        const occupiedOwnLine = /^[\t ]*\r?\n/.test(match) || /\r?\n[\t ]*$/.test(match);
+        if (occupiedOwnLine) return '\n';
+        return /^\s|\s$/.test(match) ? ' ' : '';
+    });
 
     // Fallbacks for generic curly/bracket structures
     clean = clean.replace(/\{\{[\s\S]*?\}\}/g, '');
@@ -2143,12 +2160,6 @@ function tgCleanTtsText(text, lang = 'es') {
 
     // Remove leftover leading punctuation and symbols resulting from signature removal
     clean = clean.replace(/^[.,;:!?()\-—\s]+/, '');
-
-    // Remove Mermaid diagram blocks completely
-    clean = clean.replace(/```mermaid[\s\S]*?```/g, '');
-
-    // Remove standard code blocks completely
-    clean = clean.replace(/```[\s\S]*?```/g, '');
 
     // Remove inline code backticks (keep the text)
     clean = clean.replace(/`([^`]+)`/g, '$1');
@@ -2192,7 +2203,7 @@ function tgCleanTtsText(text, lang = 'es') {
             continue;
         }
 
-        const endsWithPunctuation = /[.,;:!?]["')\]]*$/.test(currentLine);
+        const endsWithPunctuation = /[.,;:!?。！？；：]["')\]）”’]*$/.test(currentLine);
         if (endsWithPunctuation) {
             processedLines.push(currentLine);
         } else {
@@ -2211,7 +2222,7 @@ function tgCleanTtsText(text, lang = 'es') {
             const nextStartsWithMarker = nextNonEmptyLine && /^\s*([-*+]|#+|>\s*\[!|\d+\.)\s+/i.test(nextNonEmptyLine);
 
             if (startsWithMarker || nextStartsWithMarker || hasEmptyLineInBetween || !nextNonEmptyLine) {
-                processedLines.push(currentLine + '.');
+                processedLines.push(currentLine + (lang.toLowerCase().startsWith('zh') ? '。' : '.'));
             } else {
                 processedLines.push(currentLine);
             }
@@ -2224,7 +2235,7 @@ function tgCleanTtsText(text, lang = 'es') {
     clean = clean.replace(/^\s*\d+\.\s+/gm, '');
     clean = clean.replace(/^[#\s+\-*>]+\s+/gm, '');
 
-    clean = clean.replace(/[\u2013\u2014]/g, '-');
+    clean = clean.replace(/\u2014/g, ', ').replace(/\u2013/g, '-');
 
     // Replace newlines with spaces so it flows continuously
     clean = clean.replace(/\r?\n/g, ' ');
@@ -2232,6 +2243,8 @@ function tgCleanTtsText(text, lang = 'es') {
     // Expand decimal points in numbers so they are spoken natively (e.g. "1.99" -> "1 punto 99" / "1 point 99")
     if (lang.toLowerCase().startsWith('es')) {
         clean = clean.replace(/(\d+)\.(\d+)/g, '$1 punto $2');
+    } else if (lang.toLowerCase().startsWith('zh')) {
+        clean = clean.replace(/(\d+)\.(\d+)/g, '$1点$2');
     } else {
         clean = clean.replace(/(\d+)\.(\d+)/g, '$1 point $2');
     }
@@ -2239,6 +2252,8 @@ function tgCleanTtsText(text, lang = 'es') {
     // Expand ampersand to spoken text based on language
     if (lang.toLowerCase().startsWith('es')) {
         clean = clean.replace(/&/g, ' y ');
+    } else if (lang.toLowerCase().startsWith('zh')) {
+        clean = clean.replace(/&/g, ' 和 ');
     } else {
         clean = clean.replace(/&/g, ' and ');
     }
@@ -2246,17 +2261,19 @@ function tgCleanTtsText(text, lang = 'es') {
     // English-to-Spanish phonetic dictionary for common tech terms
     if (lang.toLowerCase().startsWith('es')) {
         const sortedKeys = Object.keys(SPANISH_PHONETIC_DICT).sort((a, b) => b.length - a.length);
-        const dictRegex = new RegExp(`\\b(${sortedKeys.map(k => k.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')).join('|')})\\b`, 'gi');
+        // Use Unicode-aware boundaries so short keys cannot match inside words
+        // containing letters such as ñ or accented characters (e.g. os in años).
+        const dictRegex = new RegExp(`(?<![\\p{L}\\p{N}_])(${sortedKeys.map(k => k.replace(/[\/\\^$*+?.()|[\]{}]/g, '\\$&')).join('|')})(?![\\p{L}\\p{N}_])`, 'giu');
         clean = clean.replace(dictRegex, (match) => {
             return SPANISH_PHONETIC_DICT[match.toLowerCase()] || match;
         });
     }
 
     // Keep: %, $, €, &, /, °, +, *
-    clean = clean.replace(/[^\s0-9a-zA-Z\u00A0-\u00FF\u4e00-\u9fa5.,;:!?¡¿()'"\-%$€&/°+*]/gu, ' ');
+    clean = clean.replace(/[^\s0-9a-zA-Z\u00A0-\u00FF\u3400-\u9FFF.,;:!?¡¿，。！？；：、】【（）“”‘’()'"\-%$€&/°+*]/gu, ' ');
 
     clean = clean.replace(/\s+/g, ' ');
-    clean = clean.replace(/\s+([.,;:!?¡¿])/g, '$1');
+    clean = clean.replace(/\s+([.,;:!?¡¿，。！？；：、】【])/g, '$1');
 
     clean = clean.replace(/\.+/g, '.');
     clean = clean.replace(/,+/g, ',');
@@ -2264,125 +2281,18 @@ function tgCleanTtsText(text, lang = 'es') {
     clean = clean.replace(/\?+/g, '?');
     clean = clean.replace(/¡+/g, '¡');
     clean = clean.replace(/¿+/g, '¿');
+    clean = clean.replace(/。+/g, '。');
+    clean = clean.replace(/，+/g, '，');
+    clean = clean.replace(/！+/g, '！');
+    clean = clean.replace(/？+/g, '？');
+    clean = clean.replace(/；+/g, '；');
 
     return clean.trim();
 }
 
-function tgSplitSentenceIntoTwo(s, limit, allowWordSplit) {
-    if (s.length <= limit) return [s, ""];
-
-    // Use a soft threshold to avoid splitting sentences that are only slightly over the limit.
-    // If allowWordSplit is true (Chunk 0 & 1), we allow up to 95 chars to respect natural sentences while keeping them brief.
-    // If allowWordSplit is false (Chunk 2+), we allow up to 190 chars.
-    const softLimit = allowWordSplit ? 95 : 190;
-    if (s.length <= softLimit) {
-        return [s, ""];
-    }
-
-    // Try splitting by clause punctuation first: , ; : —
-    const regex = /(?<=[,;:—])\s+/g;
-    let match;
-    let lastSplitIndex = -1;
-
-    // First pass: find the best punctuation split before the limit
-    while ((match = regex.exec(s)) !== null) {
-        const splitPos = match.index;
-        const minPartLen = allowWordSplit ? 15 : 40;
-        if (splitPos <= limit) {
-            const firstPartLen = splitPos;
-            const secondPartLen = s.length - splitPos;
-            if (firstPartLen >= minPartLen && secondPartLen >= minPartLen) {
-                lastSplitIndex = splitPos;
-            }
-        } else {
-            break;
-        }
-    }
-
-    // Second pass: if no split was found before the limit, check if there is one slightly after the limit (up to limit + 45)
-    if (lastSplitIndex === -1) {
-        regex.lastIndex = 0;
-        const extendedLimit = limit + 45;
-        while ((match = regex.exec(s)) !== null) {
-            const splitPos = match.index;
-            const minPartLen = allowWordSplit ? 15 : 40;
-            if (splitPos <= extendedLimit) {
-                const firstPartLen = splitPos;
-                const secondPartLen = s.length - splitPos;
-                if (firstPartLen >= minPartLen && secondPartLen >= minPartLen) {
-                    lastSplitIndex = splitPos;
-                }
-            } else {
-                break;
-            }
-        }
-    }
-
-    if (lastSplitIndex !== -1) {
-        return [s.substring(0, lastSplitIndex).trim(), s.substring(lastSplitIndex).trim()];
-    }
-
-    if (allowWordSplit) {
-        const lastSpace = s.substring(0, limit).lastIndexOf(" ");
-        if (lastSpace !== -1 && lastSpace > 15) {
-            return [s.substring(0, lastSpace).trim(), s.substring(lastSpace).trim()];
-        }
-    }
-
-    if (allowWordSplit || s.length > 220) {
-        const firstSplitAfter = s.substring(limit).indexOf(" ");
-        if (firstSplitAfter !== -1) {
-            const splitIndex = limit + firstSplitAfter;
-            if (s.length - splitIndex >= 30) {
-                return [s.substring(0, splitIndex).trim(), s.substring(splitIndex).trim()];
-            }
-        }
-    }
-
-    return [s, ""];
-}
-
 function tgSplitTextIntoExactPartitionChunks(text, lang = 'es') {
     const cleanedText = tgCleanTtsText(text, lang);
-    if (!cleanedText) return [];
-    const sentenceSplitRegex = /(?<=(?<!\b\d+|\b[a-zA-Z]{1,3}|\b(?:ej|etc|vs|dr|sr|sra|ref|pág|pag|vol|min|seg|approx|ca|art))[.?!;¿¡]["')\]]*)\s+/i;
-    const rawSentences = cleanedText.split(sentenceSplitRegex).map(s => s.trim()).filter(Boolean);
-
-    const chunks = [];
-    let currentGroup = "";
-
-    while (rawSentences.length > 0) {
-        const sentence = rawSentences.shift();
-        const currentChunkIndex = chunks.length;
-        const targetLimit = currentChunkIndex === 0 ? 80 : 160;
-        const allowWordSplit = currentChunkIndex === 0; // Only allow word splits for Chunk 0
-
-        if (!currentGroup) {
-            if (sentence.length > targetLimit) {
-                const parts = tgSplitSentenceIntoTwo(sentence, targetLimit, allowWordSplit);
-                currentGroup = parts[0];
-                if (parts[1]) {
-                    rawSentences.unshift(parts[1]);
-                }
-            } else {
-                currentGroup = sentence;
-            }
-        } else {
-            if (currentGroup.length + sentence.length + 1 > targetLimit) {
-                chunks.push(currentGroup);
-                currentGroup = "";
-                rawSentences.unshift(sentence);
-            } else {
-                currentGroup += " " + sentence;
-            }
-        }
-    }
-
-    if (currentGroup) {
-        chunks.push(currentGroup);
-    }
-
-    return chunks;
+    return planTtsChunks(cleanedText, lang);
 }
 
 ipcMain.handle('telegram:send-voice', async (event, { token, chatId, text, lang, voice }) => {
@@ -3058,7 +2968,7 @@ ipcMain.handle('extract-file-content', async (event, { path: filePath }) => {
 
 const activePdfWindows = new Set();
 
-ipcMain.handle('export-html-to-pdf', async (event, { html, title, cssRules, bodyClass, htmlClass, bodyStyle, htmlStyle }) => {
+ipcMain.handle('export-html-to-pdf', async (event, { html, title, defaultPath, cssRules, bodyClass, htmlClass, bodyStyle, htmlStyle }) => {
     const { dialog, BrowserWindow } = require('electron');
     const fs = require('fs');
     const path = require('path');
@@ -3068,7 +2978,7 @@ ipcMain.handle('export-html-to-pdf', async (event, { html, title, cssRules, body
     const parentWin = BrowserWindow.getFocusedWindow();
     const { filePath, canceled } = await dialog.showSaveDialog(parentWin, {
         title: 'Exportar PDF',
-        defaultPath: `${title || 'documento'}.pdf`,
+        defaultPath: defaultPath || `${title || 'documento'}.pdf`,
         filters: [{ name: 'PDF Document', extensions: ['pdf'] }]
     });
 
@@ -3103,8 +3013,8 @@ ipcMain.handle('export-html-to-pdf', async (event, { html, title, cssRules, body
         html, body, 
         html.theme-miku, body.theme-miku, 
         html.theme-midnight, body.theme-midnight, 
-        html.theme-cyberpunk, body.theme-cyberpunk, 
-        html.theme-forest, body.theme-forest,
+        html.theme-synthwave, body.theme-synthwave,
+        html.theme-emerald, body.theme-emerald,
         html.theme-cloud, body.theme-cloud {
             background-color: #ffffff !important;
             background: #ffffff !important;
@@ -3582,88 +3492,176 @@ ipcMain.handle('list-blueprints', async (event, { toolsPath, corePath, lang }) =
     }
 });
 
+function parseSkillOutput(stdout) {
+    const lines = String(stdout || '').trim().split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    for (let index = lines.length - 1; index >= 0; index -= 1) {
+        try { return JSON.parse(lines[index]); } catch { /* keep looking for the result line */ }
+    }
+    return String(stdout || '').trim();
+}
+
+function isPathInside(parent, child) {
+    const relative = path.relative(path.resolve(parent), path.resolve(child));
+    return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+}
+
+function prepareSkillMediaResult(skillName, data, workspaceRoot) {
+    if (skillName !== 'image_generator' || !data || typeof data !== 'object' || Array.isArray(data)) {
+        return data;
+    }
+
+    // Keep the model/tool history compact and expose only files created within
+    // the active workspace's generated_images directory. The renderer uses the
+    // app's existing local:// protocol rather than source-project file routes.
+    const result = { ...data };
+    delete result.iframe;
+
+    const savedFiles = Array.isArray(result.saved_files) ? result.saved_files : [];
+    const imagesDirectory = path.resolve(workspaceRoot, 'generated_images');
+    const allowedExtensions = new Set(['.png', '.jpg', '.jpeg', '.webp']);
+    const imageUrls = [];
+
+    for (const savedFile of savedFiles) {
+        if (typeof savedFile !== 'string') continue;
+        const candidate = path.resolve(workspaceRoot, savedFile);
+        if (!isPathInside(imagesDirectory, candidate) || !allowedExtensions.has(path.extname(candidate).toLowerCase()) || !fs.existsSync(candidate)) {
+            continue;
+        }
+        const normalizedPath = candidate.replace(/\\/g, '/').replace(/^\/+/, '');
+        imageUrls.push(`local:///${normalizedPath}`);
+    }
+
+    return { ...result, image_urls: imageUrls };
+}
+
 ipcMain.handle('execute-skill', async (event, { toolsPath, skillName, args, lang }) => {
     try {
         if (!toolsPath || !skillName) return { ok: false, error: 'Missing parameters' };
+        if (!/^[a-zA-Z0-9_-]{1,64}$/.test(skillName)) return { ok: false, error: 'Invalid skill identifier' };
 
-        const skillsPath = path.join(toolsPath, 'skills');
+        const skillsPath = path.join(SafePathResolver.resolvePath(toolsPath), 'skills');
+        if (!fs.existsSync(skillsPath)) return { ok: false, error: 'Skills directory not found.' };
+
         let skillPath = path.join(skillsPath, skillName);
         let manifestPath = path.join(skillPath, 'manifest.json');
 
-        // Robust Resolution: If folder doesn't match name, search manifests
+        // A workspace may retain a folder name from a previous release; resolve
+        // by manifest name while keeping execution inside its skills directory.
         if (!fs.existsSync(manifestPath)) {
-            const folders = fs.readdirSync(skillsPath);
             let found = false;
-            for (const folder of folders) {
+            for (const folder of fs.readdirSync(skillsPath)) {
                 const testPath = path.join(skillsPath, folder, 'manifest.json');
-                if (fs.existsSync(testPath)) {
-                    const m = JSON.parse(fs.readFileSync(testPath, 'utf8'));
-                    if (m.name === skillName) {
-                        skillPath = path.join(skillsPath, folder);
-                        manifestPath = testPath;
-                        found = true;
-                        break;
-                    }
+                if (!fs.existsSync(testPath)) continue;
+                const manifestCandidate = JSON.parse(fs.readFileSync(testPath, 'utf8'));
+                if (manifestCandidate.name === skillName) {
+                    skillPath = path.join(skillsPath, folder);
+                    manifestPath = testPath;
+                    found = true;
+                    break;
                 }
             }
-            if (!found) {
-                return { ok: false, error: `Skill "${skillName}" not found or manifest missing.` };
-            }
+            if (!found) return { ok: false, error: `Skill "${skillName}" not found or manifest missing.` };
         }
 
         const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+        if (manifest.name !== skillName) return { ok: false, error: 'Skill manifest name does not match its identifier.' };
         const entryFile = path.join(skillPath, manifest.entry);
+        if (!fs.existsSync(entryFile)) return { ok: false, error: `Entry file "${manifest.entry}" not found for skill "${skillName}".` };
 
-        if (!fs.existsSync(entryFile)) {
-            return { ok: false, error: `Entry file "${manifest.entry}" not found for skill "${skillName}".` };
+        const physicalSkillPath = fs.realpathSync(skillPath);
+        const physicalEntryFile = fs.realpathSync(entryFile);
+        if (!isPathInside(physicalSkillPath, physicalEntryFile)) {
+            return { ok: false, error: 'Skill entry escapes its registered directory.' };
         }
 
         console.log(`[Main Process] Executing skill: ${skillName} (${manifest.runtime})`);
 
         if (manifest.runtime === 'python') {
             const { execFile } = require('child_process');
-            // REQUIREMENT: Must use internal Python
-            const pythonExe = ENGINE_PYTHON_EXE;
+            if (!fs.existsSync(ENGINE_PYTHON_EXE) || !isPythonAvailable(ENGINE_PYTHON_EXE)) {
+                return { ok: false, error: 'Internal Python is not available. Please reinstall the application.' };
+            }
 
-            // Check Python availability
-            if (!fs.existsSync(pythonExe)) return { ok: false, error: 'Internal Python not found. Please reinstall the application.' };
-            if (!isPythonAvailable(pythonExe)) return { ok: false, error: 'Internal Python is not working properly.' };
+            let executionArgs = args && typeof args === 'object' ? args : {};
+            let executionEntryFile = physicalEntryFile;
+            let skillEnvironment = {};
 
-            // Security: Use execFile to avoid shell injection
+            if (skillName === 'deep_research') {
+                const trustedSkillsRoot = path.join(resourcesPath, 'core', 'base', 'skills');
+                const reviewedEntryFile = resolveReviewedBuiltinEntry({
+                    skillName,
+                    runtime: manifest.runtime,
+                    entryFile: physicalEntryFile,
+                    trustedSkillsRoot,
+                    manifestName: manifest.name,
+                    manifestEntry: manifest.entry
+                });
+                if (!reviewedEntryFile) {
+                    return { ok: false, error: 'Deep Research must run from the bundled reviewed skill.' };
+                }
+                try {
+                    const prepared = prepareDeepResearchExecution({
+                        args: executionArgs,
+                        reviewedBuiltin: true,
+                        apiKeys: getApiKeys(),
+                        configuredOllamaUrl: 'http://127.0.0.1:11434'
+                    });
+                    executionArgs = prepared.args;
+                    skillEnvironment = prepared.env;
+                    executionEntryFile = reviewedEntryFile;
+                } catch (error) {
+                    return { ok: false, error: error.message, code: error.code || 'SKILL_SECRET_ERROR' };
+                }
+            }
+
             return new Promise((resolve) => {
-                const env = { ...process.env, MIKU_WORKSPACE_ROOT: getCurrentWorkspacePath(), MIKU_LANGUAGE: lang || 'en' };
-                execFile(pythonExe, [entryFile, JSON.stringify(args)], { env }, (error, stdout, stderr) => {
+                const env = {
+                    ...process.env,
+                    MIKU_WORKSPACE_ROOT: getCurrentWorkspacePath(),
+                    MIKU_LANGUAGE: lang || 'en',
+                    MIKU_APP_ROOT: baseDir,
+                    // mikuBot owns the bundled engine endpoint at port 8000.
+                    MIKU_SEARXENA_ENDPOINT: 'http://127.0.0.1:8000',
+                    ...skillEnvironment
+                };
+                execFile(ENGINE_PYTHON_EXE, [executionEntryFile, JSON.stringify(executionArgs)], {
+                    env,
+                    maxBuffer: 16 * 1024 * 1024,
+                    timeout: getSkillExecutionTimeoutMs(skillName),
+                    windowsHide: true
+                }, (error, stdout, stderr) => {
                     if (error) {
                         console.error(`[Main Process] Skill execution error (${skillName}):`, error.message);
-                        return resolve({ ok: false, error: error.message, stderr });
+                        if (skillName === 'deep_research') markDeepResearchInterrupted(getCurrentWorkspacePath(), executionArgs, error);
+                        return resolve({ ok: false, error: error.message, stderr: stderr || '' });
                     }
-                    try {
-                        const match = stdout.match(/\{[\s\S]*\}/);
-                        const data = match ? JSON.parse(match[0]) : stdout.trim();
-                        resolve({ ok: true, data });
-                    } catch (e) {
-                        resolve({ ok: true, data: stdout.trim() });
-                    }
+                    const parsedOutput = parseSkillOutput(stdout);
+                    return resolve({
+                        ok: true,
+                        data: prepareSkillMediaResult(skillName, parsedOutput, getCurrentWorkspacePath())
+                    });
                 });
             });
-        } else if (manifest.runtime === 'node') {
+        }
+
+        if (manifest.runtime === 'node') {
             const { execFile } = require('child_process');
-            
             return new Promise((resolve) => {
-                const env = { ...process.env, MIKU_WORKSPACE_ROOT: getCurrentWorkspacePath(), MIKU_LANGUAGE: lang || 'en' };
-                // Using execFile for zero shell overhead & security
-                execFile(nodeBinary, [entryFile, JSON.stringify(args)], { env }, (error, stdout, stderr) => {
-                    if (error) {
-                        console.error(`[Main Process] Skill execution error (${skillName}):`, error.message);
-                        return resolve({ ok: false, error: error.message, stderr });
-                    }
-                    try {
-                        const match = stdout.match(/\{[\s\S]*\}/);
-                        const data = match ? JSON.parse(match[0]) : stdout.trim();
-                        resolve({ ok: true, data });
-                    } catch (e) {
-                        resolve({ ok: true, data: stdout.trim() });
-                    }
+                const env = {
+                    ...process.env,
+                    MIKU_WORKSPACE_ROOT: getCurrentWorkspacePath(),
+                    MIKU_LANGUAGE: lang || 'en',
+                    MIKU_APP_ROOT: baseDir,
+                    MIKU_SEARXENA_ENDPOINT: 'http://127.0.0.1:8000'
+                };
+                execFile(nodeBinary, [physicalEntryFile, JSON.stringify(args || {})], {
+                    env,
+                    maxBuffer: 16 * 1024 * 1024,
+                    timeout: getSkillExecutionTimeoutMs(skillName),
+                    windowsHide: true
+                }, (error, stdout, stderr) => {
+                    if (error) return resolve({ ok: false, error: error.message, stderr: stderr || '' });
+                    return resolve({ ok: true, data: parseSkillOutput(stdout) });
                 });
             });
         }
@@ -3671,6 +3669,35 @@ ipcMain.handle('execute-skill', async (event, { toolsPath, skillName, args, lang
         return { ok: false, error: `Unsupported runtime: ${manifest.runtime}` };
     } catch (error) {
         console.error('[Main Process] execute-skill error:', error);
+        return { ok: false, error: error.message };
+    }
+});
+
+ipcMain.handle('deep-research-progress', async (event, { sessionId }) => {
+    try {
+        const normalizedSessionId = String(sessionId || '');
+        if (!/^[A-Za-z0-9_-]{1,120}$/.test(normalizedSessionId)) {
+            return { ok: false, error: 'Invalid Deep Research session identifier.' };
+        }
+
+        const progressDirectory = path.resolve(getCurrentWorkspacePath(), 'sessions', 'deep_research');
+        const progressPath = path.resolve(progressDirectory, `.deep_research_progress_${normalizedSessionId}.json`);
+        if (!isPathInside(progressDirectory, progressPath)) {
+            return { ok: false, error: 'Invalid Deep Research progress path.' };
+        }
+        if (!fs.existsSync(progressPath)) return { ok: true, progress: null };
+
+        const stat = fs.statSync(progressPath);
+        if (!stat.isFile() || stat.size > 100 * 1024 * 1024) {
+            return { ok: false, error: 'Deep Research progress file is not readable.' };
+        }
+
+        const progress = JSON.parse(fs.readFileSync(progressPath, 'utf8'));
+        if (!progress || typeof progress !== 'object' || Array.isArray(progress)) {
+            return { ok: false, error: 'Invalid Deep Research progress payload.' };
+        }
+        return { ok: true, progress };
+    } catch (error) {
         return { ok: false, error: error.message };
     }
 });
@@ -4220,9 +4247,18 @@ ipcMain.handle('agent:gpu-info', async () => {
     }
 });
 
-ipcMain.handle('agent:restart-ollama', async (event, zeroOverhead) => {
+ipcMain.handle('agent:ollama-runtime-config', async () => {
     try {
-        const result = await agentActions.handleRestartOllama(zeroOverhead);
+        const config = await agentActions.handleGetOllamaRuntimeConfig();
+        return { ok: true, ...config };
+    } catch (e) {
+        return { ok: false, error: e.message };
+    }
+});
+
+ipcMain.handle('agent:restart-ollama', async (event, opts) => {
+    try {
+        const result = await agentActions.handleRestartOllama(opts);
         return { ok: true, result };
     } catch (e) {
         return { ok: false, error: e.message };

@@ -7,6 +7,7 @@ export interface ThemeColors {
   '--primary-color': string;
   '--secondary-color': string;
   '--background-color': string;
+  '--chat-background-color': string;
   '--surface-color': string;
   '--text-primary': string;
   '--text-secondary': string;
@@ -18,11 +19,21 @@ export interface ThemeColors {
   '--glass-glow': string;
 }
 
+/** Theme IDs kept for backwards compatibility with existing config files. */
+export const THEME_ALIASES: Record<string, string> = {
+  forest: 'emerald',
+  cyberpunk: 'synthwave'
+};
+
+export const normalizeTheme = (theme?: string): string =>
+  THEME_ALIASES[theme || ''] || theme || 'miku';
+
 export const THEMES: Record<string, ThemeColors> = {
   miku: {
     '--primary-color': '#60a5fa', // Blue-400
     '--secondary-color': '#38bdf8', // Sky-400
-    '--background-color': '#0f172a', // Slate-900
+    '--background-color': '#0b1120', // Slate-950 azulado para separar el chat de las superficies
+    '--chat-background-color': '#0b1120',
     '--surface-color': 'rgba(30, 41, 59, 0.7)', // Slate-800
     '--text-primary': '#f8fafc', // Slate-50
     '--text-secondary': '#94a3b8', // Slate-400
@@ -37,6 +48,7 @@ export const THEMES: Record<string, ThemeColors> = {
     '--primary-color': '#94a3b8',
     '--secondary-color': '#64748b',
     '--background-color': '#020617', // Slate-950
+    '--chat-background-color': '#020617',
     '--surface-color': 'rgba(15, 23, 42, 0.7)',
     '--text-primary': '#f8fafc',
     '--text-secondary': '#64748b',
@@ -51,6 +63,7 @@ export const THEMES: Record<string, ThemeColors> = {
     '--primary-color': '#2563eb', // Blue-600
     '--secondary-color': '#06b6d4', // Cyan-500 (Consistent with other accents)
     '--background-color': '#f8fafc', // Slate-50
+    '--chat-background-color': '#e2e8f0', // Slate-200 para separar el chat del encabezado claro
     '--surface-color': 'rgba(255, 255, 255, 0.9)', 
     '--text-primary': '#334155', // Slate-700
     '--text-secondary': '#64748b', // Slate-500
@@ -61,10 +74,11 @@ export const THEMES: Record<string, ThemeColors> = {
     '--sidebar-hover': 'rgba(226, 232, 240, 0.7)',
     '--glass-glow': 'rgba(6, 182, 212, 0.15)',
   },
-  cyberpunk: {
+  synthwave: {
     '--primary-color': '#d946ef', // Fuchsia-500
     '--secondary-color': '#facc15', // Yellow-400
     '--background-color': '#1a103d', // Deep Purple
+    '--chat-background-color': '#140b32', // Fondo de chat ligeramente más profundo que la barra superior
     '--surface-color': 'rgba(45, 27, 105, 0.9)',
     '--text-primary': '#ffffff',
     '--text-secondary': '#22d3ee', // Cyan-400
@@ -75,10 +89,11 @@ export const THEMES: Record<string, ThemeColors> = {
     '--sidebar-hover': 'rgba(45, 27, 105, 0.5)',
     '--glass-glow': 'rgba(217, 70, 239, 0.2)',
   },
-  forest: {
+  emerald: {
     '--primary-color': '#10b981', // Emerald-500
     '--secondary-color': '#84cc16', // Lime-500
     '--background-color': '#064e3b', // Emerald-900
+    '--chat-background-color': '#043c2f', // Verde más profundo para separar el chat de la barra superior
     '--surface-color': 'rgba(6, 78, 59, 0.6)', 
     '--text-primary': '#ecfdf5',
     '--text-secondary': '#fbbf24', // Amber-400

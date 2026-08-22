@@ -1,518 +1,245 @@
 ================================================================================
-                    SEARXNG EN WINDOWS - GUIA COMPLETA
+                         SEARXENA EN WINDOWS
+                 GUÍA DE INSTALACIÓN, USO Y CONFIGURACIÓN
 ================================================================================
 
-Guia para ejecutar SearXNG 100% nativo en Windows sin Docker, WSL ni dependencias 
-de Linux.
+searXena es una aplicación independiente para metabúsqueda local. Está
+implementada con Python, FastAPI, Uvicorn y motores propios en
+core\engines. Su desarrollo comenzó como un intento experimental de portar
+ideas de SearXNG a Windows, pero actualmente searXena no ejecuta SearXNG ni
+depende de su código, sus scripts o su infraestructura.
+
+Esta guía describe únicamente el proyecto searXena.
 
 ================================================================================
 REQUISITOS
 ================================================================================
 
-Software requerido:
+- Windows 10 u 11
+- Python 3.10 o posterior
+- PowerShell
+- Git (solo si se instala clonando el repositorio)
+- Conexión a Internet para consultar los motores externos
 
-- Python 3.10 o superior
-  Descarga: https://www.python.org/downloads/
-  IMPORTANTE: Marcar "Add Python to PATH" durante la instalacion
-
-- Node.js version 24.3 o superior
-  Descarga: https://nodejs.org/
-  Recomendado: Version LTS
-
-- Visual C++ Build Tools
-  Descarga: https://visualstudio.microsoft.com/visual-cpp-build-tools/
-  Seleccionar: "Desktop development with C++"
-
-- PowerShell 5.1 o superior
-  Incluido en Windows 10/11
-
-- Git
-  Descarga: https://git-scm.com/
+Las dependencias Python se instalan desde requirements.txt.
 
 ================================================================================
-INSTALACION RAPIDA
+INSTALACIÓN RÁPIDA DESDE EL REPOSITORIO
 ================================================================================
 
-Paso 1: Clonar repositorio
+1. Clonar el repositorio y entrar en su raíz:
 
-    git clone https://github.com/searxng/searxng.git
-    cd searxng
+    git clone https://github.com/NeuralArchLabs/searXena.git
+    cd searXena
 
-Paso 2: Permitir ejecucion de scripts
+2. Si PowerShell bloquea scripts, permitir scripts locales para el usuario:
 
     Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
-Paso 3: Ejecutar instalador
+3. Ejecutar el instalador incluido:
 
     .\win_setup.ps1
 
-Paso 4: Iniciar searXena
+El instalador crea el entorno virtual en local\py3 y utiliza
+requirements.txt para instalar las dependencias.
+
+================================================================================
+INICIAR SEARXENA
+================================================================================
+
+Ejecutar desde la raíz del repositorio:
 
     .\run.ps1
 
-El navegador se abrira automaticamente en http://127.0.0.1:8000/
+El lanzador abre el navegador e inicia la aplicación en:
+
+    http://127.0.0.1:8000
+
+Para detenerla, volver a la ventana de PowerShell y pulsar Ctrl+C.
+
+El puerto está definido actualmente en core\app.py. Si el puerto 8000 está
+ocupado, debe liberarse antes de iniciar la aplicación o cambiarse el
+entrypoint de forma explícita.
 
 ================================================================================
-INSTALACION MANUAL PASO A PASO
+INSTALACIÓN MANUAL
 ================================================================================
 
-Si prefieres instalar manualmente:
-
-1. Crear virtualenv:
+Desde la raíz del repositorio:
 
     python -m venv local\py3
+    .\local\py3\Scripts\python.exe -m pip install -U pip wheel setuptools
+    .\local\py3\Scripts\python.exe -m pip install -r requirements.txt
+    .\local\py3\Scripts\python.exe core\app.py
 
-2. Activar virtualenv:
+También es posible activar el entorno antes de instalar o ejecutar:
 
     .\local\py3\Scripts\Activate.ps1
-
-3. Instalar dependencias Python:
-
-    pip install -U pip wheel setuptools
-    pip install -r requirements.txt
-    pip install -r requirements-dev.txt
-    pip install -e .[test]
-
-4. Instalar servidor WSGI:
-
-    pip install granian
-
-5. Instalar dependencias Node.js:
-
-    cd client\simple
-    npm install
-    npm run build
-    cd ..\..
+    python -m pip install -r requirements.txt
+    python core\app.py
 
 ================================================================================
-COMANDOS PRINCIPALES
+CONFIGURACIÓN
 ================================================================================
 
-WEBAPP
--------
+La configuración principal está en:
 
-    .\manage.ps1 webapp.run
-    Inicia el servidor de desarrollo en http://127.0.0.1:8888
+    core\settings.json
 
-PYTHON / VIRTUALENV
--------------------
+La plantilla de referencia está en:
 
-    .\manage.ps1 pyenv.install
-    Crea virtualenv e instala todas las dependencias
+    core\settings.example.json
 
-    .\manage.ps1 pyenv.uninstall
-    Desinstala el paquete searxng del virtualenv
+La sección general controla, entre otros valores:
 
-    .\manage.ps1 py.clean
-    Elimina virtualenv y archivos compilados .pyc
+- instance_name
+- safe_search
+- default_lang
+- timeout
+- cache_ttl
 
-NODE.JS
--------
+La sección engines habilita o deshabilita motores y define su peso. Los
+cambios de configuración se aplican al reiniciar el proceso.
 
-    .\manage.ps1 node.env
-    Instala dependencias npm del frontend
-
-    .\manage.ps1 node.env.dev
-    Instala herramientas de desarrollo npm
-
-    .\manage.ps1 node.clean
-    Elimina node_modules
-
-    .\manage.ps1 nvm.status
-    Muestra estado de NVM/Node.js
-
-THEMES / FRONTEND
------------------
-
-    .\manage.ps1 themes.build
-    Compila los temas con Vite
-
-    .\manage.ps1 themes.live
-    Modo desarrollo con hot reload
-
-    .\manage.ps1 themes.test
-    Ejecuta tests del frontend
-
-    .\manage.ps1 themes.lint
-    Linting de CSS/JS
-
-    .\manage.ps1 themes.fix
-    Corrige problemas de linting automaticamente
-
-    .\manage.ps1 themes.analyze
-    Analiza el tamano del bundle
-
-TESTS
------
-
-    .\manage.ps1 test
-    Ejecuta tests unitarios
-
-    .\manage.ps1 test.verbose
-    Tests con salida detallada
-
-    .\manage.ps1 test.coverage
-    Tests con cobertura de codigo
-
-    .\manage.ps1 test.full
-    Ejecuta todos los tests disponibles
-
-    .\manage.ps1 test.robot
-    Tests de integracion con Selenium
-
-LINTING
--------
-
-    .\manage.ps1 lint.python
-    Ejecuta pylint
-
-    .\manage.ps1 lint.black
-    Verifica formato con black
-
-    .\manage.ps1 lint.yamllint
-    Verifica archivos YAML
-
-    .\manage.ps1 lint.pyright
-    Verificacion de tipos estaticos
-
-    .\manage.ps1 lint.rst
-    Verifica archivos reStructuredText
-
-    .\manage.ps1 lint.all
-    Ejecuta todos los lintings
-
-FORMATO
--------
-
-    .\manage.ps1 format.python
-    Formatea codigo Python con black
-
-    .\manage.ps1 format.all
-    Formatea todo el codigo
-
-DATA
-----
-
-    .\manage.ps1 data.all
-    Actualiza todos los datos JSON
-
-    .\manage.ps1 data.currencies
-    Actualiza datos de monedas
-
-    .\manage.ps1 data.traits
-    Actualiza engine traits
-
-    .\manage.ps1 data.useragents
-    Actualiza user agents
-
-    .\manage.ps1 data.locales
-    Actualiza datos de locales
-
-STATIC
-------
-
-    .\manage.ps1 static.build.commit
-    Compila archivos estaticos y hace commit
-
-    .\manage.ps1 static.build.drop
-    Elimina archivos compilados
-
-    .\manage.ps1 static.build.restore
-    Restaura archivos desde git
-
-DOCUMENTACION
--------------
-
-    .\manage.ps1 docs.html
-    Construye documentacion HTML
-
-    .\manage.ps1 docs.live
-    Documentacion con hot reload
-
-    .\manage.ps1 docs.clean
-    Limpia archivos de documentacion
-
-VALKEY/REDIS
-------------
-
-    .\manage.ps1 valkey.status
-    Muestra estado del servidor
-
-    .\manage.ps1 valkey.start
-    Inicia servidor Valkey/Redis
-
-    .\manage.ps1 valkey.stop
-    Detiene servidor Valkey/Redis
-
-    .\manage.ps1 valkey.install
-    Muestra instrucciones de instalacion
-
-UTILIDADES
-----------
-
-    .\manage.ps1 gecko.driver
-    Instala geckodriver para tests Selenium
-
-    .\manage.ps1 clean.all
-    Limpia todo (virtualenv, node_modules, build, etc)
-
-    .\manage.ps1 help
-    Muestra ayuda completa
+El timeout controla cuánto espera el orquestador a los motores. Los motores
+que no respondan dentro del plazo pueden fallar individualmente; las
+respuestas que sí hayan llegado se conservan.
 
 ================================================================================
-BUILD SYSTEM ALTERNATIVO
+USO WEB
 ================================================================================
 
-Usando build.ps1:
+- /                  Interfaz principal
+- /search            Búsqueda web HTML (GET o POST)
+- /settings          Preferencias de la instancia
+- /extract?url=...   Modo lectura para una URL
+- /proxify?url=...   Proxy interno de recursos remotos
+- /robots.txt        Robots de la instancia
+- /ai.txt            Información para agentes
 
-    .\build.ps1 check         Verifica entorno
-    .\build.ps1 install       Instala todo
-    .\build.ps1 build         Compila proyecto
-    .\build.ps1 run           Ejecuta servidor
-    .\build.ps1 test          Ejecuta tests
-    .\build.ps1 lint          Ejecuta lintings
-    .\build.ps1 clean.all     Limpia todo
+Categorías disponibles en la interfaz y en la API:
 
-Usando Makefile.win (requiere make):
-
-    make -f Makefile.win install
-    make -f Makefile.win run
-    make -f Makefile.win test
-    make -f Makefile.win clean.all
+    general, images, videos, news, maps, shopping
 
 ================================================================================
-CONFIGURACION
+API JSON
 ================================================================================
 
-Archivo principal: searx\settings.yml
+Búsqueda estructurada:
 
-Ejemplo de configuracion basica:
+    POST http://127.0.0.1:8000/api/v1/search
 
-    server:
-      port: 8888
-      bind_address: "127.0.0.1"
-      secret_key: "cambia-esto-en-produccion"
+Ejemplo desde PowerShell:
 
-    general:
-      debug: false
-      instance_name: "Mi SearXNG"
+    $body = @{
+        query = "python fastapi"
+        category = "general"
+        pageno = 1
+        language = "es"
+        limit = 10
+    } | ConvertTo-Json
 
-    search:
-      safe_search: 0
-      autocomplete: "google"
+    Invoke-RestMethod `
+        -Method Post `
+        -Uri http://127.0.0.1:8000/api/v1/search `
+        -ContentType "application/json" `
+        -Body $body
 
-Variables de entorno disponibles:
+Otros endpoints:
 
-    $env:SEARXNG_DEBUG = "1"
-    $env:SEARXNG_SECRET = "mi-clave-secreta"
-    $env:GRANIAN_PORT = "9000"
+    GET  /api/v1/tools_schema
+    POST /api/v1/extract
+
+El resultado de búsqueda incluye results y meta. meta.has_more indica si
+existen resultados adicionales más allá del límite solicitado.
 
 ================================================================================
-VALKEY/REDIS (OPCIONAL)
+COMPROBACIÓN RÁPIDA
 ================================================================================
 
-Valkey/Redis es opcional pero mejora el rendimiento.
+Con la aplicación iniciada:
 
-Opciones de instalacion:
+    Invoke-WebRequest http://127.0.0.1:8000/
 
-1. Chocolatey:
+Para comprobar la API:
 
-    choco install redis-64
-    redis-server
-
-2. Descarga directa:
-
-    https://github.com/valkey-io/valkey/releases
-
-3. Docker:
-
-    docker run -d -p 6379:6379 valkey/valkey:latest
-
-Configuracion en settings.yml:
-
-    valkey:
-      url: valkey://localhost:6379/0
+    Invoke-RestMethod `
+        -Method Post `
+        -Uri http://127.0.0.1:8000/api/v1/search `
+        -ContentType "application/json" `
+        -Body '{"query":"nintendo switch","category":"general","limit":5}'
 
 ================================================================================
 PROBLEMAS COMUNES
 ================================================================================
 
-PROBLEMA: "scripts deshabilitados en este sistema"
-
-SOLUCION:
+"Scripts are disabled on this system"
 
     Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
---------------------------------------------------------------------------------
+"Python no encontrado"
 
-PROBLEMA: "Python no encontrado"
+- Instalar Python desde https://www.python.org/downloads/
+- Abrir una nueva ventana de PowerShell.
+- Comprobar:
 
-SOLUCION:
-    1. Verificar que Python esta instalado
-    2. Verificar que esta en el PATH:
-       $env:PATH -split ';' | Select-String python
-    3. Agregar al PATH si es necesario:
-       $env:PATH += ";C:\Users\TU_USUARIO\AppData\Local\Programs\Python\Python311"
+    python --version
 
---------------------------------------------------------------------------------
+"No se encuentra local\py3"
 
-PROBLEMA: "Node.js no encontrado"
+    .\win_setup.ps1
 
-SOLUCION:
-    1. Instalar desde https://nodejs.org/
-    2. Reiniciar PowerShell
+"ModuleNotFoundError"
 
---------------------------------------------------------------------------------
+    .\local\py3\Scripts\python.exe -m pip install -r requirements.txt
 
-PROBLEMA: Error compilando lxml o fasttext
+"El puerto 8000 está ocupado"
 
-SOLUCION:
-    1. Instalar Visual C++ Build Tools
-    2. Seleccionar "Desktop development with C++"
-    3. Reiniciar y reinstalar
+    Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue
 
---------------------------------------------------------------------------------
+Cerrar únicamente el proceso que corresponda a la instancia de searXena o
+iniciar la aplicación después de liberar el puerto.
 
-PROBLEMA: Puerto 8888 ocupado
+"No aparecen resultados de un motor"
 
-SOLUCION:
-
-    $env:GRANIAN_PORT = "9999"
-    .\manage.ps1 webapp.run
-
-O matar proceso:
-
-    netstat -ano | findstr :8888
-    taskkill /PID <PID> /F
-
---------------------------------------------------------------------------------
-
-PROBLEMA: "ModuleNotFoundError"
-
-SOLUCION:
-
-    .\manage.ps1 py.clean
-    .\manage.ps1 pyenv.install
-
---------------------------------------------------------------------------------
-
-PROBLEMA: Frontend no compila
-
-SOLUCION:
-
-    .\manage.ps1 node.clean
-    .\manage.ps1 node.env
-    .\manage.ps1 themes.build
+Los motores consultan servicios externos y pueden sufrir bloqueos,
+CAPTCHAs, cambios de HTML, problemas de DNS o fallos de red. Revisar la
+salida de la consola y probar nuevamente antes de modificar la aplicación.
+Un fallo individual no implica que searXena dependa de SearXNG.
 
 ================================================================================
-ESTRUCTURA DE ARCHIVOS
+ESTRUCTURA REAL DEL PROYECTO
 ================================================================================
 
-searxng/
-|
-+-- searx/                    # Backend Python
-|   +-- engines/              # Motores de busqueda
-|   +-- plugins/              # Plugins
-|   +-- static/               # Archivos estaticos compilados
-|   +-- templates/            # Plantillas Jinja2
-|   +-- settings.yml          # Configuracion principal
-|
-+-- client/simple/            # Frontend TypeScript/Vite
-|
-+-- utils/                    # Scripts de utilidad
-|   +-- lib.ps1               # Libreria base PowerShell
-|   +-- lib_sxng_node.ps1     # Gestion Node.js
-|   +-- lib_sxng_themes.ps1   # Compilacion temas
-|   +-- lib_sxng_test.ps1     # Tests
-|   +-- lib_sxng_data.ps1     # Actualizacion datos
-|   +-- lib_sxng_static.ps1   # Archivos estaticos
-|   +-- lib_valkey.ps1        # Valkey/Redis
-|
-+-- local/py3/                # Virtualenv Python
-|
-+-- manage.ps1                # Script principal de gestion
-+-- build.ps1                 # Build system alternativo
-+-- win_setup.ps1             # Instalador inicial
-+-- Makefile.win              # Makefile para Windows
-+-- WINDOWS.md                # Esta documentacion
+core\app.py              Aplicación FastAPI y rutas HTTP
+core\engine_manager.py   Orquestación, caché y ranking
+core\engines\            Adaptadores de motores de búsqueda
+core\templates\          Plantillas HTML
+core\static\             CSS, JavaScript y recursos estáticos
+core\ozen_engine\        Motor de extracción O-ZEN
+core\settings.json       Configuración de la instancia
+requirements.txt           Dependencias Python
+win_setup.ps1              Instalador para Windows
+run.ps1                    Lanzador de la aplicación
 
 ================================================================================
-DIFERENCIAS LINUX VS WINDOWS
+DESARROLLO Y CAMBIOS
 ================================================================================
 
-COMANDOS:
+Ejecutar siempre los scripts desde la raíz del repositorio. Después de
+cambiar Python o requirements.txt, reinstalar las dependencias en local\py3.
+Después de cambiar core\settings.json, reiniciar searXena.
 
-    Linux                           Windows
-    ----------------------------    ----------------------------
-    ./manage webapp.run             .\manage.ps1 webapp.run
-    local/py3/bin/python            local\py3\Scripts\python.exe
-    source bin/activate             .\Scripts\Activate.ps1
-    xdg-open http://...             Start-Process http://...
-
-RUTAS:
-
-    Linux                           Windows
-    ----------------------------    ----------------------------
-    /etc/searxng/                   %PROGRAMDATA%\searxng\ o local
-    local/py3/bin/                  local\py3\Scripts\
-    /tmp/                           $env:TEMP\
-
-COMANDOS SHELL:
-
-    Linux                           Windows
-    ----------------------------    ----------------------------
-    which python                    Get-Command python
-    sha256sum file                  Get-FileHash file -Algorithm SHA256
-    wget url                        Invoke-WebRequest -Uri url
-    cat file                        Get-Content file
-    rm -rf dir                      Remove-Item -Recurse -Force dir
-    export VAR=value                $env:VAR = "value"
+Para revisar errores de ejecución, conservar la salida de la consola del
+proceso. Las consultas dependen de la disponibilidad y políticas de los
+motores externos.
 
 ================================================================================
-FLUJO DE TRABAJO TIPICO
+LICENCIA Y CRÉDITOS
 ================================================================================
 
-Desarrollo:
-
-    1. Iniciar servidor:
-       .\manage.ps1 webapp.run
-
-    2. En otra terminal, trabajar en frontend:
-       .\manage.ps1 themes.live
-
-    3. Ejecutar tests:
-       .\manage.ps1 test
-
-    4. Formatear codigo:
-       .\manage.ps1 format.all
-
-    5. Verificar linting:
-       .\manage.ps1 lint.all
-
-Produccion:
-
-    1. Compilar todo:
-       .\build.ps1 build
-
-    2. Ejecutar tests completos:
-       .\build.ps1 test.all
-
-    3. Construir documentacion:
-       .\build.ps1 docs
-
-================================================================================
-SOPORTE
-================================================================================
-
-Documentacion oficial: https://docs.searxng.org/
-Repositorio GitHub: https://github.com/searxng/searxng
-Reportar issues: https://github.com/searxng/searxng/issues
-
-================================================================================
-LICENCIA
-================================================================================
-
-AGPL-3.0-or-later
-Ver archivo LICENSE para mas detalles.
-
+searXena se distribuye bajo AGPL-3.0-or-later. El proyecto reconoce que
+SearXNG fue una referencia histórica del intento inicial de portabilidad,
+pero searXena se mantiene como un proyecto independiente con arquitectura,
+scripts y ciclo de ejecución propios.
 ================================================================================

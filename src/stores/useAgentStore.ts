@@ -19,6 +19,11 @@ interface AgentStore {
     input: string;
     pendingToolApproval: PendingToolApproval | null;
     executingSessionId: string | null;
+    isDeepResearchActive: boolean;
+    deepResearchProgress: any | null;
+    deepResearchSessionId: string | null;
+    deepResearchChatSessionId: string | null;
+    isDeepResearchPanelTransitioning: boolean;
 
     // Actions para mensajes
     setMessages: (messages: Message[] | ((prev: Message[]) => Message[])) => void;
@@ -40,6 +45,11 @@ interface AgentStore {
     setInput: (input: string) => void;
     setPendingToolApproval: (approval: PendingToolApproval | null) => void;
     setExecutingSessionId: (id: string | null) => void;
+    setIsDeepResearchActive: (active: boolean) => void;
+    setDeepResearchProgress: (progress: any | null | ((current: any | null) => any | null)) => void;
+    setDeepResearchSessionId: (id: string | null) => void;
+    setDeepResearchChatSessionId: (id: string | null) => void;
+    setIsDeepResearchPanelTransitioning: (transitioning: boolean) => void;
 }
 
 /**
@@ -82,6 +92,11 @@ export const useAgentStore = create<AgentStore>((set) => ({
     input: '',
     pendingToolApproval: null,
     executingSessionId: null,
+    isDeepResearchActive: false,
+    deepResearchProgress: null,
+    deepResearchSessionId: null,
+    deepResearchChatSessionId: null,
+    isDeepResearchPanelTransitioning: false,
 
     // Messages actions
     setMessages: (messages) => set((state) => ({
@@ -139,7 +154,16 @@ export const useAgentStore = create<AgentStore>((set) => ({
     setIsViewing: (isViewing) => set({ isViewing }),
     setInput: (input) => set({ input }),
     setPendingToolApproval: (pendingToolApproval) => set({ pendingToolApproval }),
-    setExecutingSessionId: (executingSessionId) => set({ executingSessionId })
+    setExecutingSessionId: (executingSessionId) => set({ executingSessionId }),
+    setIsDeepResearchActive: (isDeepResearchActive) => set({ isDeepResearchActive }),
+    setDeepResearchProgress: (deepResearchProgress) => set((state) => ({
+        deepResearchProgress: typeof deepResearchProgress === 'function'
+            ? deepResearchProgress(state.deepResearchProgress)
+            : deepResearchProgress
+    })),
+    setDeepResearchSessionId: (deepResearchSessionId) => set({ deepResearchSessionId }),
+    setDeepResearchChatSessionId: (deepResearchChatSessionId) => set({ deepResearchChatSessionId }),
+    setIsDeepResearchPanelTransitioning: (isDeepResearchPanelTransitioning) => set({ isDeepResearchPanelTransitioning })
 }));
 
 // Selectores granulares para suscripciones optimizadas
@@ -158,3 +182,8 @@ export const selectIsViewing = (state: AgentStore) => state.isViewing;
 export const selectInput = (state: AgentStore) => state.input;
 export const selectPendingToolApproval = (state: AgentStore) => state.pendingToolApproval;
 export const selectExecutingSessionId = (state: AgentStore) => state.executingSessionId;
+export const selectIsDeepResearchActive = (state: AgentStore) => state.isDeepResearchActive;
+export const selectDeepResearchProgress = (state: AgentStore) => state.deepResearchProgress;
+export const selectDeepResearchSessionId = (state: AgentStore) => state.deepResearchSessionId;
+export const selectDeepResearchChatSessionId = (state: AgentStore) => state.deepResearchChatSessionId;
+export const selectIsDeepResearchPanelTransitioning = (state: AgentStore) => state.isDeepResearchPanelTransitioning;

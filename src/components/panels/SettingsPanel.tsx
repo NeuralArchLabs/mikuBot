@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import './SettingsPanel.css';
@@ -10,6 +10,7 @@ import { THEMES } from '../../constants/themes';
 import { SchedulerTab } from './SchedulerTab';
 import { SkillsPanel } from './SkillsPanel';
 import { useUIStore } from '../../stores/useUIStore';
+import { isVisionModel } from '../../services/integrations/modelCapabilities';
 
 interface SettingsPanelProps {
     config: AppConfig;
@@ -39,6 +40,26 @@ interface SettingsPanelProps {
     onSaveTools: (name: string, content: string) => Promise<boolean>;
     onUpdatePartialConfig: (updates: Partial<AppConfig>) => void;
 }
+
+const THEME_LABELS: Record<string, string> = {
+    emerald: 'Emerald',
+    synthwave: 'Synthwave'
+};
+
+type OllamaAdvancedDraft = Pick<
+    AppConfig,
+    'ollamaNumGpu' | 'ollamaNumCtx' | 'ollamaMainGpu' | 'ollamaNumThread' | 'ollamaThink' | 'ollamaZeroOverhead' | 'temperature'
+>;
+
+const createOllamaAdvancedDraft = (config: AppConfig): OllamaAdvancedDraft => ({
+    ollamaNumGpu: config.ollamaNumGpu ?? -1,
+    ollamaNumCtx: config.ollamaNumCtx ?? 0,
+    ollamaMainGpu: config.ollamaMainGpu ?? 0,
+    ollamaNumThread: config.ollamaNumThread ?? 0,
+    ollamaThink: config.ollamaThink !== false,
+    ollamaZeroOverhead: config.ollamaZeroOverhead === true,
+    temperature: config.temperature
+});
 
 export const SettingsPanel = ({
     config,
@@ -98,6 +119,9 @@ export const SettingsPanel = ({
     const [updatingSearxena, setUpdatingSearxena] = useState(false);
     const [showBackgroundGallery, setShowBackgroundGallery] = useState(false);
     const [showOllamaAdvanced, setShowOllamaAdvanced] = useState(false);
+    const [ollamaDraft, setOllamaDraft] = useState<OllamaAdvancedDraft>(() => createOllamaAdvancedDraft(config));
+    const [isSyncingOllamaRuntime, setIsSyncingOllamaRuntime] = useState(false);
+    const hasSyncedOllamaRuntime = useRef(false);
     const setOverlayActive = useUIStore((state) => state.setOverlayActive);
 
     // Sync Background Gallery with Global UI Store
@@ -106,7 +130,7 @@ export const SettingsPanel = ({
     }, [showBackgroundGallery, setOverlayActive]);
 
     const onSyncModelArchitectures = () => {
-        onTestConnection(config.provider === 'ollama' ? 'ollama' : config.provider);
+        onTestConnection(config.chatProvider || config.provider);
     };
     const [showSkillsBlueprints, setShowSkillsBlueprints] = useState(false);
     const [isWaving, setIsWaving] = useState(false);
@@ -143,6 +167,25 @@ export const SettingsPanel = ({
             return cleanup;
         }
     }, []);
+
+    // The saved UI preference can differ from the environment inherited by a
+    // previously launched Ollama process. Read its latest runtime config once
+    // when Settings mounts so the toggle represents what is actually active.
+    useEffect(() => {
+        if (!(window as any).electron || hasSyncedOllamaRuntime.current) return;
+
+        hasSyncedOllamaRuntime.current = true;
+        setIsSyncingOllamaRuntime(true);
+        (window as any).electron.getOllamaRuntimeConfig()
+            .then((res: any) => {
+                if (res.ok && res.detected && typeof res.zeroOverhead === 'boolean') {
+                    updateConfig('ollamaZeroOverhead', res.zeroOverhead);
+                    setOllamaDraft(prev => ({ ...prev, ollamaZeroOverhead: res.zeroOverhead }));
+                }
+            })
+            .catch((error: unknown) => console.error('Failed to read Ollama runtime config:', error))
+            .finally(() => setIsSyncingOllamaRuntime(false));
+    }, [updateConfig]);
 
     const handleStartSearXena = async () => {
         if (!(window as any).electron) return;
@@ -217,21 +260,59 @@ export const SettingsPanel = ({
         }
     };
 
-        const handleToggleOverhead = async (enableZeroOverhead: boolean) => {
-        if (!(window as any).electron) return;
+    const openOllamaAdvanced = () => {
+        setOllamaDraft(createOllamaAdvancedDraft(config));
+        setShowOllamaAdvanced(true);
+    };
+
+    const closeOllamaAdvanced = () => {
+        setOllamaDraft(createOllamaAdvancedDraft(config));
+        setShowOllamaAdvanced(false);
+    };
+
+    const handleApplyOllamaAdvanced = async () => {
+        const selectedGpu = detectedGpus.find(g => g.index === ollamaDraft.ollamaMainGpu);
+        const gpuName = selectedGpu ? selectedGpu.name : `GPU ${ollamaDraft.ollamaMainGpu}`;
+        const isCompatible = selectedGpu?.cudaCompatible;
+        if (isCompatible === false) {
+            const proceed = await askConfirm(
+                i18n.language === 'es'
+                    ? `⚠️ La GPU seleccionada (${gpuName}) tiene compute capability ${selectedGpu.computeCap}, que es incompatible con CUDA 12.x.\n\nEsto causará crashes de PTX. ¿Continuar de todos modos?`
+                    : `⚠️ The selected GPU (${gpuName}) has compute capability ${selectedGpu.computeCap}, which is incompatible with CUDA 12.x.\n\nThis will cause PTX crashes. Continue anyway?`
+            );
+            if (!proceed) return;
+        }
+
+        // In browser-only mode there is no local Ollama process to restart.
+        if (!(window as any).electron) {
+            onUpdatePartialConfig(ollamaDraft);
+            closeOllamaAdvanced();
+            return;
+        }
+
         setIsRestartingOllama(true);
         try {
-            updateConfig('ollamaZeroOverhead', enableZeroOverhead);
-            const res = await (window as any).electron.restartOllama(enableZeroOverhead);
+            const res = await (window as any).electron.restartOllama({
+                zeroOverhead: ollamaDraft.ollamaZeroOverhead,
+                mainGpu: ollamaDraft.ollamaMainGpu
+            });
             if (res.ok) {
-                await askAlert(i18n.language === 'es' ? '✅ Ollama reiniciado con éxito. Los cambios están activos.' : '✅ Ollama restarted successfully. Changes are active.');
+                const saveResult = await onSaveGlobal(true, ollamaDraft);
+                if (!saveResult?.ok) {
+                    await askAlert(`❌ ${t('common.config_error')}: ${saveResult?.error || t('common.connection_lost')}`);
+                    return;
+                }
+                closeOllamaAdvanced();
+                await askAlert(
+                    i18n.language === 'es'
+                        ? `✅ Cambios aplicados. Ollama se reinició usando ${gpuName}.`
+                        : `✅ Changes applied. Ollama restarted using ${gpuName}.`
+                );
             } else {
-                await askAlert(i18n.language === 'es' ? '❌ Error al reiniciar Ollama: ' + res.error : '❌ Error restarting Ollama: ' + res.error);
-                updateConfig('ollamaZeroOverhead', !enableZeroOverhead); // revert
+                await askAlert(i18n.language === 'es' ? '❌ Error: ' + res.error : '❌ Error: ' + res.error);
             }
         } catch(err: any) {
             console.error(err);
-            updateConfig('ollamaZeroOverhead', !enableZeroOverhead); // revert
         }
         setIsRestartingOllama(false);
     };
@@ -428,7 +509,7 @@ export const SettingsPanel = ({
                                                 gradient = `linear-gradient(135deg, #000000 0%, #0c1a40 45%, ${themeData['--background-color']} 100%)`;
                                             } else if (id === 'cloud') {
                                                 gradient = `linear-gradient(135deg, #ffffff 0%, #ffffff 60%, ${themeData['--primary-color']} 100%)`;
-                                            } else if (id === 'cyberpunk') {
+                                            } else if (id === 'synthwave') {
                                                 gradient = `linear-gradient(135deg, ${themeData['--background-color']} 0%, ${themeData['--background-color']} 55%, ${themeData['--primary-color']} 100%)`;
                                             }
 
@@ -454,7 +535,7 @@ export const SettingsPanel = ({
                                                     </div>
                                                     <span className={`text-[8px] sm:text-[10px] xl:text-[9px] font-black uppercase tracking-[0.15em] xl:tracking-tighter ${(config.theme || 'miku') === id ? 'text-[var(--primary-color)]' : 'text-slate-500 group-hover:text-slate-300'
                                                         }`}>
-                                                        {id}
+                                                        {THEME_LABELS[id] || id}
                                                     </span>
                                                     {(config.theme || 'miku') === id && (
                                                         <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-8 h-1 bg-[var(--primary-color)] rounded-full blur-[1px]" />
@@ -737,13 +818,13 @@ export const SettingsPanel = ({
                                             </div>
                                             <button
                                                 onClick={onSyncModelArchitectures}
-                                                disabled={loadingModels[config.chatProvider || 'gemini'] || connectionStatus === 'testing'}
+                                                disabled={loadingModels[config.chatProvider || 'gemini']}
                                                 title={t('settings.orchestration.sync')}
                                                 className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all shadow-md border premium-emphasis bg-[var(--surface-color)] text-[var(--text-secondary)] border-[var(--border-color)] hover:bg-[var(--hover-color)] hover:text-[var(--text-primary)] active:scale-95 group/sync overflow-hidden`}
                                             >
                                                 <Icon
                                                     name="sync"
-                                                    className={`${(loadingModels[config.chatProvider || 'gemini'] || (connectionStatus === 'testing' && config.provider === config.chatProvider))
+                                                    className={`${loadingModels[config.chatProvider || 'gemini']
                                                         ? 'fa-spin text-blue-400 opacity-100 !transition-none'
                                                         : 'opacity-60 group-hover/sync:opacity-100 group-hover/sync:rotate-180 transition-all duration-500'
                                                         }`}
@@ -829,13 +910,13 @@ export const SettingsPanel = ({
                                             </div>
                                             <button
                                                 onClick={() => onTestConnection(config.agentProvider)}
-                                                disabled={loadingModels[config.agentProvider || 'groq'] || loadingModels[config.provider] || connectionStatus === 'testing'}
+                                                disabled={loadingModels[config.agentProvider || 'groq']}
                                                 title={t('settings.orchestration.sync')}
                                                 className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all shadow-md border premium-emphasis bg-[var(--surface-color)] text-[var(--text-secondary)] border-[var(--border-color)] hover:bg-[var(--hover-color)] hover:text-[var(--text-primary)] active:scale-95 group/sync overflow-hidden`}
                                             >
                                                 <Icon
                                                     name="sync"
-                                                    className={`${(loadingModels[config.agentProvider || 'groq'] || (connectionStatus === 'testing' && config.provider === config.agentProvider))
+                                                    className={`${loadingModels[config.agentProvider || 'groq']
                                                         ? 'fa-spin text-purple-400 opacity-100 !transition-none'
                                                         : 'opacity-60 group-hover/sync:opacity-100 group-hover/sync:rotate-180 transition-all duration-500'
                                                         }`}
@@ -939,13 +1020,13 @@ export const SettingsPanel = ({
 
                                             <button
                                                 onClick={() => onTestConnection(config.visionProvider)}
-                                                disabled={loadingModels[config.visionProvider || 'gemini'] || connectionStatus === 'testing'}
+                                                disabled={loadingModels[config.visionProvider || 'gemini']}
                                                 title={t('settings.orchestration.sync')}
                                                 className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all shadow-md border premium-emphasis bg-[var(--surface-color)] text-[var(--text-secondary)] border-[var(--border-color)] hover:bg-[var(--hover-color)] hover:text-[var(--text-primary)] active:scale-95 group/v-sync overflow-hidden`}
                                             >
                                                 <Icon
                                                     name="sync"
-                                                    className={`${(loadingModels[config.visionProvider || 'gemini'] || (connectionStatus === 'testing' && (config.visionProvider === config.provider)))
+                                                    className={`${loadingModels[config.visionProvider || 'gemini']
                                                         ? 'fa-spin text-emerald-400 opacity-100 !transition-none'
                                                         : 'opacity-60 group-hover/v-sync:opacity-100 group-hover/v-sync:rotate-180 transition-all duration-500'
                                                         }`}
@@ -1002,19 +1083,12 @@ export const SettingsPanel = ({
                                                     options={[
                                                         { value: '', label: 'NATIVE VISION (Using Chat/Agent model)' },
                                                         ...(models[config.visionProvider || 'gemini'] || []).map(m => {
-                                                            const isVision = m.id.toLowerCase().includes('vision') ||
-                                                                m.id.toLowerCase().includes('llava') ||
-                                                                m.name.toLowerCase().includes('vision') ||
-                                                                m.id.toLowerCase().includes('multimodal') ||
-                                                                m.id.toLowerCase().includes('1.5-pro') ||
-                                                                m.id.toLowerCase().includes('1.5-flash') ||
-                                                                m.id.toLowerCase().includes('sonnet') ||
-                                                                m.id.toLowerCase().includes('glm-4v') ||
-                                                                m.id.toLowerCase().includes('pixtral');
+                                                            const isVision = isVisionModel(m);
 
                                                             return {
                                                                 value: m.id,
-                                                                label: isVision ? `✨ ${m.name} (Multimodal)` : m.name
+                                                                label: isVision ? `${m.name} (Multimodal)` : m.name,
+                                                                prefix: isVision ? <Icon name="eye" className="text-emerald-400 shrink-0" /> : undefined
                                                             };
                                                         })
                                                     ]}
@@ -1047,7 +1121,7 @@ export const SettingsPanel = ({
                                         <div className="pb-6 border-b border-[var(--border-color)]/20 flex items-center justify-between">
                                             <div className="flex items-center gap-4">
                                                 <button
-                                                    onClick={() => setShowOllamaAdvanced(false)}
+                                                    onClick={closeOllamaAdvanced}
                                                     className="w-10 h-10 rounded-xl bg-slate-800/50 hover:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-all border border-transparent hover:border-slate-700"
                                                 >
                                                     <Icon name="arrow-left" />
@@ -1073,7 +1147,7 @@ export const SettingsPanel = ({
                                                         <Icon name="layer-group" className="text-emerald-500" /> {t('settings.security.ollama_gpu')}
                                                     </h3>
                                                     <span className="text-lg font-black text-emerald-400 font-mono">
-                                                        {config.ollamaNumGpu === -1 || config.ollamaNumGpu === undefined ? 'AUTO' : config.ollamaNumGpu}
+                                                            {ollamaDraft.ollamaNumGpu === -1 ? 'AUTO' : ollamaDraft.ollamaNumGpu}
                                                     </span>
                                                 </div>
                                                 <p className="text-xs text-slate-500 font-medium leading-relaxed">
@@ -1085,8 +1159,8 @@ export const SettingsPanel = ({
                                                         min="-1"
                                                         max="128"
                                                         step="1"
-                                                        value={config.ollamaNumGpu ?? -1}
-                                                        onChange={(e) => updateConfig('ollamaNumGpu', parseInt(e.target.value))}
+                                                        value={ollamaDraft.ollamaNumGpu}
+                                                        onChange={(e) => setOllamaDraft(prev => ({ ...prev, ollamaNumGpu: parseInt(e.target.value) }))}
                                                         className="w-full h-2 bg-slate-800 rounded-full appearance-none cursor-pointer accent-emerald-500"
                                                     />
                                                 </div>
@@ -1101,7 +1175,7 @@ export const SettingsPanel = ({
                                                         <Icon name="brain" className="text-emerald-500" /> {t('settings.security.ollama_ctx')}
                                                     </h3>
                                                     <span className="text-lg font-black text-emerald-400 font-mono">
-                                                        {!config.ollamaNumCtx || config.ollamaNumCtx === 0 ? 'DEFAULT' : `${config.ollamaNumCtx / 1024}k`}
+                                                        {!ollamaDraft.ollamaNumCtx ? 'DEFAULT' : `${ollamaDraft.ollamaNumCtx / 1024}k`}
                                                     </span>
                                                 </div>
                                                 <p className="text-xs text-slate-500 font-medium leading-relaxed">
@@ -1109,7 +1183,7 @@ export const SettingsPanel = ({
                                                 </p>
                                                 {(() => {
                                                     const checkpoints = [0, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288];
-                                                    const currentIndex = checkpoints.indexOf(config.ollamaNumCtx ?? 0);
+                                                    const currentIndex = checkpoints.indexOf(ollamaDraft.ollamaNumCtx);
                                                     const safeIndex = currentIndex === -1 ? 0 : currentIndex;
                                                     
                                                     return (
@@ -1122,7 +1196,7 @@ export const SettingsPanel = ({
                                                                 value={safeIndex}
                                                                 onChange={(e) => {
                                                                     const index = parseInt(e.target.value);
-                                                                    updateConfig('ollamaNumCtx', checkpoints[index]);
+                                                                    setOllamaDraft(prev => ({ ...prev, ollamaNumCtx: checkpoints[index] }));
                                                                 }}
                                                                 className="w-full h-2 bg-slate-800 rounded-full appearance-none cursor-pointer accent-emerald-500"
                                                             />
@@ -1150,7 +1224,7 @@ export const SettingsPanel = ({
                                                         <Icon name="thermometer-half" className="text-emerald-500" /> {t('settings.security.temp_label')}
                                                     </h3>
                                                     <span className="text-lg font-black text-emerald-400 font-mono">
-                                                        {config.temperature.toFixed(1)}
+                                                        {ollamaDraft.temperature.toFixed(1)}
                                                     </span>
                                                 </div>
                                                 <div className="pt-2">
@@ -1159,8 +1233,8 @@ export const SettingsPanel = ({
                                                         min="0"
                                                         max="1"
                                                         step="0.1"
-                                                        value={config.temperature}
-                                                        onChange={(e) => updateConfig('temperature', parseFloat(e.target.value))}
+                                                        value={ollamaDraft.temperature}
+                                                        onChange={(e) => setOllamaDraft(prev => ({ ...prev, temperature: parseFloat(e.target.value) }))}
                                                         className="w-full h-2 bg-slate-800 rounded-full appearance-none cursor-pointer accent-emerald-500"
                                                     />
                                                     <div className="flex justify-between text-[9px] text-slate-600 font-bold uppercase tracking-wider mt-2 px-1">
@@ -1186,10 +1260,10 @@ export const SettingsPanel = ({
                                                         </p>
                                                     </div>
                                                     <button
-                                                        onClick={() => updateConfig('ollamaThink', config.ollamaThink !== false ? false : true)}
-                                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 ${config.ollamaThink !== false ? 'bg-purple-500' : 'bg-slate-700'}`}
+                                                        onClick={() => setOllamaDraft(prev => ({ ...prev, ollamaThink: !prev.ollamaThink }))}
+                                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 ${ollamaDraft.ollamaThink ? 'bg-purple-500' : 'bg-slate-700'}`}
                                                     >
-                                                        <span className={`${config.ollamaThink !== false ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform rounded-full bg-white transition-transform`} />
+                                                        <span className={`${ollamaDraft.ollamaThink ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform rounded-full bg-white transition-transform`} />
                                                     </button>
                                                 </div>
                                             </div>
@@ -1215,24 +1289,43 @@ export const SettingsPanel = ({
                                                         detectedGpus.map((gpu, idx) => (
                                                             <button
                                                                 key={idx}
-                                                                onClick={(e) => { e.preventDefault(); updateConfig('ollamaMainGpu', gpu.index); }}
-                                                                className={`group relative flex flex-col p-4 rounded-2xl border transition-all duration-300 ${config.ollamaMainGpu === gpu.index 
-                                                                    ? 'bg-emerald-500/10 border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.1)]' 
+                                                                onClick={(e) => { e.preventDefault(); setOllamaDraft(prev => ({ ...prev, ollamaMainGpu: gpu.index })); }}
+                                                                className={`group relative flex flex-col p-4 rounded-2xl border transition-all duration-300 ${ollamaDraft.ollamaMainGpu === gpu.index
+                                                                    ? (gpu.cudaCompatible === false ? 'bg-red-500/10 border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.1)]' : 'bg-emerald-500/10 border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.1)]') 
                                                                     : 'bg-slate-900/40 border-slate-800 hover:border-slate-700'}`}
                                                             >
                                                                 <div className="flex items-center justify-between mb-3">
-                                                                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black ${config.ollamaMainGpu === gpu.index ? 'bg-emerald-500 text-black' : 'bg-slate-800 text-slate-500'}`}>
+                                                                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black ${ollamaDraft.ollamaMainGpu === gpu.index ? 'bg-emerald-500 text-black' : 'bg-slate-800 text-slate-500'}`}>
                                                                         {gpu.index}
                                                                     </div>
-                                                                    {config.ollamaMainGpu === gpu.index && (
-                                                                        <div className="w-5 h-5 rounded-full bg-emerald-500 text-black flex items-center justify-center text-[10px]">
-                                                                            <Icon name="check" />
-                                                                        </div>
-                                                                    )}
+                                                                    <div className="flex items-center gap-2">
+                                                                        {gpu.cudaCompatible === false && (
+                                                                            <span className="px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 text-[8px] font-black uppercase tracking-wider border border-red-500/30" title={i18n.language === 'es' ? 'Arquitectura incompatible con CUDA 12.x — causará crashes de PTX' : 'Incompatible architecture with CUDA 12.x — will cause PTX crashes'}>
+                                                                                ⚠️ PTX
+                                                                            </span>
+                                                                        )}
+                                                                        {gpu.cudaCompatible === true && gpu.computeCap && (
+                                                                            <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[8px] font-black uppercase tracking-wider border border-emerald-500/30">
+                                                                                ✓ SM{gpu.computeCap}
+                                                                            </span>
+                                                                        )}
+                                                                        {ollamaDraft.ollamaMainGpu === gpu.index && (
+                                                                            <div className="w-5 h-5 rounded-full bg-emerald-500 text-black flex items-center justify-center text-[10px]">
+                                                                                <Icon name="check" />
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
                                                                 <div className="text-left">
                                                                     <div className="text-xs font-black text-slate-200 mb-1 truncate w-full group-hover:text-white transition-colors">{gpu.name}</div>
-                                                                    <div className="text-[9px] font-bold text-emerald-500/60 uppercase tracking-widest">{gpu.type}</div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div className="text-[9px] font-bold text-emerald-500/60 uppercase tracking-widest">{gpu.type}</div>
+                                                                        {gpu.computeCap && (
+                                                                            <div className={`text-[9px] font-mono font-bold uppercase tracking-widest ${gpu.cudaCompatible === false ? 'text-red-500/60' : 'text-slate-600'}`}>
+                                                                                CC {gpu.computeCap}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
                                                                     <div className="mt-3 flex items-center gap-2">
                                                                         <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
                                                                             <div className="h-full bg-emerald-500/40 w-full" />
@@ -1255,6 +1348,7 @@ export const SettingsPanel = ({
                                                         </div>
                                                     )}
                                                 </div>
+
                                             </div>
 
                                             <div className="h-px bg-slate-800/50" />
@@ -1267,15 +1361,15 @@ export const SettingsPanel = ({
                                                             <Icon name="cog" /> {t('settings.security.ollama_main_gpu')}
                                                         </label>
                                                         <span className="bg-slate-800 text-emerald-400 font-mono text-[10px] font-bold px-2 py-1 rounded border border-slate-700">
-                                                            {config.ollamaMainGpu ?? 0}
+                                                            {ollamaDraft.ollamaMainGpu}
                                                         </span>
                                                     </div>
                                                     <input
                                                         type="number"
                                                         min="0"
                                                         max="8"
-                                                        value={config.ollamaMainGpu ?? 0}
-                                                        onChange={(e) => updateConfig('ollamaMainGpu', parseInt(e.target.value) || 0)}
+                                                        value={ollamaDraft.ollamaMainGpu}
+                                                        onChange={(e) => setOllamaDraft(prev => ({ ...prev, ollamaMainGpu: parseInt(e.target.value) || 0 }))}
                                                         className="w-full bg-slate-900/60 border border-slate-800 text-slate-200 text-xs rounded-xl px-4 py-3 focus:outline-none focus:border-emerald-500/30 transition-all font-mono"
                                                     />
                                                     <p className="text-[9px] text-slate-600 font-medium leading-relaxed">
@@ -1289,15 +1383,15 @@ export const SettingsPanel = ({
                                                             <Icon name="cpu" /> {t('settings.security.ollama_threads')}
                                                         </label>
                                                         <span className="bg-slate-800 text-emerald-400 font-mono text-[10px] font-bold px-2 py-1 rounded border border-slate-700">
-                                                            {config.ollamaNumThread === 0 ? 'AUTO' : config.ollamaNumThread}
+                                                            {ollamaDraft.ollamaNumThread === 0 ? 'AUTO' : ollamaDraft.ollamaNumThread}
                                                         </span>
                                                     </div>
                                                     <input
                                                         type="number"
                                                         min="0"
                                                         max="128"
-                                                        value={config.ollamaNumThread ?? 0}
-                                                        onChange={(e) => updateConfig('ollamaNumThread', parseInt(e.target.value) || 0)}
+                                                        value={ollamaDraft.ollamaNumThread}
+                                                        onChange={(e) => setOllamaDraft(prev => ({ ...prev, ollamaNumThread: parseInt(e.target.value) || 0 }))}
                                                         className="w-full bg-slate-900/60 border border-slate-800 text-slate-200 text-xs rounded-xl px-4 py-3 focus:outline-none focus:border-emerald-500/30 transition-all font-mono"
                                                     />
                                                     <p className="text-[9px] text-slate-600 font-medium leading-relaxed">
@@ -1310,20 +1404,27 @@ export const SettingsPanel = ({
                                                     <div className="flex justify-between items-start gap-4">
                                                         <div className="flex-1">
                                                             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-1">
-                                                                <Icon name="rocket" className="text-amber-500" /> {i18n.language === 'es' ? 'Liberar Límite de VRAM (Zero Overhead)' : 'Unlock VRAM Limit (Zero Overhead)'}
+                                                                <Icon name="rocket" className="text-amber-500" /> {t('settings.security.ollama_zero_overhead_title')}
                                                             </h3>
                                                             <p className="text-[9px] text-slate-500 font-medium leading-relaxed">
-                                                                {i18n.language === 'es' 
-                                                                    ? 'Desactiva el margen de seguridad de Windows en la GPU. Usa esto SÓLO en GPUs dedicadas exclusivamente para inferencia. Aplicar esto reiniciará Ollama.' 
-                                                                    : 'Disables the Windows safety margin on the GPU. Use this ONLY on GPUs dedicated exclusively for inference. Applying this will restart Ollama.'}
+                                                                {t('settings.security.ollama_zero_overhead_desc')}
+                                                            </p>
+                                                            <p className="mt-2 text-[9px] font-bold text-emerald-400/90">
+                                                                {isSyncingOllamaRuntime
+                                                                    ? t('settings.security.ollama_zero_overhead_syncing')
+                                                                    : ollamaDraft.ollamaZeroOverhead === config.ollamaZeroOverhead
+                                                                        ? config.ollamaZeroOverhead
+                                                                            ? t('settings.security.ollama_zero_overhead_enabled')
+                                                                            : t('settings.security.ollama_zero_overhead_disabled')
+                                                                        : t('settings.security.ollama_zero_overhead_pending')}
                                                             </p>
                                                         </div>
                                                         <button
-                                                            onClick={() => handleToggleOverhead(!config.ollamaZeroOverhead)}
-                                                            disabled={isRestartingOllama}
-                                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-slate-900 ${config.ollamaZeroOverhead ? 'bg-amber-500' : 'bg-slate-700'}`}
+                                                            onClick={() => setOllamaDraft(prev => ({ ...prev, ollamaZeroOverhead: !prev.ollamaZeroOverhead }))}
+                                                            disabled={isRestartingOllama || isSyncingOllamaRuntime}
+                                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-slate-900 ${ollamaDraft.ollamaZeroOverhead ? 'bg-amber-500' : 'bg-slate-700'}`}
                                                         >
-                                                            <span className={`${config.ollamaZeroOverhead ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform rounded-full bg-white transition-transform`} />
+                                                            <span className={`${ollamaDraft.ollamaZeroOverhead ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform rounded-full bg-white transition-transform`} />
                                                         </button>
                                                     </div>
                                                 </div>
@@ -1332,8 +1433,9 @@ export const SettingsPanel = ({
                                         
                                         <div className="pt-6 border-t border-slate-800/30 text-center">
                                             <button
-                                                onClick={() => setShowOllamaAdvanced(false)}
-                                                className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-black text-xs font-black uppercase tracking-[0.2em] rounded-xl transition-all shadow-lg shadow-emerald-900/20"
+                                                onClick={handleApplyOllamaAdvanced}
+                                                disabled={isRestartingOllama || isSyncingOllamaRuntime}
+                                                className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-black text-xs font-black uppercase tracking-[0.2em] rounded-xl transition-all shadow-lg shadow-emerald-900/20"
                                             >
                                                 {t('settings.actions.apply_and_back', 'Aplicar y Volver')}
                                             </button>
@@ -1460,7 +1562,7 @@ export const SettingsPanel = ({
                                             {editingProvider === 'ollama' ? (
                                                 <div className="mt-6">
                                                     <button
-                                                        onClick={() => setShowOllamaAdvanced(true)}
+                                                        onClick={openOllamaAdvanced}
                                                         className="w-full py-4 px-6 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 hover:border-emerald-500/40 rounded-2xl transition-all duration-300 flex items-center justify-between group"
                                                     >
                                                         <div className="flex items-center gap-4">

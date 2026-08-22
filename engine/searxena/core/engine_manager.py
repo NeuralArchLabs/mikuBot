@@ -248,23 +248,36 @@ class EngineManager:
             for engine in selection:
                 tasks.append(asyncio.create_task(self.call_engine(engine, clean_query, category, pageno, timeout_limit, lang=lang)))
 
-        # Parallel Wait (Buscamos que sean ultra-veloces)
+        # Preserve answers that complete before the global deadline.  Using
+        # wait_for(gather(...)) cancels the whole gather when one provider is
+        # slow, losing results that were already available from other engines.
         results_list = []
+        valid_results = []
         try:
-            # Añadimos un pequeño margen sobre el timeout_limit para que wait_for no mate antes de tiempo el httpx interno
-            results_list = await asyncio.wait_for(
-                asyncio.gather(*tasks, return_exceptions=True),
-                timeout=timeout_limit + 1.0
-            )
-            valid_results = [r for r in results_list if isinstance(r, list)]
-        except asyncio.TimeoutError:
-            # Si el gather masivo falla, cancelamos todo para evitar h6uerfanos
-            for t in tasks:
-                if not t.done():
-                    t.cancel()
-            valid_results = []
-        except Exception:
-            valid_results = []
+            if tasks:
+                done, pending = await asyncio.wait(tasks, timeout=timeout_limit + 1.0)
+            else:
+                done, pending = set(), set()
+
+            for task in pending:
+                task.cancel()
+            if pending:
+                await asyncio.gather(*pending, return_exceptions=True)
+
+            # Keep the original provider order for cache diagnostics while
+            # retaining every completed provider response.
+            for task in tasks:
+                if task.cancelled():
+                    results_list.append(asyncio.TimeoutError())
+                    continue
+                try:
+                    results_list.append(task.result())
+                except Exception as exc:
+                    results_list.append(exc)
+
+            valid_results = [result for result in results_list if isinstance(result, list)]
+        except Exception as exc:
+            print(f"ERROR waiting for search providers: {exc!r}")
         
         # 4. Prune Cache periodically
         if int(now) % 10 == 0:
@@ -272,7 +285,7 @@ class EngineManager:
 
         results, infoboxes = self.process_and_rank(valid_results, category, clean_query)
         
-        # Cache Protection: Do not cache if any primary engine returned 0 results or failed
+        # Do not cache if any primary engine returned no results or failed.
         cache_this_result = True
         if not results_list or len(results_list) < len(tasks):
             cache_this_result = False
@@ -290,7 +303,10 @@ class EngineManager:
                     break
         
         # Cache Result
-        if cache_this_result:
+        # An empty result is normally transient (a timeout, CAPTCHA or network
+        # failure); retaining it would hide later healthy results for the cache
+        # TTL.
+        if cache_this_result and (results or infoboxes):
             ttl = self.settings["general"].get("cache_ttl", 600)
             self._cache[cache_key] = ((results, infoboxes), now + ttl)
         

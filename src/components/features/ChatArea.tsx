@@ -4,12 +4,13 @@ import { Message, AgentStatus, PendingToolApproval, AgentMode, ApprovalMode, Att
 import { Icon, MarkdownRenderer } from '../common/Common';
 import { ToolApprovalPanel } from '../panels/ToolApprovalPanel';
 import { AgentStatusPanel } from '../panels/AgentStatusPanel';
+import { DeepResearchProposalCard } from '../panels/DeepResearchPanel';
 import { ToolBlock, CORE_TOOLS } from '../common/ToolBlock';
 import { ToolLoopCollapsible } from '../common/ToolLoopCollapsible';
 import { CollapsibleMessage } from '../common/CollapsibleMessage';
 import { CollapsibleTextBlock } from '../common/CollapsibleTextBlock';
-import { TypewriterIdle } from '../common/TypewriterIdle';
-import { useAgentStore, selectInput, selectMessages, selectAgentStatus, selectIsLoading, selectIsViewing, selectPendingToolApproval, selectExecutingSessionId } from '../../stores/useAgentStore';
+import { ChatWelcome } from './chat-welcome';
+import { useAgentStore, selectInput, selectMessages, selectAgentStatus, selectIsLoading, selectIsViewing, selectPendingToolApproval, selectExecutingSessionId, selectIsDeepResearchPanelTransitioning } from '../../stores/useAgentStore';
 import { persistence, VisionService } from '../../services';
 import { PROVIDERS } from '../../constants/providers';
 import { cleanTtsText, splitTextIntoExactPartitionChunks } from '../../utils/helpers/ttsHelper';
@@ -46,16 +47,32 @@ interface ChatAreaProps {
     onUpdatePartialConfig?: (updates: Partial<AppConfig>) => void;
 }
 
+type TtsPlaybackStatus = 'playing' | 'paused';
+
+interface TtsPlaybackState {
+    messageKey: string;
+    status: TtsPlaybackStatus;
+}
+
+interface TtsPlaybackCheckpoint {
+    sourceText: string;
+    chunks: string[];
+    chunkIndex: number;
+    currentTime: number;
+    audio: HTMLAudioElement | null;
+}
+
 const ChatInputControls = React.memo(({
     isRecording, partialText, agentMode, isLoading, isViewing, executingSessionId, currentSessionId, agentIteration, agentPhase, agentIsInstructionMode, attachments, t,
     inputRef, fileInputRef,
     toggleRecording, onAbort, handleSend, handleSendAsInstruction, onReprompt, handleNativeFileSelect, handleRemoveAttachment, boltGlow, isSent, safeMode, approvalMode, debugMode, onDebugModeChange,
-    onPasteImage
+    onPasteImage, hasCustomBackground, isCloudWithoutBackground, isEmeraldWithoutBackground, isEmeraldWithCustomBackground
 }: any) => {
     // Character-level isolation: Use local state for typing to avoid global store overhead on every keystroke.
     const globalInput = useAgentStore(selectInput);
     const setGlobalInput = useAgentStore(state => state.setInput);
     const [localInput, setLocalInput] = useState(globalInput);
+    const [isInputFocused, setIsInputFocused] = useState(false);
 
     // Sync local input with store when global input changes (e.g. session swap, clear)
     useEffect(() => {
@@ -102,10 +119,10 @@ const ChatInputControls = React.memo(({
     useEffect(() => {
         const textarea = inputRef.current;
         if (textarea) {
-            if (isViewing) {
+            if (isViewing || !isInputFocused) {
                 // Force minimum height during analysis to prevent UI takeover
                 textarea.style.height = '50px';
-                textarea.style.overflowY = 'auto';
+                textarea.style.overflowY = isViewing ? 'auto' : 'hidden';
             } else {
                 // Reset height to calculate correctly
                 textarea.style.height = 'auto';
@@ -116,7 +133,7 @@ const ChatInputControls = React.memo(({
                 textarea.style.overflowY = textarea.scrollHeight > 200 ? 'auto' : 'hidden';
             }
         }
-    }, [localInput, inputRef, isViewing]);
+    }, [localInput, inputRef, isViewing, isInputFocused]);
 
     const handleSendWithSync = () => {
         setGlobalInput(localInput); // Ensure store is up to date before sending
@@ -269,7 +286,16 @@ const ChatInputControls = React.memo(({
                                 handleNativeFileSelect(result.filePaths);
                             }
                         }}
-                        className="h-[50px] w-[50px] bg-slate-800/20 backdrop-blur-md border border-dashed border-slate-700/30 hover:text-slate-200 hover:bg-slate-700/40 hover:border-slate-500/50 rounded-xl flex items-center justify-center transition-all duration-300 shadow-lg shadow-black/10 text-slate-500 hover:text-slate-400 group-hover:border-slate-500/30"
+                        className={`h-[50px] w-[50px] backdrop-blur-md border border-dashed rounded-xl flex items-center justify-center transition-all duration-300 shadow-lg shadow-black/10 ${isEmeraldWithCustomBackground
+                            ? 'bg-emerald-950/35 border-emerald-500/45 text-emerald-300/80 hover:bg-emerald-900/55 hover:border-emerald-400/60 hover:text-emerald-100'
+                            : hasCustomBackground
+                            ? 'bg-slate-900/20 border-slate-300/30 text-slate-300/70 hover:bg-slate-800/35 hover:border-slate-100/65 hover:text-slate-100'
+                            : isCloudWithoutBackground
+                            ? 'bg-white/75 border-slate-400/70 text-slate-600 hover:bg-white hover:border-slate-500 hover:text-slate-900'
+                            : isEmeraldWithoutBackground
+                            ? 'bg-emerald-950/30 border-emerald-700/40 text-emerald-400/70 hover:bg-emerald-900/45 hover:border-emerald-500/55 hover:text-emerald-200'
+                            : 'bg-slate-800/20 border-slate-700/30 text-slate-500 hover:bg-slate-700/40 hover:border-slate-500/50 hover:text-slate-400'
+                            }`}
                         title={t('chat.actions.attach')}
                     >
                         <Icon name="plus" className="text-lg" />
@@ -281,10 +307,12 @@ const ChatInputControls = React.memo(({
                         ref={inputRef}
                         value={localInput}
                         onChange={(e) => setLocalInput(e.target.value)}
+                        onFocus={() => setIsInputFocused(true)}
+                        onBlur={() => setIsInputFocused(false)}
                         onKeyDown={handleKeyDown}
                         onPaste={handlePaste}
                         placeholder={isRecording ? (partialText || t('chat.placeholders.recording')) : (agentMode === 'agent' ? t('chat.placeholders.agent') : t('chat.placeholders.idle'))}
-                        className={`w-full bg-slate-900/80 backdrop-blur-xl border rounded-xl py-3.5 px-4 text-slate-200 font-mono text-sm placeholder-slate-600 focus:ring-1 outline-none resize-none min-h-[50px] transition-[border-color,box-shadow,padding-right] duration-300 chat-input-scrollbar ${isRecording
+                        className={`w-full bg-slate-900/80 backdrop-blur-xl border rounded-xl py-3.5 px-4 ${isCloudWithoutBackground ? 'text-slate-100 placeholder-slate-400' : 'text-slate-200 placeholder-slate-600'} font-mono text-sm focus:ring-1 outline-none resize-none min-h-[50px] transition-[height,border-color,box-shadow,padding-right] duration-300 chat-input-scrollbar ${isRecording
                             ? 'border-emerald-500/50 ring-1 ring-emerald-500/20'
                             : 'border-slate-800/60 focus:ring-cyan-500/30 focus:border-cyan-500/40 shadow-[0_10px_30px_-5px_rgba(0,0,0,0.5)]'
                             } pr-12`}
@@ -305,10 +333,12 @@ const ChatInputControls = React.memo(({
                     )}
 
                     {/* Voice Button Overlay (Right side of textarea) */}
-                     <button
+                    <button
                         onClick={toggleRecording}
                         className={`absolute bottom-2.5 right-2 w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300 ${isRecording
                             ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/40'
+                            : isCloudWithoutBackground
+                            ? 'text-slate-300 hover:bg-white/10 hover:text-white'
                             : 'text-[var(--text-secondary)] hover:bg-[var(--hover-color)] hover:text-[var(--text-primary)]'
                             }`}
                         title={isRecording ? t('chat.actions.stop_record') : t('chat.actions.record')}
@@ -427,84 +457,184 @@ export const ChatArea = ({
     const modeSelectorRef = useRef<HTMLDivElement>(null);
 
     // local TTS Audio Engine
-    const [playingMessageIndex, setPlayingMessageIndex] = useState<number | null>(null);
+    const [ttsPlaybackState, setTtsPlaybackState] = useState<TtsPlaybackState | null>(null);
+    const ttsPlaybackStateRef = useRef<TtsPlaybackState | null>(null);
     const activeAudioRef = useRef<HTMLAudioElement | null>(null);
     const currentChunkIndexRef = useRef<number>(0);
     const chunksRef = useRef<string[]>([]);
     const prefetchPromisesRef = useRef<Promise<HTMLAudioElement | null>[]>([]);
+    const nextChunkToSynthesizeRef = useRef<number>(0);
+    const activeSynthesisCountRef = useRef<number>(0);
     const currentSessionIdRef = useRef<number>(0);
+    const activeTtsSourceTextRef = useRef<string>('');
+    const ttsCheckpointsRef = useRef<Map<string, TtsPlaybackCheckpoint>>(new Map());
+    const ttsChatSessionRef = useRef(sessionId);
+    const ttsActionButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+    const ttsBubbleRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+    const [isFloatingTtsControlVisible, setIsFloatingTtsControlVisible] = useState(false);
 
-    const stopAudio = () => {
-        currentSessionIdRef.current++; // Invalidate any running pipeline sessions
-        setPlayingMessageIndex(null);
-        if (activeAudioRef.current) {
-            activeAudioRef.current.pause();
-            activeAudioRef.current = null;
-        }
-        prefetchPromisesRef.current = [];
+    const updateTtsPlaybackState = (nextState: TtsPlaybackState | null) => {
+        ttsPlaybackStateRef.current = nextState;
+        setTtsPlaybackState(nextState);
     };
 
-    const PREFETCH_WINDOW = 3; // Limit active synthesis requests to at most 3 in parallel to avoid CPU spikes
-    const triggerPrefetch = (currentIndex: number, sessionId: number) => {
+    const saveTtsCheckpoint = () => {
+        const playback = ttsPlaybackStateRef.current;
+        const chunks = chunksRef.current;
+        const chunkIndex = currentChunkIndexRef.current;
+        if (!playback || chunks.length === 0 || chunkIndex >= chunks.length) return;
+
+        const audio = activeAudioRef.current;
+        const currentTime = audio && Number.isFinite(audio.currentTime)
+            ? Math.max(0, audio.currentTime)
+            : 0;
+
+        const checkpoints = ttsCheckpointsRef.current;
+        checkpoints.delete(playback.messageKey);
+        checkpoints.set(playback.messageKey, {
+            sourceText: activeTtsSourceTextRef.current,
+            chunks: [...chunks],
+            chunkIndex,
+            currentTime,
+            audio
+        });
+
+        // Retain a small set of paused messages without letting generated audio
+        // accumulate indefinitely during a long-running desktop session.
+        while (checkpoints.size > 8) {
+            const oldestKey = checkpoints.keys().next().value as string | undefined;
+            if (!oldestKey) break;
+            checkpoints.delete(oldestKey);
+        }
+    };
+
+    const releaseActiveTtsPlayback = (preserveCheckpoint: boolean) => {
+        const playback = ttsPlaybackStateRef.current;
+        const audio = activeAudioRef.current;
+
+        if (audio) audio.pause();
+        if (preserveCheckpoint) {
+            saveTtsCheckpoint();
+        } else if (playback) {
+            ttsCheckpointsRef.current.delete(playback.messageKey);
+        }
+
+        currentSessionIdRef.current++; // Invalidate any running pipeline sessions
+        updateTtsPlaybackState(null);
+        if (audio) {
+            audio.onended = null;
+            audio.onerror = null;
+        }
+        activeAudioRef.current = null;
+        chunksRef.current = [];
+        prefetchPromisesRef.current = [];
+        nextChunkToSynthesizeRef.current = 0;
+        activeSynthesisCountRef.current = 0;
+        activeTtsSourceTextRef.current = '';
+    };
+
+    const pauseActiveTtsPlayback = () => {
+        const playback = ttsPlaybackStateRef.current;
+        if (!playback || playback.status !== 'playing') return;
+
+        // Update the synchronous ref before pausing. This prevents an AbortError
+        // from audio.play() racing the click and being mistaken for a failed clip.
+        updateTtsPlaybackState({ ...playback, status: 'paused' });
+        activeAudioRef.current?.pause();
+        saveTtsCheckpoint();
+        console.log(`[TTS Player] Paused Chunk ${currentChunkIndexRef.current} at ${activeAudioRef.current?.currentTime.toFixed(3) || '0.000'}s.`);
+    };
+
+    const resumeActiveTtsPlayback = async (messageKey: string) => {
+        const playback = ttsPlaybackStateRef.current;
+        if (!playback || playback.messageKey !== messageKey || playback.status !== 'paused') return;
+
+        updateTtsPlaybackState({ ...playback, status: 'playing' });
+        ttsCheckpointsRef.current.delete(messageKey);
+
+        // If synthesis is still pending, playChunk will observe the new status and
+        // start automatically when the ordered clip becomes ready.
+        const audio = activeAudioRef.current;
+        if (!audio) return;
+
+        try {
+            await audio.play();
+            console.log(`[TTS Player] Resumed Chunk ${currentChunkIndexRef.current} at ${audio.currentTime.toFixed(3)}s.`);
+        } catch (err) {
+            const current = ttsPlaybackStateRef.current;
+            if (current?.messageKey !== messageKey) return;
+            console.error('Failed to resume audio chunk:', err);
+            updateTtsPlaybackState({ ...current, status: 'paused' });
+            saveTtsCheckpoint();
+        }
+    };
+
+    // The Python engine owns four synthesis workers. Keep all four supplied from
+    // the first instant: each completed clip immediately frees and refills one
+    // slot, while playback still consumes clips strictly in their text order.
+    const SYNTHESIS_SLOT_COUNT = 4;
+    const fillSynthesisSlots = (sessionId: number): void => {
         if (sessionId !== currentSessionIdRef.current) return;
 
         const chunks = chunksRef.current;
-        // Limit initial prefetch to Chunk 0 only, to minimize starting latency (TTFA).
-        // Subsequent prefetches (currentIndex > 0) use the full parallel window.
-        const windowSize = currentIndex === 0 ? 1 : PREFETCH_WINDOW;
-        const end = Math.min(currentIndex + windowSize, chunks.length);
+        while (
+            activeSynthesisCountRef.current < SYNTHESIS_SLOT_COUNT
+            && nextChunkToSynthesizeRef.current < chunks.length
+        ) {
+            const chunkIndex = nextChunkToSynthesizeRef.current++;
+            const chunkText = chunks[chunkIndex];
+            activeSynthesisCountRef.current++;
 
-        for (let i = currentIndex; i < end; i++) {
-            if (!prefetchPromisesRef.current[i]) {
-                const chunkIndex = i;
-                const chunkText = chunks[chunkIndex];
+            console.log(`%c[TTS Pipeline] Occupying synthesis slot for Chunk ${chunkIndex} (Length: ${chunkText.length} chars)...`, "color: #2196F3;");
+            const synthesisPromise = (async () => {
+                if (sessionId !== currentSessionIdRef.current) return null;
 
-                console.log(`%c[TTS Pipeline] Triggering sliding-window prefetch for Chunk ${chunkIndex} (Length: ${chunkText.length} chars)...`, "color: #2196F3;");
-                prefetchPromisesRef.current[chunkIndex] = (async () => {
+                const t0 = performance.now();
+                try {
+                    const res = await (window as any).electron.synthesizeText({
+                        text: chunkText,
+                        lang: config.language || 'es',
+                        voice: config.voice || null,
+                        speed: config.speed || 1.0
+                    });
+
                     if (sessionId !== currentSessionIdRef.current) return null;
 
-                    const t0 = performance.now();
-                    try {
-                        const res = await (window as any).electron.synthesizeText({
-                            text: chunkText,
-                            lang: config.language || 'es',
-                            voice: config.voice || null,
-                            speed: config.speed || 1.0
-                        });
-
-                        if (sessionId !== currentSessionIdRef.current) return null;
-
-                        if (res && res.ok && res.dataUrl) {
-                            const t1 = performance.now();
-                            console.log(`%c[TTS Pipeline] Finished parallel synthesis for Chunk ${chunkIndex} in ${((t1 - t0) / 1000).toFixed(3)}s. Loading audio...`, "color: #4CAF50;");
-                            const audio = new Audio(res.dataUrl);
-                            audio.load();
-                            return audio;
-                        }
-                        return null;
-                    } catch (err) {
-                        console.error(`Failed to prefetch chunk ${chunkIndex}:`, err);
-                        return null;
+                    if (res && res.ok && res.dataUrl) {
+                        const t1 = performance.now();
+                        console.log(`%c[TTS Pipeline] Finished parallel synthesis for Chunk ${chunkIndex} in ${((t1 - t0) / 1000).toFixed(3)}s. Loading audio...`, "color: #4CAF50;");
+                        const audio = new Audio(res.dataUrl);
+                        audio.load();
+                        return audio;
                     }
-                })();
-            }
+                    return null;
+                } catch (err) {
+                    console.error(`Failed to synthesize chunk ${chunkIndex}:`, err);
+                    return null;
+                }
+            })();
+
+            prefetchPromisesRef.current[chunkIndex] = synthesisPromise;
+            void synthesisPromise.finally(() => {
+                // Stale sessions must not alter the counters of a newer playback.
+                if (sessionId !== currentSessionIdRef.current) return;
+                activeSynthesisCountRef.current--;
+                fillSynthesisSlots(sessionId);
+            });
         }
     };
 
-    const playChunk = async (messageIndex: number, chunkIndex: number, sessionId: number) => {
+    const playChunk = async (messageKey: string, chunkIndex: number, sessionId: number) => {
         if (sessionId !== currentSessionIdRef.current) return;
 
         const chunks = chunksRef.current;
         if (chunkIndex >= chunks.length) {
             console.log("[TTS Player] Finished playing all chunks.");
-            stopAudio();
+            releaseActiveTtsPlayback(false);
             return;
         }
 
         currentChunkIndexRef.current = chunkIndex;
-
-        // Trigger prefetch of the sliding window starting at the next index (to download ahead in parallel)
-        triggerPrefetch(chunkIndex + 1, sessionId);
 
         let audio: HTMLAudioElement | null = null;
 
@@ -518,7 +648,7 @@ export const ChatArea = ({
 
         if (!audio) {
             console.warn(`[TTS Player] Chunk ${chunkIndex} promise returned null, skipping...`);
-            playChunk(messageIndex, chunkIndex + 1, sessionId);
+            void playChunk(messageKey, chunkIndex + 1, sessionId);
             return;
         }
 
@@ -526,67 +656,177 @@ export const ChatArea = ({
         console.log(`%c[TTS Player] Playing Chunk ${chunkIndex} (${chunks[chunkIndex].substring(0, 30)}...)`, "color: #9C27B0; font-weight: bold;");
 
         audio.onended = () => {
+            if (sessionId !== currentSessionIdRef.current || ttsPlaybackStateRef.current?.messageKey !== messageKey) return;
             console.log(`%c[TTS Player] Chunk ${chunkIndex} finished playing.`, "color: #9C27B0;");
             if (activeAudioRef.current === audio) {
                 activeAudioRef.current = null;
             }
-            playChunk(messageIndex, chunkIndex + 1, sessionId);
+            void playChunk(messageKey, chunkIndex + 1, sessionId);
         };
 
         audio.onerror = (e) => {
+            if (sessionId !== currentSessionIdRef.current || ttsPlaybackStateRef.current?.messageKey !== messageKey) return;
             console.error("Audio chunk playback error:", e);
             if (activeAudioRef.current === audio) {
                 activeAudioRef.current = null;
             }
-            playChunk(messageIndex, chunkIndex + 1, sessionId);
+            void playChunk(messageKey, chunkIndex + 1, sessionId);
         };
+
+        // A pause can happen while this function is awaiting synthesis. Keep the
+        // ordered audio ready, but do not start it until the user resumes.
+        if (ttsPlaybackStateRef.current?.status === 'paused') {
+            saveTtsCheckpoint();
+            return;
+        }
 
         try {
             await audio.play();
         } catch (err) {
+            if (sessionId !== currentSessionIdRef.current) return;
+            const playback = ttsPlaybackStateRef.current;
+            if (playback?.messageKey === messageKey && playback.status === 'paused') return;
             console.error("Failed to play audio chunk:", err);
-            if (activeAudioRef.current === audio) {
-                activeAudioRef.current = null;
+            if (playback?.messageKey === messageKey) {
+                updateTtsPlaybackState({ ...playback, status: 'paused' });
+                saveTtsCheckpoint();
             }
-            playChunk(messageIndex, chunkIndex + 1, sessionId);
         }
     };
 
-    const handleReadAloud = async (index: number, text: string) => {
-        if (playingMessageIndex === index) {
-            stopAudio();
+    const handleReadAloud = async (messageKey: string, text: string) => {
+        const activePlayback = ttsPlaybackStateRef.current;
+        if (activePlayback?.messageKey === messageKey && activeTtsSourceTextRef.current === text) {
+            if (activePlayback.status === 'playing') {
+                pauseActiveTtsPlayback();
+            } else {
+                await resumeActiveTtsPlayback(messageKey);
+            }
             return;
         }
 
-        stopAudio();
+        // Switching messages suspends the previous one at its exact point. Its
+        // current clip can be reused if that message is selected again later.
+        if (activePlayback) releaseActiveTtsPlayback(true);
+
+        let checkpoint = ttsCheckpointsRef.current.get(messageKey);
+        if (checkpoint && checkpoint.sourceText !== text) {
+            ttsCheckpointsRef.current.delete(messageKey);
+            checkpoint = undefined;
+        }
 
         // 1. Split text into chunks using the exact partition grouping helper
-        const chunks = splitTextIntoExactPartitionChunks(text, config.language || 'es');
+        const chunks = checkpoint?.chunks || splitTextIntoExactPartitionChunks(text, config.language || 'es');
 
         console.log("[TTS Debug] Final chunks:", chunks);
 
         if (chunks.length === 0) return;
 
-        const sessionId = currentSessionIdRef.current;
+        const pipelineSessionId = ++currentSessionIdRef.current;
+        const firstChunkIndex = checkpoint?.chunkIndex || 0;
 
-        setPlayingMessageIndex(index);
+        activeTtsSourceTextRef.current = text;
+        updateTtsPlaybackState({ messageKey, status: 'playing' });
         chunksRef.current = chunks;
-        currentChunkIndexRef.current = 0;
+        currentChunkIndexRef.current = firstChunkIndex;
         prefetchPromisesRef.current = new Array(chunks.length);
+        activeSynthesisCountRef.current = 0;
 
-        // Start prefetching initial window (Chunk 0, 1, 2) in parallel
-        triggerPrefetch(0, sessionId);
+        if (checkpoint?.audio) {
+            const cachedAudio = checkpoint.audio;
+            cachedAudio.onended = null;
+            cachedAudio.onerror = null;
+            cachedAudio.pause();
+            try {
+                cachedAudio.currentTime = checkpoint.currentTime;
+            } catch (err) {
+                console.warn('[TTS Player] Could not restore cached audio position:', err);
+            }
+            prefetchPromisesRef.current[firstChunkIndex] = Promise.resolve(cachedAudio);
+            nextChunkToSynthesizeRef.current = firstChunkIndex + 1;
+        } else {
+            nextChunkToSynthesizeRef.current = firstChunkIndex;
+        }
+        ttsCheckpointsRef.current.delete(messageKey);
 
-        // Start playback
-        playChunk(index, 0, sessionId);
+        // Start with all engine slots occupied. The coordinator refills a slot
+        // as soon as its synthesis settles, independent of playback timing.
+        fillSynthesisSlots(pipelineSessionId);
+
+        // Start playback from the remembered chunk rather than rebuilding from 0.
+        void playChunk(messageKey, firstChunkIndex, pipelineSessionId);
     };
 
-    // Stop audio on unmount
+    // Suspend playback when navigating between chats so returning to the same
+    // message can continue from its previous chunk and timestamp.
+    useEffect(() => {
+        if (ttsChatSessionRef.current === sessionId) return;
+        ttsChatSessionRef.current = sessionId;
+        if (ttsPlaybackStateRef.current) releaseActiveTtsPlayback(true);
+    }, [sessionId]);
+
+    // Stop audio on unmount.
     useEffect(() => {
         return () => {
-            stopAudio();
+            currentSessionIdRef.current++;
+            const audio = activeAudioRef.current;
+            if (audio) {
+                audio.onended = null;
+                audio.onerror = null;
+                audio.pause();
+            }
+            activeAudioRef.current = null;
+            prefetchPromisesRef.current = [];
+            ttsCheckpointsRef.current.clear();
         };
     }, []);
+
+    // The floating control follows the currently spoken message only. It becomes
+    // visible once the regular action button has left the chat viewport, but is
+    // removed as soon as that message bubble itself leaves the viewport.
+    useEffect(() => {
+        const messageKey = ttsPlaybackState?.messageKey;
+        const scrollContainer = scrollRef.current;
+        const actionButton = messageKey ? ttsActionButtonRefs.current.get(messageKey) : null;
+        const bubble = messageKey ? ttsBubbleRefs.current.get(messageKey) : null;
+
+        if (!messageKey || !scrollContainer || !actionButton || !bubble) {
+            setIsFloatingTtsControlVisible(false);
+            return;
+        }
+
+        let animationFrame = 0;
+        const isVisibleWithinChat = (element: HTMLElement) => {
+            const elementRect = element.getBoundingClientRect();
+            const containerRect = scrollContainer.getBoundingClientRect();
+            return elementRect.bottom > containerRect.top && elementRect.top < containerRect.bottom;
+        };
+        const updateVisibility = () => {
+            animationFrame = 0;
+            const shouldShow = !isVisibleWithinChat(actionButton) && isVisibleWithinChat(bubble);
+            setIsFloatingTtsControlVisible(previous => previous === shouldShow ? previous : shouldShow);
+        };
+        const scheduleUpdate = () => {
+            if (!animationFrame) animationFrame = requestAnimationFrame(updateVisibility);
+        };
+
+        const observer = new IntersectionObserver(scheduleUpdate, {
+            root: scrollContainer,
+            threshold: 0
+        });
+        observer.observe(actionButton);
+        observer.observe(bubble);
+        scrollContainer.addEventListener('scroll', scheduleUpdate, { passive: true });
+        window.addEventListener('resize', scheduleUpdate);
+        scheduleUpdate();
+
+        return () => {
+            observer.disconnect();
+            scrollContainer.removeEventListener('scroll', scheduleUpdate);
+            window.removeEventListener('resize', scheduleUpdate);
+            if (animationFrame) cancelAnimationFrame(animationFrame);
+        };
+    }, [scrollRef, ttsPlaybackState?.messageKey]);
 
     // Trigger flash on mode change
     useEffect(() => {
@@ -616,6 +856,9 @@ export const ChatArea = ({
     const currentModelId = agentMode === 'agent'
         ? (config.agentModel || config.model)
         : (config.chatModel || config.model);
+    const isCloudWithoutBackground = config.theme === 'cloud' && !config.chatBackgroundImage;
+    const isEmeraldWithoutBackground = config.theme === 'emerald' && !config.chatBackgroundImage;
+    const isEmeraldWithCustomBackground = config.theme === 'emerald' && Boolean(config.chatBackgroundImage);
 
     const availableModels = useMemo(() => models[currentProvider] || [], [models, currentProvider]);
     const activeModelName = useMemo(() => 
@@ -642,6 +885,9 @@ export const ChatArea = ({
     const isViewing = useAgentStore(selectIsViewing);
     const pendingApproval = useAgentStore(selectPendingToolApproval);
     const executingSessionId = useAgentStore(selectExecutingSessionId);
+    const isDeepResearchPanelTransitioning = useAgentStore(selectIsDeepResearchPanelTransitioning);
+    const deepResearchChatSessionId = useAgentStore(state => state.deepResearchChatSessionId);
+    const shouldFadeChatScrollbar = isDeepResearchPanelTransitioning && deepResearchChatSessionId === sessionId;
 
     const isExecutingThisSession = !executingSessionId || executingSessionId === sessionId;
 
@@ -650,16 +896,13 @@ export const ChatArea = ({
         const handleReadTextEvent = (e: Event) => {
             const customText = (e as CustomEvent).detail?.text;
             if (customText) {
-                handleReadAloud(-999, customText);
+                handleReadAloud(`${sessionId}:voice-command`, customText);
             } else {
                 // Find last assistant message
                 const assistantMessages = messages.filter(m => m.role === 'assistant');
                 if (assistantMessages.length > 0) {
                     const lastMsg = assistantMessages[assistantMessages.length - 1];
-                    const idx = messages.indexOf(lastMsg);
-                    if (idx !== -1) {
-                        handleReadAloud(idx, lastMsg.text);
-                    }
+                    handleReadAloud(`${sessionId}:${lastMsg.id}`, lastMsg.text);
                 }
             }
         };
@@ -767,6 +1010,33 @@ export const ChatArea = ({
     }, [messages, sessionId, agentMode, safeMode, approvalMode, debugMode, sessions, onSessionsUpdate, t]);
     const inputRef = React.useRef<HTMLTextAreaElement>(null);
     const [isSent, setIsSent] = React.useState(false);
+
+    const handleWelcomeSuggestion = (prompt: string, cursorPosition: number, selectionEnd?: number) => {
+        useAgentStore.getState().setInput(prompt);
+        // ChatInputControls mirrors the store into its local draft. Focus on
+        // the next frame, then place the caret after the complete prompt.
+        let attempts = 0;
+        const focusAndPlaceCaret = () => {
+            const input = inputRef.current;
+            if (!input) return;
+            input.focus({ preventScroll: true });
+            if (input.value !== prompt && attempts++ < 6) {
+                requestAnimationFrame(focusAndPlaceCaret);
+                return;
+            }
+            const selectionStart = Math.min(cursorPosition, input.value.length);
+            const selectionFinish = Math.min(selectionEnd ?? selectionStart, input.value.length);
+            input.setSelectionRange(selectionStart, selectionFinish);
+        };
+        requestAnimationFrame(focusAndPlaceCaret);
+    };
+
+    const handleInstantWelcomeSuggestion = (prompt: string) => {
+        useAgentStore.getState().setInput(prompt);
+        // Let the store receive the complete prompt before starting the same
+        // send flow used by the regular chat controls.
+        setTimeout(() => onSend([]), 0);
+    };
 
     // ⚡ STREAM BUFFER: Logic to prevent high-frequency re-renders (prevents whole app lag)
     const chunkBufferRef = useRef<string>('');
@@ -1589,7 +1859,7 @@ export const ChatArea = ({
             <div
                 id="chat-scroll-container"
                 key={sessionId}
-                className="flex-1 overflow-y-auto p-4 custom-scrollbar chat-area-scroll chat-fade-mask relative animate-chat flex flex-col transform-gpu z-10"
+                className={`flex-1 overflow-y-auto p-4 custom-scrollbar chat-area-scroll chat-fade-mask relative animate-chat flex flex-col transform-gpu z-10 ${shouldFadeChatScrollbar ? 'deep-research-chat-scroll-fading' : ''}`}
                 ref={scrollRef}
                 style={{ 
                     fontFamily: 'var(--chat-font)',
@@ -1599,18 +1869,24 @@ export const ChatArea = ({
                 <div className="flex-1" />
                 <div className="space-y-6 w-full max-w-[98%] sm:max-w-[95%] lg:max-w-4xl mx-auto pb-4">
                     {messages.length === 0 && (
-                        <div className={`absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-20 ${config.chatBackgroundImage ? 'drop-shadow-[0_20px_50px_rgba(0,0,0,1)] mix-blend-difference' : ''}`}>
-                            <div className={`w-20 h-20 rounded-full border-2 flex items-center justify-center mb-6 text-3xl transition-all ${config.chatBackgroundImage 
-                                ? 'border-white/40 text-white/50 shadow-[0_0_60px_rgba(0,0,0,0.8)]' 
-                                : 'border-blue-500/15 text-blue-500/20'}`}>
-                                <Icon name="terminal" />
+                        <div className={`absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-20 ${config.chatBackgroundImage ? 'drop-shadow-[0_20px_50px_rgba(0,0,0,1)]' : ''}`}>
+                            <div className="pointer-events-auto w-full max-w-5xl px-4">
+                                <ChatWelcome
+                                    hasCustomBg={!!config.chatBackgroundImage}
+                                    userName={userName}
+                                    onSuggestion={handleWelcomeSuggestion}
+                                    onInstantSuggestion={handleInstantWelcomeSuggestion}
+                                />
                             </div>
-                            <TypewriterIdle hasCustomBg={!!config.chatBackgroundImage} />
                         </div>
                     )}
 
                     {messages.map((msg, index) => {
                         const isLast = msg.id === messages[messages.length - 1]?.id;
+                        const ttsMessageKey = `${sessionId}:${msg.id}`;
+                        const messageTtsStatus = ttsPlaybackState?.messageKey === ttsMessageKey
+                            ? ttsPlaybackState.status
+                            : null;
                         const isOld = index < messages.length - 3;
                         const hasToolCall = msg.blocks?.some(b => b.type === 'tool_call');
                         const isAgentResponse = msg.role === 'assistant' && (agentMode === 'agent' || msg.text === '');
@@ -1638,12 +1914,19 @@ export const ChatArea = ({
                                         <MarkdownRenderer content={msg.text} />
                                     </div>
                                 ) : (
-                                    <div className={`relative w-auto max-w-[95%] lg:max-w-[90%] break-words message-pop-in rounded-[32px] ${
+                                    <div
+                                        ref={msg.role === 'assistant' ? (node) => {
+                                            if (node) ttsBubbleRefs.current.set(ttsMessageKey, node);
+                                            else ttsBubbleRefs.current.delete(ttsMessageKey);
+                                        } : undefined}
+                                        className={`message-bubble-wrapper relative w-auto max-w-[95%] lg:max-w-[90%] break-words message-pop-in rounded-[32px] ${
+                                        msg.role === 'user' ? 'message-bubble-user' : 'message-bubble-assistant'} ${
                                         msg.role === 'user' ? 'rounded-br-none' : 'rounded-bl-none lg:ml-6'
-                                    }`}>
+                                    }`}
+                                    >
 
                                         {/* --- Action Bar (fuera del stacking context del globo) --- */}
-                                        <div className={`absolute -top-3 ${msg.role === 'user' ? 'right-4' : 'left-4'} flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 pointer-events-none group-hover:pointer-events-auto`}>
+                                        <div className={`message-margin-actions absolute -top-3 ${msg.role === 'user' ? 'right-4' : 'left-4'} flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 pointer-events-none group-hover:pointer-events-auto`}>
                                             {msg.role === 'user' && (
                                                 <button
                                                     onClick={() => onRewind(index)}
@@ -1668,32 +1951,113 @@ export const ChatArea = ({
                                                         <Icon name="copy" /> {t('chat.actions.copy')}
                                                     </button>
                                                     <button
-                                                        onClick={() => handleReadAloud(index, msg.text)}
+                                                        ref={(node) => {
+                                                            if (node) ttsActionButtonRefs.current.set(ttsMessageKey, node);
+                                                            else ttsActionButtonRefs.current.delete(ttsMessageKey);
+                                                        }}
+                                                        onClick={() => handleReadAloud(ttsMessageKey, msg.text)}
                                                         className={`bg-slate-900 border border-slate-700/80 px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-md transition-colors ${
-                                                            playingMessageIndex === index 
+                                                            messageTtsStatus === 'playing'
                                                                 ? 'text-pink-500 hover:text-pink-400 border-pink-500/50' 
-                                                                : 'text-emerald-400 hover:text-emerald-300'
+                                                                : messageTtsStatus === 'paused'
+                                                                    ? 'text-amber-400 hover:text-amber-300 border-amber-500/50'
+                                                                    : 'text-emerald-400 hover:text-emerald-300'
                                                         }`}
-                                                        title={playingMessageIndex === index ? t('chat.actions.stop_reading') : t('chat.actions.read_aloud')}
+                                                        title={messageTtsStatus === 'playing'
+                                                            ? t('chat.actions.pause_reading')
+                                                            : messageTtsStatus === 'paused'
+                                                                ? t('chat.actions.resume_reading')
+                                                                : t('chat.actions.read_aloud')}
                                                     >
-                                                        <Icon name={playingMessageIndex === index ? "stop" : "volume-up"} /> 
-                                                        {playingMessageIndex === index ? t('chat.actions.stop_reading') : t('chat.actions.read_aloud')}
+                                                        <Icon name={messageTtsStatus === 'playing' ? 'pause' : messageTtsStatus === 'paused' ? 'play' : 'volume-up'} />
+                                                        {messageTtsStatus === 'playing'
+                                                            ? t('chat.actions.pause_reading')
+                                                            : messageTtsStatus === 'paused'
+                                                                ? t('chat.actions.resume_reading')
+                                                                : t('chat.actions.read_aloud')}
                                                     </button>
                                                 </>
                                             )}
                                         </div>
 
+                                        {msg.role === 'assistant' && messageTtsStatus && isFloatingTtsControlVisible && (
+                                            <div className="sticky top-3 z-30 flex h-10 -mb-10 translate-x-1 justify-end px-3 pt-1 pointer-events-none">
+                                                <label
+                                                    className={`tts-floating-action pointer-events-auto relative flex h-10 w-9 cursor-pointer flex-col items-center justify-center rounded-xl transition-colors duration-300 ${
+                                                        messageTtsStatus === 'playing'
+                                                            ? 'tts-floating-action-playing bg-sky-400/10 hover:bg-sky-400/16'
+                                                            : 'tts-floating-action-paused bg-amber-400/10 hover:bg-amber-400/16'
+                                                    }`}
+                                                    title={messageTtsStatus === 'playing' ? t('chat.actions.pause_reading') : t('chat.actions.resume_reading')}
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        className="sr-only"
+                                                        checked={messageTtsStatus === 'paused'}
+                                                        onChange={() => handleReadAloud(ttsMessageKey, msg.text)}
+                                                        aria-label={messageTtsStatus === 'playing' ? t('chat.actions.pause_reading') : t('chat.actions.resume_reading')}
+                                                    />
+                                                    <span className="tts-floating-glyph pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                                                        <span className={`tts-pause-bar h-[2px] w-[50%] origin-center translate-y-[0.1rem] -translate-x-[0.3rem] rotate-90 rounded-sm transition-all duration-300 ${messageTtsStatus === 'playing' ? 'bg-sky-200' : 'bg-amber-100'}`} />
+                                                        <span className={`tts-pause-bar h-[2px] w-[50%] origin-center rounded-md transition-all duration-300 ${messageTtsStatus === 'paused' ? 'translate-x-[0.15rem] translate-y-[0.22rem] rotate-[-30deg]' : '-translate-y-[0.05rem] translate-x-[0.3rem] rotate-90'} ${messageTtsStatus === 'playing' ? 'bg-sky-200' : 'bg-amber-100'}`} />
+                                                        <span className={`h-[2px] w-[50%] origin-center rounded-md transition-all duration-300 ${messageTtsStatus === 'paused' ? 'opacity-100 -translate-y-[0.4rem] translate-x-[0.15rem] rotate-[30deg]' : 'opacity-0 -translate-y-[0.16rem] translate-x-[0.3rem] rotate-90'} ${messageTtsStatus === 'playing' ? 'bg-sky-200' : 'bg-amber-100'}`} />
+                                                    </span>
+                                                    {messageTtsStatus === 'playing' && (
+                                                        <svg
+                                                            className={`tts-floating-speaker pointer-events-none absolute left-1/2 top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 ${messageTtsStatus === 'playing' ? 'text-sky-200' : 'text-amber-100'}`}
+                                                            viewBox="0 0 20 20"
+                                                            fill="none"
+                                                            aria-hidden="true"
+                                                        >
+                                                            <path
+                                                                className="tts-floating-speaker-body"
+                                                                d="M3.5 8.25H6.5L10.25 5.25V14.75L6.5 11.75H3.5V8.25Z"
+                                                                stroke="currentColor"
+                                                                strokeWidth="1.35"
+                                                                strokeLinejoin="round"
+                                                            />
+                                                            <path
+                                                                className="tts-floating-speaker-wave tts-floating-speaker-wave-one"
+                                                                d="M12.75 8C13.7 8.95 13.7 11.05 12.75 12"
+                                                                stroke="currentColor"
+                                                                strokeWidth="1.35"
+                                                                strokeLinecap="round"
+                                                            />
+                                                            <path
+                                                                className="tts-floating-speaker-wave tts-floating-speaker-wave-two"
+                                                                d="M15.25 5.75C17.65 8.15 17.65 11.85 15.25 14.25"
+                                                                stroke="currentColor"
+                                                                strokeWidth="1.35"
+                                                                strokeLinecap="round"
+                                                            />
+                                                            <path
+                                                                className="tts-floating-speaker-wave tts-floating-speaker-wave-three"
+                                                                d="M16.75 4C19.25 6.5 19.25 13.5 16.75 16"
+                                                                stroke="currentColor"
+                                                                strokeWidth="1.35"
+                                                                strokeLinecap="round"
+                                                            />
+                                                        </svg>
+                                                    )}
+                                                </label>
+                                            </div>
+                                        )}
+
                                         {/* --- Fondo del globo: SIN backdrop-blur en ningún caso (causa artefactos de compositing entre globos adyacentes) ---
                                              La transparencia se logra con el alpha del color, no con blur.
                                         --- */}
-                                        <div className={`absolute inset-0 rounded-[inherit] pointer-events-none transition-[border-color] duration-300 ${
+                                        <div className={`message-bubble-bg absolute inset-0 rounded-[inherit] pointer-events-none transition-[border-color] duration-300 ${
                                             msg.role === 'user'
-                                                ? 'bg-blue-950/85 shadow-[0_15px_35px_-10px_rgba(0,0,0,0.55)] border border-transparent group-hover:border-blue-500/60'
-                                                : (config.theme === 'cloud'
-                                                    ? 'bg-slate-700/90 shadow-[0_10px_25px_-3px_rgba(0,0,0,0.6)] border border-transparent group-hover:border-slate-400/50'
-                                                    : (['cyberpunk', 'forest'].includes(config.theme)
-                                                        ? 'bg-[var(--surface-color)] shadow-[0_10px_25px_-3px_rgba(0,0,0,0.75)] border border-transparent group-hover:border-[var(--primary-color)]/45'
-                                                        : 'bg-slate-800/90 shadow-[0_10px_25px_-3px_rgba(0,0,0,0.7)] border border-transparent group-hover:border-[var(--primary-color)]/45'))
+                                                ? 'bg-blue-950/85 shadow-[0_15px_35px_-10px_rgba(0,0,0,0.55)] border border-transparent'
+                                                : (isEmeraldWithCustomBackground
+                                                    ? 'bg-emerald-950/90 shadow-[0_10px_25px_-3px_rgba(0,0,0,0.85)] border border-transparent'
+                                                    : (config.theme === 'cloud'
+                                                        ? 'bg-slate-700/90 shadow-[0_10px_25px_-3px_rgba(0,0,0,0.6)] border border-transparent'
+                                                        : (isEmeraldWithoutBackground
+                                                        ? 'bg-emerald-950/90 shadow-[0_10px_25px_-3px_rgba(0,0,0,0.8)] border border-transparent'
+                                                        : (['synthwave', 'emerald'].includes(config.theme)
+                                                            ? 'bg-[var(--surface-color)] shadow-[0_10px_25px_-3px_rgba(0,0,0,0.75)] border border-transparent'
+                                                            : 'bg-slate-800/90 shadow-[0_10px_25px_-3px_rgba(0,0,0,0.7)] border border-transparent'))))
                                         }`} />
 
                                         {/* --- Contenido (siempre encima del fondo) --- */}
@@ -1819,13 +2183,19 @@ export const ChatArea = ({
                                                             return segments.map((segment, segIdx) => {
                                                                 if (segment.type === 'loop') {
                                                                     const toolCount = segment.blocks.filter(b => b.type === 'tool_call').length;
+                                                                    const hasDeepResearchCard = segment.blocks.some(b =>
+                                                                        b.type === 'tool_call' && b.toolCall?.function.name === 'deep_research'
+                                                                    );
                                                                     // Check if there's a narrative answer AFTER this loop segment
                                                                     const hasNarrativeAfter = segments.slice(segIdx + 1).some(s => 
                                                                         s.type === 'narrative' && s.blocks.some(b => b.type === 'answer')
                                                                     );
                                                                     // Only wrap in collapsible if there's at least one tool AND 
                                                                     // (there's a narrative response after OR it's an old non-streaming message)
-                                                                    const shouldWrap = toolCount > 0 && (hasNarrativeAfter || (!msg.isStreaming && isOld));
+                                                                    // Deep Research renders an approval/progress card instead of the
+                                                                    // generic tool block. Keep that card visible in history so it can
+                                                                    // reopen the lateral panel after it has been closed.
+                                                                    const shouldWrap = toolCount > 0 && !hasDeepResearchCard && (hasNarrativeAfter || (!msg.isStreaming && isOld));
 
                                                                     const loopContent = segment.blocks.map((block, bIdx) => {
                                                                         const globalIdx = segment.startIdx + bIdx;
@@ -1841,7 +2211,17 @@ export const ChatArea = ({
                                                                         return (
                                                                             <div key={globalIdx} id={`block-${msg.id}-${globalIdx}`} className={spacingClass} data-block-type={block.type}>
                                                                                 {block.type === 'tool_call' ? (
-                                                                                    <ToolBlock block={block} isOld={isOld} isStreaming={msg.isStreaming} invertRotation={globalIdx % 2 !== 0} />
+                                                                                    block.toolCall?.function.name === 'deep_research' ? (
+                                                                                        <DeepResearchProposalCard
+                                                                                            block={block}
+                                                                                            config={config}
+                                                                                            mode={agentMode}
+                                                                                            interactive={isLast && !msg.isStreaming}
+                                                                                            chatSessionId={sessionId}
+                                                                                        />
+                                                                                    ) : (
+                                                                                        <ToolBlock block={block} isOld={isOld} isStreaming={msg.isStreaming} invertRotation={globalIdx % 2 !== 0} />
+                                                                                    )
                                                                                 ) : (block.type === 'answer' || block.type === 'text') ? (
                                                                                     <div className="pl-6 mb-4">
                                                                                         <MarkdownRenderer content={block.content} isStreaming={msg.isStreaming} />
@@ -2022,7 +2402,13 @@ export const ChatArea = ({
             </div>
         </div>
 
-        <div className={`relative px-4 pb-4 ${isLoading ? 'pt-0' : 'pt-4'} ${config.chatBackgroundImage ? 'bg-transparent border-transparent' : `bg-slate-900/40 border-t ${isLoading ? 'border-transparent' : 'border-slate-800/50'}`} transition-all duration-500`}>
+        <div className={`relative px-4 pb-4 ${isLoading ? 'pt-0' : 'pt-4'} ${config.chatBackgroundImage
+            ? 'bg-transparent border-transparent'
+            : isCloudWithoutBackground
+            ? `bg-slate-300/80 border-t ${isLoading ? 'border-transparent' : 'border-slate-400/80'}`
+            : isEmeraldWithoutBackground
+            ? `bg-emerald-950/70 border-t ${isLoading ? 'border-transparent' : 'border-emerald-800/60'}`
+            : `bg-slate-900/40 border-t ${isLoading ? 'border-transparent' : 'border-slate-800/50'}`} transition-all duration-500`}>
             
             {/* Sticky Overlay Area for Active Task / Background Status - Only visible while Miku is doing something */}
             <div className="z-20 w-full absolute bottom-full left-0">
@@ -2086,12 +2472,14 @@ export const ChatArea = ({
                 <div className="max-w-5xl mx-auto flex items-center gap-2 mb-2 flex-nowrap">
                     <button
                         onClick={() => onAgentModeChange(agentMode === 'chat' ? 'agent' : 'chat')}
-                        className={config.chatBackgroundImage || config.theme === 'cloud' || config.theme === 'cyberpunk' || config.theme === 'forest'
-                            ? `flex items-center justify-center gap-1.5 px-2 h-6 min-w-[70px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border border-transparent transition-all duration-300 opacity-60 hover:opacity-100 active:opacity-100 ${
-                                (config.theme === 'cloud' && !config.chatBackgroundImage)
-                                ? 'bg-slate-200/30 hover:bg-slate-200/60 hover:border-slate-300/50 text-slate-600 hover:text-slate-800 shadow-sm' 
+                        className={config.chatBackgroundImage || config.theme === 'cloud' || config.theme === 'emerald'
+                            ? `flex items-center justify-center gap-1.5 px-2 h-6 min-w-[70px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border border-transparent transition-all duration-300 ${isCloudWithoutBackground ? 'opacity-100' : 'opacity-60'} hover:opacity-100 active:opacity-100 ${
+                                isCloudWithoutBackground
+                                ? 'bg-slate-200/70 hover:bg-white hover:border-slate-400/70 text-slate-700 hover:text-slate-950 shadow-sm'
                                 : 'bg-slate-900/40 backdrop-blur-md hover:bg-slate-900/80 hover:text-slate-100 hover:border-slate-700 text-slate-300 shadow-lg'
                               } active:scale-95 leading-normal`
+                            : config.theme === 'synthwave'
+                            ? "flex items-center justify-center gap-1.5 px-2 h-6 min-w-[70px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border border-transparent transition-all duration-300 bg-slate-800/80 hover:bg-slate-900 hover:text-slate-100 hover:border-slate-700 active:scale-95 text-slate-300 leading-normal opacity-80 hover:opacity-100"
                             : "flex items-center justify-center gap-1.5 px-2 h-6 min-w-[70px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border border-transparent transition-all duration-300 bg-[var(--surface-color)] hover:bg-[var(--hover-color)] hover:text-[var(--text-primary)] hover:border-[var(--border-color)] active:scale-95 text-[var(--text-secondary)] leading-normal opacity-80 hover:opacity-100"
                         }
                         title={t('chat.actions.toggle_mode')}
@@ -2112,12 +2500,12 @@ export const ChatArea = ({
                         
                         <button
                             onClick={() => setIsModeSelectorOpen(!isModeSelectorOpen)}
-                            className={config.chatBackgroundImage || config.theme === 'cloud' || config.theme === 'cyberpunk' || config.theme === 'forest'
+                        className={config.chatBackgroundImage || config.theme === 'cloud' || config.theme === 'emerald'
                                 ? `backdrop-blur-md border border-transparent transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md rounded pl-8 pr-9 py-1 text-xs font-mono outline-none flex items-center gap-2 h-6 transform-gpu backface-visibility-hidden ${
-                                    (isModeSelectorOpen || modeFlash) ? 'opacity-100 border-slate-700/50' : 'opacity-70 hover:opacity-100'
+                                    (isModeSelectorOpen || modeFlash) ? 'opacity-100 border-slate-700/50' : isCloudWithoutBackground ? 'opacity-100 hover:opacity-100' : 'opacity-70 hover:opacity-100'
                                   } ${
-                                    (config.theme === 'cloud' && !config.chatBackgroundImage)
-                                    ? `bg-slate-100/30 hover:bg-slate-100/90 hover:border-slate-300/60 ${modeFlash || isModeSelectorOpen ? 'text-slate-950' : 'text-slate-600 hover:text-slate-950'}`
+                                    isCloudWithoutBackground
+                                    ? `bg-white/75 hover:bg-white hover:border-slate-400/70 ${modeFlash || isModeSelectorOpen ? 'text-slate-950' : 'text-slate-700 hover:text-slate-950'}`
                                     : `bg-slate-900/40 hover:bg-slate-900 hover:border-slate-700 ${modeFlash || isModeSelectorOpen ? 'text-slate-100' : 'text-slate-300 hover:text-slate-100'}`
                                   }`
                                 : `border border-transparent rounded pl-8 pr-10 py-1 text-xs font-mono transition-all duration-300 flex items-center gap-2 h-6 transform-gpu backface-visibility-hidden ${
@@ -2130,8 +2518,8 @@ export const ChatArea = ({
                         >
                             <span className="truncate">{agentMode === 'chat' ? t('chat.modes.chat') : t('chat.modes.agent')}</span>
                             <div className={`absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none transition-all duration-300 scale-75 ${
-                                (config.theme === 'cloud' && !config.chatBackgroundImage) ? 'text-slate-400 group-hover/mode:text-slate-600' : 'text-slate-400 group-hover/mode:text-slate-200'
-                            } opacity-40 group-hover/mode:opacity-100 ${isModeSelectorOpen ? 'rotate-180' : ''}`}>
+                                isCloudWithoutBackground ? 'text-slate-600 group-hover/mode:text-slate-800' : 'text-slate-400 group-hover/mode:text-slate-200'
+                            } ${isCloudWithoutBackground ? 'opacity-80' : 'opacity-40'} group-hover/mode:opacity-100 ${isModeSelectorOpen ? 'rotate-180' : ''}`}>
                                 <Icon name="chevron-down" />
                             </div>
                         </button>
@@ -2175,7 +2563,7 @@ export const ChatArea = ({
                     {/* Agent-only toggles: Approval Mode + Safe Mode */}
                     <div className={`mode-transition-wrap ${agentMode === 'agent' ? 'visible-mode agent-options-enter' : 'hidden-mode agent-options-exit'}`}>
                         <div className="flex items-center gap-2">
-                            <div className={`w-px h-4 ${(config.theme === 'cloud' && !config.chatBackgroundImage) ? 'bg-slate-300/50' : 'bg-slate-700/50'}`} />
+                            <div className={`w-px h-4 ${isCloudWithoutBackground ? 'bg-slate-400/70' : 'bg-slate-700/50'}`} />
 
                             {/* Approval Mode Toggle */}
                             <button
@@ -2222,7 +2610,7 @@ export const ChatArea = ({
                     </div>
 
                     <span className={`text-[10px] font-mono hidden sm:inline-block ml-2 transition-opacity duration-300 truncate max-w-[150px] ${
-                        (config.theme === 'cloud' && !config.chatBackgroundImage) ? 'text-slate-500 opacity-60' : 'text-slate-400 opacity-40'
+                        isCloudWithoutBackground ? 'text-slate-700 opacity-90' : 'text-slate-400 opacity-40'
                     }`}>
                         {agentMode === 'chat' && t('chat.labels.free_conversation')}
                     </span>
@@ -2235,8 +2623,10 @@ export const ChatArea = ({
                                 className={`flex items-center justify-center gap-1.5 px-2.5 h-6 min-w-[120px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-300 leading-normal ${
                                     isModelSelectorOpen 
                                     ? 'bg-[var(--primary-color)] border-[var(--primary-color)] text-white shadow-[0_12px_25px_-5px_rgba(0,0,0,0.6),0_0_15px_rgba(var(--primary-rgb,59,130,246),0.4)] bg-gradient-to-b from-white/10 to-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.3),inset_0_-1px_0_rgba(0,0,0,0.4)] [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]' 
-                                    : (config.chatBackgroundImage || config.theme === 'cloud' || config.theme === 'cyberpunk' || config.theme === 'forest')
-                                        ? 'bg-slate-900/30 border-transparent hover:border-slate-500/30 text-slate-400 hover:text-slate-200 backdrop-blur-md hover:shadow-[0_8px_20px_-5px_rgba(0,0,0,0.7)] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),inset_0_-1px_0_rgba(0,0,0,0.1)]'
+                                    : (config.chatBackgroundImage || config.theme === 'cloud' || config.theme === 'emerald')
+                                        ? isCloudWithoutBackground
+                                            ? 'bg-white/75 border-slate-300/80 hover:bg-white hover:border-slate-400 text-slate-700 hover:text-slate-950 backdrop-blur-md hover:shadow-md shadow-sm'
+                                            : 'bg-slate-900/30 border-transparent hover:border-slate-500/30 text-slate-400 hover:text-slate-200 backdrop-blur-md hover:shadow-[0_8px_20px_-5px_rgba(0,0,0,0.7)] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),inset_0_-1px_0_rgba(0,0,0,0.1)]'
                                         : 'bg-slate-800/40 border-transparent hover:border-slate-600 text-slate-500 hover:text-slate-300 hover:shadow-[0_8px_20px_-5px_rgba(0,0,0,0.7)] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),inset_0_-1px_0_rgba(0,0,0,0.1)]'
                                 }`}
                                 title={t('chat.actions.change_model')}
@@ -2282,11 +2672,13 @@ export const ChatArea = ({
 
                         <button
                             onClick={() => onDebugModeChange(!debugMode)}
-                            className={config.chatBackgroundImage || config.theme === 'cloud' || config.theme === 'cyberpunk' || config.theme === 'forest'
-                                ? `flex items-center justify-center gap-1.5 px-2 h-6 min-w-[75px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border border-transparent transition-all duration-300 leading-normal opacity-60 hover:opacity-100 ${debugMode
-                                    ? 'bg-purple-500/20 hover:border-purple-500/40 text-purple-300 shadow-lg shadow-purple-500/10 backdrop-blur-md'
-                                    : (config.theme === 'cloud' && !config.chatBackgroundImage)
-                                      ? 'bg-slate-200/20 hover:bg-slate-100/80 hover:border-slate-300/60 text-slate-500 hover:text-slate-800 backdrop-blur-md'
+                            className={config.chatBackgroundImage || config.theme === 'cloud' || config.theme === 'emerald'
+                                ? `flex items-center justify-center gap-1.5 px-2 h-6 min-w-[75px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border border-transparent transition-all duration-300 leading-normal ${isCloudWithoutBackground ? 'opacity-100' : 'opacity-60'} hover:opacity-100 ${debugMode
+                                    ? isCloudWithoutBackground
+                                      ? 'bg-purple-100 hover:bg-purple-200 hover:border-purple-300 text-purple-800 shadow-sm'
+                                      : 'bg-purple-500/20 hover:border-purple-500/40 text-purple-300 shadow-lg shadow-purple-500/10 backdrop-blur-md'
+                                    : isCloudWithoutBackground
+                                      ? 'bg-white/75 hover:bg-white hover:border-slate-400/70 text-slate-700 hover:text-slate-950 backdrop-blur-md shadow-sm'
                                       : 'bg-slate-900/30 hover:bg-slate-900 hover:border-slate-700 hover:text-slate-100 text-slate-300 backdrop-blur-md'
                                 }`
                                 : `flex items-center justify-center gap-1.5 px-2 h-6 min-w-[75px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border border-transparent transition-all duration-300 leading-normal opacity-80 hover:opacity-100 ${debugMode
@@ -2330,6 +2722,10 @@ export const ChatArea = ({
                     debugMode={debugMode}
                     onDebugModeChange={onDebugModeChange}
                     onPasteImage={handlePasteImage}
+                    hasCustomBackground={!!config.chatBackgroundImage}
+                    isCloudWithoutBackground={isCloudWithoutBackground}
+                    isEmeraldWithoutBackground={isEmeraldWithoutBackground}
+                    isEmeraldWithCustomBackground={isEmeraldWithCustomBackground}
                 />
             </div>
         </div>

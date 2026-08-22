@@ -577,6 +577,54 @@ function convertTelegramTaskLists(text: string): string {
     return text;
 }
 
+const TELEGRAM_SIGNATURE_CORE = '≈̼^.┬.̼^≈‿⟆';
+const TELEGRAM_DEFAULT_SIGNATURE_LEAD = '✨';
+const TELEGRAM_DEFAULT_SIGNATURE_TRAIL = '🌸';
+const DAMAGED_TELEGRAM_SIGNATURE_CORE_REGEX = /≈(?:̼)?\^[.̼]*┬[.̼]*\^≈(?:‿⟆|‿_?[ \t]*(?:(?:<0x[0-9a-f]{2}>|⟨0x[0-9a-f]{2}⟩)(?:[ \t]*(?:<0x[0-9a-f]{2}>|⟨0x[0-9a-f]{2}⟩)){0,7})?|_[ \t]*(?:(?:<0x[0-9a-f]{2}>|⟨0x[0-9a-f]{2}⟩)(?:[ \t]*(?:<0x[0-9a-f]{2}>|⟨0x[0-9a-f]{2}⟩)){0,7})?|[ \t]*(?:<0x[0-9a-f]{2}>|⟨0x[0-9a-f]{2}⟩)(?:[ \t]*(?:<0x[0-9a-f]{2}>|⟨0x[0-9a-f]{2}⟩)){0,7})/giu;
+const TELEGRAM_SIGNATURE_CLOSURE_BEFORE_EMOJI_REGEX = /(≈̼\^\.┬\.̼\^≈‿⟆)[ \t]*[}\)](?=[ \t]*(?:\p{Emoji_Presentation}|\p{Extended_Pictographic}))/gu;
+
+/** Repair the hex-placeholder variant emitted by some models before the shield parses it. */
+function normalizeDamagedTelegramSignatureCore(text: string): string {
+    return text
+        .replace(DAMAGED_TELEGRAM_SIGNATURE_CORE_REGEX, TELEGRAM_SIGNATURE_CORE)
+        .replace(TELEGRAM_SIGNATURE_CLOSURE_BEFORE_EMOJI_REGEX, '$1 ');
+}
+
+function isLikelySignatureContent(content: string): boolean {
+    const normalized = content.normalize('NFC');
+    if (/[┬‿⟆]/u.test(normalized)) return true;
+
+    const approximationCount = (normalized.match(/≈/gu) || []).length;
+    if (approximationCount >= 2 && /[\^._]/u.test(normalized)) return true;
+
+    const emojiCount = (normalized.match(/\p{Emoji_Presentation}|\p{Extended_Pictographic}/gu) || []).length;
+    return emojiCount >= 2
+        && /[≈∫~]/u.test(normalized)
+        && /[\^._]/u.test(normalized);
+}
+
+function getSignatureBoundaryWhitespace(match: string): { leading: string; trailing: string } {
+    const normalizeBoundary = (boundary: string) => {
+        if (!boundary) return '';
+        return boundary.includes('\n') || boundary.includes('\r') ? boundary : ' ';
+    };
+
+    return {
+        leading: normalizeBoundary(match.match(/^\s+/)?.[0] || ''),
+        trailing: normalizeBoundary(match.match(/\s+$/)?.[0] || ''),
+    };
+}
+
+function isSignatureExcludedSyntaxContext(source: string, offset: number): boolean {
+    const lastTagOpen = source.lastIndexOf('<', offset);
+    const lastTagClose = source.lastIndexOf('>', offset);
+    if (lastTagOpen > lastTagClose && source.indexOf('>', offset) !== -1) return true;
+
+    const lineStart = Math.max(source.lastIndexOf('\n', offset - 1) + 1, 0);
+    const beforeOnLine = source.slice(lineStart, offset);
+    return beforeOnLine.lastIndexOf('](') > beforeOnLine.lastIndexOf(')');
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // MAIN FORMATTER CLASS
 // ═══════════════════════════════════════════════════════════════════════
@@ -605,17 +653,57 @@ export class TelegramFormatter implements IFormatter {
         text = text.replace(/<thought>[\s\S]*?<\/thought>/gi, '').trim();
         text = text.replace(/<think[\s\S]*?<\/think>/gi, '').trim();
 
+        // Fenced code must be protected before Signature Shield. This keeps
+        // Jinja/Mustache examples intact while signatures using one or two
+        // protective backticks still reach the normal signature path.
+        text = text.replace(/^[ \t]*(`{3,}|~{3,})([\w./+#-]*)[\t ]*\n([\s\S]*?)\n[ \t]*\1/gm, (match, _fence, lang, code) => {
+            const langLabel = lang ? `${lang}\n` : '';
+            const escapedCode = escapeTelegramHtml(code.trim());
+            return protect(`\n<pre>${langLabel}${escapedCode}</pre>\n`);
+        });
+
+        // Some models serialize the closing face as `_ <0x..><0x..>`.
+        // Canonicalize it before the parenthesis and core-pattern passes.
+        text = normalizeDamagedTelegramSignatureCore(text);
+
         // 1b. Signature shield — clean and protect
-        text = text.replace(/"?\{\{\s*([^\}]+?)\s*\}\}"?/g, (match, signContent) => {
-            if (signContent.includes('≈') || signContent.includes('∫') || signContent.includes('~') || signContent.includes('┬')) {
+        // Normalize a bare `(emoji signature emoji)` wrapper first. Otherwise
+        // the generic optional-wrapper matcher may start at the first emoji
+        // and leave the opening parenthesis in the Telegram message.
+        text = text.replace(
+            /[（(]([^()（）\r\n]*≈̼\^\.┬\.̼\^≈‿⟆[^()（）\r\n]*)[）)]/gu,
+            (match, inner, offset, source) => (
+                isSignatureExcludedSyntaxContext(source, offset) ? match : inner
+            )
+        );
+        text = text.replace(/"?\{\{\s*([^\}]+?)\s*\}\}"?/g, (match, signContent, offset, source) => {
+            if (isSignatureExcludedSyntaxContext(source, offset)) return match;
+            if (isLikelySignatureContent(signContent)) {
                 let clean = signContent.trim();
                 clean = clean.replace(/`([^`\n]+?)`/g, '$1');
                 clean = clean.replace(/"([^"\n]+?)"/g, '$1');
                 clean = clean.replace(/'([^'\n]+?)'/g, '$1');
+                // Parentheses/brackets are accidental model wrappers and are
+                // never part of the canonical neural signature.
+                clean = clean.replace(/[()[\]{}（）]/g, '');
                 clean = clean.replace(/\s{2,}/g, ' ').trim();
                 
                 // Remove combining seagulls below (U+033C) that render poorly in Telegram
                 clean = clean.replace(/\u033C/g, '');
+
+                // Tier 1 must provide the same deterministic bookends as the
+                // web shield when the model omits one or both emojis.
+                const telegramCleanCore = TELEGRAM_SIGNATURE_CORE.replace(/\u033C/g, '');
+                const coreIndex = clean.indexOf(telegramCleanCore);
+                if (coreIndex >= 0) {
+                    const prefix = clean.slice(0, coreIndex);
+                    const suffix = clean.slice(coreIndex + telegramCleanCore.length);
+                    const leading = prefix.match(/\p{Emoji_Presentation}|\p{Extended_Pictographic}/u)?.[0]
+                        || TELEGRAM_DEFAULT_SIGNATURE_LEAD;
+                    const trailing = suffix.match(/\p{Emoji_Presentation}|\p{Extended_Pictographic}/u)?.[0]
+                        || TELEGRAM_DEFAULT_SIGNATURE_TRAIL;
+                    clean = `${leading} ${telegramCleanCore} ${trailing}`;
+                }
                 
                 return protect(`{{ ${clean} }}`);
             }
@@ -626,8 +714,9 @@ export class TelegramFormatter implements IFormatter {
         // Reinforced: stops at double newlines to avoid eating following code blocks.
         // Backtick/quote cleaning limited to 2 chars to protect triple-backtick blocks.
         text = text.replace(
-            /[`"']{0,2}(?:\{\{)?(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E)*)(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*(≈̼\^\.┬\.̼\^≈‿⟆)(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E)*)(?:(?!\n\n)\s)*(?:\}\})?[ \t]*[`"']{0,2}/gu,
-            (fullMatch, leadEmojis, core, trailEmojis) => {
+            /[`"']{0,2}(?:\{\{)?(?:(?!\n\n)\s)*[（(\[]*(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E)*)(?:(?!\n\n)\s)*[（(\[]*(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*(≈̼\^\.┬\.̼\^≈‿⟆)(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*[）)\]]*(?:(?!\n\n)\s)*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E)*)(?:(?!\n\n)\s)*[）)\]]*(?:(?!\n\n)\s)*(?:\}\})?[ \t]*[`"']{0,2}/gu,
+            (fullMatch, leadEmojis, core, trailEmojis, offset, source) => {
+                if (isSignatureExcludedSyntaxContext(source, offset)) return fullMatch;
                 if (!core || !core.includes('┬')) return fullMatch;
                 let lead = (leadEmojis || '').replace(/[\uFE0E\uFE0F]/g, '').trim();
                 let trail = (trailEmojis || '').replace(/[\uFE0E\uFE0F]/g, '').trim();
@@ -637,17 +726,10 @@ export class TelegramFormatter implements IFormatter {
                 // Remove combining seagulls below (U+033C) from the core
                 const cleanCore = core.replace(/\u033C/g, '');
                 
-                return protect(`{{ ${lead} ${escapeTelegramHtml(cleanCore)} ${trail} }}`);
+                const boundary = getSignatureBoundaryWhitespace(fullMatch);
+                return `${boundary.leading}${protect(`{{ ${lead} ${escapeTelegramHtml(cleanCore)} ${trail} }}`)}${boundary.trailing}`;
             }
         );
-
-        // 1c. Fenced code blocks (must protect before bold/italic conversion)
-        text = text.replace(/^[ \t]*(`{3,}|~{3,})([\w./+#-]*)[\t ]*\n([\s\S]*?)\n[ \t]*\1/gm, (match, _fence, lang, code) => {
-            const langLabel = lang ? `${lang}\n` : '';
-            const escapedCode = escapeTelegramHtml(code.trim());
-            // Removed Mermaid replacement to preserve diagram code
-            return protect(`\n<pre>${langLabel}${escapedCode}</pre>\n`);
-        });
 
         // 1d. Inline code (double backticks first, then single)
         text = text.replace(/``([^`\n]+?)``/g, (match, code) => {

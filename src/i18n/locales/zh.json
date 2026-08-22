@@ -68,13 +68,13 @@
     "clean_install_desc": "删除在工作空间中发现的旧会话和数据。",
     "config_error": "配置错误",
     "fatal_error": "致命错误",
-    "connection_lost": "与神经引擎的连接已断开。请检查终端了解详情。",
-    "new_neural_branch": "新神经分支",
+    "connection_lost": "与 AI 引擎的连接已断开。请检查终端了解详情。",
+    "new_neural_branch": "新对话",
     "active_session": "活动会话",
     "rewind_confirm": "将对话回溯到此点？所有后续消息都将丢失。",
-    "config_import_success": "神经引擎：配置已成功导入并同步。",
+    "config_import_success": "配置已成功导入并同步。",
     "no_folder_configured": "未为 \"{{target}}\" 配置文件夹。请在设置中选择一个。",
-    "subsystems_online": "神经子系统已上线！\n\n通过内部框架自动恢复连接。",
+    "subsystems_online": "系统服务已上线！\n\n连接已自动恢复。",
     "aborted_execution": "执行已中止",
     "denied_execution": "执行被拒绝",
     "untitled_session": "未命名会话",
@@ -109,8 +109,66 @@
     "batch_summary": "对 \"{{source_path}}\" 执行了批量操作 ({{operation}})。",
     "web_research_summary": "针对 \"{{query}}\" 的网络研究已完成，研究类别: [{{categories}}]。已分析 {{count}} 个站点。",
     "deep_research_summary": "深度研究已完成：针对类别 [{{categories}}] 生成了包含 {{count}} 个验证来源的分析报告。",
+    "deep_research_plan_ready": "研究计划已准备好供审核：{{topic}}",
+    "deep_research_completed": "深度研究已完成：{{topic}}",
     "outline_summary": "成功生成 \"{{filename}}\" 的结构图。",
     "default_summary": "操作 \"{{name}}\" 已完成。"
+  },
+  "deep_research": {
+    "completion_notice": "研究已成功完成。您可以打开右侧面板查看，或检查 Library 中创建的文件：{{file}}。",
+    "library_report": "保存在 Library 中的 Markdown 报告",
+    "plan_title_proposed": "拟定研究计划",
+    "plan_title": "研究计划",
+    "runtime_planned": "将使用以下模型执行",
+    "runtime_running": "本次研究正在使用以下模型执行",
+    "runtime_completed": "本次研究已使用以下模型完成",
+    "objectives": "目标",
+    "work_phases": "工作阶段",
+    "approve_start": "批准计划并开始",
+    "open_investigation": "打开研究",
+    "checking": "检查中…",
+    "starting": "正在开始…",
+    "request_adjustments": "请求修改",
+    "adjust_placeholder": "说明计划需要如何修改…",
+    "cancel": "取消",
+    "send_adjustments": "发送修改",
+    "configure_runtime": "开始 Deep Research 前，请为{{mode}}模式配置提供商和模型。",
+    "configure_adjustments_runtime": "请求修改前，请为{{mode}}模式配置提供商和模型。",
+    "engine_unavailable": "技能引擎或命令文件夹不可用。",
+    "runtime_missing": "该计划未保留创建它的模型。开始研究前请生成新计划。",
+    "execution_error": "无法启动 Deep Research。",
+    "skill_error": "Deep Research 返回了错误。",
+    "adjust_error": "无法修改研究计划。",
+    "pdf_unavailable": "PDF 导出器不可用。",
+    "panel_title": "Deep Research",
+    "research_default": "研究",
+    "stage_planning": "规划",
+    "stage_execution": "执行",
+    "stage_verification": "验证",
+    "stage_synthesis": "综合",
+    "approved_timeline": "用户已批准计划。正在准备研究子代理…",
+    "resume_stage": "正在恢复研究",
+    "export_pdf": "导出 PDF",
+    "generating_pdf": "生成中…",
+    "convert_pdf_title": "将研究转换为 PDF",
+    "close_panel": "关闭面板",
+    "interrupted": "研究已中断",
+    "research_interrupted": "研究已被中断。",
+    "checkpoint_available": "检查点仍然可用。",
+    "resuming": "恢复中…",
+    "resume_checkpoint": "从检查点恢复",
+    "markdown_failed": "无法保存到 Library",
+    "markdown_saved": "Markdown 已保存到 Library",
+    "markdown_saved_copy": "Markdown 副本已成功保存。",
+    "pdf_saved": "PDF 已保存：{{path}}",
+    "pdf_error": "导出 PDF 时出错：{{error}}",
+    "approved_plan": "已批准的计划",
+    "activity": "活动",
+    "sources_count": "{{count}} 个来源",
+    "preparing_log": "正在准备研究日志…",
+    "draft_in_progress": "正在构建草稿",
+    "validated_sources": "已验证来源（{{count}}）",
+    "source_default": "来源 {{count}}"
   },
   "onboarding": {
     "title": "系统初始化",
@@ -223,7 +281,7 @@
       "no_context": "无上下文。"
     },
     "engines": {
-      "title": "神经引擎",
+      "title": "AI 引擎",
       "subtitle": "配置模型和后备路由",
       "chat_title": "聊天界面",
       "chat_desc": "用于快速对话的主模型。",
@@ -234,7 +292,7 @@
       "fallback_title": "Master Fallback",
       "fallback_desc": "如果主路由失败，则进行紧急路由。",
       "select_provider": "提供商",
-      "select_model": "神经模型",
+      "select_model": "AI 模型",
       "typing_placeholder": "模型名称...",
       "common_models": "检测到的模型",
       "routing_provider": "路由提供商"
@@ -302,7 +360,7 @@
     "tabs": {
       "core": "Core System",
       "core_desc": "平台配置与运行密钥",
-      "skills": "Neural Skills",
+      "skills": "技能",
       "skills_desc": "突触核心架构"
     },
     "actions": {
@@ -326,7 +384,7 @@
       "select": "选择"
     },
     "orchestration": {
-      "title": "神经编排模型路由",
+      "title": "AI 模型路由",
       "chat_runtime": "聊天运行时",
       "agent_runtime": "代理运行时",
       "vision_runtime": "视觉涡流 (愿景)",
@@ -338,7 +396,7 @@
       "select_model": "选择目标架构..."
     },
     "security": {
-      "title": "神经安全与主引擎设置",
+      "title": "安全与主引擎设置",
       "vault_title": "安全凭据库",
       "vault_desc": "管理主逻辑回退和加密的 API 密钥",
       "fallback_title": "主回退路由",
@@ -361,7 +419,13 @@
       "ollama_gpu": "GPU 层数 (num_gpu)",
       "ollama_gpu_desc": "卸载到 GPU 的层数。-1 为自动检测。",
       "ollama_ctx": "上下文窗口 (num_ctx)",
-      "ollama_ctx_desc": "令牌内存大小。较大的值会消耗更多 VRAM。"
+      "ollama_ctx_desc": "令牌内存大小。较大的值会消耗更多 VRAM。",
+      "ollama_zero_overhead_title": "解除 VRAM 限制（无预留）",
+      "ollama_zero_overhead_desc": "允许 Ollama 使用全部可用 VRAM，不保留额外空间。仅限专用于推理的 GPU；更改后将重启 Ollama。",
+      "ollama_zero_overhead_enabled": "实际状态：未预留额外 VRAM。",
+      "ollama_zero_overhead_disabled": "实际状态：已启用 512 MB 安全预留。",
+      "ollama_zero_overhead_pending": "待应用的更改：确认更改后才会生效。",
+      "ollama_zero_overhead_syncing": "正在检查 Ollama 的实际状态…"
     },
     "vosk": {
       "title": "Vosk 识别引擎",
@@ -408,8 +472,8 @@
       "mintotray_desc": "关闭应用程序时将其隐藏到托盘"
     },
     "backup": {
-      "title": "神经网络维护与备份",
-      "subtitle": "神经网络工作区备份",
+      "title": "维护与备份",
+      "subtitle": "工作区备份",
       "desc": "导出环境（配置、会话、计划任务、命令和技能）的完整副本到一个压缩文件中。非常适合迁移或附加安全性。",
       "export_btn": "导出备份",
       "restore_btn": "恢复备份",
@@ -423,30 +487,33 @@
     "reset_btn": "重置并重新运行设置",
     "save_btn": "保存",
     "alerts": {
-      "ollama_error_title": "本地神经引擎无响应",
+      "ollama_error_title": "本地引擎无响应",
       "ollama_error_desc": "请确认 Ollama 已在 {{url}} 上运行，且至少有一个模型已初始化。"
     }
   },
   "sidebar": {
     "tabs": {
-      "chat": "Neural Chat",
-      "cortex": "Cortex Editor",
-      "commands": "Command Editor",
-      "scheduler": "Neural Tasks",
-      "settings": "Control Room"
+      "chat": "对话",
+      "editor": "Cortex 编辑器",
+      "cortex": "Core",
+      "commands": "Commands",
+      "scheduler": "自动化",
+      "settings": "控制室"
     },
     "tooltips": {
       "new_session": "新会话",
       "import_session": "导入会话",
-      "sessions": "Neural Sessions",
+      "sessions": "会话",
       "library": "上下文库",
       "expand_library": "展开库",
       "new_doc": "新上下文文档",
       "delete_file": "删除 {{filename}}",
-      "close_manager": "关闭会话管理器"
-    },
+    "close_manager": "关闭会话管理器",
+    "collapse_sidebar": "收起侧边栏",
+    "expand_sidebar": "展开侧边栏"
+  },
     "footer": {
-      "no_cortex": "无皮层扩展"
+      "no_cortex": "暂无文件"
     }
   },
   "chat": {
@@ -457,13 +524,136 @@
       "analyzing": "正在分析参数...",
       "live_rec": "正在聆听..."
     },
+    "welcome": {
+      "greeting": "你好，{{name}}",
+      "greetings": {
+        "one": "你好，{{name}}",
+        "two": "很高兴见到你，{{name}}",
+        "three": "我已经准备好了，{{name}}",
+        "four": "很高兴见到你，{{name}}",
+        "five": "我在听，{{name}}",
+        "six": "今天一起创造精彩内容，{{name}}",
+        "seven": "我会一直帮助你，{{name}}"
+      },
+      "messages": {
+        "one": "今天想一起探索、创作或解决什么问题？",
+        "two": "我已经准备好把想法变成清晰的计划。",
+        "three": "我们可以一起研究、分析、写作或构建新事物。",
+        "four": "给我一个挑战，我们一起找到下一步。",
+        "five": "你的下一个问题，也许会打开一条新的思路。"
+      },
+      "suggestions": {
+        "learn": {
+          "label": "了解一个主题",
+          "label_alt": "探索一个新知识",
+          "prompt": "帮我了解：。请解释核心概念，提供清晰的例子，并根据我的水平调整深度。"
+        },
+        "research": {
+          "label": "深入研究主题",
+          "label_alt": "对比主题的可靠来源",
+          "prompt": "进行深度研究："
+        },
+        "news": {
+          "label": "探索最新新闻",
+          "label_alt": "了解最新动态",
+          "prompt": "调查关于：。的最新新闻。请总结发生了什么、何时发生，以及每个要点的来源。"
+        },
+        "organize": {
+          "label": "整理想法或项目",
+          "label_alt": "把想法变成步骤",
+          "prompt": "帮我整理：。请把我提供的内容转换成目标、优先级和明确的下一步。"
+        },
+        "ideas": {
+          "label": "发展新想法",
+          "label_alt": "探索创意方案",
+          "prompt": "帮我为：。生成想法。请提出多个方案，比较优缺点，并建议从哪里开始。"
+        },
+        "analyze": {
+          "label": "分析相关信息",
+          "label_alt": "找出模式与风险",
+          "prompt": "分析：。请找出关键点、风险、待解决的问题，并给出有依据的结论。"
+        },
+        "plan": {
+          "label": "创建行动计划",
+          "label_alt": "设计分步路线",
+          "prompt": "帮我为：。创建计划。请告诉我你想实现什么，我会给出清晰的起步步骤。"
+        },
+        "widget": {
+          "label": "创建一个小组件",
+          "label_alt": "设计互动小组件",
+          "prompt": "帮我为：。创建一个小组件。简单说说你希望它展示或完成什么。"
+        },
+        "food": {
+          "label": "准备一顿饭",
+          "label_alt": "设计一道食谱",
+          "prompt": "帮我用：。准备一顿饭。告诉我你手头有哪些食材，或想吃什么。"
+        },
+        "schedule": {
+          "label": "安排一个任务",
+          "label_alt": "创建重复任务",
+          "prompt": "帮我为：。安排一个任务。说明你希望它什么时候重复，以及要完成什么。"
+        },
+        "repair": {
+          "label": "修复某个问题",
+          "label_alt": "解决一个故障",
+          "prompt": "帮我修复：。告诉我哪里不正常，以及你希望它变成什么样。"
+        },
+        "workflow": {
+          "label": "改善我的工作流程",
+          "label_alt": "让工作变得更轻松",
+          "prompt": "帮我改善工作流程：。告诉我现在是怎么做的，以及想简化哪一步。"
+        },
+        "emotions": {
+          "label": "整理我的情绪",
+          "label_alt": "聊聊一件难受的事",
+          "prompt": "帮我面对现在的感受：。告诉我发生了什么，以及希望得到哪种支持。"
+        },
+        "personal": {
+          "label": "处理一件私事",
+          "label_alt": "想想个人情况",
+          "prompt": "帮我处理一件个人的事：。告诉我发生了什么，以及想决定或解决什么。"
+        },
+        "something": {
+          "label": "发生了一些事",
+          "label_alt": "我想告诉你一件事",
+          "prompt": "发生了一些事。"
+        },
+        "decision": {
+          "label": "我不知道该怎么办",
+          "label_alt": "帮我做个决定",
+          "prompt": "我不知道该怎么办。"
+        },
+        "conversation": {
+          "label": "我想聊聊一件事",
+          "label_alt": "我想找个人倾诉",
+          "prompt": "我想聊聊一件事。"
+        },
+        "idea": {
+          "label": "我有一个想法",
+          "label_alt": "我想发展一个想法",
+          "prompt": "我有一个想法，想把它发展起来。"
+        },
+        "goal": {
+          "label": "我想实现一件事",
+          "label_alt": "我心里有一个目标",
+          "prompt": "我想实现一件事，但不知道从哪里开始。"
+        },
+        "question": {
+          "label": "我有一个问题",
+          "label_alt": "我想咨询一件事",
+          "prompt": "我有一个问题。"
+        }
+      }
+    },
     "actions": {
       "rewind": "编辑并重绕",
       "copy": "复制",
       "copied": "已复制！",
       "read_aloud": "朗读",
+      "pause_reading": "暂停朗读",
+      "resume_reading": "继续朗读",
       "stop_reading": "停止朗读",
-      "abort": "中断神经进程",
+      "abort": "中断进程",
       "send": "发送信号",
       "send_instruction": "作为指令发送",
       "send_instruction_desc": "作为直接指令发送（强制调用工具）",
@@ -498,7 +688,7 @@
       "mic_error": "❌ 无法访问麦克风：{{error}}",
       "no_voice_model": "⚠️ 未选择语音模型。请在核心系统设置中进行配置。",
       "voice_start_error": "❌ 启动录音失败：{{error}}",
-      "logs_copied": "✅ 神经日志：完整历史记录已成功复制到剪贴板。"
+      "logs_copied": "✅ 日志：完整历史记录已成功复制到剪贴板。"
     },
     "modes": {
       "chat": "聊天",
@@ -508,12 +698,12 @@
       "select_model": "选择模型",
       "temporary_change": "临时更改（未保存）",
       "no_models_available": "无可用模型",
-      "debug_interface": "神经调试界面",
+      "debug_interface": "调试界面",
       "debug_desc": "原始上下文与内部日志流",
-      "no_data": "此会话尚未记录原始神经数据。",
+      "no_data": "此会话尚未记录原始数据。",
       "steps_executed_other": "已执行 {{count}} 个步骤",
       "free_conversation": "自由对话",
-      "link_intermittent": "神经链接中断：本地目录休眠中。",
+      "link_intermittent": "连接中断：本地目录未激活。",
       "wake_up": "唤醒链接",
       "mode": "模式:",
       "telegram": "telegram",
@@ -541,7 +731,7 @@
       "document_analyzing": "正在提取文档内容...",
       "multimodal_integration": "多模态集成",
       "multimodal_analyzing": "正在同步视觉上下文并提取文档内容...",
-      "neural_syncing": "正在同步神经组件...",
+      "neural_syncing": "正在同步组件...",
       "prompt": {
         "protocol_reinforcement": "协议强化",
         "useful_reminders": "有用提醒",
@@ -596,7 +786,13 @@
     }
   },
   "editor": {
-    "title": "Storage Explorer",
+    "title": "Cortex 编辑器",
+    "workspace_desc": "助手指令与个性",
+    "file_list_title": "文件",
+    "scopes": {
+      "core": "Core",
+      "commands": "Commands"
+    },
     "cancel": "取消",
     "edit": "编辑",
     "editor": "Editor",
@@ -609,11 +805,11 @@
     "unsaved": "Unsaved",
     "discard": "放弃",
     "save": "保存",
-    "placeholder": "在此输入神经逻辑...",
-    "standby_title": "Neural Standby",
+    "placeholder": "在此输入...",
+    "standby_title": "编辑器待命",
     "standby_desc": "选择一个文件开始编辑",
     "confirm": {
-      "delete_warning": "⚠️ 警告：从 Cortex 或 Command 路径删除文件是一项高风险操作。删除重要的系统文件或自定义指令可能会破坏 mikuCentral 的功能，或导致无法撤销的数据丢失。",
+      "delete_warning": "⚠️ 警告：从 Core 或 Commands 路径删除文件是一项高风险操作。删除重要的系统文件或自定义指令可能会破坏 mikuCentral 的功能，或导致无法撤销的数据丢失。",
       "delete_last": "您确定要永久删除 \"{{filename}}\" 吗？此操作不可逆。"
     }
   },
@@ -644,7 +840,7 @@
     }
   },
   "scheduler": {
-    "title": "Neural Tasks",
+    "title": "自动化",
     "subtitle": "自动化重复任务和系统维护",
     "add_btn": "添加新任务",
     "save_btn": "保存任务",
@@ -658,7 +854,7 @@
       "prompt_placeholder": "当此任务运行时，代理应该做什么？请具体说明...",
       "interval": "间隔",
       "command": "指令",
-      "experimental": "实验性：通过神经钩子进行后台执行...",
+      "experimental": "实验性：通过后台钩子执行...",
       "schedule_type": "计划类型",
       "interval_label": "间隔（分钟）",
       "cron_label": "Cron 表达式",
@@ -803,7 +999,7 @@
     "file": "文件",
     "edit": "编辑",
     "view": "视图",
-    "neural_engine": "神经引擎",
+    "neural_engine": "AI 引擎",
     "help": "帮助",
     "options": {
       "new_session": "新建会话",
@@ -838,36 +1034,36 @@
     "audio_engine": "音频引擎",
     "vosk_url": "https://alphacephei.com/vosk/",
     "security_layer": "安全层",
-    "security_sandbox": "神经沙箱",
+    "security_sandbox": "安全环境",
     "python_runtime_internal": "Python 3.11 (内部)"
   },
   "skills": {
     "repository": "突触仓库",
     "properties": "属性",
-    "neural_logic": "神经逻辑",
-    "blueprints_title": "神经蓝图",
+    "neural_logic": "系统逻辑",
+    "blueprints_title": "蓝图",
     "blueprints_desc": "选择部署基础",
-    "configure_title": "配置神经技能",
+    "configure_title": "配置技能",
     "configure_desc": "为部署分配唯一标识符",
     "placeholder_id": "技能 ID...",
     "btn_back": "返回",
     "btn_deploy": "部署",
-    "standby_title": "神经待机",
-    "standby_desc": "等待选择以初始化神经通路",
+    "standby_title": "待命",
+    "standby_desc": "等待选择以初始化路径",
     "delete_confirm": "您确定要永久删除技能 \"{{name}}\" 吗？此操作不可撤销。",
     "delete_btn": "删除技能",
     "automatic_title": "自动执行系统",
-    "automatic_desc": "神经参数由核心引擎动态管理。",
+    "automatic_desc": "参数由核心引擎动态管理。",
     "email_identity": "电子邮件身份",
     "app_password": "应用密码",
-    "error_loading": "加载神经技能时出错。",
+    "error_loading": "加载技能时出错。",
     "error_creating": "技能创建管道出错。",
     "error_saving": "保存技能文件失败，请检查权限。",
     "widget_manager_title": "Widget Manager",
     "widget_manager_back": "Back to Skill",
     "widget_launch": "Initialize Element",
-    "widget_delete_confirm": "A neural component will be permanently erased. Proceed?",
-    "widget_empty_title": "No Neural Widgets",
+    "widget_delete_confirm": "组件将被永久删除。是否继续？",
+    "widget_empty_title": "没有小组件",
     "widget_empty_desc": "Ask Miku to generate a new widget to get started."
   },
   "dialogs": {
@@ -888,6 +1084,6 @@
     "voice_model_delete_confirm": "您确定要删除模型 {{name}} 吗？",
     "voice_model_select": "请先选择一个模型。",
     "setup_complete": "✅ 设置完成！\n\n您的环境已就绪。请前往设置以链接创建在 {{path}} 的文件夹",
-    "subsystems_online": "✅ 神经子系统已上线！\n\n您的环境已完全链接并准备就绪。"
+    "subsystems_online": "✅ 系统服务已上线！\n\n您的环境已完全连接并准备就绪。"
   }
 }

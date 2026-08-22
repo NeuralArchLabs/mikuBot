@@ -600,6 +600,7 @@ export const InteractiveMarkdownRenderer = React.memo(InteractiveMarkdownRendere
 export interface SelectOption {
     value: string;
     label: string;
+    prefix?: React.ReactNode;
     isCustom?: boolean;
     style?: React.CSSProperties;
     className?: string;
@@ -663,7 +664,10 @@ export const ModernSelect = ({
                 onClick={() => setIsOpen(!isOpen)}
                 className={`w-full bg-[var(--surface-color)] border border-[var(--border-color)] hover:border-[var(--primary-color)]/30 rounded-2xl px-8 py-4 text-xs text-[var(--text-primary)] outline-none transition-all font-black flex items-center justify-between group backdrop-blur-md`}
             >
-                <span className="flex-grow text-center truncate px-2 group-hover:text-[var(--primary-color)] transition-colors">{activeOption ? activeOption.label : placeholder}</span>
+                <span className="flex-grow inline-flex items-center justify-center gap-1 text-center truncate px-2 group-hover:text-[var(--primary-color)] transition-colors">
+                    {activeOption?.prefix}
+                    {activeOption ? activeOption.label : placeholder}
+                </span>
                 <Icon 
                     name={isOpen ? 'times' : (iconVariant === 'plus' ? 'plus' : 'chevron-down')} 
                     className={`text-slate-600 text-[10px] ml-2 transition-all ${isOpen ? 'duration-500 transform rotate-90 scale-125 text-[var(--primary-color)] opacity-100' : 'duration-200 rotate-0 scale-100 opacity-60'}`} 
@@ -702,7 +706,7 @@ export const ModernSelect = ({
                                                 onChange(opt.value);
                                                 setIsOpen(false);
                                             }}
-                                            className={`px-6 py-2.5 mx-1 rounded-xl text-[10px] font-black tracking-widest cursor-pointer transition-all ${
+                                            className={`px-6 py-2.5 mx-1 rounded-xl text-[10px] font-black tracking-widest cursor-pointer transition-all flex items-center gap-2 ${
                                                 value === opt.value 
                                                     ? 'bg-[var(--primary-color)]/20 text-[var(--primary-color)] shadow-lg' 
                                                     : isCustom 
@@ -711,6 +715,7 @@ export const ModernSelect = ({
                                             } ${isCustom ? 'italic opacity-60' : ''} ${opt.className || (opt.style?.fontFamily ? '' : 'uppercase')}`}
                                             style={opt.style}
                                         >
+                                            {opt.prefix}
                                             {isCustom && !opt.label.toLowerCase().includes('personal') ? `✨ ${opt.label}` : opt.label}
                                         </div>
                                     </React.Fragment>

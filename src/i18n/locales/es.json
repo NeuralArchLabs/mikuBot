@@ -68,13 +68,13 @@
     "clean_install_desc": "Eliminar sesiones y datos antiguos encontrados en el Workspace.",
     "config_error": "Error de Configuración",
     "fatal_error": "Error Fatal",
-    "connection_lost": "Se perdió la conexión con el Motor Neuronal. Revisa la terminal para más detalles.",
-    "new_neural_branch": "Nueva Rama Neuronal",
+    "connection_lost": "Se perdió la conexión con el motor de IA. Revisa la terminal para más detalles.",
+    "new_neural_branch": "Nueva conversación",
     "active_session": "Sesión Activa",
     "rewind_confirm": "¿Rebobinar la conversación hasta este punto? Todos los mensajes posteriores se perderán.",
-    "config_import_success": "Motor Neuronal: Configuración importada y sincronizada correctamente.",
+    "config_import_success": "Configuración importada y sincronizada correctamente.",
     "no_folder_configured": "No hay carpeta configurada para \"{{target}}\". Selecciona una en Configuración.",
-    "subsystems_online": "¡Subsistemas Neuronales en Línea!\n\nEnlaces restaurados automáticamente a través del marco interno.",
+    "subsystems_online": "¡Servicios del sistema en línea!\n\nConexiones restauradas automáticamente.",
     "aborted_execution": "Ejecución Abortada",
     "denied_execution": "Ejecución Denegada",
     "untitled_session": "Sesión sin título",
@@ -109,8 +109,66 @@
     "batch_summary": "Operación por lotes ({{operation}}) realizada sobre \"{{source_path}}\".",
     "web_research_summary": "Investigación web completada para: \"{{query}}\" en categorías: [{{categories}}]. Se han analizado {{count}} sitios.",
     "deep_research_summary": "Investigación profunda finalizada: Dossier técnico generado con {{count}} fuentes validadas tras auditar categorías [{{categories}}].",
+    "deep_research_plan_ready": "Plan de investigación listo para revisión: {{topic}}",
+    "deep_research_completed": "Investigación profunda finalizada: {{topic}}",
     "outline_summary": "Mapa estructural de \"{{filename}}\" generado correctamente.",
     "default_summary": "Operación \"{{name}}\" completada."
+  },
+  "deep_research": {
+    "completion_notice": "La investigación finalizó correctamente. Puedes revisarla abriendo el panel lateral derecho o consultando el archivo creado en Library: {{file}}.",
+    "library_report": "el reporte Markdown guardado en Library",
+    "plan_title_proposed": "Plan de investigación propuesto",
+    "plan_title": "Plan de investigación",
+    "runtime_planned": "Se ejecutará con",
+    "runtime_running": "Esta investigación se está realizando con",
+    "runtime_completed": "Esta investigación se realizó con",
+    "objectives": "Objetivos",
+    "work_phases": "Fases de trabajo",
+    "approve_start": "Aprobar plan e iniciar",
+    "open_investigation": "Abrir investigación",
+    "checking": "Comprobando…",
+    "starting": "Iniciando…",
+    "request_adjustments": "Solicitar ajustes",
+    "adjust_placeholder": "Indica qué debe cambiar en el plan…",
+    "cancel": "Cancelar",
+    "send_adjustments": "Enviar ajustes",
+    "configure_runtime": "Configura proveedor y modelo para el modo {{mode}} antes de iniciar Deep Research.",
+    "configure_adjustments_runtime": "Configura proveedor y modelo para el modo {{mode}} antes de solicitar ajustes.",
+    "engine_unavailable": "El motor de skills o la carpeta de comandos no está disponible.",
+    "runtime_missing": "El plan no conserva el modelo del modo que lo creó. Genera un plan nuevo antes de iniciar la investigación.",
+    "execution_error": "No se pudo ejecutar Deep Research.",
+    "skill_error": "Deep Research devolvió un error.",
+    "adjust_error": "No se pudo ajustar el plan.",
+    "pdf_unavailable": "El exportador PDF no está disponible.",
+    "panel_title": "Deep Research",
+    "research_default": "Investigación",
+    "stage_planning": "Planificación",
+    "stage_execution": "Ejecución",
+    "stage_verification": "Verificación",
+    "stage_synthesis": "Síntesis",
+    "approved_timeline": "Plan aprobado por el usuario. Preparando subagentes investigadores…",
+    "resume_stage": "Retomando investigación",
+    "export_pdf": "Exportar PDF",
+    "generating_pdf": "Generando…",
+    "convert_pdf_title": "Convertir la investigación a PDF",
+    "close_panel": "Cerrar panel",
+    "interrupted": "Investigación interrumpida",
+    "research_interrupted": "La investigación fue interrumpida.",
+    "checkpoint_available": "El checkpoint permanece disponible.",
+    "resuming": "Retomando…",
+    "resume_checkpoint": "Retomar desde checkpoint",
+    "markdown_failed": "No se pudo guardar en Library",
+    "markdown_saved": "Markdown guardado en Library",
+    "markdown_saved_copy": "La copia Markdown se guardó correctamente.",
+    "pdf_saved": "PDF guardado: {{path}}",
+    "pdf_error": "Error al exportar PDF: {{error}}",
+    "approved_plan": "Plan aprobado",
+    "activity": "Actividad",
+    "sources_count": "{{count}} fuentes",
+    "preparing_log": "Preparando la bitácora de investigación…",
+    "draft_in_progress": "Borrador en construcción",
+    "validated_sources": "Fuentes validadas ({{count}})",
+    "source_default": "Fuente {{count}}"
   },
   "onboarding": {
     "title": "Inicialización del Sistema",
@@ -225,7 +283,7 @@
       "no_context": "Sin contexto."
     },
     "engines": {
-      "title": "MOTORES NEURALES",
+      "title": "MOTORES DE IA",
       "subtitle": "Configuración de Modelos y Fallback",
       "chat_title": "Interfaz de Chat",
       "chat_desc": "Modelo principal para conversación rápida.",
@@ -236,7 +294,7 @@
       "fallback_title": "Master Fallback",
       "fallback_desc": "Enrutamiento de emergencia si falla el principal.",
       "select_provider": "Proveedor",
-      "select_model": "Modelo Neuronal",
+      "select_model": "Modelo de IA",
       "typing_placeholder": "Nombre del modelo...",
       "common_models": "Modelos Detectados",
       "routing_provider": "Proveedor en Ruta"
@@ -304,7 +362,7 @@
     "tabs": {
       "core": "Core System",
       "core_desc": "Configuración de Plataforma y Claves",
-      "skills": "Neural Skills",
+      "skills": "Habilidades",
       "skills_desc": "Arquitectura de Núcleo Sináptico"
     },
     "actions": {
@@ -316,7 +374,7 @@
       "save_sync": "Guardar"
     },
     "pathways": {
-      "title": "Rutas del Sistema Neural",
+      "title": "Rutas del sistema",
       "workspace": "WorkSpace",
       "workspace_desc": "DEFAULT DIRECTORY",
       "core": "Core",
@@ -343,7 +401,7 @@
       "config_pending": "Configuración Pendiente"
     },
     "security": {
-      "title": "Seguridad Neural y Motor Principal",
+      "title": "Seguridad y motor principal",
       "vault_title": "Bóveda de Credenciales",
       "vault_desc": "Gestión de fallbacks y llaves cifradas",
       "fallback_title": "Enrutamiento Maestro de Respaldo",
@@ -372,7 +430,13 @@
       "ollama_main_gpu": "GPU Principal (index)",
       "ollama_main_gpu_desc": "En sistemas con múltiples tarjetas, define cuál se usará para el procesamiento principal.",
       "ollama_threads": "Hilos de CPU (num_thread)",
-      "ollama_threads_desc": "Número de hilos para computación. 0 es automático."
+      "ollama_threads_desc": "Número de hilos para computación. 0 es automático.",
+      "ollama_zero_overhead_title": "Liberar límite de VRAM (sin reserva)",
+      "ollama_zero_overhead_desc": "Permite a Ollama usar toda la VRAM disponible, sin reserva adicional. Úsalo sólo en GPUs dedicadas a inferencia; al cambiarlo, Ollama se reinicia.",
+      "ollama_zero_overhead_enabled": "Estado efectivo: sin reserva adicional de VRAM.",
+      "ollama_zero_overhead_disabled": "Estado efectivo: reserva de seguridad de 512 MB activa.",
+      "ollama_zero_overhead_pending": "Cambio pendiente: se aplicará al confirmar los cambios.",
+      "ollama_zero_overhead_syncing": "Verificando el estado efectivo de Ollama…"
     },
     "vosk": {
       "title": "Motor de Reconocimiento Vosk",
@@ -429,8 +493,8 @@
       "mintotray_desc": "Cerrar oculta la app en la bandeja"
     },
     "backup": {
-      "title": "Mantenimiento Neural y Backup",
-      "subtitle": "Copia de Seguridad del Workspace",
+      "title": "Mantenimiento y copias de seguridad",
+      "subtitle": "Copia de seguridad del espacio de trabajo",
       "desc": "Exporta una copia completa de tu entorno (configuraciones, sesiones, tareas programadas, comandos y habilidades) en un solo archivo comprimido. Ideal para migraciones o seguridad adicional.",
       "export_btn": "Exportar Backup",
       "restore_btn": "Restaurar Copia",
@@ -444,30 +508,33 @@
     "reset_btn": "Reiniciar Configuración",
     "save_btn": "Guardar",
     "alerts": {
-      "ollama_error_title": "Motor Neural Local no Responde",
+      "ollama_error_title": "Motor local no responde",
       "ollama_error_desc": "Verifica que Ollama esté activo en {{url}} y que al menos un modelo esté inicializado."
     }
   },
   "sidebar": {
     "tabs": {
-      "chat": "Neural Chat",
-      "cortex": "Cortex Editor",
-      "commands": "Command Editor",
-      "scheduler": "Neural Tasks",
-      "settings": "Control Room"
+      "chat": "Conversación",
+      "editor": "Editor del Córtex",
+      "cortex": "Core",
+      "commands": "Commands",
+      "scheduler": "Automatizaciones",
+      "settings": "Sala de Control"
     },
     "tooltips": {
       "new_session": "Nueva Sesión",
       "import_session": "Importar Sesión",
-      "sessions": "Neural Sessions",
+      "sessions": "Sesiones",
       "library": "Biblioteca de Contexto",
       "expand_library": "Expandir Biblioteca",
       "new_doc": "Nuevo Documento de Contexto",
       "delete_file": "Eliminar {{filename}}",
-      "close_manager": "Cerrar Gestor de Sesiones"
-    },
+    "close_manager": "Cerrar Gestor de Sesiones",
+    "collapse_sidebar": "Contraer barra lateral",
+    "expand_sidebar": "Expandir barra lateral"
+  },
     "footer": {
-      "no_cortex": "Sin expansión de cortex"
+      "no_cortex": "Sin archivos"
     }
   },
   "chat": {
@@ -478,13 +545,136 @@
       "analyzing": "Analizando Parámetros...",
       "live_rec": "ESCUCHANDO..."
     },
+    "welcome": {
+      "greeting": "Hola, {{name}}",
+      "greetings": {
+        "one": "Hola, {{name}}",
+        "two": "Qué gusto verte, {{name}}",
+        "three": "Listo para ayudarte, {{name}}",
+        "four": "Me alegra verte, {{name}}",
+        "five": "Te escucho, {{name}}",
+        "six": "Vamos a crear algo genial, {{name}}",
+        "seven": "Aquí estoy para ayudarte, {{name}}"
+      },
+      "messages": {
+        "one": "¿Qué te gustaría explorar, crear o resolver hoy?",
+        "two": "Estoy listo para convertir una idea en un plan claro.",
+        "three": "Podemos investigar, analizar, escribir o construir algo juntos.",
+        "four": "Dame un reto y encontraremos el siguiente paso.",
+        "five": "Tu próxima pregunta puede abrir una nueva ruta de trabajo."
+      },
+      "suggestions": {
+        "learn": {
+          "label": "Aprender sobre un tema",
+          "label_alt": "Descubrir un tema nuevo",
+          "prompt": "Ayúdame a aprender sobre: . Explica los conceptos esenciales, usa ejemplos claros y adapta la profundidad a mi nivel."
+        },
+        "research": {
+          "label": "Investigar a fondo",
+          "label_alt": "Contrastar fuentes sobre un tema",
+          "prompt": "Haz una investigación profunda sobre: "
+        },
+        "news": {
+          "label": "Explorar noticias recientes",
+          "label_alt": "Ponme al día con las noticias",
+          "prompt": "Investiga las noticias más recientes sobre: . Resume qué ocurrió, cuándo ocurrió y qué fuentes respaldan cada punto."
+        },
+        "organize": {
+          "label": "Organizar una idea o proyecto",
+          "label_alt": "Convertir una idea en pasos",
+          "prompt": "Ayúdame a organizar: . Convierte lo que te comparta en objetivos, prioridades y pasos concretos para avanzar."
+        },
+        "ideas": {
+          "label": "Desarrollar ideas nuevas",
+          "label_alt": "Proponer alternativas creativas",
+          "prompt": "Ayúdame a generar ideas para: . Propón varias alternativas, compara sus ventajas y sugiere por cuál conviene empezar."
+        },
+        "analyze": {
+          "label": "Analizar información",
+          "label_alt": "Encontrar patrones y riesgos",
+          "prompt": "Analiza: . Identifica los puntos clave, los riesgos, las dudas pendientes y una conclusión razonada."
+        },
+        "plan": {
+          "label": "Crear un plan de acción",
+          "label_alt": "Diseñar una ruta paso a paso",
+          "prompt": "Ayúdame a crear un plan para: . Cuéntame qué quieres lograr y te propongo pasos claros para empezar."
+        },
+        "widget": {
+          "label": "Crear un widget",
+          "label_alt": "Diseñar un widget interactivo",
+          "prompt": "Ayúdame a crear un widget para: . Describe brevemente qué quieres que muestre o haga."
+        },
+        "food": {
+          "label": "Preparar una comida",
+          "label_alt": "Idear una receta",
+          "prompt": "Ayúdame a preparar una comida con: . Dime qué ingredientes tienes o qué te apetece comer."
+        },
+        "schedule": {
+          "label": "Programar una tarea",
+          "label_alt": "Crear una tarea recurrente",
+          "prompt": "Ayúdame a programar una tarea para: . Indica cuándo quieres que se repita y qué debe hacer."
+        },
+        "repair": {
+          "label": "Reparar algo",
+          "label_alt": "Solucionar un problema",
+          "prompt": "Ayúdame a reparar: . Cuéntame qué no funciona y qué debería pasar."
+        },
+        "workflow": {
+          "label": "Mejorar mi flujo de trabajo",
+          "label_alt": "Hacer mi trabajo más fácil",
+          "prompt": "Ayúdame a mejorar mi flujo de trabajo: . Cuéntame cómo lo haces ahora y qué te gustaría simplificar."
+        },
+        "emotions": {
+          "label": "Ordenar lo que siento",
+          "label_alt": "Hablar de una situación difícil",
+          "prompt": "Ayúdame con lo que estoy sintiendo: . Cuéntame qué te pasa y qué tipo de apoyo buscas."
+        },
+        "personal": {
+          "label": "Resolver algo personal",
+          "label_alt": "Pensar una situación personal",
+          "prompt": "Ayúdame con una situación personal: . Cuéntame lo que ocurrió y qué te gustaría decidir o resolver."
+        },
+        "something": {
+          "label": "Me pasó algo",
+          "label_alt": "Necesito contar algo",
+          "prompt": "Me pasó algo."
+        },
+        "decision": {
+          "label": "No sé qué hacer",
+          "label_alt": "Ayúdame a decidir",
+          "prompt": "No sé qué hacer."
+        },
+        "conversation": {
+          "label": "Necesito hablar de algo",
+          "label_alt": "Quiero desahogarme",
+          "prompt": "Necesito hablar de algo."
+        },
+        "idea": {
+          "label": "Tengo una idea",
+          "label_alt": "Quiero desarrollar una idea",
+          "prompt": "Tengo una idea que quiero desarrollar."
+        },
+        "goal": {
+          "label": "Quiero lograr algo",
+          "label_alt": "Tengo una meta en mente",
+          "prompt": "Quiero lograr algo y no sé por dónde empezar."
+        },
+        "question": {
+          "label": "Tengo una pregunta",
+          "label_alt": "Quiero consultar algo",
+          "prompt": "Tengo una pregunta."
+        }
+      }
+    },
     "actions": {
       "rewind": "Editar y Rebobinar",
       "copy": "Copiar",
       "copied": "¡Copiado!",
       "read_aloud": "Leer en voz alta",
+      "pause_reading": "Pausar lectura",
+      "resume_reading": "Reanudar lectura",
       "stop_reading": "Detener lectura",
-      "abort": "Abortar Proceso Neural",
+      "abort": "Abortar proceso",
       "send": "Enviar Señal",
       "send_instruction": "Enviar como Instrucción",
       "send_instruction_desc": "Enviar como Instrucción Directa (Fuerza llamada a herramienta)",
@@ -519,7 +709,7 @@
       "mic_error": "❌ No se pudo acceder al micrófono: {{error}}",
       "no_voice_model": "⚠️ No hay un modelo de voz seleccionado. Configúralo en los ajustes de Core System.",
       "voice_start_error": "❌ Error al iniciar grabación: {{error}}",
-      "logs_copied": "✅ Neural Logs: Historial completo copiado al portapapeles con éxito."
+      "logs_copied": "✅ Registros: historial completo copiado al portapapeles con éxito."
     },
     "modes": {
       "chat": "Chat",
@@ -529,13 +719,13 @@
       "select_model": "SELECCIONAR MODELO",
       "temporary_change": "Cambio temporal (no guardado)",
       "no_models_available": "Sin modelos disponibles",
-      "debug_interface": "Interfaz de Depuración Neural",
+      "debug_interface": "Interfaz de depuración",
       "debug_desc": "Contexto Bruto y Streaming de Registros Internos",
-      "no_data": "Aún no se han registrado datos neuronales crudos para esta sesión.",
+      "no_data": "Aún no hay datos sin procesar registrados para esta sesión.",
       "steps_executed_one": "{{count}} acción",
       "steps_executed_other": "{{count}} acciones",
       "free_conversation": "Conversación Libre",
-      "link_intermittent": "Enlace Neural Intermitente: Directorios locales inactivos.",
+      "link_intermittent": "Conexión intermitente: directorios locales inactivos.",
       "wake_up": "Despertar Enlaces",
       "mode": "MODO:",
       "telegram": "telegram",
@@ -564,7 +754,7 @@
       "document_analyzing": "Extrayendo contenido del documento...",
       "multimodal_integration": "Integración Multimodal",
       "multimodal_analyzing": "Sincronizando contexto visual y datos del documento...",
-      "neural_syncing": "Sincronizando componentes neurales...",
+      "neural_syncing": "Sincronizando componentes...",
       "prompt": {
         "protocol_reinforcement": "REFUERZO DE PROTOCOLO",
         "useful_reminders": "RECORDATORIOS ÚTILES",
@@ -619,7 +809,13 @@
     }
   },
   "editor": {
-    "title": "Storage Explorer",
+    "title": "Editor del Córtex",
+    "workspace_desc": "Instrucciones y personalidad del asistente",
+    "file_list_title": "Archivos",
+    "scopes": {
+      "core": "Core",
+      "commands": "Commands"
+    },
     "cancel": "Cancelar",
     "edit": "Editar",
     "editor": "Editor",
@@ -632,11 +828,11 @@
     "unsaved": "Unsaved",
     "discard": "Descartar",
     "save": "Guardar",
-    "placeholder": "Escribe lógica neural aquí...",
-    "standby_title": "Neural Standby",
+    "placeholder": "Escribe aquí...",
+    "standby_title": "Editor en espera",
     "standby_desc": "Selecciona un archivo para comenzar a editar",
     "confirm": {
-      "delete_warning": "⚠️ ADVERTENCIA: Eliminar archivos de las rutas Cortex o Command es una operación de alto riesgo. Eliminar archivos esenciales del sistema o comandos personalizados podría romper la funcionalidad de mikuCentral o resultar en la pérdida de datos que no se pueden deshacer.",
+      "delete_warning": "⚠️ ADVERTENCIA: Eliminar archivos de las rutas Core o Commands es una operación de alto riesgo. Eliminar archivos esenciales del sistema o comandos personalizados podría romper la funcionalidad de mikuCentral o resultar en la pérdida de datos que no se pueden deshacer.",
       "delete_last": "¿Estás absolutamente seguro de que quieres eliminar permanentemente \"{{filename}}\"? Esta acción es irreversible."
     }
   },
@@ -668,7 +864,7 @@
     }
   },
   "scheduler": {
-    "title": "Tareas Neuronales",
+    "title": "Automatizaciones",
     "subtitle": "Automatiza tareas repetitivas y mantenimiento del sistema",
     "add_btn": "Añadir Nueva Tarea",
     "save_btn": "Guardar Tarea",
@@ -686,7 +882,7 @@
       "prompt_placeholder": "¿Qué debe hacer el agente cuando se ejecute esta tarea? Sé específico...",
       "interval": "Intervalo",
       "command": "Comando",
-      "experimental": "Experimental: Ejecución en segundo plano vía neural hooks...",
+      "experimental": "Experimental: ejecución en segundo plano mediante hooks internos...",
       "schedule_type": "Tipo de Horario",
       "interval_label": "Intervalo (minutos)",
       "cron_label": "Expresión Cron",
@@ -802,7 +998,7 @@
     "file": "Archivo",
     "edit": "Editar",
     "view": "Vista",
-    "neural_engine": "Motor Neuronal",
+    "neural_engine": "Motor de IA",
     "help": "Ayuda",
     "options": {
       "new_session": "Nueva Sesión",
@@ -840,36 +1036,36 @@
     "audio_engine": "Motor de Audio",
     "vosk_url": "https://alphacephei.com/vosk/",
     "security_layer": "Capa de Seguridad",
-    "security_sandbox": "Neural Sandbox",
+    "security_sandbox": "Entorno seguro",
     "python_runtime_internal": "Python 3.11 (Interno)"
   },
   "skills": {
     "repository": "Repositorio Sináptico",
     "properties": "Propiedades",
-    "neural_logic": "Lógica Neural",
-    "blueprints_title": "Blueprints Neurales",
+    "neural_logic": "Lógica del sistema",
+    "blueprints_title": "Plantillas",
     "blueprints_desc": "Selecciona una base para el despliegue",
-    "configure_title": "Configurar Skill Neural",
+    "configure_title": "Configurar habilidad",
     "configure_desc": "Asigna un identificador único para el despliegue",
     "placeholder_id": "ID de la Skill...",
     "btn_back": "Atrás",
     "btn_deploy": "Desplegar",
-    "standby_title": "Neural Standby",
-    "standby_desc": "Esperando selección para inicializar rutas neurales",
+    "standby_title": "En espera",
+    "standby_desc": "Esperando una selección para inicializar las rutas",
     "delete_confirm": "¿Estás seguro de que deseas eliminar permanentemente la skill \"{{name}}\"? Esta acción no se puede deshacer.",
     "delete_btn": "Eliminar Skill",
     "automatic_title": "SISTEMA DE EJECUCIÓN AUTOMÁTICA",
-    "automatic_desc": "Los parámetros neurales se gestionan dinámicamente por el motor central.",
+    "automatic_desc": "Los parámetros se gestionan dinámicamente por el motor central.",
     "email_identity": "Identidad de Email",
     "app_password": "App Password (Contraseña de Aplicación)",
-    "error_loading": "Error al cargar habilidades neuronales.",
+    "error_loading": "Error al cargar habilidades.",
     "error_creating": "Error en el pipeline de creación de habilidades.",
     "error_saving": "Error al guardar archivos de habilidades, verifica permisos.",
     "widget_manager_title": "Widget Manager",
     "widget_manager_back": "Volver a Skill",
     "widget_launch": "Inicializar Elemento",
-    "widget_delete_confirm": "Un componente neural sera borrado permanentemente. Proceder?",
-    "widget_empty_title": "Sin Neural Widgets",
+    "widget_delete_confirm": "Un componente será borrado permanentemente. ¿Proceder?",
+    "widget_empty_title": "Sin widgets",
     "widget_empty_desc": "Pide a Miku que genere un nuevo widget para comenzar."
   },
   "dialogs": {
@@ -877,7 +1073,7 @@
     "telegram_cancelled": "⚠️ [Acción Cancelada]\n\nSe intentó enviar un mensaje a Telegram (ej. Tarea Programada), pero faltan las credenciales. Configura el 'Bot Token' y el 'Chat ID' en los ajustes.",
     "telegram_busy": "⚠️ [Agente Ocupado]\n\nEl sistema intentó enviar un mensaje a Telegram, pero el agente se encuentra actualmente procesando otra tarea. El mensaje no ha sido enviado.",
     "voice_model_error": "❌ Error al descargar modelo: {{error}}",
-    "subsystems_online": "✅ ¡Subsistemas Neuronales en Línea!\n\nTu entorno está totalmente vinculado y listo para operar.",
+    "subsystems_online": "✅ ¡Servicios del sistema en línea!\n\nTu entorno está totalmente vinculado y listo para operar.",
     "telegram_error": "⚠️ [Error de Telegram - Parte {{index}}]\n\nFallo al enviar mensaje: {{error}}",
     "voice_model_select": "Selecciona un modelo primero.",
     "factory_reset_rebooting": "♻️ Reiniciando aplicación...",

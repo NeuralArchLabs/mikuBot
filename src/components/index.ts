@@ -2,6 +2,7 @@ export * from './layout/Sidebar';
 export * from './layout/TitleBar';
 export * from './features/ChatArea';
 export * from './features/FileEditor';
+export * from './features/EditorWorkspace';
 export * from './features/LibraryManager';
 export * from './features/OnboardingWizard';
 export * from './panels/SettingsPanel';

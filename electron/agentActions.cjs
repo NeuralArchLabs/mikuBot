@@ -12,6 +12,11 @@ const SafePathResolver = require('./SafePathResolver.cjs');
 
 const execPromise = util.promisify(exec);
 
+// Keep a small, explicit reserve when zero-overhead mode is disabled.  Merely
+// deleting OLLAMA_GPU_OVERHEAD is not a reliable "undo": Ollama's own default
+// is zero and an already-running Electron process can still inherit an old 0.
+const OLLAMA_SAFE_GPU_OVERHEAD_BYTES = 512 * 1024 * 1024;
+
 // --- HELPERS ---
 
 function formatBytes(bytes) {
@@ -544,60 +549,172 @@ async function handleSystemMetrics() {
     };
 }
 
-async function handleRestartOllama(zeroOverhead) {
+async function handleRestartOllama(opts) {
     if (process.platform !== 'win32') {
         throw new Error("El reinicio automático de Ollama solo está soportado en Windows por ahora.");
     }
-    
-    // Configurar o limpiar la variable de entorno
-    if (zeroOverhead) {
-        await execPromise('setx OLLAMA_GPU_OVERHEAD 0');
+
+    // Support both legacy (boolean) and new (object) call signatures
+    const zeroOverhead = typeof opts === 'boolean' ? opts : (opts?.zeroOverhead ?? false);
+    const mainGpu = typeof opts === 'object' ? opts?.mainGpu : undefined;
+
+    // ── OLLAMA_GPU_OVERHEAD ──────────────────────────────────────────
+    // Use an explicit value in both states.  This makes the setting genuinely
+    // reversible instead of relying on Ollama's zero-byte default.
+    const gpuOverheadBytes = zeroOverhead ? 0 : OLLAMA_SAFE_GPU_OVERHEAD_BYTES;
+    await execPromise(`setx OLLAMA_GPU_OVERHEAD ${gpuOverheadBytes}`);
+
+    // ── CUDA_VISIBLE_DEVICES — GPU Isolation ────────────────────────
+    // When the user selects a specific GPU index, we isolate it so Ollama
+    // (and llama-server) only sees that device. This prevents multi-GPU
+    // layer splitting which causes PTX crashes on incompatible architectures
+    // (e.g. Maxwell compute 5.x + CUDA 12.x PTX toolchain).
+    // Passing null/undefined restores default (all GPUs visible).
+    if (mainGpu !== undefined && mainGpu !== null) {
+        await execPromise(`setx CUDA_VISIBLE_DEVICES ${mainGpu}`);
     } else {
         try {
-            await execPromise('REG delete HKCU\\Environment /F /V OLLAMA_GPU_OVERHEAD');
+            await execPromise('REG delete HKCU\\Environment /F /V CUDA_VISIBLE_DEVICES');
         } catch(e) {} // Ignorar si no existe
     }
-    
+
     // Matar procesos
     try { await execPromise('taskkill /F /IM "ollama app.exe"'); } catch(e) {}
     try { await execPromise('taskkill /F /IM "ollama.exe"'); } catch(e) {}
-    
+
     await new Promise(r => setTimeout(r, 1500));
-    
+
     const appData = process.env.LOCALAPPDATA;
     const ollamaPath = `${appData}\\Programs\\Ollama\\ollama app.exe`;
-    
+
+    // ── CRITICAL: Inject env explicitly into the spawned process ─────
+    // `setx` writes to the registry, but the parent process (Electron)
+    // inherited its environment at launch time — before CUDA_VISIBLE_DEVICES
+    // existed. If we spawn without `env`, the child inherits the STALE
+    // parent environment and never sees the GPU isolation variable.
+    // We build the env object explicitly so Ollama picks it up immediately.
+    const childEnv = { ...process.env };
+    if (mainGpu !== undefined && mainGpu !== null) {
+        childEnv.CUDA_VISIBLE_DEVICES = String(mainGpu);
+    } else {
+        delete childEnv.CUDA_VISIBLE_DEVICES;
+    }
+    // Do not inherit a stale OLLAMA_GPU_OVERHEAD from Electron.  The spawned
+    // Ollama process must always receive the exact state selected above.
+    childEnv.OLLAMA_GPU_OVERHEAD = String(gpuOverheadBytes);
+
     const { spawn } = require('child_process');
     const child = spawn(ollamaPath, [], {
         detached: true,
-        stdio: 'ignore'
+        stdio: 'ignore',
+        env: childEnv
     });
     child.unref();
-    
-    return true;
+
+    return { zeroOverhead, gpuOverheadBytes };
+}
+
+async function readFileTail(filePath, maxBytes = 1024 * 1024) {
+    const handle = await fs.open(filePath, 'r');
+    try {
+        const { size } = await handle.stat();
+        const start = Math.max(0, size - maxBytes);
+        const buffer = Buffer.alloc(size - start);
+        await handle.read(buffer, 0, buffer.length, start);
+        return buffer.toString('utf8');
+    } finally {
+        await handle.close();
+    }
+}
+
+/**
+ * Reads the value used by the running Ollama server from its latest startup
+ * record.  The renderer uses this instead of trusting its saved preference.
+ */
+async function handleGetOllamaRuntimeConfig() {
+    const serverLog = path.join(process.env.LOCALAPPDATA || '', 'Ollama', 'server.log');
+
+    try {
+        const logTail = await readFileTail(serverLog);
+        const values = [...logTail.matchAll(/OLLAMA_GPU_OVERHEAD:(\d+)/g)];
+        const lastValue = values.at(-1)?.[1];
+        if (lastValue !== undefined) {
+            const gpuOverheadBytes = Number(lastValue);
+            return {
+                detected: true,
+                source: 'server-log',
+                gpuOverheadBytes,
+                zeroOverhead: gpuOverheadBytes === 0
+            };
+        }
+    } catch (error) {
+        // Ollama may not have started yet. Fall through to the persisted value.
+    }
+
+    try {
+        const { stdout } = await execPromise('REG QUERY HKCU\\Environment /V OLLAMA_GPU_OVERHEAD');
+        const match = stdout.match(/OLLAMA_GPU_OVERHEAD\s+REG_\w+\s+(\d+)/i);
+        if (match) {
+            const gpuOverheadBytes = Number(match[1]);
+            return {
+                detected: true,
+                source: 'registry',
+                gpuOverheadBytes,
+                zeroOverhead: gpuOverheadBytes === 0
+            };
+        }
+    } catch (error) {
+        // No persisted override and no server record to inspect.
+    }
+
+    return { detected: false, source: 'unavailable' };
 }
 
 async function handleGpuInfo() {
     const results = [];
     
     // 1. Try NVIDIA-SMI (Highest accuracy for AI indexes)
+    //    Query compute_cap to detect incompatible architectures (Maxwell ≤5.2)
     try {
-        const { stdout } = await execPromise('nvidia-smi --query-gpu=index,name,memory.total --format=csv,noheader,nounits');
+        const { stdout } = await execPromise('nvidia-smi --query-gpu=index,name,memory.total,compute_cap --format=csv,noheader,nounits');
         if (stdout) {
             const lines = stdout.trim().split('\n');
             lines.forEach(line => {
-                const [index, name, mem] = line.split(',').map(s => s.trim());
+                const [index, name, mem, computeCap] = line.split(',').map(s => s.trim());
+                const cc = computeCap ? parseFloat(computeCap) : null;
                 results.push({
                     index: parseInt(index),
                     name,
                     memory: `${mem} MB`,
-                    type: 'NVIDIA'
+                    type: 'NVIDIA',
+                    computeCap: cc,
+                    // CUDA 12.x PTX kernels crash on Maxwell (5.x) and older.
+                    // compute ≥6.0 (Pascal+) is safe for modern Ollama builds.
+                    cudaCompatible: cc === null ? null : cc >= 6.0
                 });
             });
             return results;
         }
     } catch (e) {
-        // nvidia-smi not available or no NVIDIA GPU
+        // nvidia-smi not available or no NVIDIA GPU — fall back to basic query
+        try {
+            const { stdout } = await execPromise('nvidia-smi --query-gpu=index,name,memory.total --format=csv,noheader,nounits');
+            if (stdout) {
+                const lines = stdout.trim().split('\n');
+                lines.forEach(line => {
+                    const [index, name, mem] = line.split(',').map(s => s.trim());
+                    results.push({
+                        index: parseInt(index),
+                        name,
+                        memory: `${mem} MB`,
+                        type: 'NVIDIA',
+                        computeCap: null,
+                        cudaCompatible: null
+                    });
+                });
+                return results;
+            }
+        } catch (e2) { }
     }
 
     // 2. Try Windows WMIC (Fallback for general GPUs)
@@ -711,6 +828,7 @@ module.exports = {
     handleUndoPatch,
     handleSystemMetrics,
     handleGpuInfo,
+    handleGetOllamaRuntimeConfig,
     handleRestartOllama,
     handleGitInfo
 };

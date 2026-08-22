@@ -1,26 +1,47 @@
-# 🌟 mikuBot v2.4.2 — Precise Mathematics & Rich Assets Release
+# 🌟 mikuBot v2.5.0 — Deep Research & Multimodal Experience Release
 
-We are proud to announce the release of **mikuBot v2.4.2**, introducing the highly requested **Compute Neural Skill** for advanced mathematical calculations, along with a complete overhaul of the documentation assets for a premium showcase.
+We are proud to announce **mikuBot v2.5.0**, a major release focused on autonomous research, multimodal workflows, a more expressive chat experience, and a clearer visual system across the desktop application.
 
 ## 🚀 Key Highlights
 
-### 🧮 Compute Neural Skill (SymPy Integration)
-Miku now has native access to a powerful scientific and symbolic calculator using SymPy inside the embedded Python runtime.
-- **High-Precision Arithmetic**: Calculate complex formulas with arbitrary precision.
-- **Equation & Systems Solver**: Solve single equations or systems of equations (e.g. `[x + y = 3, x - y = 1]`) with support for variables substitution.
-- **Calculus Operations**: Perform symbolic derivatives (differentiate) and integrals (integrate) natively.
-- **Symbolic Manipulation**: Simplify, factor, and expand algebraic expressions.
-- **Intelligent Parser**: Natural mathematical inputs (like caret powers `x^2` and implicit multiplications `2x`) are automatically parsed and translated.
+### 🔎 Deep Research with Recovery and Export
+The research workflow now presents an explicit plan before execution and runs through planning, execution, verification, and synthesis stages.
+- **Live investigation panel** with progress, activity, reflections, and validated source tracking.
+- **Persistent checkpoints** allow interrupted investigations to resume from the latest validated state.
+- **Plan adjustment** lets users provide feedback before restarting the research run.
+- **Report export** saves the final Markdown report and can generate a PDF directly from the application.
 
-### 🤖 Whitelisted Mode Prompts
-- The `compute` tool has been integrated directly into both **Agent/Instruction Mode** and **Chat/Casual Mode** whitelists inside `MODES.md`, prompting the agent to use it for high-precision math tasks.
+### 🖼️ Multimodal Skills
+- **Image generation** is available through the new `image_generator` skill with configurable model and aspect-ratio options.
+- **Video captions** are retrieved through `video_transcriber` when available on YouTube; it does not download audio or perform local transcription.
+- Model capability detection now helps route vision and multimodal work to compatible providers.
 
-### 🖼️ Documentation Visual Showcase
-- Shifted all readme images to the `public/readme_assets/` subdirectory.
-- Integrated high-fidelity screenshots for Recall, Widgets, Themes, Library, Voice, Scheduler, and the Calculator features across the readmes.
+### 💬 Renewed Chat Experience
+- A new welcome surface provides contextual suggestions across learning, research, planning, organization, widgets, scheduling, and conversation.
+- Suggestions can populate the composer, replace a prompt suffix, or send immediately as a real chat message.
+- Progressive typewriter effects and the neural signature now provide a more coherent entrance sequence without losing the active input flow.
+- Streaming and tool/narrative rendering were refined for better continuity during long responses.
+
+### 🧰 Unified Editing Workspace
+Cortex and Commands now share a single editor workspace with a clear scope switch while preserving their original save, delete, and file-management behavior.
+
+### 🎨 Theme and Contrast Refinements
+- The public theme names are now **Synthwave** and **Emerald** instead of the previous project IDs `cyberpunk` and `forest`.
+- Existing configurations using the legacy IDs are normalized automatically to avoid breaking saved preferences.
+- Cloud, Synthwave, and Emerald received targeted refinements for chat surfaces, assistant bubbles, dropdown controls, action buttons, and inline code readability.
+
+### 🔊 Voice Pipeline Improvements
+The TTS flow now uses intelligent chunk planning and safer phonetic handling for technical vocabulary, with focused tests for chunk boundaries and synthesis behavior.
+
+## 🧪 Validation
+
+- TypeScript typecheck passes with `npm run typecheck`.
+- Production bundle passes with `npm run build`.
+- TTS chunk behavior is covered by `npm run test:tts-chunks`.
 
 ## ⬇️ Download
-[Download MikuCentral.Setup.2.4.2.exe](https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.4.2/MikuCentral.Setup.2.4.2.exe)
+
+[Download MikuCentral.Setup.2.5.0.exe](https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.5.0/MikuCentral.Setup.2.5.0.exe)
 
 ---
 *Developed with precision by Neural Arch Labs.*

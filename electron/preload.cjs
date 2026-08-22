@@ -61,6 +61,7 @@ contextBridge.exposeInMainWorld('electron', {
     listSkills: (data) => ipcRenderer.invoke('list-skills', data),
     listBlueprints: (data) => ipcRenderer.invoke('list-blueprints', data),
     executeSkill: (data) => ipcRenderer.invoke('execute-skill', data),
+    getDeepResearchProgress: (data) => ipcRenderer.invoke('deep-research-progress', data),
     deleteSkill: (data) => ipcRenderer.invoke('delete-skill', data),
 
     // Advanced Agent Tools
@@ -158,5 +159,6 @@ contextBridge.exposeInMainWorld('electron', {
     updateTitleBar: (overlay) => ipcRenderer.send('update-titlebar', overlay),
 
     // Advanced Agent
-    restartOllama: (zeroOverhead) => ipcRenderer.invoke('agent:restart-ollama', zeroOverhead)
+    getOllamaRuntimeConfig: () => ipcRenderer.invoke('agent:ollama-runtime-config'),
+    restartOllama: (opts) => ipcRenderer.invoke('agent:restart-ollama', opts)
 });

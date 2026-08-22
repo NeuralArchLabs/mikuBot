@@ -3,13 +3,14 @@ import { useTranslation } from 'react-i18next';
 import { InteractionContext } from './services/core/InteractionContext';
 import { AppState, AgentStatus, Message, PendingToolApproval, AgentMode, ModelInfo, FileSystemDirectoryHandle, FileSystemFileHandle, FileTarget, Session, ApprovalMode, SessionMetadata, PermissionStatus, Provider, AppConfig, Attachment, ToolCall, MessageBlock } from './types';
 import { DEFAULT_CONFIG, DEFAULT_FILES, AGENT_TOOLS, PROVIDERS } from './constants';
+import { normalizeTheme } from './constants/themes';
 import { createDefaultAgentStatus } from './utils';
 import { useAgentStore, selectMessages, selectAgentStatus, selectIsLoading, selectInput, selectPendingToolApproval } from './stores/useAgentStore';
 import {
     Sidebar,
     TitleBar,
     ChatArea,
-    FileEditor,
+    EditorWorkspace,
     LibraryManager,
     SettingsPanel,
     SkillsPanel,
@@ -33,8 +34,23 @@ import {
     formatTelegramResponse
 } from './services';
 import { cleanTtsText, splitTextIntoExactPartitionChunks } from './utils/helpers/ttsHelper';
+import { DeepResearchPanel } from './components/panels/DeepResearchPanel';
 
 const electron = (window as any).electron;
+const SIDEBAR_COLLAPSE_BREAKPOINT = 1024;
+
+const isModelProviderConfigured = (provider: Provider, config: AppConfig): boolean => {
+    if (provider === 'ollama') return Boolean(config.ollamaUrl?.trim());
+    return Boolean(config.apiKeys?.[provider]?.trim());
+};
+
+const getModelConnectionSignature = (provider: Provider, config: AppConfig): string => {
+    if (!isModelProviderConfigured(provider, config)) return '';
+    if (provider === 'ollama') return `ollama:${config.ollamaUrl.trim()}`;
+    // Keep the key out of logs while still detecting when a credential changes.
+    const key = config.apiKeys?.[provider]?.trim() || '';
+    return `${provider}:${key.length}:${key.slice(0, 4)}:${key.slice(-4)}`;
+};
 
 /**
  * Robust Neural ID Generator
@@ -42,6 +58,32 @@ const electron = (window as any).electron;
  * across the message pool, even during high-frequency parallel streaming.
  */
 const generateMsgId = () => `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+const hasDeepResearchToolCall = (message: Message) => Boolean(
+    message.role === 'assistant' && (
+        message.blocks?.some(block => block.type === 'tool_call' && block.toolCall?.function.name === 'deep_research')
+        || message.toolCalls?.some(toolCall => toolCall.function.name === 'deep_research')
+    )
+);
+
+const mergeDeepResearchCompletion = (
+    message: Message,
+    completionBlock: MessageBlock,
+    completionText: string,
+    runtime: { provider?: string; model?: string } | undefined,
+    researchId: string
+): Message => ({
+    ...message,
+    // Tool-call messages render their visible content from blocks; appending
+    // an answer block keeps the completion notice in that same chat bubble.
+    ...(message.blocks?.length
+        ? { blocks: [...message.blocks, completionBlock] }
+        : { text: message.text ? `${message.text}\n\n${completionText}` : completionText }),
+    provider: message.provider || runtime?.provider,
+    model: message.model || runtime?.model,
+    isDeepResearchCompletion: true,
+    deepResearchSessionId: researchId
+});
 
 /**
  * Performance Optimization: Strips heavy binary/base64 data from attachments
@@ -217,7 +259,6 @@ export const App = () => {
     const [searxenaInstallMessage, setSearxenaInstallMessage] = useState('');
     const {
         setMessages: setMessagesStore,
-        addMessage,
         updateMessageContent,
         updateMessageStreaming,
         clearMessages,
@@ -228,7 +269,10 @@ export const App = () => {
         setIsLoading: setIsLoadingStore,
         setInput: setInputStore,
         setPendingToolApproval: setPendingToolApprovalStore,
-        setExecutingSessionId
+        setExecutingSessionId,
+        deepResearchProgress,
+        deepResearchSessionId,
+        deepResearchChatSessionId
     } = useAgentStore();
 
     const [models, setModels] = useState<Record<Provider, ModelInfo[]>>(() => {
@@ -246,6 +290,10 @@ export const App = () => {
     const [loadingSessions, setLoadingSessions] = useState(true);
     const [loadingSettings, setLoadingSettings] = useState(true);
     const [lastNeuralTrigger, setLastNeuralTrigger] = useState<number>(0);
+    const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
+    const [sidebarManuallyCollapsed, setSidebarManuallyCollapsed] = useState(false);
+    const sidebarAutoCollapsed = viewportWidth < SIDEBAR_COLLAPSE_BREAKPOINT;
+    const sidebarCollapsed = sidebarAutoCollapsed || sidebarManuallyCollapsed;
     const abortControllerRef = useRef<AbortController | null>(null);
     const lastUserTextRef = useRef<string>('');
     const lastForceToolModeRef = useRef<boolean>(false);
@@ -270,6 +318,8 @@ export const App = () => {
     const scrollRef = useRef<HTMLDivElement>(null);
     const stateRef = useRef(state);
     const modelsRef = useRef(models);
+    const modelFetchInFlightRef = useRef<Partial<Record<Provider, boolean>>>({});
+    const modelConnectionSignaturesRef = useRef<Partial<Record<Provider, string>>>({});
     const lastProcessedUpdateIdRef = useRef<number>(0);
     const sessionLoadingRef = useRef(false);
     const namedSessionsTurnsRef = useRef<Map<string, number>>(new Map());
@@ -280,10 +330,230 @@ export const App = () => {
     const pendingToolApprovalRef = useRef<((approved: boolean) => void) | null>(null);
     const isVoiceRequestRef = useRef<boolean>(false);
     const lastResponseTextRef = useRef<string>("");
+    const deepResearchCompletionNoticeKeysRef = useRef<Set<string>>(new Set());
+    const deepResearchCompletionInFlightRef = useRef<Map<string, symbol>>(new Map());
+
+    useEffect(() => {
+        const handleViewportResize = () => setViewportWidth(window.innerWidth);
+        window.addEventListener('resize', handleViewportResize);
+        return () => window.removeEventListener('resize', handleViewportResize);
+    }, []);
+
+    const toggleSidebar = useCallback(() => {
+        // Below the existing responsive breakpoint the compact sidebar remains
+        // strict. The manual toggle becomes available again once the viewport
+        // has enough room for the expanded layout.
+        if (sidebarAutoCollapsed) return;
+        setSidebarManuallyCollapsed(current => !current);
+    }, [sidebarAutoCollapsed]);
 
     useEffect(() => {
         stateRef.current = state;
     }, [state]);
+
+    // Deep Research completion is a local system event: it enriches the
+    // assistant message that contains the tool call and persists it, but it
+    // never enters processMessage or starts another model loop.
+    useEffect(() => {
+        const progress = deepResearchProgress as any;
+        const researchId = String(deepResearchSessionId || '').trim();
+        const targetSessionId = String(deepResearchChatSessionId || '').trim();
+        if (progress?.status !== 'completed' || !researchId || !targetSessionId) return;
+
+        const noticeKey = `${targetSessionId}:${researchId}`;
+        if (
+            deepResearchCompletionNoticeKeysRef.current.has(noticeKey)
+            || deepResearchCompletionInFlightRef.current.has(noticeKey)
+        ) return;
+        const runToken = Symbol(noticeKey);
+        deepResearchCompletionInFlightRef.current.set(noticeKey, runToken);
+        const releaseInFlight = () => {
+            if (deepResearchCompletionInFlightRef.current.get(noticeKey) === runToken) {
+                deepResearchCompletionInFlightRef.current.delete(noticeKey);
+            }
+        };
+
+        let cancelled = false;
+        const emitCompletionNotice = async () => {
+            const activeSessionId = stateRef.current.sessionId;
+            const isActiveTarget = activeSessionId === targetSessionId;
+            if (isActiveTarget && sessionLoadingRef.current) {
+                // Session switching is still replacing the store. Let the next
+                // session/render cycle perform the idempotent check.
+                window.setTimeout(() => {
+                    if (!cancelled) void emitCompletionNotice();
+                }, 50);
+                return;
+            }
+
+            let targetMessages: Message[] = [];
+            let targetTitle = sessions.find(session => session.id === targetSessionId)?.title || t('common.active_session');
+            let targetSession: Session | null = null;
+
+            if (isActiveTarget) {
+                targetMessages = useAgentStore.getState().messages;
+            } else {
+                targetSession = await persistence.loadSession(targetSessionId);
+                if (targetSession) {
+                    targetMessages = targetSession.messages || [];
+                    targetTitle = targetSession.title || targetTitle;
+                }
+            }
+            if (cancelled) {
+                releaseInFlight();
+                return;
+            }
+
+            const fileLabel = progress.markdown_filename || progress.markdown_path || t('deep_research.library_report');
+            const completionText = t('deep_research.completion_notice', { file: fileLabel });
+            const researchMessageIndex = targetMessages.reduce((lastIndex, message, index) => (
+                hasDeepResearchToolCall(message) ? index : lastIndex
+            ), -1);
+            const existingNoticeIndex = targetMessages.findIndex(message =>
+                message.isDeepResearchCompletion && message.deepResearchSessionId === researchId
+            );
+            const completionBlock: MessageBlock = {
+                type: 'answer',
+                content: completionText,
+                isFromNarrative: true,
+                isFromFinalTool: true
+            };
+
+            // Migrate histories created by the previous implementation, which
+            // stored the notice as a second assistant bubble. If the original
+            // tool-call message still exists, fold that notice into it now.
+            if (existingNoticeIndex >= 0) {
+                if (researchMessageIndex < 0 || researchMessageIndex === existingNoticeIndex) {
+                    releaseInFlight();
+                    deepResearchCompletionNoticeKeysRef.current.add(noticeKey);
+                    return;
+                }
+                const existingNotice = targetMessages[existingNoticeIndex];
+                const researchMessage = targetMessages[researchMessageIndex];
+                const migratedText = existingNotice.text || completionText;
+                const migratedMessage = mergeDeepResearchCompletion(
+                    researchMessage,
+                    { ...completionBlock, content: migratedText },
+                    migratedText,
+                    progress.runtime,
+                    researchId
+                );
+                const migratedMessages = targetMessages
+                    .filter((_, index) => index !== existingNoticeIndex)
+                    .map(message => message.id === researchMessage.id ? migratedMessage : message);
+
+                if (isActiveTarget && stateRef.current.sessionId === targetSessionId) {
+                    setMessagesStore(previous => {
+                        const liveNoticeIndex = previous.findIndex(message =>
+                            message.isDeepResearchCompletion && message.deepResearchSessionId === researchId
+                        );
+                        const liveResearchIndex = previous.reduce((lastIndex, message, index) => (
+                            hasDeepResearchToolCall(message) ? index : lastIndex
+                        ), -1);
+                        if (liveNoticeIndex < 0 || liveResearchIndex < 0 || liveNoticeIndex === liveResearchIndex) return previous;
+                        const liveNotice = previous[liveNoticeIndex];
+                        const liveResearch = previous[liveResearchIndex];
+                        const liveText = liveNotice.text || completionText;
+                        const mergedLive = mergeDeepResearchCompletion(
+                            liveResearch,
+                            { ...completionBlock, content: liveText },
+                            liveText,
+                            progress.runtime,
+                            researchId
+                        );
+                        return previous
+                            .filter((_, index) => index !== liveNoticeIndex)
+                            .map(message => message.id === liveResearch.id ? mergedLive : message);
+                    });
+                }
+
+                await persistence.saveSession({
+                    id: targetSessionId,
+                    title: targetTitle,
+                    messages: stripHeavyAttachments(migratedMessages),
+                    timestamp: Date.now(),
+                    agentMode: isActiveTarget ? stateRef.current.agentMode : (targetSession?.agentMode || 'chat'),
+                    safeMode: isActiveTarget ? stateRef.current.safeMode : (targetSession?.safeMode ?? true),
+                    approvalMode: isActiveTarget ? stateRef.current.approvalMode : (targetSession?.approvalMode || 'auto'),
+                    debugMode: isActiveTarget ? stateRef.current.debugMode : (targetSession?.debugMode ?? false),
+                    draft: targetSession?.draft
+                });
+                releaseInFlight();
+                deepResearchCompletionNoticeKeysRef.current.add(noticeKey);
+                return;
+            }
+
+            const existingResearchMessage = researchMessageIndex >= 0 ? targetMessages[researchMessageIndex] : null;
+            const completionMessage: Message = existingResearchMessage
+                ? mergeDeepResearchCompletion(existingResearchMessage, completionBlock, completionText, progress.runtime, researchId)
+                : {
+                    // Defensive fallback for legacy histories that no longer have
+                    // the original tool-call block. Normal runs always take the
+                    // branch above, preserving a single assistant bubble.
+                    id: generateMsgId(),
+                    role: 'assistant',
+                    text: completionText,
+                    timestamp: Date.now(),
+                    provider: progress.runtime?.provider,
+                    model: progress.runtime?.model,
+                    isDeepResearchCompletion: true,
+                    deepResearchSessionId: researchId
+                };
+
+            let nextMessages = researchMessageIndex >= 0
+                ? targetMessages.map((message, index) => index === researchMessageIndex ? completionMessage : message)
+                : [...targetMessages, completionMessage];
+            if (isActiveTarget && stateRef.current.sessionId === targetSessionId) {
+                setMessagesStore(previous => {
+                    if (previous.some(message => message.isDeepResearchCompletion && message.deepResearchSessionId === researchId)) {
+                        nextMessages = previous;
+                        return previous;
+                    }
+                    const liveResearchIndex = previous.reduce((lastIndex, message, index) => (
+                        hasDeepResearchToolCall(message) ? index : lastIndex
+                    ), -1);
+                    if (liveResearchIndex < 0) {
+                        nextMessages = [...previous, completionMessage];
+                        return nextMessages;
+                    }
+                    const liveResearchMessage = previous[liveResearchIndex];
+                    const liveCompletionMessage = mergeDeepResearchCompletion(
+                        liveResearchMessage,
+                        completionBlock,
+                        completionText,
+                        progress.runtime,
+                        researchId
+                    );
+                    nextMessages = previous.map((message, index) => index === liveResearchIndex ? liveCompletionMessage : message);
+                    return nextMessages;
+                });
+            }
+
+            await persistence.saveSession({
+                id: targetSessionId,
+                title: targetTitle,
+                messages: stripHeavyAttachments(nextMessages),
+                timestamp: Date.now(),
+                agentMode: isActiveTarget ? stateRef.current.agentMode : (targetSession?.agentMode || 'chat'),
+                safeMode: isActiveTarget ? stateRef.current.safeMode : (targetSession?.safeMode ?? true),
+                approvalMode: isActiveTarget ? stateRef.current.approvalMode : (targetSession?.approvalMode || 'auto'),
+                debugMode: isActiveTarget ? stateRef.current.debugMode : (targetSession?.debugMode ?? false),
+                draft: targetSession?.draft
+            });
+            releaseInFlight();
+            deepResearchCompletionNoticeKeysRef.current.add(noticeKey);
+        };
+
+        void emitCompletionNotice().catch(error => {
+            releaseInFlight();
+            deepResearchCompletionNoticeKeysRef.current.delete(noticeKey);
+            console.warn('[Deep Research] No se pudo emitir el aviso de finalización:', error);
+        });
+        return () => {
+            cancelled = true;
+            releaseInFlight();
+        };
+    }, [deepResearchChatSessionId, deepResearchProgress, deepResearchSessionId, sessions, setMessagesStore, state.sessionId, t]);
 
     useEffect(() => {
         modelsRef.current = models;
@@ -295,13 +565,21 @@ export const App = () => {
         setLoadingSettings(true);
         const saved = await persistence.loadSettings();
         if (saved) {
+            const mergedConfig = {
+                ...DEFAULT_CONFIG,
+                ...saved.config,
+                theme: normalizeTheme(saved.config?.theme)
+            };
             setState(prev => ({
                 ...prev,
-                config: { ...DEFAULT_CONFIG, ...saved.config },
+                config: mergedConfig,
                 agentMode: (saved.agentMode || 'chat') as AgentMode,
                 safeMode: saved.safeMode !== undefined ? saved.safeMode : true,
                 approvalMode: saved.approvalMode || 'auto'
             }));
+            if (saved.config?.theme !== mergedConfig.theme) {
+                await persistence.saveSettings(mergedConfig, saved.agentMode || 'chat', saved.safeMode !== undefined ? saved.safeMode : true, saved.approvalMode || 'auto');
+            }
         } else {
             // Missing config.json: Create it with presets
             if ((window as any).electron) {
@@ -957,7 +1235,11 @@ export const App = () => {
     const onLoadConfig = useCallback(async () => {
         const loaded = await persistence.loadFromFile();
         if (loaded) {
-            const mergedConfig = { ...DEFAULT_CONFIG, ...loaded.config };
+            const mergedConfig = {
+                ...DEFAULT_CONFIG,
+                ...loaded.config,
+                theme: normalizeTheme(loaded.config?.theme)
+            };
             const newState = {
                 config: mergedConfig,
                 agentMode: loaded.agentMode as AgentMode,
@@ -1313,12 +1595,17 @@ export const App = () => {
     const updateConfig = useCallback((key: string, value: any) => {
         setState(prev => ({
             ...prev,
-            config: { ...prev.config, [key]: value }
+            config: { ...prev.config, [key]: key === 'theme' ? normalizeTheme(value) : value }
         }));
     }, []);
 
-    const handleTestConnection = useCallback(async (customProvider?: Provider) => {
+    const handleTestConnection = useCallback(async (customProvider?: Provider, options?: { silent?: boolean }) => {
         const providerToTest = customProvider || state.config.provider;
+
+        // Keep refreshes independent per provider. This prevents the automatic
+        // sync and the three settings cards from racing or duplicating calls.
+        if (modelFetchInFlightRef.current[providerToTest]) return;
+        modelFetchInFlightRef.current[providerToTest] = true;
 
         setLoadingModels(prev => ({ ...prev, [providerToTest]: true }));
         setConnectionStatus('testing');
@@ -1329,42 +1616,63 @@ export const App = () => {
 
             // Auto-select if model is empty for this specific provider configuration
             if (fetchedModels.length > 0) {
-                if (customProvider === state.config.chatProvider && !state.config.chatModel) {
+                const latestConfig = stateRef.current.config;
+                if (customProvider === latestConfig.chatProvider && !latestConfig.chatModel) {
                     updateConfig('chatModel', fetchedModels[0].id);
-                } else if (customProvider === state.config.agentProvider && !state.config.agentModel) {
+                } else if (customProvider === latestConfig.agentProvider && !latestConfig.agentModel) {
                     updateConfig('agentModel', fetchedModels[0].id);
-                } else if (!customProvider && !state.config.model) {
+                } else if (!customProvider && !latestConfig.model) {
                     updateConfig('model', fetchedModels[0].id);
                 }
             }
         } catch (error) {
             console.error(`[App] Connection Test Failed for ${providerToTest}:`, error);
             setConnectionStatus('error');
-            if (providerToTest === 'ollama') {
+            if (providerToTest === 'ollama' && !options?.silent) {
                 await askAlert(t('common.ollama_error', { url: state.config.ollamaUrl, error: error instanceof Error ? error.message : String(error) }));
             }
         } finally {
+            delete modelFetchInFlightRef.current[providerToTest];
             setLoadingModels(prev => ({ ...prev, [providerToTest]: false }));
         }
-    }, [state.config, updateConfig]);
+    }, [askAlert, state.config, t, updateConfig]);
 
-    // Initial and dynamic model synchronization
+    // Initial and dynamic model synchronization. Every configured provider is
+    // synchronized, not only the provider currently selected by Chat/Agent.
+    // This is important for Vortex Visual, which may use a third provider.
     useEffect(() => {
-        const syncOnLoad = async () => {
-            const providersToSync = new Set<Provider>();
-            if (state.config.chatProvider) providersToSync.add(state.config.chatProvider);
-            if (state.config.agentProvider) providersToSync.add(state.config.agentProvider);
-            if (state.config.provider) providersToSync.add(state.config.provider);
+        const timer = window.setTimeout(() => {
+            const allProviders = Object.keys(PROVIDERS) as Provider[];
+            const configuredProviders = allProviders.filter(provider => isModelProviderConfigured(provider, state.config));
 
-            for (const p of providersToSync) {
-                // If we don't have models for this provider, try a silent sync
-                if ((models[p] || []).length === 0 && !loadingModels[p]) {
-                    handleTestConnection(p);
-                }
+            // Drop stale lists as soon as a credential/endpoint is removed.
+            const disconnectedProviders = allProviders.filter(provider => !isModelProviderConfigured(provider, state.config));
+            const staleModels = disconnectedProviders.filter(provider => (modelsRef.current[provider] || []).length > 0);
+            if (staleModels.length > 0) {
+                setModels(prev => {
+                    const next = { ...prev };
+                    staleModels.forEach(provider => { next[provider] = []; });
+                    return next;
+                });
             }
-        };
-        syncOnLoad();
-    }, [state.config.chatProvider, state.config.agentProvider, state.config.provider, handleTestConnection]);
+            disconnectedProviders.forEach(provider => {
+                delete modelConnectionSignaturesRef.current[provider];
+            });
+
+            configuredProviders.forEach(provider => {
+                const signature = getModelConnectionSignature(provider, state.config);
+                const signatureChanged = modelConnectionSignaturesRef.current[provider] !== signature;
+                const hasNoModels = (modelsRef.current[provider] || []).length === 0;
+
+                if ((signatureChanged || hasNoModels) && !modelFetchInFlightRef.current[provider]) {
+                    modelConnectionSignaturesRef.current[provider] = signature;
+                    void handleTestConnection(provider, { silent: true });
+                }
+            });
+        }, 250);
+
+        return () => window.clearTimeout(timer);
+    }, [handleTestConnection, state.config]);
 
     const constructSystemInstruction = (
         ctx: InteractionContext, 
@@ -2075,7 +2383,12 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
             const effectiveConfig = {
                 ...currentState.config,
                 provider: effectiveProvider as Provider,
-                model: effectiveModel
+                model: effectiveModel,
+                // Long-running skills must stay on the runtime configured for
+                // the active mode. A conversational master fallback must not
+                // silently reroute Deep Research to another quota/model.
+                activeModeProvider: useAgentEngine ? currentState.config.agentProvider : currentState.config.chatProvider,
+                activeModeModel: useAgentEngine ? currentState.config.agentModel : currentState.config.chatModel
             };
 
             // --- Master Fallback Logic ---
@@ -2099,6 +2412,12 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                     const latestCtx = new InteractionContext({ forceToolMode, isRemote, isScheduled });
                     const latestMode = latestCtx.getEffectiveMode(latestState.agentMode);
                     const isAgent = latestMode === 'agent';
+                    const latestModeProvider = isAgent
+                        ? latestState.config.agentProvider
+                        : latestState.config.chatProvider;
+                    const latestModeModel = isAgent
+                        ? latestState.config.agentModel
+                        : latestState.config.chatModel;
                     
                     // Re-construct the system instruction with the latest mode
                     // We use the same freshState/dynamicSkills/processedAttachments captured at start of message
@@ -2120,7 +2439,9 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                         tools: toolsForMode,
                         isAgentMode: isAgent,
                         isInstructionMode: isAgent,
-                        systemPrompt: refreshData.systemInstruction
+                        systemPrompt: refreshData.systemInstruction,
+                        activeModeProvider: latestModeProvider,
+                        activeModeModel: latestModeModel
                     };
                 };
 
@@ -2234,7 +2555,8 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                     ctx.getEffectiveMode(currentState.agentMode) === 'agent',
                     ctx.isScheduled,
                     ctx.isRemote,
-                    onRefreshContext
+                    onRefreshContext,
+                    ctxSessionId
                 );
             };
 
@@ -2251,7 +2573,9 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                     const masterConfig = {
                         ...currentState.config,
                         provider: currentState.config.provider,
-                        model: currentState.config.model
+                        model: currentState.config.model,
+                        activeModeProvider: useAgentEngine ? currentState.config.agentProvider : currentState.config.chatProvider,
+                        activeModeModel: useAgentEngine ? currentState.config.agentModel : currentState.config.chatModel
                     };
                     await runInference(masterConfig, true);
                 } else {
@@ -2526,9 +2850,9 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                         break;
                     case 'sync-models':
                         // Sync all configured providers to refresh lists
-                        handleTestConnection('ollama');
-                        handleTestConnection('gemini');
-                        handleTestConnection('groq');
+                        (Object.keys(PROVIDERS) as Provider[])
+                            .filter(provider => isModelProviderConfigured(provider, stateRef.current.config))
+                            .forEach(provider => { void handleTestConnection(provider); });
                         break;
                     case 'reset-config':
                         onResetGlobal();
@@ -2550,11 +2874,17 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
     }, [onNewSession, onExportConfig, onLoadConfig, handleTestConnection, onResetGlobal]);
 
     const handleOnboardingComplete = async (newConfig: any, setupData: any) => {
+        const nextConfig = {
+            ...state.config,
+            ...newConfig,
+            theme: normalizeTheme(newConfig?.theme || state.config.theme),
+            isConfigured: true
+        };
         setState(prev => ({
             ...prev,
-            config: { ...prev.config, ...newConfig, isConfigured: true }
+            config: nextConfig
         }));
-        await persistence.saveSettings({ ...state.config, ...newConfig, isConfigured: true }, state.agentMode, state.safeMode, state.approvalMode);
+        await persistence.saveSettings(nextConfig, state.agentMode, state.safeMode, state.approvalMode);
 
         const isElectron = !!(window as any).electron?.invoke;
 
@@ -2612,8 +2942,8 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
             )}
             <SystemDialog config={dialogConfig} />
             <AboutDialog isOpen={!!state.isAboutOpen} onClose={() => setState(p => ({ ...p, isAboutOpen: false }))} />
-            <div className={`flex flex-col h-full z-30 w-16 lg:w-68 flex-shrink-0 transition-all duration-500 relative miku-sidebar-isolate border-r border-white/5 ${state.activeTab === 'chat' ? 'sidebar-shadow-chat' : 'sidebar-shadow-default'}`} style={{ backgroundColor: 'var(--sidebar-bg)' }}>
-                <div className="flex-1 overflow-y-auto custom-scrollbar overflow-x-hidden">
+            <div className={`miku-sidebar-shell flex flex-col h-full z-30 ${sidebarCollapsed ? 'w-16' : 'w-68'} flex-shrink-0 relative miku-sidebar-isolate border-r border-white/5 ${state.activeTab === 'chat' ? 'sidebar-shadow-chat' : 'sidebar-shadow-default'}`} style={{ backgroundColor: 'var(--sidebar-bg)', width: sidebarCollapsed ? '4rem' : '17rem', flexBasis: sidebarCollapsed ? '4rem' : '17rem' }}>
+                <div className="flex-1 overflow-hidden">
                     <Sidebar
                         state={{ ...state, askConfirm, onSelectSession, onDeleteSession, onNewSession, onExportSession, onImportSession, onDeleteFile: (n: string, t: FileTarget) => deleteFile(n, t), onAddFile: (n: string, t: FileTarget) => createFile(n, t) } as any}
                         sessions={sessions}
@@ -2621,6 +2951,9 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                         setState={setState}
                         onClear={handleClear}
                         triggerNeuralEgg={lastNeuralTrigger}
+                        isAutoCollapsed={sidebarAutoCollapsed}
+                        isCollapsed={sidebarCollapsed}
+                        onToggleCollapse={toggleSidebar}
                     />
                 </div>
             </div>
@@ -2638,7 +2971,7 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
             />
 
             {/* Persistent UI Shell Container to prevent flashes on tab swap */}
-            <main className="flex-1 flex flex-col min-w-0 relative" style={{ backgroundColor: 'var(--background-color)' }}>
+            <main className="flex-1 flex flex-col min-w-0 relative" style={{ backgroundColor: 'var(--chat-background-color, var(--background-color))' }}>
                 {state.config.chatBackgroundImage && (
                     <div 
                         className={`absolute inset-0 pointer-events-none z-0 miku-app-wallpaper ${state.activeTab !== 'chat' ? 'blurred' : ''}`}
@@ -2654,7 +2987,8 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                     />
                 )}
                 {/* Persistent View Stack: Each view stays mounted to preserve state and scroll position */}
-                <div className={`flex-1 flex flex-col h-full relative z-10 ${state.activeTab !== 'chat' ? 'hidden' : ''}`}>
+                <div className={`flex-1 h-full relative z-10 ${state.activeTab !== 'chat' ? 'hidden' : 'flex min-h-0'}`}>
+                    <div className="flex min-w-0 flex-1 flex-col">
                     <ChatArea
                         sessionId={state.sessionId || 'empty'}
                         onSend={(atts) => processMessage(useAgentStore.getState().input, false, false, false, atts)} 
@@ -2728,31 +3062,28 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                         userName={state.config.userName}
                         assistantAlias={state.config.assistantAlias}
                         onUpdatePartialConfig={(updates) => setState(p => ({ ...p, config: { ...p.config, ...updates } }))}
-
+                    />
+                    </div>
+                    <DeepResearchPanel
+                        config={state.config}
+                        mode={state.agentMode}
+                        sessionId={state.sessionId || 'empty'}
+                        onLibrarySaved={() => syncFiles('extra', null, state.config.folderPaths?.extra, true)}
                     />
                 </div>
 
-                <div className={`flex-1 flex flex-col h-full relative z-10 animate-slide-left-right ${state.activeTab !== 'cortex' ? 'hidden' : ''}`}>
-                    <FileEditor
-                        files={Object.fromEntries(Object.entries(state.files).filter(([n]) => !n.includes('/'))) as Record<string, string>} selectedFile={state.selectedFile}
-                        setSelectedFile={(f) => setState(p => ({ ...p, selectedFile: f }))}
-                        onSave={(n, c) => saveFile(n, c, 'core')} unsavedChanges={state.unsavedChanges}
+                <div className={`flex-1 flex flex-col h-full relative z-10 animate-slide-left-right ${state.activeTab !== 'editor' ? 'hidden' : ''}`}>
+                    <EditorWorkspace
+                        coreFiles={Object.fromEntries(Object.entries(state.files).filter(([n]) => !n.includes('/'))) as Record<string, string>}
+                        commandFiles={Object.fromEntries(Object.entries(state.toolsFiles).filter(([n]) => !n.includes('/'))) as Record<string, string>}
+                        onSaveCore={(n, c) => saveFile(n, c, 'core')}
+                        onSaveCommands={(n, c) => saveFile(n, c, 'tools')}
+                        unsavedChanges={state.unsavedChanges}
                         setUnsavedChanges={(u) => setState(p => ({ ...p, unsavedChanges: typeof u === 'function' ? u(p.unsavedChanges) : u }))}
-                        onAddFile={() => createFile(`New_Core_${Date.now()}`, 'core')}
-                        onDelete={(n) => deleteFile(n, 'core')}
-                        askConfirm={askConfirm}
-                    />
-                </div>
-
-                <div className={`flex-1 flex flex-col h-full relative z-10 animate-slide-left-right ${state.activeTab !== 'commands' ? 'hidden' : ''}`}>
-                    <FileEditor
-                        files={Object.fromEntries(Object.entries(state.toolsFiles).filter(([n]) => !n.includes('/'))) as Record<string, string>}
-                        selectedFile={state.selectedFile}
-                        setSelectedFile={(f) => setState(p => ({ ...p, selectedFile: f }))}
-                        onSave={(n, c) => saveFile(n, c, 'tools')} unsavedChanges={state.unsavedChanges}
-                        setUnsavedChanges={(u) => setState(p => ({ ...p, unsavedChanges: typeof u === 'function' ? u(p.unsavedChanges) : u }))}
-                        onAddFile={() => createFile(`Cmd_${Date.now()}`, 'tools')}
-                        onDelete={(n) => deleteFile(n, 'tools')}
+                        onAddCore={() => createFile(`New_Core_${Date.now()}`, 'core')}
+                        onAddCommands={() => createFile(`Cmd_${Date.now()}`, 'tools')}
+                        onDeleteCore={(n) => deleteFile(n, 'core')}
+                        onDeleteCommands={(n) => deleteFile(n, 'tools')}
                         askConfirm={askConfirm}
                     />
                 </div>

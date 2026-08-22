@@ -133,7 +133,7 @@ Get real-time OS metrics (CPU, Memory, Uptime, Hostname).
 ### Tier 1: `web_search` [Base Tool]
 Quick superficial search. Returns short titles and snippets.
 - **Param:** `query`
-- **Param:** `category` (general, images, videos, news, maps, shopping, it, social)
+- **Param:** `category` (general, images, videos, news, maps, shopping)
 - **Param:** `search_depth` (basic, advanced)
 
 ### Tier 2: `read_url` [Base Tool]
@@ -160,7 +160,9 @@ Program a proactive task for the agent to execute in the future.
 Modular skills installed in `@TOOLS/skills/`:
 - **`api_fetcher`**: Universal HTTP client for REST APIs.
 - **`compute`**: Advanced scientific and symbolic calculator using SymPy (arbitrary precision arithmetic, equation solving, calculus).
-- **`deep_research`**: Multi-language technical investigation with multi-category audit.
+- **`deep_research`**: Plan-first, resumable multi-language investigation with source verification and iterative reporting.
+- **`video_transcriber`**: Obtains available captions/subtitles from YouTube videos. It does not download audio or transcribe locally; if captions are unavailable, it returns a friendly message.
+- **`image_generator`**: Generates and saves images in the active workspace.
 - **`web_research`**: Content extraction from multiple sources using diverse search categories.
 - **`list_available_skills`**: Auto-discovery of new installed skills.
 - **`instruction_booklet`**: Self-documenting tool usage library to look up parameters and examples. (Use `self_aware` as tool_name to learn about your own UI, architecture, and capabilities).

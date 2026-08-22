@@ -24,8 +24,12 @@ interface SidebarProps {
     setState: React.Dispatch<React.SetStateAction<AppState>>;
     onClear: () => void;
     triggerNeuralEgg?: number;
+    /** Auto-collapsed sidebars cannot be expanded manually at this width. */
+    isAutoCollapsed?: boolean;
+    isCollapsed: boolean;
+    onToggleCollapse: () => void;
 }
-export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState, onClear, triggerNeuralEgg }: SidebarProps) => {
+export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState, onClear, triggerNeuralEgg, isAutoCollapsed = false, isCollapsed, onToggleCollapse }: SidebarProps) => {
      const { t } = useTranslation();
      const [sessionModalOpen, setSessionModalOpen] = useState(false);
     const [isClosing, setIsClosing] = useState(false);
@@ -43,6 +47,11 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
     }, []);
 
     const isCompactMode = windowHeight < 650;
+    const topSectionHeight = isCollapsed
+        ? 'min-h-full'
+        : isCompactMode
+            ? 'min-h-0'
+            : 'min-h-full lg:min-h-0';
 
     const handleClose = () => {
         setIsClosing(true);
@@ -180,21 +189,32 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
 
     return (
         <>
-            <div className="flex flex-col h-full shadow-xl z-30 w-16 lg:w-68 flex-shrink-0 transition-all duration-300 relative overflow-y-auto custom-scrollbar" style={{ backgroundColor: 'var(--sidebar-bg)' }}>
+            <div className={`sidebar-content-shell flex flex-col h-full shadow-xl z-30 w-full flex-shrink-0 relative overflow-x-hidden ${isCollapsed ? 'overflow-y-hidden' : 'overflow-y-auto custom-scrollbar'} ${isCollapsed ? 'sidebar-content-collapsed' : 'sidebar-content-expanded'}`} style={{ backgroundColor: 'var(--sidebar-bg)' }}>
                 {/* Vertical Gradient Border (Fade in from top) */}
                 <div className="absolute right-0 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-[var(--border-color)] to-[var(--border-color)] pointer-events-none opacity-50" />
                 
                 {/* Top Section: Logo & Main Nav */}
-                <div className={`flex-none p-3 lg:p-6 pb-0 flex flex-col ${isCompactMode ? 'min-h-0' : 'min-h-full lg:min-h-0'} lg:h-auto`}>
-                    <div className={`flex items-center justify-center lg:justify-start gap-3 ${isCompactMode ? 'mb-4' : 'mb-8'} group cursor-default h-10 overflow-visible w-full px-1 relative`}>
-                        <div
-                            className="w-10 h-10 rounded-xl flex flex-shrink-0 items-center justify-center shadow-md group-hover:scale-110 active:scale-95 transition-all duration-300 overflow-hidden border cursor-pointer relative z-10 premium-button"
-                            style={{ backgroundColor: 'var(--surface-color)', borderColor: 'var(--border-color)' }}
-                            onClick={triggerEasterEgg}
-                        >
-                            <img src="./mikuBotICON.png" alt="Miku Logo" className="w-full h-full object-cover shadow-inner" />
+                <div className={`flex-none ${isCollapsed ? 'px-3 pt-6' : 'p-6'} pb-0 flex flex-col ${topSectionHeight} ${isCollapsed ? '' : 'lg:h-auto'}`}>
+                    <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-start'} gap-3 ${isCollapsed ? 'mb-8 px-0' : isCompactMode ? 'mb-4 px-1' : 'mb-8 px-1'} group cursor-default h-10 overflow-visible w-full relative`}>
+                        <div className={isCollapsed ? 'absolute left-1/2 -translate-x-1/2' : ''}>
+                            <div
+                                className="w-10 h-10 rounded-xl flex flex-shrink-0 items-center justify-center shadow-md group-hover:scale-110 active:scale-95 transition-all duration-300 overflow-hidden border cursor-pointer relative z-10 premium-button"
+                                style={{ backgroundColor: 'var(--surface-color)', borderColor: 'var(--border-color)' }}
+                                onClick={() => {
+                                    // The logo is also the collapse toggle. The egg is
+                                    // only visible when expanding the sidebar; starting
+                                    // it while collapsing would hide it immediately.
+                                    if (isCollapsed && !isAutoCollapsed) triggerEasterEgg();
+                                    onToggleCollapse();
+                                }}
+                                title={isCollapsed ? t('sidebar.tooltips.expand_sidebar') : t('sidebar.tooltips.collapse_sidebar')}
+                                aria-label={isCollapsed ? t('sidebar.tooltips.expand_sidebar') : t('sidebar.tooltips.collapse_sidebar')}
+                                aria-expanded={!isCollapsed}
+                            >
+                                <img src="./mikuBotICON.png" alt="Miku Logo" className="w-full h-full object-cover shadow-inner" />
+                            </div>
                         </div>
-                        <div className="hidden lg:block overflow-hidden">
+                        <div className={`overflow-hidden transition-[max-width,opacity,transform] duration-300 ease-out ${isCollapsed ? 'pointer-events-none max-w-0 -translate-x-2 opacity-0' : 'max-w-[180px] translate-x-0 opacity-100'}`}>
                             <h1 className={`font-bold text-lg text-[var(--text-primary)] tracking-tight leading-tight whitespace-nowrap overflow-hidden text-ellipsis transition-all duration-300 ${isAnimatingEgg ? 'text-[var(--primary-color)] font-mono text-sm' : ''}`}>
                                 {displayName}
                             </h1>
@@ -211,8 +231,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                         {(() => {
                             const navTabs = [
                                 { id: 'chat', label: t('sidebar.tabs.chat'), icon: 'comments', color: 'text-blue-400', bg: 'bg-blue-400', hex: '#60a5fa' },
-                                { id: 'cortex', label: t('sidebar.tabs.cortex'), icon: 'project-diagram', color: 'text-indigo-400', bg: 'bg-indigo-400', hex: '#818cf8' },
-                                { id: 'commands', label: t('sidebar.tabs.commands'), icon: 'bolt', color: 'text-amber-400', bg: 'bg-amber-400', hex: '#fbbf24' },
+                                { id: 'editor', label: t('sidebar.tabs.editor'), icon: 'project-diagram', color: 'text-indigo-400', bg: 'bg-indigo-400', hex: '#818cf8' },
                                 { id: 'scheduler', label: t('sidebar.tabs.scheduler'), icon: 'clock', color: 'text-cyan-400', bg: 'bg-cyan-400', hex: '#22d3ee' },
                                 { id: 'settings', label: t('sidebar.tabs.settings'), icon: 'cog', color: 'text-purple-400', bg: 'bg-purple-400', hex: '#c084fc' }
                             ];
@@ -222,8 +241,8 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                             return (
                                 <>
                                     {/* The sliding carriage that holds the dot */}
-                                    <div 
-                                        className="hidden lg:block absolute right-0 left-0 w-full pointer-events-none z-30 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+                                    {!isCollapsed && <div
+                                        className="absolute right-0 left-0 w-full pointer-events-none z-30 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
                                         style={{ 
                                             height: `${isCompactMode ? 44 : 53}px`,
                                             transform: `translateY(${activeIndex * (isCompactMode ? 48 : 57)}px)` 
@@ -233,13 +252,13 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                             className="absolute right-4 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full shadow-glow transition-colors duration-500"
                                             style={{ backgroundColor: activeTab.hex }}
                                         />
-                                    </div>
+                                    </div>}
 
                                     {navTabs.map(tab => (
                                         <button
                                             key={tab.id}
                                             onClick={() => setState(prev => ({ ...prev, activeTab: tab.id as any, selectedFile: '' }))}
-                                            className={`w-full flex items-center justify-center lg:justify-start gap-4 px-3 lg:px-4 rounded-xl transition-all duration-300 group border ${state.activeTab === tab.id
+                                            className={`w-full flex items-center ${isCollapsed ? 'justify-center px-3' : 'justify-start gap-4 px-4'} rounded-xl transition-all duration-300 group border ${state.activeTab === tab.id
                                                 ? 'premium-button text-[var(--text-primary)] shadow-md'
                                                 : 'border-transparent shadow-none text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--hover-color)]'
                                                 }`}
@@ -250,8 +269,8 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                             }}
                                             title={tab.label}
                                         >
-                                            <Icon name={tab.icon} className={`${isCompactMode ? 'text-xl lg:text-base' : 'text-2xl lg:text-lg'} flex-shrink-0 ${state.activeTab === tab.id ? tab.color : 'group-hover:text-[var(--text-primary)]'} transition-colors`} />
-                                            <span className={`hidden lg:inline-block flex-1 text-left ${isCompactMode ? 'text-sm' : 'text-base'} font-bold tracking-tight truncate whitespace-nowrap`}>{tab.label}</span>
+                                            <Icon name={tab.icon} className={`${isCollapsed ? 'text-xl' : isCompactMode ? 'text-base' : 'text-lg'} flex-shrink-0 ${state.activeTab === tab.id ? tab.color : 'group-hover:text-[var(--text-primary)]'} transition-colors`} />
+                                            <span className={`flex min-w-0 flex-1 overflow-hidden text-left transition-[max-width,opacity,transform] duration-300 ease-out ${isCollapsed ? 'pointer-events-none max-w-0 translate-x-2 opacity-0' : 'max-w-[220px] translate-x-0 opacity-100'} ${isCompactMode ? 'text-sm' : 'text-base'} font-bold tracking-tight truncate whitespace-nowrap`}>{tab.label}</span>
                                         </button>
                                     ))}
                                 </>
@@ -260,7 +279,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                     </nav>
 
                     {/* Mobile Contents Toggle (Bottom Fixed on Mobile) */}
-                    <div className={`lg:hidden mt-auto ${isCompactMode ? 'pt-2 pb-4' : 'pt-6 pb-8'} space-y-3`}>
+                    <div className={`${isCollapsed ? 'flex translate-y-0 opacity-100' : 'lg:hidden -translate-y-2 opacity-0'} mt-auto ${isCompactMode || isCollapsed ? 'pt-2 pb-4' : 'pt-6 pb-8'} space-y-3 flex-col transition-[opacity,transform] duration-300 ease-out`}>
                          <div className="h-px bg-[var(--border-color)] mb-6 opacity-30" />
                          <button
                             onClick={() => setSessionModalOpen(true)}
@@ -280,7 +299,7 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                 </div>
 
                 {/* Bottom Balanced Section (Sessions + Library - Desktop Only) */}
-                <div className="flex-1 hidden lg:flex flex-col min-h-0 overflow-hidden">
+                <div className={`${isCollapsed ? 'max-h-0 flex-none pointer-events-none opacity-0' : 'max-h-[2000px] flex-1 opacity-100'} flex flex-col min-h-0 overflow-hidden transition-[max-height,opacity] duration-500 ease-out`}>
                     
                     {/* Neural Sessions - Dynamic Growth or Compact Tab */}
                     <div className={`${isCompactMode ? 'flex-1' : 'flex-[1.2]'} flex flex-col overflow-hidden px-5 pt-0 transition-all duration-300 min-h-0`}>

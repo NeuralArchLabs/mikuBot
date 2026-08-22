@@ -26,7 +26,7 @@ export type IpcChannel =
     // Network proxy
     | 'fetch-proxy' | 'api-stream'
     // Skills
-    | 'list-skills' | 'list-blueprints' | 'execute-skill'
+    | 'list-skills' | 'list-blueprints' | 'execute-skill' | 'deep-research-progress'
     // Advanced Agent Tools
     | 'agent:read-file' | 'agent:get-file-outline' | 'agent:batch-operation' | 'agent:search-files' | 'agent:patch-file' | 'agent:undo-patch' | 'agent:system-metrics'
     // Voice & Vosk Models

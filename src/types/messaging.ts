@@ -56,6 +56,9 @@ export interface Message {
     isScheduler?: boolean;
     isScheduledResponse?: boolean;
     isInitiallyCollapsed?: boolean;
+    /** Marks a local completion notice emitted by the Deep Research runtime. */
+    isDeepResearchCompletion?: boolean;
+    deepResearchSessionId?: string;
 }
 
 /** Session Metadata */

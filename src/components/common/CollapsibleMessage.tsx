@@ -37,11 +37,11 @@ export const CollapsibleMessage: React.FC<CollapsibleMessageProps> = ({ message,
 
     if (!isCollapsed) {
         return (
-            <div id={`msg-${message.id}`} className="relative group w-full">
+            <div id={`msg-${message.id}`} className="message-expanded-wrapper relative group w-full">
                 {children}
                 
                 {/* Bottom Action Group: Hide & Copy */}
-                <div className={`absolute -bottom-2.5 ${buttonPositionClass} flex ${isUser ? 'flex-row-reverse' : 'flex-row'} items-center gap-1.5 z-20 invisible opacity-0 group-hover:visible group-hover:opacity-100 focus-within:visible focus-within:opacity-100 transition-all duration-300 pointer-events-none group-hover:pointer-events-auto`}>
+                <div className={`message-bottom-actions absolute -bottom-2.5 ${buttonPositionClass} flex ${isUser ? 'flex-row-reverse' : 'flex-row'} items-center gap-1.5 z-20 invisible opacity-0 group-hover:visible group-hover:opacity-100 focus-within:visible focus-within:opacity-100 transition-all duration-300 pointer-events-none group-hover:pointer-events-auto`}>
                     <button
                         onClick={() => setIsCollapsed(true)}
                         className="px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider shadow-lg flex items-center gap-1 transition-all hover:scale-105 active:scale-95 border hover:bg-[var(--hover-color)]"

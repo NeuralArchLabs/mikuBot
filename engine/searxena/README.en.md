@@ -60,7 +60,7 @@ searXena leverages modern and ultra-lightweight technologies to enable hyper-flu
 * 🤖 **AI-First Integration:** Native JSON formatting and pre-built Tools schemas, ready to connect your LLM deployment to the internet without overheads or unnecessary HTML scraping.
 * 🛡️ **Privacy Protection:** Acts as a neutral interface between the user and the global web. Promotes anonymity by transparently centralizing requests through its own network engine.
 * 📦 **100% Native on Windows:** Zero complex dependencies. Just clone, install the libraries with `pip`, run the main `.py` file, and you have a private search engine minimizing external telemetry hosted locally on your system.
-* 📱 **Modern and Dynamic UI/UX:** Fluid animations, ultra-refined dark mode ("Space Violet"), responsive interface, and categorically separated into tabs (General, IT/Science, Maps, Videos, Images).
+* 📱 **Modern and Dynamic UI/UX:** Fluid animations, ultra-refined dark mode ("Space Violet"), responsive interface, and categorically separated into tabs (General, News, Shopping, Maps, Videos, Images).
 * 🌎 **Consolidated Rich Snippets:** Enriched reading consolidating data from Wikipedia or Wikidata in quick-consumption side boxes ("Infoboxes").
 * 🧘 **O-ZEN Engine (Reader Mode):** Built-in industrial extraction core (AGPLv3) for reading articles and technical documentation without ads or intrusive scripts.
 
@@ -98,7 +98,7 @@ searXena eliminates web access barriers for Artificial Intelligence development:
 searXena priorities that your data is **never** used for third-party advertising profiling, assuming a technical protection role beneath the graphical interface. Even so, the architecture requires certain technical consensuses, reported here transparently:
 
 ### Absolute DOM Proxification
-When you search any general query (News, IT, Code), searXena protects your identity through the asynchronous backend engine. We systematically modify the `User-Agent`s. Every image URL returned by commercial engines is coordinated through our internal `/proxify` system, ensuring your IP is not directly exposed to third-party servers.
+When you search any general query (News, Code, or other public topics), searXena protects your identity through the asynchronous backend engine. We systematically modify the `User-Agent`s. Every image URL returned by commercial engines is coordinated through our internal `/proxify` system, ensuring your IP is not directly exposed to third-party servers.
 
 ### Maps Module: OSM (OpenStreetMap)
 When interacting with the specialized Maps tab, searXena implements slightly more permeable rules to achieve useful interactivity (drag, zoom), preserving commercial anonymity:
@@ -120,7 +120,7 @@ Through the `/api/v1/search` route, your assistant can automate queries and rece
 * **AI-Ready Endpoints:**
   * `GET /api/v1/tools_schema`: Returns a literal `function_declarations` schema directly injectable into your LLM with all available enabled parameters.
   * `POST /api/v1/search`: Communication webhook that executes the search and returns deep analytical metadata.
-* **Anti-Hallucination Smart Ranking:** The heuristic filter processes the returns in favor of the agent; under the "IT" category, it hides advertising sites from the LLM and feeds it directly from official technical documentation and substantial open-source repositories.
+* **Anti-Hallucination Smart Ranking:** The heuristic filter processes returns in favor of the agent, hiding advertising sites and prioritizing official documentation, encyclopedic sources, and substantial open-source repositories.
 
 > **Building a RAG Agent?** Take a deep look at the payloads, pre-built headers, and System Prompt recommendations hosted in the [**AI Integration Guide**](AI_INTEGRATION_GUIDE.md) included in this official repository.
 >

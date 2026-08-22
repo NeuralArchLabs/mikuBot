@@ -28,6 +28,8 @@ export interface AgentStatus {
     log: AgentLogEntry[];
     streamedText: string;
     streamedReasoning?: string;
+    /** True when the provider started emitting native reasoning after visible content. */
+    streamedReasoningFollowsText?: boolean;
     errorCount: number;
     rawMessages?: any[];
     currentSystemPrompt?: string;

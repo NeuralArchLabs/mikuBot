@@ -52,7 +52,7 @@ export const FileEditor = ({
                 style={{ backgroundColor: 'var(--surface-color)', opacity: 0.9 }}
             >
                 <div className="pl-7 pr-3 flex items-center justify-between border-b border-[var(--border-color)] min-h-[45px]">
-                    <span className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">{t('editor.title')}</span>
+                    <span className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">{t('editor.file_list_title')}</span>
                     <button onClick={onAddFile} className="text-[var(--text-secondary)] hover:text-[var(--primary-color)] transition-colors p-1" title={t('editor.add')}>
                         <Icon name="plus" />
                     </button>

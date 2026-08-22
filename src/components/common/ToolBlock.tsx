@@ -240,6 +240,12 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
                     categories: (args.categories || ['general']).join(', ')
                 });
             case 'deep_research':
+                if (data.status === 'plan_proposal') {
+                    return t('tools.deep_research_plan_ready', { topic: args.topic || '' });
+                }
+                if (data.final_report) {
+                    return t('tools.deep_research_completed', { topic: args.topic || '' });
+                }
                 return t('tools.deep_research_summary', { 
                     topic: args.topic, 
                     count: data.report?.stats?.validated || 0,
@@ -288,6 +294,15 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
         ? friendlySummary.substring(0, 80) + '...'
         : friendlySummary;
 
+    // Image skills return workspace-safe local:// URLs from Electron main.
+    // Rendering the files directly keeps the tool response compact and avoids
+    // sending an entire base64 image/iframe through the model conversation.
+    const resultData = result?.data as any;
+    const rawImageUrls = resultData?.image_urls || resultData?.images || [];
+    const imageUrls: string[] = Array.isArray(rawImageUrls)
+        ? rawImageUrls.filter((url): url is string => typeof url === 'string' && url.length > 0)
+        : [];
+
     return (
         <div ref={containerRef} className={`relative mb-4 pl-6 transition-all duration-300 ${entranceClass} ${isExpanded ? 'w-full' : 'w-full max-w-3xl'}`}>
             <div className={`tool-block overflow-hidden transition-all duration-300 rounded-xl bg-slate-950/50 backdrop-blur-md shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),0_8px_30px_rgba(0,0,0,0.5)] border-t-[1.5px] border-l-[1.5px] border-white/10 border-b border-r border-b-black/20 border-r-black/20 ${isExpanded ? 'bg-slate-950/80' : 'hover:bg-slate-950/60'} ring-1 ${isNeuralSkill ? 'ring-blue-500/20' : 'ring-white/5'}`}>
@@ -333,6 +348,33 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
                         <IconComp name="chevron-down" className="text-[10px]" />
                     </div>
                 </div>
+
+                {isSuccess && imageUrls.length > 0 && (
+                    <div className="tool-visual-output px-3 py-3 border-t border-white/5 bg-slate-900/40">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {imageUrls.map((url, index) => (
+                                <figure key={url} className="group overflow-hidden rounded-lg border border-white/10 bg-slate-950/80 shadow-md transition-colors hover:border-cyan-500/50">
+                                    <img
+                                        src={url}
+                                        alt={`Imagen generada ${index + 1}`}
+                                        className="block w-full h-auto max-h-[32rem] object-contain bg-black"
+                                        loading="lazy"
+                                    />
+                                    <figcaption className="flex items-center justify-between gap-3 px-2.5 py-2 border-t border-white/5 bg-black/60 text-[10px] text-slate-300">
+                                        <span className="truncate font-mono">Imagen generada {index + 1}</span>
+                                        <a
+                                            href={url}
+                                            download
+                                            className="shrink-0 px-2.5 py-1 rounded bg-cyan-600 text-white font-bold transition-colors hover:bg-cyan-500"
+                                        >
+                                            <IconComp name="download" className="mr-1" /> Descargar
+                                        </a>
+                                    </figcaption>
+                                </figure>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* Inline Summary for Expanded State */}
                 {isExpanded && (

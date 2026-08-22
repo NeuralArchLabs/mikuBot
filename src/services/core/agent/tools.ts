@@ -27,7 +27,8 @@ export async function executeToolCall(
     config: AppConfig,
     onAddTask?: (task: any) => Promise<string>,
     isAgentMode: boolean = false,
-    isInstructionMode: boolean = false
+    isInstructionMode: boolean = false,
+    sessionId?: string
 ): Promise<ToolResult> {
     const { name, arguments: args } = toolCall.function;
 
@@ -579,13 +580,58 @@ export async function executeToolCall(
                         if (skillsResponse.ok && Array.isArray(skillsResponse.skills)) {
                             const skill = skillsResponse.skills.find((s: any) => s.name === name);
                             if (skill) {
+                                let finalArgs = { ...args };
+                                if (name === 'deep_research') {
+                                    // A model-generated tool call can never approve its own
+                                    // Deep Research plan. This route is only allowed to
+                                    // produce (or revise) the proposal; the lateral panel is
+                                    // the sole UI allowed to start the long-running research
+                                    // after the user explicitly approves it.
+                                    //
+                                    // The panel invokes Electron directly, so this guard does
+                                    // not interfere with its approved/resume executions.
+                                    const baseSessionId = String(sessionId || 'session')
+                                        .replace(/[^A-Za-z0-9_-]/g, '')
+                                        .slice(0, 72) || 'session';
+                                    const callId = String(toolCall.id || `call_${Date.now()}`)
+                                        .replace(/[^A-Za-z0-9_-]/g, '')
+                                        .slice(0, 40);
+                                    // Do not infer this from config.provider/model: those
+                                    // fields may represent the master conversational fallback.
+                                    const runtimeProvider = config.activeModeProvider;
+                                    const runtimeModel = config.activeModeModel;
+                                    finalArgs = {
+                                        ...finalArgs,
+                                        approved: false,
+                                        resume: false,
+                                        plan: undefined,
+                                        // A research run must never share the chat session's
+                                        // progress file. Reusing it was how an old completed
+                                        // report appeared while a new plan was being reviewed.
+                                        _session_id: `${baseSessionId}_${callId}`.slice(0, 120),
+                                        _runtime: { provider: runtimeProvider, model: runtimeModel },
+                                        _config: {
+                                            ...config,
+                                            provider: runtimeProvider,
+                                            model: runtimeModel,
+                                            apiKeys: {}
+                                        }
+                                    };
+                                }
                                 const execution = await (window as any).electron.executeSkill({
                                     toolsPath: config.folderPaths.tools,
                                     skillName: name,
-                                    args: args,
+                                    args: finalArgs,
                                     lang: config.language
                                 });
                                 if (execution.ok) {
+                                    if (execution.data && typeof execution.data === 'object' && execution.data.success === false) {
+                                        return {
+                                            success: false,
+                                            error: execution.data.error || `Error executing skill ${name}`,
+                                            data: execution.data
+                                        };
+                                    }
                                     return { success: true, data: execution.data };
                                 }
                                 return { success: false, error: execution.error || `Error executing skill ${name}` };

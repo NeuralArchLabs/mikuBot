@@ -53,6 +53,16 @@ release/
 # Keep: engine/python/, engine/Lib/, engine/Scripts/, engine/models/
 # Ignore: nothing - all embedded files are needed
 
+# Caption-only video handling: yt-dlp is intentionally not bundled.
+engine/Lib/site-packages/yt_dlp/
+engine/Lib/site-packages/yt_dlp-*.dist-info/
+engine/Scripts/yt-dlp.exe
+engine/share/bash-completion/completions/yt-dlp
+engine/share/doc/yt_dlp/
+engine/share/fish/vendor_completions.d/yt-dlp.fish
+engine/share/man/man1/yt-dlp.1
+engine/share/zsh/site-functions/_yt-dlp
+
 # ── SearXena Engine ───────────────────────────────────────────────────
 # SearXena is an external project embedded in MikuCentral
 # We track its source code but ignore runtime-generated files

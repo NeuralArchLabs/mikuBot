@@ -2,7 +2,7 @@
 
 <img src="./public/mikuBotICON.png" width="120" style="border-radius: 24px" alt="mikuBot Icon" />
 
-# 🌟 mikuBot v2.4.2 — Precise Mathematics & Rich Assets Release
+# 🌟 mikuBot v2.5.0 — Deep Research & Multimodal Experience
 
 ![Status](https://img.shields.io/badge/Status-Stable-green.svg?style=for-the-badge)
 ![Platform](https://img.shields.io/badge/Platform-Windows_10%2F11-0078D4.svg?style=for-the-badge&logo=windows)
@@ -18,8 +18,8 @@
 
 <br/>
 
-<a href="https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.4.2/MikuCentral.Setup.2.4.2.exe">
-  <img src="https://img.shields.io/badge/DOWNLOAD_LATEST_VERSION-v2.4.2-60A5FA?style=for-the-badge&logo=windows&logoColor=white" height="40" />
+<a href="https://github.com/NeuralArchLabs/mikuBot/releases/download/v2.5.0/MikuCentral.Setup.2.5.0.exe">
+  <img src="https://img.shields.io/badge/DOWNLOAD_LATEST_VERSION-v2.5.0-60A5FA?style=for-the-badge&logo=windows&logoColor=white" height="40" />
 </a>
 
 <br/>
@@ -40,9 +40,12 @@ An AI assistant and agent with a true soul, designed to be the perfect companion
 *   **Autonomy and Operation Modes:** mikuBot offers absolute technical sovereignty. **Agent Mode** now features a completely liberated console (no command restrictions), allowing any system operation required for complex tasks. **Chat Mode** maintains "lax" security (a broad whitelist) for casual use. Both modes support background tool execution, scheduled tasks, and a **High-Risk Protection** system that requires manual approval for destructive commands.
 *   **Persistent & Multi-session Execution (Studio Elite):** Miku no longer stops when switching neural branches. Agents can complete complex tasks autonomously in the background while you interact with other sessions, maintaining a persistent and visually reactive link that notifies you of process status in other branches.
     <br/><img src="./public/readme_assets/mikuBot_chatView00.png" width="100%" style="border-radius: 8px; border: 1px solid #30363d" alt="Chat View" />
+*   **Deep Research & Multimodal Tools:** The new research flow works through approved planning, execution, verification, and synthesis phases with live progress, validated sources, resumable checkpoints, and PDF report export. It also adds image generation and local video transcription with automatic language detection.
+*   **Renewed Chat Experience:** The welcome screen now provides dynamic contextual suggestions, instant sending, and a neural signature with progressive animations. Response, thought, and tool rendering preserve context more reliably during streaming.
+*   **Unified Editing Workspace:** Cortex and Commands now share one workspace with a clear scope switch, persistent editing, and consistent management of system files.
 *   **Scientific and Symbolic Calculation (Compute Skill):** An advanced integrated calculator based on SymPy that allows the agent to perform arbitrary-precision arithmetic, solve equations and systems, differentiate and integrate algebraic expressions dynamically and symbolically. Prevents the agent from making errors in mathematical calculations not covered by its training.
     <br/><img src="./public/readme_assets/mikuBot_computeView00.png" width="48%" style="border-radius: 8px; border: 1px solid #30363d" alt="Compute View" /> <img src="./public/readme_assets/mikuBot_computeDetailView00.png" width="48%" style="border-radius: 8px; border: 1px solid #30363d" alt="Compute Detail View" />
-*   **Multidimensional Themes (Atmosphere Engine):** Absolute visual personalization with 5 premium themes (`Miku`, `Cloud`, `Midnight`, `Cyberpunk`, `Forest`). Each theme adapts the entire interface to provide an immersive experience tailored to your workspace.
+*   **Multidimensional Themes (Atmosphere Engine):** Absolute visual personalization with 5 premium themes (`Miku`, `Cloud`, `Midnight`, `Synthwave`, `Emerald`). This release consolidates the `Synthwave` and `Emerald` names, automatically migrates legacy settings, and improves contrast for backgrounds, bubbles, controls, and inline code in Cloud.
     <br/><img src="./public/readme_assets/mikuBot_themeLangView00.png" width="31%" style="border-radius: 8px; border: 1px solid #30363d" alt="Theme View 1" /> <img src="./public/readme_assets/mikuBot_themeLangView01.png" width="31%" style="border-radius: 8px; border: 1px solid #30363d" alt="Theme View 2" /> <img src="./public/readme_assets/mikuBot_themeLangView03.png" width="31%" style="border-radius: 8px; border: 1px solid #30363d" alt="Theme View 3" />
 *   **Neural Credential Vault:** Your API keys are now protected by the `processVault` system, automatically encrypting them at rest. Sovereign security with zero manual intervention.
 *   **Context Library:** A specialized module for creating, storing, and managing protocols, technical documents, and static knowledge bases. It allows Miku to access curated reference information for specific tasks without cluttering dynamic memory.
@@ -59,7 +62,7 @@ An AI assistant and agent with a true soul, designed to be the perfect companion
     *   **Structured Knowledge Management (Callouts):** Universal Obsidian-style support (`> [!TYPE]`) for organizing instructions with 14 reactive styles.
     *   **Kinetic & Progressive Canvas:** Organic animation system that synchronizes information reveal with the assistant's real-time thinking.
 *   **Neural Editing (Cortex & Command Editors):** mikuBot includes specialized editors to directly modify the assistant's instructions and base knowledge. While you can adjust these files at any time for technical customization, **it is recommended to follow the Onboarding Wizard process** for optimal results. Critical files like `MODES.md` dictate the agent's operating protocols, and manual changes require caution to maintain system stability.
-*   **Voice, Connectivity & Pro Backgrounds:** Includes native voice recognition (Vosk) out-of-the-box in English and Spanish. Additionally, features an **Atmospheric Background Gallery** with high-performance mapping via `local://` protocol for lag-free customization. Also allows easy linking with Telegram (via BotFather).
+*   **Voice, Connectivity & Pro Backgrounds:** Includes native voice recognition (Vosk) out-of-the-box in English and Spanish, a TTS pipeline with intelligent segmentation, and Telegram linking. It also features an **Atmospheric Background Gallery** with high-performance mapping via `local://` protocol for lag-free customization.
     <br/><img src="./public/readme_assets/mikuBot_voskSearXenaView00.png" width="48%" style="border-radius: 8px; border: 1px solid #30363d" alt="Voice Engine" /> <img src="./public/readme_assets/mikuBot_schedulerView00.jpg" width="48%" style="border-radius: 8px; border: 1px solid #30363d" alt="Scheduler View" />
 *   **100% Multilingual Support (EN/ES/ZH):** Unlike other alternatives on the market that are usually limited to a single language, mikuBot is **fully translated and optimized** to function perfectly in **English, Spanish, and Chinese**. From the interface to the agent's reasoning, the system offers a native and fluid experience in all three languages, providing technical superiority and global usability.
 *   **Portability and Backup:** Allows a full memory dump into a compressed file to backup everything, including sessions, personalizations, memory, *skills*, and access keys.

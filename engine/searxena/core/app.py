@@ -147,6 +147,8 @@ async def proxify(url: str):
                 "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
                 "Connection": "keep-alive"
             }
+            # A missing thumbnail must not keep the image grid waiting for the
+            # search engine's much longer provider timeout.
             async with client.stream("GET", url, headers=headers, timeout=10.0) as resp:
                 if resp.status_code == 200:
                     async for chunk in resp.aiter_bytes():
@@ -298,12 +300,21 @@ async def search(request: Request):
 
 class ToolSearchRequest(BaseModel):
     query: str = Field(..., description="Término de búsqueda.")
-    category: Optional[str] = Field("general", description="Categoría: general, images, videos, news, maps, shopping, it, social.")
+    category: Optional[str] = Field("general", description="Categoría: general, images, videos, news, maps o shopping.")
     pageno: Optional[int] = Field(1, description="Número de página.")
     language: Optional[str] = Field(None, description="Código ISO (es, en, etc.).")
     include_engines: Optional[List[str]] = Field(None, description="Motores específicos a incluir.")
     exclude_engines: Optional[List[str]] = Field(None, description="Motores a ignorar.")
     limit: Optional[int] = Field(10, description="Límite de resultados para optimizar contexto.")
+
+@app.get("/api/v1/status")
+async def api_status():
+    """Health endpoint used by the desktop app to verify the local engine."""
+    return {
+        "ok": True,
+        "engine": "searXena",
+        "loaded_engines": len(manager.engines),
+    }
 
 @app.post("/api/v1/search")
 async def api_search(request_data: ToolSearchRequest):
@@ -362,7 +373,7 @@ async def api_tools_schema():
             },
             "category": {
               "type": "string",
-              "enum": ["general", "images", "videos", "news", "maps", "shopping", "it", "social"],
+              "enum": ["general", "images", "videos", "news", "maps", "shopping"],
               "description": "Opcional. Default: general."
             },
             "language": {

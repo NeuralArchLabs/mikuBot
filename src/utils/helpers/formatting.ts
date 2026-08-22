@@ -248,6 +248,150 @@ const EMOJI_MAP: Record<string, string> = {
 };
 
 /**
+ * Models occasionally wrap the signature body in protective punctuation,
+ * for example `{{ (🌸 ≈̼^.┬.̼^≈‿⟆ ✨) }}`. None of these delimiters are part
+ * of the signature DNA, so remove them before applying the visual renderer.
+ */
+const normalizeSignatureInner = (content: string): string => content
+    .replace(/[`"']/g, '')
+    .replace(/[()[\]{}（）]/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+const SIGNATURE_CORE = '≈̼^.┬.̼^≈‿⟆';
+const SIGNATURE_EMOJI_REGEX = /\p{Emoji_Presentation}|\p{Extended_Pictographic}/gu;
+const DEFAULT_SIGNATURE_LEAD = '✨';
+const DEFAULT_SIGNATURE_TRAIL = '🌸';
+
+/**
+ * Some models serialize the final face glyph as an underscore followed by
+ * hexadecimal byte placeholders (for example `<0XE2><0X9F><0X8A>`). Normalize
+ * that uniquely identifiable damaged suffix before the regular shield runs.
+ * The narrow matcher also accepts the already-correct closing glyph so it is
+ * safe to apply once at the start of the formatting pipeline.
+ */
+const DAMAGED_SIGNATURE_CORE_REGEX = /≈(?:̼)?\^[.̼]*┬[.̼]*\^≈(?:‿⟆|‿[ \t]*(?:(?:<0x[0-9a-f]{2}>|⟨0x[0-9a-f]{2}⟩)(?:[ \t]*(?:<0x[0-9a-f]{2}>|⟨0x[0-9a-f]{2}⟩)){0,7})?|_[ \t]*(?:(?:<0x[0-9a-f]{2}>|⟨0x[0-9a-f]{2}⟩)(?:[ \t]*(?:<0x[0-9a-f]{2}>|⟨0x[0-9a-f]{2}⟩)){0,7})?|[ \t]*(?:<0x[0-9a-f]{2}>|⟨0x[0-9a-f]{2}⟩)(?:[ \t]*(?:<0x[0-9a-f]{2}>|⟨0x[0-9a-f]{2}⟩)){0,7})/giu;
+const SIGNATURE_CLOSURE_BEFORE_EMOJI_REGEX = /(≈̼\^\.┬\.̼\^≈‿⟆)[ \t]*[}\)](?=[ \t]*(?:\p{Emoji_Presentation}|\p{Extended_Pictographic}))/gu;
+
+const normalizeDamagedSignatureCore = (value: string): string =>
+    value
+        .replace(DAMAGED_SIGNATURE_CORE_REGEX, SIGNATURE_CORE)
+        // A malformed model response can put a single closing brace before
+        // the trailing emoji. Remove only that unique signature separator so
+        // Tier 1/Tier 3 can consume both decorations together.
+        .replace(SIGNATURE_CLOSURE_BEFORE_EMOJI_REGEX, '$1 ');
+
+/**
+ * Keep the signature decoration deterministic. Models sometimes repeat the
+ * opening/closing emoji (`✨✨ face 🚀✨`) or append one after the closing
+ * braces. The shield owns those decorations, so only one is rendered on each
+ * side of the neural face.
+ */
+const firstSignatureEmoji = (value: string): string => value.match(SIGNATURE_EMOJI_REGEX)?.[0] || '';
+
+const normalizeSignatureDecorations = (content: string): string => {
+    const normalized = normalizeSignatureInner(content);
+    const coreIndex = normalized.indexOf(SIGNATURE_CORE);
+    if (coreIndex < 0) return normalized;
+
+    const prefix = normalized.slice(0, coreIndex);
+    const suffix = normalized.slice(coreIndex + SIGNATURE_CORE.length);
+    const leading = firstSignatureEmoji(prefix) || DEFAULT_SIGNATURE_LEAD;
+    const trailing = firstSignatureEmoji(suffix) || DEFAULT_SIGNATURE_TRAIL;
+
+    return `${leading} ${SIGNATURE_CORE} ${trailing}`;
+};
+
+const stripAdjacentSignatureEmojiPlaceholders = (value: string): string => value.replace(
+    /(__BLOCK_\d+__)(\s*)(?:(?:\p{Emoji_Presentation}|\p{Extended_Pictographic})[\uFE0E\uFE0F\u200D]*\s*)+/gu,
+    (_match, placeholder, whitespace) => `${placeholder}${whitespace.includes('\n') ? '\n' : whitespace}`
+);
+
+/**
+ * Tier 1 accepts damaged signatures that no longer match the exact face, but
+ * it must not mistake Jinja/Mustache expressions or integrals for a signature.
+ * Strong face glyphs win immediately; the final fallback requires both emoji
+ * bookends and enough punctuation to still resemble the dynamic face.
+ */
+const isLikelySignatureContent = (content: string): boolean => {
+    const normalized = content.normalize('NFC');
+    if (/[┬‿⟆]/u.test(normalized)) return true;
+
+    const approximationCount = (normalized.match(/≈/gu) || []).length;
+    if (approximationCount >= 2 && /[\^._]/u.test(normalized)) return true;
+
+    const emojiCount = (normalized.match(/\p{Emoji_Presentation}|\p{Extended_Pictographic}/gu) || []).length;
+    return emojiCount >= 2
+        && /[≈∫~]/u.test(normalized)
+        && /[\^._]/u.test(normalized);
+};
+
+const normalizeSignatureBoundary = (boundary: string): string => {
+    if (!boundary) return '';
+    return boundary.includes('\n') || boundary.includes('\r') ? boundary : ' ';
+};
+
+const getSignatureBoundaryWhitespace = (match: string): { leading: string; trailing: string } => ({
+    leading: normalizeSignatureBoundary(match.match(/^\s+/)?.[0] || ''),
+    trailing: normalizeSignatureBoundary(match.match(/\s+$/)?.[0] || ''),
+});
+
+/** Signature HTML must never be injected into tag attributes or link targets. */
+const isSignatureExcludedSyntaxContext = (source: string, offset: number): boolean => {
+    const lastTagOpen = source.lastIndexOf('<', offset);
+    const lastTagClose = source.lastIndexOf('>', offset);
+    if (lastTagOpen > lastTagClose && source.indexOf('>', offset) !== -1) return true;
+
+    const lineStart = Math.max(source.lastIndexOf('\n', offset - 1) + 1, 0);
+    const beforeOnLine = source.slice(lineStart, offset);
+    const lastLinkTargetOpen = beforeOnLine.lastIndexOf('](');
+    const lastTargetClose = beforeOnLine.lastIndexOf(')');
+    return lastLinkTargetOpen > lastTargetClose;
+};
+
+/**
+ * Thoughts use the minimal renderer, so they must consume signatures before
+ * the generic HTML escaping path. They should not render the decorative full
+ * signature component, but they must never leak the model's raw signature
+ * syntax (especially hexadecimal placeholders) to the user.
+ */
+const stripSignaturesForMinimalMode = (value: string): string => {
+    let normalized = normalizeDamagedSignatureCore(value);
+    normalized = unwrapParenthesizedSignature(normalized);
+
+    normalized = normalized.replace(
+        /[`"']{0,2}(?:\{\{)\s*((?:(?!\n\n)[\s\S])+?)\s*(?:\}\}|\)\}|\}\)|\})[ \t]*[)\}]*[ \t]*(?:(?:\p{Emoji_Presentation}|\p{Extended_Pictographic})[\uFE0E\uFE0F\u200D]*[ \t]*)*[`"']{0,2}/gu,
+        (match, signContent, offset, source) => {
+            if (isSignatureExcludedSyntaxContext(source, offset)) return match;
+            return isLikelySignatureContent(signContent) ? '' : match;
+        }
+    );
+
+    // Also consume a bare signature if a model omits the {{ }} wrapper.
+    normalized = normalized.replace(
+        /(?:(?:\p{Emoji_Presentation}|\p{Extended_Pictographic})[\uFE0E\uFE0F\u200D]*[ \t]*){0,2}≈̼\^\.┬\.̼\^≈‿⟆(?:(?:[ \t]*(?:\p{Emoji_Presentation}|\p{Extended_Pictographic})[\uFE0E\uFE0F\u200D]*){0,2})/gu,
+        (match, offset, source) => {
+            const coreOffset = match.indexOf(SIGNATURE_CORE);
+            return isSignatureExcludedSyntaxContext(source, offset + Math.max(coreOffset, 0)) ? match : '';
+        }
+    );
+
+    return normalized;
+};
+
+/**
+ * Unwrap a bare parenthesized signature before the generic detector runs.
+ * Keeping this as a dedicated pass prevents the optional-wrapper matcher from
+ * starting at the first emoji and leaving the opening parenthesis behind.
+ */
+const unwrapParenthesizedSignature = (content: string): string => content.replace(
+    /[（(]([^()（）\r\n]*≈̼\^\.┬\.̼\^≈‿⟆[^()（）\r\n]*)[）)]/gu,
+    (match, inner, offset, source) => (
+        isSignatureExcludedSyntaxContext(source, offset) ? match : inner
+    )
+);
+
+/**
  * Converts normalized Markdown to HTML with custom styling.
  *
  * IMPORTANT: This expects text to be already normalized by formatFinalResponse().
@@ -273,6 +417,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
     
     // MODE: MINIMAL - Restricted formatting for thoughts (lists only)
     if (mode === 'minimal') {
+        html = stripSignaturesForMinimalMode(html);
         html = escape(html);
         html = processInlineMarkdown(html);
         html = convertListsToHtml(html);
@@ -282,19 +427,32 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
     // MODE: FULL - Premium experience
     const pieces: string[] = [];
 
+    // Fenced code must win over signature detection. The extractor is a
+    // hoisted local declaration below and uses the same renderer/restoration
+    // path as before; only its execution order changes.
+    html = extractFencedCodeBlocks(html);
+
+    // A few models emit the closing face as `_ <0x..><0x..>` instead of
+    // `‿⟆`; repair that representation before the signature tiers inspect it.
+    html = normalizeDamagedSignatureCore(html);
+
+    // Models sometimes replace the required {{ }} wrapper with ( ). Remove
+    // that wrapper first so both characters are guaranteed to be consumed.
+    html = unwrapParenthesizedSignature(html);
+
     // 0. SIGNATURE SHIELD: Protect the assistant's visual signature
     // Pattern: {{ ... }} with typical signature content
     // Reinforced: handles broken brackets (like )}, }), single brackets, trailing junk, and surrounding quotes/backticks.
     // Updated: backtick/quote cleaning limited to 2 chars and trailing whitespace restricted to horizontal only.
     // Enhanced: prevents crossing double newlines inside the braces.
-    html = html.replace(/[`"']{0,2}(?:\{\{)\s*((?:(?!\n\n)[\s\S])+?)\s*(?:\}\}|\)\}|\}\)|[}\)])[ \t]*[)\}]*[ \t]*[`"']{0,2}/g, (match, signContent) => {
-        if (signContent.includes('≈') || signContent.includes('∫') || signContent.includes('~')) {
+    html = html.replace(/[`"']{0,2}(?:\{\{)\s*((?:(?!\n\n)[\s\S])+?)\s*(?:\}\}|\)\}|\}\)|\})[ \t]*[)\}]*[ \t]*(?:(?:\p{Emoji_Presentation}|\p{Extended_Pictographic})[\uFE0E\uFE0F\u200D]*[ \t]*)*[`"']{0,2}/gu, (match, signContent, offset, source) => {
+        if (isSignatureExcludedSyntaxContext(source, offset)) return match;
+        if (isLikelySignatureContent(signContent)) {
             const id = `__BLOCK_${pieces.length}__`;
-            let styledInner = signContent.trim();
-
-            // TIER 2: Global cleaning of quotes and backticks that the model might use to "protect" signature tokens.
-            // Safe to strip globally as the core DNA (≈, ┬, etc.) and Emojis never contain these characters.
-            styledInner = styledInner.replace(/[`"']/g, '');
+            // TIER 2: Remove protective punctuation that is never part of the
+            // signature DNA, including accidental parentheses around either
+            // the full inner signature or its central face.
+            let styledInner = escape(normalizeSignatureDecorations(signContent));
             // Multi-tone typography logic
             styledInner = styledInner.replace(/([≈_∫~⟆\u033c.]+)/g, '<span class="text-cyan-300 drop-shadow-[0_0_5px_rgba(34,211,238,0.8)] font-bold">$1</span>');
             styledInner = styledInner.replace(/([\^‿])/g, '<span class="text-blue-400">$1</span>');
@@ -315,17 +473,23 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                 + `animate-sig-pop">`
                 + `<div class="animate-sig-bg-walk mask-edge-fade"></div>`
                 + `<span class="relative z-10 flex items-center h-full -translate-y-[1.5px]">`
-                + `<span class="text-[18px] text-indigo-400 opacity-80 leading-none">{{</span>`
+                + `<span class="text-[18px] text-indigo-400 opacity-80 leading-none">&#123;&#123;</span>`
                 // Directional clip-path replaces overflow-hidden to allow vertical glow bleed while clipping horizontal bounds for the spread animation
                 + `<span class="inline-flex items-center justify-center h-full animate-sig-bracket-spread whitespace-nowrap" style="clip-path: inset(-25px -20px);">`
                 + `<span class="text-[14px] text-indigo-200 uppercase animate-sig-text-glow px-2 leading-none">${styledInner}</span>`
                 + `</span>`
-                + `<span class="text-[18px] text-indigo-400 opacity-80 leading-none">}}</span>`
+                + `<span class="text-[18px] text-indigo-400 opacity-80 leading-none">&#125;&#125;</span>`
                 + `</span></span></div>`);
             return id;
         }
         return match;
     });
+
+    // A repeated decorative emoji can also be emitted just outside the
+    // closing braces, sometimes on the following wrapped line. Once the
+    // signature is protected, remove only that immediately-adjacent run so
+    // it cannot appear as an orphan below the rendered signature.
+    html = stripAdjacentSignatureEmojiPlaceholders(html);
 
     // 0b. SIGNATURE SHIELD — TIER 3: Core Pattern Detector
     // Catches the inner DNA pattern ≈̼^.┬.̼^≈‿⟆ even without {{ }} wrapper.
@@ -337,8 +501,9 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         // + the core pattern + optional emojis/words + optional trailing junk (}}, )}, }), quotes, backticks, stray brackets)
         // Updated: backtick/quote cleaning limited to 2 chars and trailing whitespace restricted to horizontal only.
         // Enhanced: stops at double newlines to avoid eating following code blocks.
-        /[`"']{0,2}(?:\{\{)?(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E|\w|[:_])*)(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*(≈̼\^\.┬\.̼\^≈‿⟆)(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E|\w|[:_])*)(?:(?!\n\n)\s)*(?:\}\}|\)\}|\}\)|[}\)])?[ \t]*[)\}]*[ \t]*[`"']{0,2}/gu,
-        (fullMatch, leadEmojis, core, trailEmojis) => {
+        /[`"']{0,2}(?:\{\{)?(?:(?!\n\n)\s)*[（(\[]*(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E|\w|[:_])*)(?:(?!\n\n)\s)*[（(\[]*(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*(≈̼\^\.┬\.̼\^≈‿⟆)(?:(?!\n\n)\s)*[`"']{0,2}(?:(?!\n\n)\s)*[）)\]]*(?:(?!\n\n)\s)*((?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\uFE0E|\w|[:_])*)(?:(?!\n\n)\s)*[）)\]]*(?:(?!\n\n)\s)*(?:\}\}|\)\}|\}\)|[}\)])?[ \t]*[)\}]*[ \t]*[`"']{0,2}/gu,
+        (fullMatch, leadEmojis, core, trailEmojis, offset, source) => {
+            if (isSignatureExcludedSyntaxContext(source, offset)) return fullMatch;
             // Safety: only act if the core unicode pattern is genuinely present
             if (!core || !core.includes('┬')) return fullMatch;
 
@@ -346,7 +511,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
             if (fullMatch.includes('__BLOCK_')) return fullMatch;
 
             // Normalize content — strip variation selectors and common junk (quotes, backticks)
-            const normalizeContent = (s: string) => s.replace(/[\uFE0E\uFE0F]/g, '').replace(/[`"']/g, '').trim();
+            const normalizeContent = (s: string) => normalizeSignatureInner(s.replace(/[\uFE0E\uFE0F]/g, ''));
             let lead = normalizeContent(leadEmojis);
             let trail = normalizeContent(trailEmojis);
 
@@ -366,10 +531,14 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
             }
 
             // Fill missing or invalid emojis with generics
-            const DEFAULT_LEAD = '✨';
-            const DEFAULT_TRAIL = '🌸';
-            if (!lead || !/(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu.test(lead)) lead = DEFAULT_LEAD;
-            if (!trail || !/(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu.test(trail)) trail = DEFAULT_TRAIL;
+            if (!lead || !/(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu.test(lead)) lead = DEFAULT_SIGNATURE_LEAD;
+            if (!trail || !/(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu.test(trail)) trail = DEFAULT_SIGNATURE_TRAIL;
+
+            // A model can emit several decorations on either side. Keep the
+            // first captured one only so the shield always renders one
+            // bookend per side and removes later duplicates.
+            lead = firstSignatureEmoji(lead) || DEFAULT_SIGNATURE_LEAD;
+            trail = firstSignatureEmoji(trail) || DEFAULT_SIGNATURE_TRAIL;
 
             // Build a canonical signature string to pass through the Tier 1 render path
             const canonical = `${lead} ${core} ${trail}`;
@@ -391,25 +560,32 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                 + `animate-sig-pop">`
                 + `<div class="animate-sig-bg-walk mask-edge-fade"></div>`
                 + `<span class="relative z-10 flex items-center h-full -translate-y-[1.5px]">`
-                + `<span class="text-[18px] text-indigo-400 opacity-80 leading-none">{{</span>`
+                + `<span class="text-[18px] text-indigo-400 opacity-80 leading-none">&#123;&#123;</span>`
                 + `<span class="inline-flex items-center justify-center h-full animate-sig-bracket-spread whitespace-nowrap" style="clip-path: inset(-25px -20px);">`
                 + `<span class="text-[14px] text-indigo-200 uppercase animate-sig-text-glow px-2 leading-none">${styledInner}</span>`
                 + `</span>`
-                + `<span class="text-[18px] text-indigo-400 opacity-80 leading-none">}}</span>`
+                + `<span class="text-[18px] text-indigo-400 opacity-80 leading-none">&#125;&#125;</span>`
                 + `</span></span></div>`);
-            return id;
+            const boundary = getSignatureBoundaryWhitespace(fullMatch);
+            return `${boundary.leading}${id}${boundary.trailing}`;
         }
     );
 
+    // Tier 3 may leave a second emoji outside the captured trailing group
+    // when the model separates decorations with whitespace (e.g. `🚀 ✨`).
+    // Run the same shield cleanup after that detector as well.
+    html = stripAdjacentSignatureEmojiPlaceholders(html);
+
 
     
-    // 0. PRE-EXTRACTION: Protect inline and fenced code blocks.
+    // 0. PRE-EXTRACTION IMPLEMENTATION: Protect fenced code blocks.
+    // This declaration is hoisted and invoked before Signature Shield above.
     // Uses a line-by-line parser instead of a regex so that ```markdown blocks
     // containing nested ```lang...``` examples are handled correctly:
     // - For ```markdown blocks: backticks+lang open an inner block; bare ``` closes it.
     //   Only a bare ``` with no open inner blocks (innerDepth===0) closes the outer block.
     // - For all other blocks: original behavior (bare ``` closes the block).
-    html = (() => {
+    function extractFencedCodeBlocks(input: string): string {
         const isMdBlock = (lang: string) =>
             lang === 'markdown' || lang === 'md' || lang === 'mdx';
 
@@ -445,7 +621,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
             return `\n${id}\n`;
         };
 
-        const lines        = html.split('\n');
+        const lines        = input.split('\n');
         const out: string[] = [];
         let inBlock        = false;
         let fenceChar      = '';
@@ -522,7 +698,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
             out.push(buildBlock(blockLang, contentLines.join('\n')));
         }
         return out.join('\n');
-    })();
+    }
 
     // ═══════════════════════════════════════════════════════════════════
     // PHASE 0a: INLINE CODE PROTECTION

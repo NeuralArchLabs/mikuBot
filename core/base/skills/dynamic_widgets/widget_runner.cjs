@@ -130,6 +130,11 @@ try {
 let mainWindow;
 let ctrlWindowLeft;
 let ctrlWindowRight;
+// Transparent widget windows need a small transparent gutter for CSS shadows.
+// Keep this intentionally compact: widgets are usually launched with little
+// spare screen area around them.
+const WIDGET_SHADOW_GUTTER = 6;
+const WIDGET_COMPACT_SHADOW = '0 2px 6px -1px rgba(0, 0, 0, 0.62), 0 1px 2px rgba(0, 0, 0, 0.30)';
 
 function positionControls() {
     if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -155,8 +160,8 @@ app.whenReady().then(async () => {
 
     var appIcon = getAppIcon();
     mainWindow = new BrowserWindow({
-        width: config.width || 300,
-        height: config.height || 300,
+        width: (config.width || 300) + (WIDGET_SHADOW_GUTTER * 2),
+        height: (config.height || 300) + (WIDGET_SHADOW_GUTTER * 2),
         transparent: true,
         frame: false,
         resizable: true,
@@ -231,19 +236,28 @@ app.whenReady().then(async () => {
                 var bodyHasRadius=hasRadius(bodyCS.borderRadius);
                 var mainHasRadius=mainContainer?hasRadius(window.getComputedStyle(mainContainer).borderRadius):false;
 
+                var shadowInset = ${WIDGET_SHADOW_GUTTER};
+                var compactShadow = ${JSON.stringify(WIDGET_COMPACT_SHADOW)};
+
                 if(bodyHasRadius){
                     document.documentElement.style.setProperty('background','transparent','important');
                     document.documentElement.style.setProperty('margin','0','important');
-                    document.body.style.setProperty('margin','0','important');
+                    document.body.style.setProperty('margin',shadowInset+'px','important');
+                    document.body.style.setProperty('width','calc(100% - '+(shadowInset*2)+'px)','important');
+                    document.body.style.setProperty('height','calc(100% - '+(shadowInset*2)+'px)','important');
+                    document.body.style.setProperty('box-sizing','border-box','important');
                     document.body.style.setProperty('overflow','hidden','important');
+                    document.body.style.setProperty('box-shadow',compactShadow,'important');
                 }else if(mainHasRadius){
                     document.documentElement.style.setProperty('background','transparent','important');
                     document.documentElement.style.setProperty('margin','0','important');
                     document.body.style.setProperty('background','transparent','important');
                     document.body.style.setProperty('margin','0','important');
+                    document.body.style.setProperty('padding',shadowInset+'px','important');
+                    document.body.style.setProperty('box-sizing','border-box','important');
                     document.body.style.setProperty('height','auto','important');
                     document.body.style.setProperty('min-height','0','important');
-                    mainContainer.style.setProperty('box-shadow','none','important');
+                    mainContainer.style.setProperty('box-shadow',compactShadow,'important');
                     var tCS=window.getComputedStyle(mainContainer);
                     var tHasBg=(tCS.backgroundColor&&tCS.backgroundColor!=='rgba(0, 0, 0, 0)'&&tCS.backgroundColor!=='transparent')||(tCS.backgroundImage&&tCS.backgroundImage!=='none');
                     if(!tHasBg){
@@ -255,10 +269,12 @@ app.whenReady().then(async () => {
                     wrapper.id='__miku_widget_frame__';
                     wrapper.style.borderRadius='12px';
                     wrapper.style.overflow='hidden';
-                    wrapper.style.width='100%';
-                    wrapper.style.minHeight=document.body.offsetHeight+'px';
+                    wrapper.style.width='calc(100% - '+(shadowInset*2)+'px)';
+                    wrapper.style.minHeight='calc(100vh - '+(shadowInset*2)+'px)';
+                    wrapper.style.margin=shadowInset+'px';
                     wrapper.style.position='relative';
                     wrapper.style.boxSizing='border-box';
+                    wrapper.style.boxShadow=compactShadow;
                     wrapper.style.display=bodyCS.display;
                     if(bodyCS.display==='flex'||bodyCS.display==='inline-flex'){
                         wrapper.style.flexDirection=bodyCS.flexDirection;
@@ -273,11 +289,18 @@ app.whenReady().then(async () => {
                     document.body.style.setProperty('background','transparent','important');
                     document.body.style.setProperty('margin','0','important');
                     document.body.style.setProperty('padding','0','important');
+                    // The outer body is now only the transparent drawing canvas.
+                    // This preserves fixed-size widgets (for example 480×640
+                    // games) inside the inner frame instead of shrinking them
+                    // by the shadow gutter.
+                    document.body.style.setProperty('width','100vw','important');
+                    document.body.style.setProperty('height','100vh','important');
+                    document.body.style.setProperty('box-sizing','border-box','important');
                 }
 
                 setTimeout(function() {
                     var maxR = 0, maxB = 0;
-                    document.querySelectorAll('*').forEach(function(el) {
+                    document.querySelectorAll('body *').forEach(function(el) {
                         var r = el.getBoundingClientRect();
                         if (r.bottom > maxB) maxB = r.bottom;
                         if (r.right > maxR) maxR = r.right;
@@ -288,8 +311,8 @@ app.whenReady().then(async () => {
         `).then(function(result) {
             if (!mainWindow || mainWindow.isDestroyed()) return;
             var contentW = result[0], contentH = result[1];
-            var finalW = Math.max(config.width || 300, contentW);
-            var finalH = Math.max(config.height || 300, contentH);
+            var finalW = Math.max((config.width || 300) + (WIDGET_SHADOW_GUTTER * 2), contentW + WIDGET_SHADOW_GUTTER);
+            var finalH = Math.max((config.height || 300) + (WIDGET_SHADOW_GUTTER * 2), contentH + WIDGET_SHADOW_GUTTER);
             mainWindow.setContentSize(finalW, finalH);
             mainWindow.setResizable(false);
             mainWindow.show();
@@ -328,10 +351,10 @@ app.whenReady().then(async () => {
             // Re-measure after async content loads (e.g., weather APIs)
             setTimeout(function() {
                 if (!mainWindow || mainWindow.isDestroyed()) return;
-                mainWindow.webContents.executeJavaScript('new Promise(function(r){setTimeout(function(){var x=0,y=0;document.querySelectorAll("*").forEach(function(e){var b=e.getBoundingClientRect();if(b.bottom>y)y=b.bottom;if(b.right>x)x=b.right});r([x,y])},50)})').then(function(res) {
+                mainWindow.webContents.executeJavaScript('new Promise(function(r){setTimeout(function(){var x=0,y=0;document.querySelectorAll("body *").forEach(function(e){var b=e.getBoundingClientRect();if(b.bottom>y)y=b.bottom;if(b.right>x)x=b.right});r([x,y])},50)})').then(function(res) {
                     if (!mainWindow || mainWindow.isDestroyed()) return;
-                    var w = Math.max(config.width || 300, res[0]);
-                    var h = Math.max(config.height || 300, res[1]);
+                    var w = Math.max((config.width || 300) + (WIDGET_SHADOW_GUTTER * 2), res[0] + WIDGET_SHADOW_GUTTER);
+                    var h = Math.max((config.height || 300) + (WIDGET_SHADOW_GUTTER * 2), res[1] + WIDGET_SHADOW_GUTTER);
                     mainWindow.setContentSize(w, h);
                     if (ctrlWindowRight && !ctrlWindowRight.isDestroyed()) ctrlWindowRight.setSize(34, Math.max(h, 92));
                     if (ctrlWindowLeft && !ctrlWindowLeft.isDestroyed()) ctrlWindowLeft.setSize(34, Math.max(h, 92));

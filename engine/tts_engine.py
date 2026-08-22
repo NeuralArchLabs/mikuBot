@@ -25,6 +25,12 @@ LANG_VOICE_MAP = {
     "zh": "zf_xiaoxiao"
 }
 
+# The renderer keeps four synthesis slots occupied.  ONNX must therefore use
+# only its share of the available logical CPUs per slot; giving every request
+# four intra-op threads caused four concurrent jobs to contend for up to
+# sixteen threads, especially hurting the first audible clip on small CPUs.
+SYNTHESIS_WORKER_COUNT = 4
+
 # Default URLs
 MODEL_URL = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.int8.onnx"
 VOICES_URL = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin"
@@ -100,23 +106,49 @@ def main():
         sess_options = rt.SessionOptions()
         sess_options.graph_optimization_level = rt.GraphOptimizationLevel.ORT_ENABLE_ALL
         
-        # Limit CPU thread count to 4 to prevent core contention and scheduling overhead
-        sess_options.intra_op_num_threads = 4
+        # Keep the four synthesis workers responsive on any CPU.  The budget
+        # is distributed across workers instead of assigning a fixed four
+        # threads to each simultaneous ONNX call (4 workers × 4 threads).
+        logical_cpu_count = os.cpu_count() or SYNTHESIS_WORKER_COUNT
+        cpu_threads_per_worker = max(1, logical_cpu_count // SYNTHESIS_WORKER_COUNT)
+        sess_options.intra_op_num_threads = cpu_threads_per_worker
+        sess_options.inter_op_num_threads = 1
         
+        # The GPU package exposes the same ``onnxruntime`` module as the CPU
+        # package, so probing for a module named ``onnxruntime-gpu`` can never
+        # reliably detect CUDA. Ask ONNX Runtime itself and always retain CPU
+        # as the ordered fallback for machines without a compatible GPU.
+        available_providers = rt.get_available_providers()
         providers = ["CPUExecutionProvider"]
-        # Check if kokoro-onnx installed with kokoro-onnx[gpu] feature
-        import importlib.util
-        gpu_enabled = importlib.util.find_spec("onnxruntime-gpu")
-        if gpu_enabled:
-            providers = rt.get_available_providers()
-            
-        session = rt.InferenceSession(model_path, sess_options, providers=providers)
+        if "CUDAExecutionProvider" in available_providers:
+            providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+
+        cuda_fallback = False
+        try:
+            session = rt.InferenceSession(model_path, sess_options, providers=providers)
+        except Exception:
+            if providers[0] != "CUDAExecutionProvider":
+                raise
+            # A CUDA provider can be registered even when its driver/runtime
+            # cannot initialize on this machine. Recreate the session on CPU
+            # instead of preventing TTS from starting at all.
+            cuda_fallback = True
+            session = rt.InferenceSession(
+                model_path,
+                sess_options,
+                providers=["CPUExecutionProvider"]
+            )
         kokoro = Kokoro.from_session(session, voices_path)
         
         # Warmup: run a fast compilation/synthesis run so the first user interaction is instant
         kokoro.create(".", voice="ef_dora", speed=1.0, lang="es")
         
-        print(json.dumps({"status": "ready"}), flush=True)
+        print(json.dumps({
+            "status": "ready",
+            "providers": session.get_providers(),
+            "cuda_fallback": cuda_fallback,
+            "cpu_threads_per_worker": cpu_threads_per_worker
+        }), flush=True)
     except Exception as e:
         print(json.dumps({"status": "error", "error": f"Failed to initialize Kokoro: {str(e)}"}), flush=True)
         return
@@ -124,8 +156,9 @@ def main():
     import threading
     from concurrent.futures import ThreadPoolExecutor
 
-    # Initialize ThreadPoolExecutor with 4 workers to run ONNX synthesis in parallel on CPU
-    executor = ThreadPoolExecutor(max_workers=4)
+    # Exactly four concurrent synthesis jobs are kept available to match the
+    # renderer pipeline.  Their ONNX thread budget was set above.
+    executor = ThreadPoolExecutor(max_workers=SYNTHESIS_WORKER_COUNT)
     print_lock = threading.Lock()
     tokenizer_lock = threading.Lock()
 

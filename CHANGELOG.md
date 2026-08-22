@@ -1,3 +1,22 @@
+## [2.5.0] - 2026-08-21
+### Added
+- **🔎 Deep Research Workflow**: Added an approval-first research flow with planning, execution, verification, and synthesis stages, live progress tracking, validated sources, persistent checkpoints, resume support, plan adjustments, Markdown persistence, and PDF report export.
+- **🖼️ Multimodal Skills**: Added the `image_generator` skill and a caption-only `video_transcriber` skill for retrieving available YouTube subtitles.
+- **💬 Contextual Chat Welcome**: Added dynamic localized suggestions for learning, research, news, organization, planning, widgets, scheduling, workflows, and conversation, including cursor insertion, suffix replacement, and instant-send flows.
+- **🧰 Unified Editor Workspace**: Combined Cortex and Commands under a shared editor shell with explicit scope switching and consistent file management.
+- **🧪 TTS Chunk Planner Tests**: Added a dedicated chunk planning module and automated tests for safer long-form voice synthesis.
+
+### Changed
+- **Theme Naming and Migration**: Renamed the public theme IDs `forest` and `cyberpunk` to `emerald` and `synthwave`, with automatic normalization of legacy saved configurations.
+- **Theme Contrast**: Refined Cloud, Synthwave, and Emerald surfaces, assistant bubbles, bottom controls, dropdowns, and inline code for clearer contrast across light and dark contexts.
+- **Streaming and Multimodal Routing**: Improved research streaming, model capability detection, narrative/tool presentation, and long-response continuity.
+- **Voice Pipeline**: Improved TTS segmentation and phonetic handling for technical vocabulary.
+
+### Fixed
+- **Deep Research Recovery**: Interrupted investigations can now reopen their latest validated checkpoint instead of losing the active workflow.
+- **Welcome Prompt Delivery**: Instant welcome suggestions are delivered as normal chat messages and preserve the input interaction state.
+- **Theme Consistency**: Updated selectors, export styling, documentation, and persisted configuration handling to use the new theme names consistently.
+
 ## [2.4.2] - 2026-06-03
 ### Added
 - **🧮 Compute Neural Skill (SymPy Integration)**: A new dynamic modular calculator tool. Enables precise arbitrary-precision numeric calculations, equation/system solving, and symbolic operations (simplification, factoring, expansion, integration, differentiation) using SymPy in the embedded Python engine.
@@ -30,7 +49,7 @@
 
 ## [2.3.2] - 2026-04-19
 ### Added
-- **🎭 Multidimensional Themes System**: Complete overhaul of the application's visual engine. Introduced 5 premium themes: `Miku` (Default), `Cloud` (Atmospheric Light), `Midnight` (Deep Blue), `Cyberpunk` (Neon/Fuchsia), and `Forest` (Emerald/Amber).
+- **🎭 Multidimensional Themes System**: Complete overhaul of the application's visual engine. Introduced 5 premium themes: `Miku` (Default), `Cloud` (Atmospheric Light), `Midnight` (Deep Blue), `Synthwave` (Neon/Fuchsia), and `Emerald` (Emerald/Amber).
 - **🛡️ Neural Credential Vault**: Enhanced security with the `processVault` system. API keys are now automatically managed and encrypted at rest, ensuring the "Sovereign Privacy" protocol across all providers.
 - **🖼️ High-Performance Atmospheric Backgrounds**: Switched to native `local://` protocol for background image loading, eliminating memory overhead and rendering latency. Added a dynamic background gallery for deep customization.
 - **⚡ Proactive Automation Presets**: Integrated 10 high-value automation templates in the Scheduler (Heartbeat, News Radar, Social Pulse, etc.) with localized support for ES, EN, and ZH.
