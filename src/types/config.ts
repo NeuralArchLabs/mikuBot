@@ -101,7 +101,7 @@ export interface AppState {
     unsavedChanges: Record<string, string>;
     agentMode: AgentMode;
     sessionId: string | null;
-    /** When true, tools execute one at a time with render between each. NO parallelism. */
+    /** Legacy persisted key: when true, tools execute sequentially with render between each. */
     safeMode: boolean;
     /** 'auto' = smart auto-approval (reads auto, dangerous needs OK). 'manual' = EVERY tool needs user OK. */
     approvalMode: ApprovalMode;

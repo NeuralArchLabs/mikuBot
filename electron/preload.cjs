@@ -44,6 +44,7 @@ contextBridge.exposeInMainWorld('electron', {
     runConsoleTerminate: (data) => ipcRenderer.invoke('run-console-terminate', data),
     pollConsoleNotifications: () => ipcRenderer.invoke('poll-console-notifications'),
     runSearch: (data) => ipcRenderer.invoke('run-search', data),
+    runWebSearchMore: (data) => ipcRenderer.invoke('run-web-search-more', data),
     runExtract: (data) => ipcRenderer.invoke('run-extract', data),
     extractFileContent: (data) => ipcRenderer.invoke('extract-file-content', data),
     selectFiles: () => ipcRenderer.invoke('select-files'),

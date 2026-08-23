@@ -105,7 +105,8 @@ mikuBot utiliza un robusto ecosistema de herramientas divididas en dos categorí
 **2. Neural Skills (Habilidades Avanzadas):** Módulos dinámicos y extensibles que permiten potenciar el razonamiento del agente. Los usuarios pueden crear sus propias habilidades personalizadas e integrarlas fácilmente en el ecosistema.
 - **Memoria Semántica (`recall`):** Skill de memoria a largo plazo que permite al asistente recordar preferencias, hechos y evolucionar su modelo de usuario.
 - **Micro-Apps (`dynamic_widgets`):** Capacidad de generar, lanzar y gestionar interfaces visuales independientes sobre el escritorio.
-- **Investigación Profunda (`deep_research` / `web_research`):** Motores de búsqueda y auditoría web para evitar alucinaciones y obtener datos técnicos precisos.
+- **Investigación Web (`web_search`, `web_search_more`, `read_url`):** Búsqueda paginada, extracción selectiva y lectura directa de fuentes.
+- **Investigación Profunda (`deep_research`):** Motor de investigación planificada y auditable para evitar alucinaciones y obtener datos técnicos precisos.
 - **Cálculo Avanzado (`compute`):** Skill de calculadora científica y simbólica basada en SymPy para operaciones matemáticas exactas y complejas.
 - **Conectividad Universal (`api_fetcher`):** Cliente HTTP integrado para consumir cualquier API REST externa.
 - **Auto-Documentación (`instruction_booklet`):** Sistema de consulta interna para que el agente entienda sus propias capacidades y parámetros técnicos.

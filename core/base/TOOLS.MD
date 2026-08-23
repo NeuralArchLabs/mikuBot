@@ -87,11 +87,12 @@ Read content from any mount point.
 Create or overwrite files. Directories are created automatically.
 - **Param:** `filename`, `content`, `source`
 
-### `patch_file` (Version 2.0)
-Efficiently edit files using various strategies. Always creates a `.bak` backup.
+### `patch_file` (Version 2.1)
+Efficiently edit text files using protected strategies. Always creates a `.bak` backup and validates the result.
 - **Param:** `filename`, `find`, `replace`, `strategy` (auto, exact, lineNumber, fuzzy, regex).
 - **Supports:** `patches` array for multiple edits in a single call.
-- **Fuzzy Strategy:** Matches a line containing `find`. Highly resilient to minor whitespace changes.
+- **Fuzzy Strategy:** Requires at least 60% confidence and protects against partial or duplicated replacements.
+- **Safety:** Rejects binary files, unbalanced results, suspicious size changes, and invalid regex patterns.
 - **Note:** `find` must be a substantial block for `auto` strategy. Use `lineNumber` for precise edits.
 
 ### `undo_patch`
@@ -102,18 +103,27 @@ Reverts the last patch to a file using the `.bak` file.
 Delete a file or clear @CORE/tasks.md once completed.
 - **Param:** `filename`, `source`
 
-## 🔍 Discovery & Search (`list_files`, `search_files`)
+## 🔍 Discovery & Search (`list_files`, `search_files`, `search_pattern`)
 
 ### `list_files`
 List all files in a mount point. Use ONLY when lost.
 - **Param:** `source`
 
 ### `search_files`
-High-performance native search across all files in a folder.
-- **Param:** `query` (The text to find).
+Finds file names and relative paths. It does **not** search file contents.
+- **Param:** `query` (the file name or path fragment to find).
 - **Param:** `filePattern` (e.g., "*.js", "!node_modules/*").
 - **Param:** `caseSensitive` (boolean).
 - **Param:** `searchPath` (sub-folder to start search).
+- **Param:** `head_limit`, `offset` (pagination by file).
+- **If you need text, code, or regex content search:** use `search_pattern`.
+
+### `search_pattern`
+Searches inside file contents with the bundled RipGrep engine. Use this for code, text, or regular-expression patterns.
+- **Param:** `pattern`, `path`, `glob`, `case_sensitive`.
+- **Param:** `output_mode` (`content`, `files_with_matches`, `count`).
+- **Param:** `context`, `head_limit`, `offset`.
+- **Automatic protections:** excludes dependencies, build output, caches, binary/media files, and lock files.
 
 ### `get_file_outline`
 Extract classes, functions, and interfaces from a source file.
@@ -131,16 +141,19 @@ Get real-time OS metrics (CPU, Memory, Uptime, Hostname).
 ## 🛰️ Research Hierarchy (Tiers 1-4)
 
 ### Tier 1: `web_search` [Base Tool]
-Quick superficial search. Returns short titles and snippets.
+Searches the web, preserves the complete result set, enriches up to five candidate URLs with extracted content, and keeps snippets plus multimedia metadata for the remaining results.
 - **Param:** `query`
 - **Param:** `category` (general, images, videos, news, maps, shopping)
 - **Param:** `search_depth` (basic, advanced)
 
+### `web_search_more` [Base Tool]
+Continues a previous `web_search` result set by `search_id` and offset without repeating the query. It returns the next page and enriches up to five additional candidate URLs.
+
 ### Tier 2: `read_url` [Base Tool]
 Directly read a URL to extract textual content and clean HTML.
 
-### Tier 3: `web_research` / `deep_research` [Skills]
-Deep research with auditing and multiple sources. Avoids hallucinations.
+### Tier 3: `deep_research` [Skill]
+Plan-first deep research with auditing and multiple sources. Avoids hallucinations.
 
 ### Tier 4: `api_fetcher` [Universal Skill]
 Direct interaction with REST APIs (GET, POST, JSON). Allows the agent to consume any external web service with authentication and complex parameters.
@@ -163,7 +176,6 @@ Modular skills installed in `@TOOLS/skills/`:
 - **`deep_research`**: Plan-first, resumable multi-language investigation with source verification and iterative reporting.
 - **`video_transcriber`**: Obtains available captions/subtitles from YouTube videos. It does not download audio or transcribe locally; if captions are unavailable, it returns a friendly message.
 - **`image_generator`**: Generates and saves images in the active workspace.
-- **`web_research`**: Content extraction from multiple sources using diverse search categories.
 - **`list_available_skills`**: Auto-discovery of new installed skills.
 - **`instruction_booklet`**: Self-documenting tool usage library to look up parameters and examples. (Use `self_aware` as tool_name to learn about your own UI, architecture, and capabilities).
 - **`dynamic_widgets`**: Advanced tool to create, launch, and manage neural micro-apps (exclusive frameless windows).

@@ -11,6 +11,7 @@ interface AgentContextValue {
     setAgentStatus: (status: Partial<AgentStatus>) => void;
     agentMode: AgentMode;
     setAgentMode: (mode: AgentMode) => void;
+    /** Legacy state name retained for persisted-session compatibility; controls sequential execution. */
     safeMode: boolean;
     setSafeMode: (enabled: boolean) => void;
 }

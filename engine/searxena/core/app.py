@@ -302,6 +302,7 @@ class ToolSearchRequest(BaseModel):
     query: str = Field(..., description="Término de búsqueda.")
     category: Optional[str] = Field("general", description="Categoría: general, images, videos, news, maps o shopping.")
     pageno: Optional[int] = Field(1, description="Número de página.")
+    offset: Optional[int] = Field(0, ge=0, description="Desplazamiento dentro del conjunto de resultados agregados.")
     language: Optional[str] = Field(None, description="Código ISO (es, en, etc.).")
     include_engines: Optional[List[str]] = Field(None, description="Motores específicos a incluir.")
     exclude_engines: Optional[List[str]] = Field(None, description="Motores a ignorar.")
@@ -332,7 +333,7 @@ async def api_search(request_data: ToolSearchRequest):
     
     keys_to_remove = [
         "template", "engine_positions", "score", "sources", 
-        "engine_weight", "thumbnail_src", "prio", "is_shop",
+        "engine_weight", "prio", "is_shop",
         "shopping_store", "category"
     ]
     
@@ -342,14 +343,25 @@ async def api_search(request_data: ToolSearchRequest):
         clean_results.append(clean_r)
         
     total = len(clean_results)
-    limited = clean_results[:request_data.limit]
+    offset = max(0, request_data.offset or 0)
+    requested_limit = request_data.limit if request_data.limit is not None else 10
+    if requested_limit <= 0:
+        limited = clean_results[offset:]
+        page_limit = len(limited)
+    else:
+        limited = clean_results[offset:offset + requested_limit]
+        page_limit = requested_limit
+    next_offset = offset + len(limited) if offset + len(limited) < total else None
     
     return {
         "results": limited,
         "meta": {
             "total": total,
-            "has_more": total > request_data.limit,
-            "info": f"Mostrando {len(limited)} de {total}. Aumenta 'limit' si necesitas más." if total > request_data.limit else None
+            "offset": offset,
+            "limit": page_limit,
+            "has_more": next_offset is not None,
+            "next_offset": next_offset,
+            "info": f"Mostrando {offset + 1}-{offset + len(limited)} de {total}. Usa 'offset' para obtener más." if limited else f"No hay resultados desde el offset {offset}."
         }
     }
 
@@ -383,7 +395,12 @@ async def api_tools_schema():
             },
             "limit": {
               "type": "integer",
-              "description": "Opcional. Máximo de resultados (Default: 10)."
+              "description": "Opcional. Máximo de resultados (Default: 10; usa 0 para devolver todo el conjunto agregado)."
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Opcional. Desplazamiento dentro del conjunto agregado para obtener una página posterior."
             }
           },
           "required": ["query"]

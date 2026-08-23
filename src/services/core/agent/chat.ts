@@ -29,7 +29,7 @@ export function cleanTechnicalNoise(text: string, signatureRegex?: RegExp): stri
         /^(?:Thinking Process|Neural Flow|Neural Core|Proceso de Razonamiento|Active Reasoning|Razonamiento Activo|Flujo Neural|Core de Miku|Razonamiento)[\s\S]*?(?={|\[|{{)/i,
         /^\s*(?:Active Reasoning|Razonamiento Activo|Razonamiento|Neural Core|Miku Core|READY|SUCCESS|ERROR|FAILURE|WEB_SEARCH|SEARCHING|ANALYZING|DONE|COMPLETED)\s*$/gim,
         /\[[x\s]\]\s*@?(?:CORE|EXTRA|WORKSPACE|TOOLS|LIBRARY)\/[^\s]*/gi,
-        /^(?:tool_call|web_search|read_file|update_file|patch_file|delete_file|run_console|add_scheduled_task|list_files|search_files|read_url)[:\s]*/gim,
+        /^(?:tool_call|web_search|web_search_more|read_file|update_file|patch_file|delete_file|run_console|add_scheduled_task|list_files|search_files|search_pattern|read_url)[:\s]*/gim,
         /Tool Calls:\s*\[[\s\S]*?\]/gi, 
         /(?:^|\n)Tool Calls[:\s]*/gi,
         /\[\s*\{\s*"id":[\s\S]*?\}\s*\]/gi,
@@ -184,7 +184,7 @@ export function autoExtractSources(actions: string[], history: any[], tools: any
                 const canonical = (TOOL_NAME_ALIASES as any)[toolName.toLowerCase()] || toolName;
                 if (['web_search', 'read_url'].includes(canonical)) {
                     found.add("Investigación Web");
-                } else if (!['read_file', 'update_file', 'patch_file', 'delete_file', 'list_files', 'search_files'].includes(canonical)) {
+                } else if (!['read_file', 'update_file', 'patch_file', 'delete_file', 'list_files', 'search_files', 'search_pattern'].includes(canonical)) {
                     // Use the first part of the description as the source name
                     const desc = t.function.description.split('.')[0].split('|')[0].trim();
                     found.add(`Neural Skill: ${desc || toolName}`);
@@ -239,10 +239,11 @@ export async function applyBatchTaskTicking(
         'update_file': ['escribir', 'crear', 'guardar', 'modificar', 'actualizar', 'generar', 'write', 'create', 'save', 'update', 'generate', 'make', '写', '写入', '编写', '创建', '保存', '更新'],
         'patch_file': ['parchear', 'aplicar', 'arreglar', 'corregir', 'editar', 'patch', 'apply', 'fix', 'correct', 'edit', 'refactor', '修补', '应用', '修复', '编辑'],
         'list_files': ['listar', 'explorar', 'ver archivos', 'inspeccionar', 'list', 'explore', 'ls', 'dir', 'browse', '列出', '表', '浏览', '目录'],
-        'search_files': ['buscar', 'encontrar', 'localizar', 'search', 'find', 'locate', 'grep', '搜索', '查找', '搜寻'],
-        'web_search': ['investigar', 'noticias', 'google', 'buscar en internet', 'web_research', 'deep_research', 'research', 'search web', 'look up', '搜网', '网络搜索', '搜索网页'],
-        'web_research': ['investigar', 'noticias', 'google', 'buscar en internet', 'web_search', 'deep_research', 'research', 'search web', 'look up', '搜网', '网络搜索', '搜索网页'],
-        'deep_research': ['investigar', 'noticias', 'google', 'buscar en internet', 'web_search', 'web_research', 'research', 'deep research', '深度搜索', '深入搜索', '深入探查'],
+        'search_files': ['buscar archivo', 'encontrar archivo', 'localizar archivo', 'filename', 'file name', 'find file', 'locate file', 'buscar fichero', '查找文件'],
+        'search_pattern': ['buscar en el contenido', 'buscar texto', 'patrón', 'regex', 'grep', 'search content', 'find in files', 'content search', '搜索内容', '查找文本'],
+        'web_search': ['investigar', 'noticias', 'google', 'buscar en internet', 'deep_research', 'research', 'search web', 'look up', '搜网', '网络搜索', '搜索网页'],
+        'web_search_more': ['más resultados', 'mas resultados', 'siguiente página', 'siguiente pagina', 'buscar más', 'buscar mas', 'more results', 'next results', 'next page', '继续搜索', '更多结果'],
+        'deep_research': ['investigar', 'noticias', 'google', 'buscar en internet', 'web_search', 'research', 'deep research', '深度搜索', '深入搜索', '深入探查'],
         'run_console': ['ejecutar', 'comando', 'terminal', 'consola', 'git', 'run', 'execute', 'command', 'terminal', 'console', 'npm', 'node', 'python', '运行', '执行', '命令'],
         'get_system_metrics': ['métricas', 'cpu', 'ram', 'estado del sistema', 'salud', 'metrics', 'status', 'health', 'system info', '系统指标', '状态', '健康度'],
         'list_available_skills': ['habilidades', 'skills', 'capacidades', 'funciones extra', 'list skills', 'show abilities', '列表技能', '展示能力', '技能列表'],

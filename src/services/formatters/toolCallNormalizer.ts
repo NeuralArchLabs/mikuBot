@@ -223,6 +223,7 @@ function normalizeJsonKeys(obj: any, validToolNames: string[] = []): { name: str
                     if (aliasedTool === 'update_file') args = { content: val };
                     else if (aliasedTool === 'read_file') args = { filename: val };
                     else if (aliasedTool === 'web_search') args = { query: val };
+                    else if (aliasedTool === 'web_search_more') args = { search_id: val };
                     else args = { [key]: val }; // Fallback
                 } else if (val && typeof val === 'object' && !Array.isArray(val)) {
                     args = val; // Nested arguments
@@ -247,8 +248,11 @@ function normalizeJsonKeys(obj: any, validToolNames: string[] = []): { name: str
         } else if (objKeys.includes('filename') && objKeys.length === 1) {
             name = 'read_file';
             args = obj;
-        } else if (objKeys.includes('query') && (objKeys.length === 1 || objKeys.includes('search_depth'))) {
+        } else if (objKeys.includes('query') && (objKeys.length === 1 || objKeys.includes('search_depth') || objKeys.includes('category'))) {
             name = 'web_search';
+            args = obj;
+        } else if (objKeys.includes('search_id') || objKeys.includes('session_id')) {
+            name = 'web_search_more';
             args = obj;
         } else if (objKeys.includes('coin_id')) {
             name = 'get_crypto_price';
@@ -589,7 +593,7 @@ export function recoverToolCallsFromText(
                     if (!foundKv) {
                         const primaryFields: Record<string, string> = {
                             'read_file': 'filename', 'update_file': 'content', 'patch_file': 'content',
-                            'web_search': 'query', 'read_url': 'url', 'deep_research': 'topic', 'web_research': 'topic'
+                            'web_search': 'query', 'web_search_more': 'search_id', 'read_url': 'url', 'deep_research': 'topic'
                         };
                         const field = primaryFields[nameResult.canonical] || 'text';
                         args[field] = noise;

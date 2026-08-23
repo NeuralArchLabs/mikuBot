@@ -262,9 +262,14 @@ export async function executeToolCall(
                 return { success: true, data: { files: fileList, count: fileList.length, source: target, filtered_by: subDir || 'all' } };
             }
 
-            case 'search_files': {
+            case 'search_files':
+            case 'search_pattern': {
+                const isPatternSearch = name === 'search_pattern';
+                const searchValue = isPatternSearch ? args.pattern : args.query;
+                let searchPath = isPatternSearch ? (args.path || '') : (args.searchPath || args.path || '');
+                const filePattern = isPatternSearch ? (args.glob || '') : (args.filePattern || args.glob || '');
+                const caseSensitive = isPatternSearch ? args.case_sensitive : args.caseSensitive;
                 let target = resolveSource(args.source);
-                let searchPath = args.searchPath ? args.searchPath : '';
 
                 if (!args.source && searchPath) {
                     const normalizedSub = searchPath.replace(/\\/g, '/').toLowerCase();
@@ -289,22 +294,129 @@ export async function executeToolCall(
                 if (isElectron && staticPath && (window as any).electron?.searchFilesNative) {
                     const result = await (window as any).electron.searchFilesNative({
                         rootPath: staticPath,
-                        searchText: args.query,
-                        caseSensitive: args.caseSensitive || false,
-                        filePattern: args.filePattern,
-                        searchPath: searchPath
+                        searchText: searchValue,
+                        pattern: searchValue,
+                        caseSensitive: caseSensitive ?? false,
+                        case_sensitive: caseSensitive ?? false,
+                        filePattern,
+                        glob: filePattern,
+                        searchPath,
+                        path: searchPath,
+                        searchMode: isPatternSearch ? 'content' : 'filename',
+                        output_mode: args.output_mode,
+                        context: args.context,
+                        head_limit: args.head_limit,
+                        offset: args.offset
                     });
-                    if (result.ok) return { success: true, data: { query: args.query, matches: result.results, count: result.results.length, source: target } };
+                    if (result.ok) {
+                        const engineResult = result.results;
+                        const nativeData = engineResult?.data || (Array.isArray(engineResult) ? { results: engineResult } : { results: engineResult?.results || [] });
+                        const matches = nativeData.results || [];
+                        return {
+                            success: true,
+                            data: {
+                                query: searchValue,
+                                pattern: searchValue,
+                                matches,
+                                results: matches,
+                                count: matches.length,
+                                totalFiles: nativeData.totalFiles ?? matches.length,
+                                totalMatches: nativeData.totalMatches ?? matches.length,
+                                pagination: nativeData.pagination,
+                                mode: nativeData.mode,
+                                message: nativeData.message,
+                                source: target
+                            }
+                        };
+                    }
                 }
                 // Fallback
                 const store = getFileStore(target, files, additionalFiles, workSpaceFiles, toolsFiles, rootFiles);
-                const query = args.query.toLowerCase();
-                const matches: { filename: string; lines: string[] }[] = [];
-                for (const [filename, content] of Object.entries(store)) {
-                    const matchingLines = content.split('\n').filter(line => line.toLowerCase().includes(query)).slice(0, 5);
-                    if (matchingLines.length > 0) matches.push({ filename, lines: matchingLines });
+                const query = String(searchValue || '');
+                if (!query) return { success: false, error: isPatternSearch ? 'Missing search pattern.' : 'Missing file name query.' };
+
+                if (!isPatternSearch) {
+                    const normalizedQuery = caseSensitive ? query : query.toLowerCase();
+                    const filePatternMatches = (filename: string) => {
+                        if (!filePattern) return true;
+                        const patterns = String(filePattern).split(',').map((value: string) => value.trim()).filter(Boolean);
+                        const positives = patterns.filter((pattern: string) => !pattern.startsWith('!'));
+                        const negatives = patterns.filter((pattern: string) => pattern.startsWith('!')).map((pattern: string) => pattern.slice(1));
+                        const toRegex = (pattern: string) => new RegExp(`^${pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.')}$`, 'i');
+                        return !negatives.some((pattern: string) => toRegex(pattern).test(filename)) && (positives.length === 0 || positives.some((pattern: string) => toRegex(pattern).test(filename)));
+                    };
+                    const filenameMatches = Object.keys(store)
+                        .filter(filename => !searchPath || filename === searchPath || filename.startsWith(searchPath.replace(/\\/g, '/') + '/'))
+                        .filter(filename => filePatternMatches(filename))
+                        .filter(filename => (caseSensitive ? filename : filename.toLowerCase()).includes(normalizedQuery))
+                        .map(filename => ({ file: filename, name: filename.split('/').pop() || filename, path: filename, size: (store[filename] || '').length }));
+                    const offset = Math.max(0, Number(args.offset) || 0);
+                    const limit = args.head_limit === undefined ? 250 : Math.max(0, Number(args.head_limit) || 0);
+                    const page = filenameMatches.slice(offset, limit === 0 ? undefined : offset + limit);
+                    return {
+                        success: true,
+                        data: {
+                            query,
+                            matches: page,
+                            results: page,
+                            totalFiles: filenameMatches.length,
+                            totalMatches: filenameMatches.length,
+                            pagination: { limit, offset, totalAvailable: filenameMatches.length, hasMore: limit !== 0 && filenameMatches.length > offset + limit },
+                            message: filenameMatches.length === 0 && /\s|[{}()[\];=<>]/.test(query)
+                                ? 'No file names matched. If you intended to search inside file contents, use search_pattern.'
+                                : 'File name search completed successfully.',
+                            source: target
+                        }
+                    };
                 }
-                return { success: true, data: { query: args.query, matches, totalFiles: matches.length, source: target } };
+
+                const flags = caseSensitive ? 'g' : 'gi';
+                let expression;
+                try {
+                    expression = new RegExp(query, flags);
+                } catch {
+                    expression = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), flags);
+                }
+                const matches: { file: string; matches: any[] }[] = [];
+                for (const [filename, content] of Object.entries(store)) {
+                    if (searchPath && !(filename === searchPath || filename.startsWith(searchPath.replace(/\\/g, '/') + '/'))) continue;
+                    const lines = content.split(/\r?\n/);
+                    const lineMatches: any[] = [];
+                    for (let i = 0; i < lines.length; i++) {
+                        expression.lastIndex = 0;
+                        const match = expression.exec(lines[i]);
+                        if (!match) continue;
+                        lineMatches.push({
+                            line: i + 1,
+                            content: lines[i],
+                            submatches: [{ match: match[0], start: match.index, end: match.index + match[0].length }],
+                            isContext: false
+                        });
+                    }
+                    if (lineMatches.length > 0) matches.push({ file: filename, matches: lineMatches });
+                }
+                const offset = Math.max(0, Number(args.offset) || 0);
+                const limit = args.head_limit === undefined ? 250 : Math.max(0, Number(args.head_limit) || 0);
+                const page = matches.slice(offset, limit === 0 ? undefined : offset + limit);
+                const outputMode = args.output_mode || 'content';
+                const results = outputMode === 'count'
+                    ? page.map(file => ({ file: file.file, count: file.matches.length }))
+                    : outputMode === 'files_with_matches'
+                        ? page.map(file => ({ file: file.file, matchCount: file.matches.length }))
+                        : page;
+                return {
+                    success: true,
+                    data: {
+                        query,
+                        pattern: query,
+                        matches: results,
+                        results,
+                        totalFiles: matches.length,
+                        totalMatches: matches.reduce((total, file) => total + file.matches.length, 0),
+                        pagination: { limit, offset, totalAvailable: matches.length, hasMore: limit !== 0 && matches.length > offset + limit },
+                        source: target
+                    }
+                };
             }
 
             case 'get_system_metrics': {
@@ -354,6 +466,26 @@ export async function executeToolCall(
                 }
 
                 return { success: false, error: `No Search API available. Ensure SearXena is installed and running.` };
+            }
+
+            case 'web_search_more': {
+                if (!args.search_id) {
+                    return { success: false, error: 'The "search_id" parameter is required for web_search_more. Use the search_id returned by web_search.' };
+                }
+                if (typeof window !== 'undefined' && (window as any).electron?.runWebSearchMore) {
+                    try {
+                        const response = await (window as any).electron.runWebSearchMore({
+                            searchId: args.search_id,
+                            offset: args.offset,
+                            limit: args.limit
+                        });
+                        if (response.ok) return { success: true, data: response.data };
+                        return { success: false, error: response.error || 'Unable to retrieve more search results.' };
+                    } catch (e) {
+                        return { success: false, error: e instanceof Error ? e.message : String(e) };
+                    }
+                }
+                return { success: false, error: 'No Search API available for web_search_more. Ensure SearXena is installed and running.' };
             }
 
 

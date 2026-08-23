@@ -1096,6 +1096,7 @@
   "batch_operation": "batch operéishon",
   "get_system_metrics": "guet sístem métrics",
   "web_search": "ueb serch",
+  "web_search_more": "ueb serch mor",
   "read_url": "rid iú-ar-el",
   "run_console": "ran consól",
   "get_console_status": "guet consól státus",
@@ -1112,6 +1113,5 @@
   "instruction_booklet": "instrákshon búklet",
   "list_available_skills": "list evéilabol skils",
   "recall": "ricól",
-  "video_transcriber": "vídio transcráiber",
-  "web_research": "ueb risérch"
+  "video_transcriber": "vídio transcráiber"
 }

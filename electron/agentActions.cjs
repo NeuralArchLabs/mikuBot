@@ -4,6 +4,7 @@
  */
 
 const fs = require('fs/promises');
+const fsSync = require('fs');
 const path = require('path');
 const os = require('os');
 const { exec } = require('child_process');
@@ -11,6 +12,14 @@ const util = require('util');
 const SafePathResolver = require('./SafePathResolver.cjs');
 
 const execPromise = util.promisify(exec);
+const execFilePromise = util.promisify(require('child_process').execFile);
+
+let bundledRgPath = null;
+try {
+    ({ rgPath: bundledRgPath } = require('@vscode/ripgrep'));
+} catch (e) {
+    // Optional during development; the OS fallback remains available.
+}
 
 // Keep a small, explicit reserve when zero-overhead mode is disabled.  Merely
 // deleting OLLAMA_GPU_OVERHEAD is not a reliable "undo": Ollama's own default
@@ -218,114 +227,510 @@ async function handleListFiles(root, { directory, recursive = false }) {
 
 // --- NATIVE SEARCH ENGINE ---
 
-async function searchWithRipGrep(searchText, root, caseSensitive, filePattern) {
-    try {
-        let command = `rg --json ${caseSensitive ? '' : '-i'} "${searchText}" "${root}"`;
-        if (filePattern) command += ` -g "${filePattern}"`;
-        command += ' --max-count 50'; 
+const SEARCH_EXCLUDE_DIRS = [
+    '.git', '.svn', '.hg', 'node_modules', 'dist', 'build', 'out',
+    '.next', '.nuxt', '.miku', 'coverage', '.nyc_output',
+    '__pycache__', '.pytest_cache', '.vscode', '.idea', 'public/assets'
+];
 
-        const { stdout } = await execPromise(command, { maxBuffer: 1024 * 1024 * 10 });
-        const lines = stdout.trim().split('\n');
-        const fileResults = {};
+const SEARCH_EXCLUDE_EXTENSIONS = [
+    '*.map', '*.min.js', '*.min.css', '*.bundle.js', '*.chunk.js',
+    '*.woff', '*.woff2', '*.ttf', '*.eot', '*.ico', '*.png', '*.jpg',
+    '*.jpeg', '*.gif', '*.svg', '*.webp', '*.mp4', '*.mp3', '*.wav',
+    '*.zip', '*.tar', '*.gz', '*.pdf', '*.doc', '*.docx', '*.lock', '*.lockb'
+];
 
-        for (const line of lines) {
-            try {
-                const parsed = JSON.parse(line);
-                if (parsed.type === 'match') {
-                    const filePath = path.relative(root, parsed.data.path.text).replace(/\\/g, '/');
-                    if (!fileResults[filePath]) {
-                        fileResults[filePath] = { file: filePath, matches: [] };
-                    }
-                    fileResults[filePath].matches.push({
-                        line: parsed.data.line_number,
-                        content: parsed.data.lines.text.trim()
-                    });
-                }
-            } catch (e) { }
-        }
-        return Object.values(fileResults);
-    } catch (e) { return null; }
+const SEARCH_DEFAULT_LIMIT = 250;
+const SEARCH_BROAD_LIMIT = 50;
+const SEARCH_MAX_MATCHES_PER_FILE = 1000;
+
+function isPathWithin(parent, child) {
+    const parentPath = path.resolve(parent).toLowerCase();
+    const childPath = path.resolve(child).toLowerCase();
+    return childPath === parentPath || childPath.startsWith(`${parentPath}${path.sep}`);
 }
 
-async function searchWithGrep(searchText, root, caseSensitive) {
-    try {
-        const command = `grep -rIn ${caseSensitive ? '' : '-i'} "${searchText}" "${root}" | head -n 300`;
-        const { stdout } = await execPromise(command, { maxBuffer: 1024 * 1024 * 5 });
-        const lines = stdout.trim().split('\n');
-        const fileResults = {};
+function resolveSearchRoot(root, searchPath) {
+    if (!searchPath) return root;
 
-        for (const line of lines) {
-            const match = line.match(/^(.+):(\d+):(.*)$/);
-            if (match) {
-                const filePath = path.relative(root, match[1]).replace(/\\/g, '/');
-                if (!fileResults[filePath]) {
-                    fileResults[filePath] = { file: filePath, matches: [] };
-                }
-                fileResults[filePath].matches.push({
-                    line: parseInt(match[2]),
-                    content: match[3].trim()
-                });
-            }
-        }
-        return Object.values(fileResults);
-    } catch (e) { return null; }
+    const requested = String(searchPath);
+    let targetRoot;
+    if (requested.startsWith('@') || path.isAbsolute(requested)) {
+        targetRoot = SafePathResolver.resolvePath(requested);
+    } else {
+        targetRoot = path.resolve(root, requested);
+    }
+
+    if (!isPathWithin(root, targetRoot)) {
+        throw new Error(`Search path must remain inside the selected root: ${requested}`);
+    }
+    return targetRoot;
 }
 
-async function searchWithFindstr(searchText, root, caseSensitive) {
-    try {
-        const command = `findstr /S /N ${caseSensitive ? '' : '/I'} "${searchText}" "${path.join(root, '*')}"`;
-        const { stdout } = await execPromise(command, { maxBuffer: 1024 * 1024 * 5 });
-        const lines = stdout.trim().split('\n');
-        const fileResults = {};
+function getBundledRipGrepPath() {
+    if (!bundledRgPath) return null;
+    const unpackedPath = bundledRgPath.includes('app.asar')
+        ? bundledRgPath.replace('app.asar', 'app.asar.unpacked')
+        : bundledRgPath;
+    if (fsSync.existsSync(unpackedPath)) return unpackedPath;
+    if (fsSync.existsSync(bundledRgPath)) return bundledRgPath;
+    return null;
+}
 
-        for (const line of lines) {
-            const match = line.match(/^(.+):(\d+):(.*)$/);
-            if (match) {
-                const filePath = path.relative(root, match[1]).replace(/\\/g, '/');
-                if (filePath.includes('node_modules') || filePath.includes('.git')) continue;
-                if (!fileResults[filePath]) {
-                    fileResults[filePath] = { file: filePath, matches: [] };
-                }
-                if (fileResults[filePath].matches.length < 15) {
-                    fileResults[filePath].matches.push({
-                        line: parseInt(match[2]),
-                        content: match[3].trim()
-                    });
+function buildSearchArgs(searchText, root, options) {
+    const {
+        caseSensitive = false,
+        filePattern,
+        context,
+        maxMatchesPerFile = SEARCH_MAX_MATCHES_PER_FILE
+    } = options;
+    const args = ['--json', '--hidden', '--no-messages', '--max-columns', '500'];
+
+    for (const directory of SEARCH_EXCLUDE_DIRS) {
+        args.push('--glob', `!**/${directory}/*`);
+    }
+    for (const extension of SEARCH_EXCLUDE_EXTENSIONS) {
+        args.push('--glob', `!${extension}`);
+    }
+
+    if (!caseSensitive) args.push('--ignore-case');
+    if (context !== undefined && Number.isFinite(Number(context))) {
+        args.push('--context', String(Math.max(0, Math.min(20, Number(context)))));
+    }
+    if (maxMatchesPerFile > 0) args.push('--max-count', String(maxMatchesPerFile));
+
+    if (filePattern) {
+        for (const pattern of String(filePattern).split(',')) {
+            const cleanPattern = pattern.trim();
+            if (cleanPattern) args.push('--glob', cleanPattern);
+        }
+    }
+
+    args.push('--', searchText, root);
+    return args;
+}
+
+function relativeSearchPath(root, filePath) {
+    const relative = path.relative(root, filePath).replace(/\\/g, '/');
+    return relative || path.basename(filePath);
+}
+
+function parseRipGrepResults(stdout, root, mode, limit, offset, isBroadSearch) {
+    const fileResults = new Map();
+    let totalMatches = 0;
+
+    for (const line of String(stdout || '').split(/\r?\n/)) {
+        if (!line.trim()) continue;
+        try {
+            const parsed = JSON.parse(line);
+            if (parsed.type !== 'match' && parsed.type !== 'context') continue;
+
+            const filePath = relativeSearchPath(root, parsed.data.path.text);
+            if (!fileResults.has(filePath)) {
+                fileResults.set(filePath, { file: filePath, matches: [] });
+            }
+
+            const isMatch = parsed.type === 'match';
+            const matchEntry = {
+                line: parsed.data.line_number,
+                content: String(parsed.data.lines?.text || '').replace(/\r?\n$/, ''),
+                isContext: !isMatch
+            };
+
+            if (isMatch) {
+                totalMatches++;
+                if (Array.isArray(parsed.data.submatches)) {
+                    matchEntry.submatches = parsed.data.submatches.map(submatch => ({
+                        match: submatch.match?.text || '',
+                        start: submatch.start,
+                        end: submatch.end
+                    }));
                 }
             }
+
+            const fileResult = fileResults.get(filePath);
+            if (fileResult.matches.length < SEARCH_MAX_MATCHES_PER_FILE || isMatch) {
+                fileResult.matches.push(matchEntry);
+            }
+        } catch (e) {
+            // RipGrep may emit diagnostic/non-JSON lines in unusual environments.
         }
-        return Object.values(fileResults);
-    } catch (e) { return null; }
+    }
+
+    const allFiles = Array.from(fileResults.values());
+    const effectiveLimit = Math.max(0, Number(limit) || 0);
+    const effectiveOffset = Math.max(0, Number(offset) || 0);
+    const paginatedFiles = allFiles.slice(
+        effectiveOffset,
+        effectiveLimit === 0 ? undefined : effectiveOffset + effectiveLimit
+    );
+    const hasMore = effectiveLimit !== 0 && allFiles.length > effectiveOffset + effectiveLimit;
+
+    let results;
+    if (mode === 'files_with_matches') {
+        results = paginatedFiles.map(file => ({
+            file: file.file,
+            matchCount: file.matches.filter(match => !match.isContext).length
+        }));
+    } else if (mode === 'count') {
+        results = paginatedFiles.map(file => ({
+            file: file.file,
+            count: file.matches.filter(match => !match.isContext).length
+        }));
+    } else {
+        results = paginatedFiles;
+    }
+
+    let message;
+    if (allFiles.length === 0) {
+        message = 'No matches found.';
+    } else if (hasMore && isBroadSearch) {
+        message = `Broad search truncated: showing ${paginatedFiles.length} of ${allFiles.length} files (${totalMatches} matches). Refine with searchPath/filePattern or use head_limit.`;
+    } else if (hasMore) {
+        message = `Showing ${paginatedFiles.length} of ${allFiles.length} files. Use offset ${effectiveOffset + effectiveLimit} for the next page.`;
+    } else {
+        message = 'Search completed successfully.';
+    }
+
+    return {
+        status: 'success',
+        data: {
+            mode,
+            results,
+            totalFiles: allFiles.length,
+            totalMatches,
+            pagination: {
+                limit: effectiveLimit,
+                offset: effectiveOffset,
+                totalAvailable: allFiles.length,
+                hasMore
+            },
+            message
+        }
+    };
+}
+
+async function searchWithRipGrep(searchText, root, options) {
+    const rgPath = getBundledRipGrepPath() || 'rg';
+    const args = buildSearchArgs(searchText, root, options);
+    try {
+        const { stdout } = await execFilePromise(rgPath, args, {
+            windowsHide: true,
+            maxBuffer: 1024 * 1024 * 50
+        });
+        return parseRipGrepResults(
+            stdout,
+            root,
+            options.mode,
+            options.limit,
+            options.offset,
+            options.isBroadSearch
+        );
+    } catch (error) {
+        // rg exits with code 1 when there are no matches. Return an empty
+        // successful result for that case, but allow missing/broken binaries
+        // to continue to the platform fallback.
+        if (error && error.code === 1) {
+            return parseRipGrepResults('', root, options.mode, options.limit, options.offset, options.isBroadSearch);
+        }
+        return null;
+    }
+}
+
+async function searchWithGrep(searchText, root, options) {
+    if (process.platform === 'win32') return null;
+    try {
+        const args = ['-rIn'];
+        if (!options.caseSensitive) args.push('-i');
+        args.push('--', searchText, root);
+        const { stdout } = await execFilePromise('grep', args, {
+            maxBuffer: 1024 * 1024 * 50
+        });
+        const lines = String(stdout || '').split(/\r?\n/);
+        const jsonLines = lines.map(line => {
+            const match = line.match(/^(.*):(\d+):(.*)$/);
+            if (!match) return '';
+            return JSON.stringify({
+                type: 'match',
+                data: {
+                    path: { text: match[1] },
+                    line_number: Number(match[2]),
+                    lines: { text: `${match[3]}\n` },
+                    submatches: []
+                }
+            });
+        }).filter(Boolean).join('\n');
+        return parseRipGrepResults(jsonLines, root, options.mode, options.limit, options.offset, options.isBroadSearch);
+    } catch (error) {
+        if (error && error.code === 1) return parseRipGrepResults('', root, options.mode, options.limit, options.offset, options.isBroadSearch);
+        return null;
+    }
+}
+
+async function searchWithFindstr(searchText, root, options) {
+    if (process.platform !== 'win32') return null;
+    try {
+        const args = ['/S', '/N'];
+        if (!options.caseSensitive) args.push('/I');
+        args.push(searchText, path.join(root, '*'));
+        const { stdout } = await execFilePromise('findstr', args, {
+            windowsHide: true,
+            maxBuffer: 1024 * 1024 * 50
+        });
+        const lines = String(stdout || '').split(/\r?\n/);
+        const jsonLines = lines.map(line => {
+            const match = line.match(/^(.*):(\d+):(.*)$/);
+            if (!match) return '';
+            const filePath = relativeSearchPath(root, match[1]);
+            if (isExcludedSearchPath(filePath, options.filePattern)) return '';
+            return JSON.stringify({
+                type: 'match',
+                data: {
+                    path: { text: match[1] },
+                    line_number: Number(match[2]),
+                    lines: { text: `${match[3]}\n` },
+                    submatches: []
+                }
+            });
+        }).filter(Boolean).join('\n');
+        return parseRipGrepResults(jsonLines, root, options.mode, options.limit, options.offset, options.isBroadSearch);
+    } catch (error) {
+        if (error && error.code === 1) return parseRipGrepResults('', root, options.mode, options.limit, options.offset, options.isBroadSearch);
+        return null;
+    }
+}
+
+function isExcludedSearchPath(filePath, filePattern) {
+    const normalized = filePath.replace(/\\/g, '/').toLowerCase();
+    if (SEARCH_EXCLUDE_DIRS.some(dir => normalized.includes(`/${dir.toLowerCase()}/`) || normalized.startsWith(`${dir.toLowerCase()}/`))) return true;
+    if (SEARCH_EXCLUDE_EXTENSIONS.some(pattern => {
+        const suffix = pattern.replace('*', '').toLowerCase();
+        return suffix && normalized.endsWith(suffix);
+    })) return true;
+    if (filePattern) {
+        const patterns = String(filePattern).split(',').map(value => value.trim()).filter(Boolean);
+        const positivePatterns = patterns.filter(pattern => !pattern.startsWith('!'));
+        const negativePatterns = patterns.filter(pattern => pattern.startsWith('!')).map(pattern => pattern.slice(1));
+        const basename = path.basename(normalized);
+        const globToRegex = pattern => new RegExp(`^${pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.')}$`, 'i');
+        if (negativePatterns.some(pattern => globToRegex(pattern).test(normalized) || globToRegex(pattern).test(basename))) return true;
+        if (positivePatterns.length > 0 && !positivePatterns.some(pattern => globToRegex(pattern).test(normalized) || globToRegex(pattern).test(basename))) return true;
+    }
+    return false;
+}
+
+function globPatternToRegex(pattern) {
+    const escaped = String(pattern)
+        .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+        .replace(/\*/g, '.*')
+        .replace(/\?/g, '.');
+    return new RegExp(`^${escaped}$`, 'i');
+}
+
+function matchesRequestedFilePattern(filePath, filePattern) {
+    if (!filePattern) return true;
+    const normalizedPath = filePath.replace(/\\/g, '/');
+    const basename = path.basename(normalizedPath);
+    const patterns = String(filePattern).split(',').map(value => value.trim()).filter(Boolean);
+    const positives = patterns.filter(pattern => !pattern.startsWith('!'));
+    const negatives = patterns.filter(pattern => pattern.startsWith('!')).map(pattern => pattern.slice(1));
+    if (negatives.some(pattern => globPatternToRegex(pattern).test(normalizedPath) || globPatternToRegex(pattern).test(basename))) return false;
+    return positives.length === 0 || positives.some(pattern => globPatternToRegex(pattern).test(normalizedPath) || globPatternToRegex(pattern).test(basename));
+}
+
+async function handleSearchFilesByName(root, params = {}) {
+    const query = String(params.searchText ?? params.query ?? '').trim();
+    if (!query) throw new Error('File name search requires a query.');
+
+    const searchPath = params.searchPath ?? params.path;
+    const targetRoot = resolveSearchRoot(root, searchPath);
+    const caseSensitive = params.caseSensitive ?? params.case_sensitive ?? false;
+    const filePattern = params.filePattern ?? params.glob;
+    const normalizedQuery = caseSensitive ? query : query.toLowerCase();
+    const isBroadSearch = !searchPath && !filePattern;
+    const requestedLimit = params.head_limit === undefined
+        ? (isBroadSearch ? SEARCH_BROAD_LIMIT : SEARCH_DEFAULT_LIMIT)
+        : Number(params.head_limit);
+    const limit = Number.isFinite(requestedLimit) && requestedLimit >= 0 ? Math.floor(requestedLimit) : SEARCH_DEFAULT_LIMIT;
+    const offset = Number.isFinite(Number(params.offset)) && Number(params.offset) >= 0 ? Math.floor(Number(params.offset)) : 0;
+    const results = [];
+
+    async function walk(directory) {
+        const entries = await fs.readdir(directory, { withFileTypes: true });
+        entries.sort((a, b) => a.name.localeCompare(b.name));
+        for (const entry of entries) {
+            const fullPath = path.join(directory, entry.name);
+            const relativePath = relativeSearchPath(root, fullPath);
+            if (isExcludedSearchPath(relativePath, null)) continue;
+
+            if (entry.isDirectory()) {
+                await walk(fullPath);
+                continue;
+            }
+            if (!entry.isFile() || !matchesRequestedFilePattern(relativePath, filePattern)) continue;
+
+            const candidate = caseSensitive ? relativePath : relativePath.toLowerCase();
+            if (!candidate.includes(normalizedQuery)) continue;
+
+            const stats = await fs.stat(fullPath);
+            results.push({ file: relativePath, name: entry.name, path: relativePath, size: stats.size });
+        }
+    }
+
+    await walk(targetRoot);
+    const paginated = results.slice(offset, limit === 0 ? undefined : offset + limit);
+    const hasMore = limit !== 0 && results.length > offset + limit;
+    const looksLikeContent = /\s|[{}()[\];=<>]/.test(query);
+    let message;
+    if (results.length === 0 && looksLikeContent) {
+        message = 'No file names matched. If you intended to search inside file contents, use search_pattern.';
+    } else if (results.length === 0) {
+        message = 'No file names matched.';
+    } else if (hasMore) {
+        message = `Showing ${paginated.length} of ${results.length} file names. Use offset ${offset + limit} for the next page.`;
+    } else {
+        message = 'File name search completed successfully.';
+    }
+
+    return {
+        status: 'success',
+        data: {
+            mode: 'files',
+            results: paginated,
+            matches: paginated,
+            totalFiles: results.length,
+            totalMatches: results.length,
+            pagination: { limit, offset, totalAvailable: results.length, hasMore },
+            message
+        }
+    };
 }
 
 /**
- * Orchestrates native search based on available tools.
- * Prioritize RipGrep, then fallback to standard OS tools.
+ * Routes the two specialized search interfaces. `search_files` uses the
+ * filename walker above; `search_pattern` uses the content engine below.
+ * The content engine accepts the IDE-compatible aliases pattern/path/glob/
+ * output_mode/context/head_limit/offset.
  */
-async function handleSearchFilesNative(root, { searchText, filePattern, caseSensitive, searchPath }) {
-    if (!searchText) throw new Error('Search text required');
-    const targetRoot = searchPath ? SafePathResolver.resolvePath(searchPath) : root;
-
-    // 1. Try RipGrep
-    const rgResult = await searchWithRipGrep(searchText, targetRoot, !!caseSensitive, filePattern);
-    if (rgResult) return rgResult;
-
-    // 2. Try Grep (Unix)
-    if (process.platform !== 'win32') {
-        const grepResult = await searchWithGrep(searchText, targetRoot, !!caseSensitive);
-        if (grepResult) return grepResult;
+async function handleSearchFilesNative(root, params = {}) {
+    if (params.searchMode === 'filename') {
+        return handleSearchFilesByName(root, params);
     }
 
-    // 3. Try Findstr (Windows)
-    if (process.platform === 'win32') {
-        const findstrResult = await searchWithFindstr(searchText, targetRoot, !!caseSensitive);
-        if (findstrResult) return findstrResult;
+    const searchText = params.searchText ?? params.query ?? params.pattern;
+    if (typeof searchText !== 'string' || searchText.trim() === '') {
+        throw new Error('Search text required');
     }
 
-    throw new Error('No native search tool found (rg, grep, findstr) or search failed.');
+    const filePattern = params.filePattern ?? params.glob;
+    const searchPath = params.searchPath ?? params.path;
+    const caseSensitive = params.caseSensitive ?? params.case_sensitive ?? false;
+    const context = params.context === undefined ? undefined : Number(params.context);
+    const mode = params.output_mode || (context !== undefined ? 'content' : 'content');
+    const isBroadSearch = !searchPath && !filePattern;
+    const requestedLimit = params.head_limit === undefined
+        ? (isBroadSearch ? SEARCH_BROAD_LIMIT : SEARCH_DEFAULT_LIMIT)
+        : Number(params.head_limit);
+    const limit = Number.isFinite(requestedLimit) && requestedLimit >= 0 ? Math.floor(requestedLimit) : SEARCH_DEFAULT_LIMIT;
+    const offset = Number.isFinite(Number(params.offset)) && Number(params.offset) >= 0 ? Math.floor(Number(params.offset)) : 0;
+    const targetRoot = resolveSearchRoot(root, searchPath);
+    const options = { caseSensitive: !!caseSensitive, filePattern, context, mode, limit, offset, isBroadSearch };
+    const addToolSuggestion = result => {
+        if (result?.data?.totalFiles === 0 && !/[\s{}()[\];=<>]/.test(searchText) && /\.[a-z0-9]{1,8}$/i.test(searchText)) {
+            result.data.message = 'No content matches found. If you intended to locate a file by name, use search_files.';
+        }
+        return result;
+    };
+
+    const rgResult = await searchWithRipGrep(searchText, targetRoot, options);
+    if (rgResult) return addToolSuggestion(rgResult);
+
+    const fallbackResult = process.platform === 'win32'
+        ? await searchWithFindstr(searchText, targetRoot, options)
+        : await searchWithGrep(searchText, targetRoot, options);
+    if (fallbackResult) return addToolSuggestion(fallbackResult);
+
+    throw new Error('No native search tool found (bundled RipGrep, rg, grep or findstr) or the search failed.');
 }
 
-// --- SMART PATCH ENGINE 2.0 ---
+// --- SMART PATCH ENGINE 2.1 ---
+
+function isBinaryFile(buffer) {
+    const checkLength = Math.min(buffer.length, 8192);
+    let nullCount = 0;
+    let controlCount = 0;
+    for (let i = 0; i < checkLength; i++) {
+        const byte = buffer[i];
+        if (byte === 0 && ++nullCount > 2) return true;
+        if (byte < 32 && byte !== 9 && byte !== 10 && byte !== 13 && ++controlCount > 5) return true;
+    }
+    return false;
+}
+
+function verifySizeSanity(original, patched, filePath) {
+    const originalSize = Buffer.byteLength(original, 'utf8');
+    const patchedSize = Buffer.byteLength(patched, 'utf8');
+    if (originalSize === 0 || (originalSize === 0 && patchedSize === 0)) return null;
+
+    const ratio = patchedSize / originalSize;
+    if (ratio > 3) {
+        return `Integrity warning: patched file is ${ratio.toFixed(1)}x larger than the original (${formatBytes(patchedSize)} vs ${formatBytes(originalSize)}). Patch blocked for ${path.basename(filePath)}.`;
+    }
+    if (ratio < 0.1 && originalSize > 100) {
+        return `Integrity warning: patched file is only ${(ratio * 100).toFixed(1)}% of the original size (${formatBytes(patchedSize)} vs ${formatBytes(originalSize)}). Patch blocked for ${path.basename(filePath)}.`;
+    }
+    return null;
+}
+
+function detectDuplicateBlocks(content, eol, minBlockLines = 3) {
+    const lines = content.split(eol);
+    if (lines.length < minBlockLines * 2) return null;
+
+    for (let blockSize = minBlockLines; blockSize <= Math.min(20, Math.floor(lines.length / 2)); blockSize++) {
+        for (let i = 0; i <= lines.length - blockSize * 2; i++) {
+            let duplicate = true;
+            for (let j = 0; j < blockSize; j++) {
+                if (lines[i + j].trim() !== lines[i + blockSize + j].trim()) {
+                    duplicate = false;
+                    break;
+                }
+            }
+            if (duplicate) {
+                const preview = lines.slice(i, i + blockSize).map(line => line.trim()).filter(Boolean).slice(0, 3).join(' / ');
+                return `Duplicate block detected at line ${i + 1}: ${blockSize} consecutive lines appear twice. Patch blocked. Re-read the file and use exact or lineNumber strategy. Preview: "${preview}"`;
+            }
+        }
+    }
+    return null;
+}
+
+function escapeReplacement(value) {
+    return String(value).replace(/\$/g, '$$$$');
+}
+
+function lineFromCharIndex(text, index, eol) {
+    return text.substring(0, index).split(eol).length;
+}
+
+function generateDiffPreview(original, patched, eol) {
+    const oldLines = original.split(eol);
+    const newLines = patched.split(eol);
+    let start = 0;
+    while (start < oldLines.length && start < newLines.length && oldLines[start] === newLines[start]) start++;
+
+    let oldEnd = oldLines.length - 1;
+    let newEnd = newLines.length - 1;
+    while (oldEnd >= start && newEnd >= start && oldLines[oldEnd] === newLines[newEnd]) {
+        oldEnd--;
+        newEnd--;
+    }
+
+    const diffLines = [`--- Lines ${start + 1}-${Math.max(start + 1, newEnd + 1)} ---`];
+    for (const line of oldLines.slice(start, oldEnd + 1).slice(0, 15)) diffLines.push(`- ${line.trim().slice(0, 120)}`);
+    for (const line of newLines.slice(start, newEnd + 1).slice(0, 15)) diffLines.push(`+ ${line.trim().slice(0, 120)}`);
+    if (oldEnd - start + 1 > 15 || newEnd - start + 1 > 15) diffLines.push('... (diff truncated)');
+    return diffLines.join('\n');
+}
 
 function verifySyntax(str) {
     const stack = [];
@@ -371,11 +776,18 @@ function verifySyntax(str) {
 function applySinglePatch(content, search, replace, strategy, eol, lineNumber) {
     let newContent = content;
     let appliedStrategy = '';
+    let startLine;
+    let endLine;
 
-    const normalizedSearch = (search || '').replace(/\r\n|\r|\n/g, eol);
-    const normalizedReplace = (replace || '').replace(/\r\n|\r|\n/g, eol);
+    const normalizedSearch = String(search ?? '').replace(/\r\n|\r|\n/g, eol);
+    const normalizedReplace = String(replace ?? '').replace(/\r\n|\r|\n/g, eol);
+    const replaceLineCount = normalizedReplace.split(eol).length;
 
-    // 1. Line Number
+    if (!['auto', 'exact', 'fuzzy', 'regex', 'lineNumber'].includes(strategy)) {
+        throw new Error(`Unknown patch strategy: ${strategy}`);
+    }
+
+    // 1. Line number strategy
     if (strategy === 'lineNumber' || (strategy === 'auto' && lineNumber !== undefined)) {
         if (lineNumber !== undefined) {
             const lines = content.split(eol);
@@ -383,76 +795,129 @@ function applySinglePatch(content, search, replace, strategy, eol, lineNumber) {
                 lines[lineNumber - 1] = normalizedReplace;
                 newContent = lines.join(eol);
                 appliedStrategy = 'lineNumber';
+                startLine = lineNumber;
+                endLine = lineNumber + replaceLineCount - 1;
+            } else if (strategy === 'lineNumber') {
+                throw new Error(`Line number ${lineNumber} out of range`);
             }
         }
     }
 
-    // 2. Exact Match
-    if (!appliedStrategy && (strategy === 'exact' || strategy === 'auto')) {
+    // 2. Exact match. Short repeated anchors are rejected; longer blocks are
+    // replaced globally, matching the IDE behavior.
+    if (!appliedStrategy && (strategy === 'exact' || strategy === 'auto') && normalizedSearch.length > 0) {
         if (content.includes(normalizedSearch)) {
             const occurrences = content.split(normalizedSearch).length - 1;
             if (occurrences > 1 && normalizedSearch.length < 30) {
-                throw new Error(`Ambiguity: ${occurrences} matches found. Provide more context or use lineNumber.`);
+                throw new Error(`Ambiguous: found ${occurrences} exact matches for pattern. Provide more context or use lineNumber.`);
             }
-            newContent = content.replace(normalizedSearch, normalizedReplace);
+            const index = content.indexOf(normalizedSearch);
+            startLine = lineFromCharIndex(content, index, eol);
+            endLine = startLine + replaceLineCount - 1;
+            const escapedSearch = normalizedSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            newContent = content.replace(new RegExp(escapedSearch, 'g'), escapeReplacement(normalizedReplace));
             appliedStrategy = 'exact';
+        } else if (strategy === 'exact') {
+            throw new Error(`Exact match not found for pattern: "${normalizedSearch.slice(0, 80)}"`);
         }
     }
 
-    // 3. Normalized Match (Whitespace flexible)
-    if (!appliedStrategy && strategy === 'auto') {
+    // 3. Whitespace-normalized match
+    if (!appliedStrategy && strategy === 'auto' && normalizedSearch.length > 0) {
         const normalizedContent = content.replace(/\r\n|\r|\n/g, '\n').replace(/[ \t]+/g, ' ');
         const normalizedSearchInt = normalizedSearch.replace(/\r\n|\r|\n/g, '\n').replace(/[ \t]+/g, ' ');
 
-        if (normalizedContent.includes(normalizedSearchInt) || flexibleIncludes(normalizedContent, normalizedSearchInt)) {
+        if (normalizedContent.includes(normalizedSearchInt)) {
             const escapedSearch = normalizedSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const pattern = new RegExp(escapedSearch.replace(/\s+/g, '\\s+'), 'g');
-            newContent = content.replace(pattern, normalizedReplace);
+            const match = pattern.exec(content);
+            if (match) {
+                startLine = lineFromCharIndex(content, match.index, eol);
+                endLine = startLine + replaceLineCount - 1;
+            }
+            pattern.lastIndex = 0;
+            newContent = content.replace(pattern, escapeReplacement(normalizedReplace));
             appliedStrategy = 'normalized';
         }
     }
 
-    // 4. Fuzzy Match (Multi-line resilient)
+    // 4. Fuzzy match with a confidence threshold
     if (!appliedStrategy && (strategy === 'fuzzy' || strategy === 'auto')) {
         const lines = content.split(eol);
-        const searchLines = normalizedSearch.trim().split(eol).map(l => l.trim()).filter(l => l.length > 0);
-        
+        const searchLines = normalizedSearch.trim().split(eol).map(line => line.trim()).filter(Boolean);
+        const threshold = 0.6;
+
         if (searchLines.length > 0) {
-            // Find a sequence of lines that contains all search lines in order
+            let bestIndex = -1;
+            let bestScore = 0;
             for (let i = 0; i <= lines.length - searchLines.length; i++) {
-                let match = true;
+                let matchingLines = 0;
+                let similarity = 0;
                 for (let j = 0; j < searchLines.length; j++) {
-                    const tLine = lines[i + j].trim();
-                    const sLine = searchLines[j];
-                    if (!tLine.includes(sLine) && !flexibleIncludes(tLine, sLine)) {
-                        match = false;
-                        break;
+                    const searchLine = searchLines[j];
+                    const contentLine = lines[i + j].trim();
+                    if (contentLine.includes(searchLine)) {
+                        matchingLines++;
+                        similarity += searchLine.length > 0 ? Math.min(searchLine.length / Math.max(contentLine.length, 1), 1) : 0;
                     }
                 }
-
-                if (match) {
-                    // We found a block. Replace the whole range.
-                    const before = lines.slice(0, i);
-                    const after = lines.slice(i + searchLines.length);
-                    newContent = [...before, normalizedReplace, ...after].join(eol);
-                    appliedStrategy = 'fuzzy';
-                    break;
+                const lineScore = matchingLines / searchLines.length;
+                const contentScore = similarity / searchLines.length;
+                const score = Math.min(lineScore, contentScore);
+                if (lineScore >= threshold && contentScore >= threshold && score > bestScore) {
+                    bestScore = score;
+                    bestIndex = i;
                 }
+            }
+
+            if (bestIndex !== -1) {
+                const before = lines.slice(0, bestIndex);
+                const after = lines.slice(bestIndex + searchLines.length);
+                newContent = [...before, normalizedReplace, ...after].join(eol);
+                appliedStrategy = 'fuzzy';
+                startLine = bestIndex + 1;
+                endLine = startLine + replaceLineCount - 1;
+            } else if (strategy === 'fuzzy') {
+                throw new Error(`Fuzzy match not found. No match reached the ${(threshold * 100).toFixed(0)}% confidence threshold.`);
             }
         }
     }
 
-    return { newContent, appliedStrategy };
+    // 5. Explicit regular-expression strategy
+    if (!appliedStrategy && strategy === 'regex') {
+        let regex;
+        try {
+            regex = new RegExp(normalizedSearch, 'g');
+        } catch (error) {
+            throw new Error(`Invalid regex pattern: ${error.message}`);
+        }
+        const match = regex.exec(content);
+        if (!match) throw new Error('Regex pattern not found');
+        startLine = lineFromCharIndex(content, match.index, eol);
+        endLine = startLine + replaceLineCount - 1;
+        regex.lastIndex = 0;
+        newContent = content.replace(regex, normalizedReplace);
+        appliedStrategy = 'regex';
+    }
+
+    return { newContent, appliedStrategy, startLine, endLine };
 }
 
 /**
  * Patch File logic with multi-patch support and EOL detection.
  */
-async function handlePatchFile(root, { path: relPath, search, replace, strategy = 'auto', lineNumber, patches }) {
-    // Support prefix inside patch
+async function handlePatchFile(root, params = {}) {
+    const { path: relPath, strategy = 'auto', lineNumber } = params;
+    const search = params.search ?? params.find ?? params.old_string ?? '';
+    const replace = params.replace ?? params.new_string ?? '';
     const fullPath = SafePathResolver.resolvePath(relPath);
     try {
-        const content = await fs.readFile(fullPath, 'utf-8');
+        const fileBuffer = await fs.readFile(fullPath);
+        if (isBinaryFile(fileBuffer)) {
+            throw new Error(`Binary file detected: refusing to patch ${relPath}.`);
+        }
+
+        let content = fileBuffer.toString('utf8');
         const originalContent = content;
         const eol = detectEOL(content);
         const isInitialValid = verifySyntax(content);
@@ -460,34 +925,87 @@ async function handlePatchFile(root, { path: relPath, search, replace, strategy 
         let workingContent = content;
         const applied = [];
 
-        const queue = (patches && patches.length) ? patches : [{ search, replace, lineNumber }];
+        const rawQueue = Array.isArray(params.patches) && params.patches.length > 0
+            ? params.patches
+            : [{ search, replace, lineNumber }];
+        const queue = rawQueue.map(patch => ({
+            search: patch.search ?? patch.find ?? patch.old_string ?? '',
+            replace: patch.replace ?? patch.new_string ?? '',
+            lineNumber: patch.lineNumber
+        }));
+
+        if (queue.length === 0 || queue.every(patch => !patch.search && patch.replace === '' && patch.lineNumber === undefined)) {
+            throw new Error('No patch content supplied. Provide search/replace, lineNumber, or patches.');
+        }
+        if (queue.some(patch => patch.lineNumber !== undefined)) {
+            queue.sort((a, b) => (b.lineNumber ?? 0) - (a.lineNumber ?? 0));
+        }
 
         for (const patch of queue) {
-            const { newContent, appliedStrategy } = applySinglePatch(
-                workingContent,
-                patch.search,
-                patch.replace,
-                strategy,
-                eol,
-                patch.lineNumber
-            );
+            let patchResult;
+            let retriesLeft = 1;
+            while (true) {
+                try {
+                    patchResult = applySinglePatch(workingContent, patch.search, patch.replace, strategy, eol, patch.lineNumber);
+                    break;
+                } catch (error) {
+                    if (retriesLeft > 0 && (error.message?.includes('Exact match not found') || error.message?.includes('Ambiguous'))) {
+                        try {
+                            const freshContent = (await fs.readFile(fullPath)).toString('utf8');
+                            if (freshContent !== workingContent) {
+                                workingContent = freshContent;
+                                retriesLeft--;
+                                continue;
+                            }
+                        } catch (readError) {
+                            // Preserve the original patch error below.
+                        }
+                    }
+                    throw error;
+                }
+            }
+
+            const { newContent, appliedStrategy, startLine, endLine } = patchResult;
 
             if (!appliedStrategy) {
-                const faultMsg = patch.search ? `Pattern not found: "${patch.search.substring(0, 40)}..."` : "Empty search pattern";
-                throw new Error(`${faultMsg}. Tip: verifica que el texto a buscar sea idéntico al del archivo (incluyendo espacios y signos de puntuación) o usa menos líneas.`);
+                const preview = patch.search ? String(patch.search).substring(0, 80) : '(empty)';
+                throw new Error(`Pattern not found after trying ${strategy} strategy: "${preview}". Re-read the file, use lineNumber, or provide a more specific anchor.`);
             }
             workingContent = newContent;
             applied.push(appliedStrategy);
+
+            if (appliedStrategy === 'fuzzy' || appliedStrategy === 'normalized') {
+                const fingerprint = String(patch.search).trim().split(/\r\n|\r|\n/).map(line => line.trim()).filter(Boolean).slice(0, 3).join('\n');
+                if (fingerprint.length > 20) {
+                    const expression = new RegExp(fingerprint.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+'), 'g');
+                    const resultOccurrences = (workingContent.match(expression) || []).length;
+                    const originalOccurrences = (originalContent.match(expression) || []).length;
+                    if (resultOccurrences > originalOccurrences) {
+                        throw new Error(`Incomplete replacement detected: the search fingerprint occurs ${resultOccurrences} times after patching versus ${originalOccurrences} before. Use exact or lineNumber strategy.`);
+                    }
+                }
+            }
         }
 
         if (applied.length > 0) {
             if (isInitialValid && !verifySyntax(workingContent)) {
                 throw new Error("Integrity Check: Patch breaks structure (unbalanced brackets).");
             }
+            const riskyStrategy = applied.some(value => value === 'fuzzy' || value === 'normalized');
+            if (riskyStrategy) {
+                const sizeWarning = verifySizeSanity(originalContent, workingContent, fullPath);
+                if (sizeWarning) throw new Error(sizeWarning);
+                const originalLines = originalContent.split(/\r\n|\r|\n/).length;
+                const patchedLines = workingContent.split(/\r\n|\r|\n/).length;
+                if (Math.abs(patchedLines - originalLines) > 5) {
+                    const duplicateWarning = detectDuplicateBlocks(workingContent, eol);
+                    if (duplicateWarning) throw new Error(duplicateWarning);
+                }
+            }
             if (workingContent !== originalContent) {
-                await fs.writeFile(fullPath + '.bak', originalContent, 'utf-8');
+                await fs.writeFile(fullPath + '.bak', originalContent, 'utf8');
                 await fs.writeFile(fullPath, workingContent, 'utf-8');
-                return `Patched successfully using [${applied.join(', ')}] strategies.`;
+                return `Patched successfully using [${applied.join(', ')}] strategies.\n\n--- Diff preview ---\n${generateDiffPreview(originalContent, workingContent, eol)}`;
             }
             return 'No changes applied.';
         }
@@ -499,11 +1017,18 @@ async function handlePatchFile(root, { path: relPath, search, replace, strategy 
 
 async function handleUndoPatch(root, relPath) {
     const fullPath = SafePathResolver.resolvePath(relPath);
-    const backupPath = fullPath + '.bak';
     try {
-        const backup = await fs.readFile(backupPath, 'utf-8');
-        await fs.writeFile(fullPath, backup, 'utf-8');
-        return `Reverted ${relPath} successfully.`;
+        for (const extension of ['.bak', '.backup', '_bak']) {
+            const backupPath = fullPath + extension;
+            try {
+                const backup = await fs.readFile(backupPath, 'utf8');
+                await fs.writeFile(fullPath, backup, 'utf8');
+                return `Reverted ${relPath} successfully using ${extension} backup.`;
+            } catch (error) {
+                // Try the next compatible backup convention.
+            }
+        }
+        throw new Error(`No backup found for ${relPath}.`);
     } catch (e) {
         throw new Error(`Undo failed: ${e.message}`);
     }

@@ -27,8 +27,8 @@ interface ChatAreaProps {
     onRejectToolCall: (feedback?: string) => void;
     agentMode: AgentMode;
     onAgentModeChange: (mode: AgentMode) => void;
-    safeMode: boolean;
-    onSafeModeChange: (safe: boolean) => void;
+    sequentialMode: boolean;
+    onSequentialModeChange: (enabled: boolean) => void;
     approvalMode: ApprovalMode;
     onApprovalModeChange: (mode: ApprovalMode) => void;
     debugMode: boolean;
@@ -65,7 +65,7 @@ interface TtsPlaybackCheckpoint {
 const ChatInputControls = React.memo(({
     isRecording, partialText, agentMode, isLoading, isViewing, executingSessionId, currentSessionId, agentIteration, agentPhase, agentIsInstructionMode, attachments, t,
     inputRef, fileInputRef,
-    toggleRecording, onAbort, handleSend, handleSendAsInstruction, onReprompt, handleNativeFileSelect, handleRemoveAttachment, boltGlow, isSent, safeMode, approvalMode, debugMode, onDebugModeChange,
+    toggleRecording, onAbort, handleSend, handleSendAsInstruction, onReprompt, handleNativeFileSelect, handleRemoveAttachment, boltGlow, isSent, sequentialMode, approvalMode, debugMode, onDebugModeChange,
     onPasteImage, hasCustomBackground, isCloudWithoutBackground, isEmeraldWithoutBackground, isEmeraldWithCustomBackground
 }: any) => {
     // Character-level isolation: Use local state for typing to avoid global store overhead on every keystroke.
@@ -430,8 +430,8 @@ export const ChatArea = ({
     agentMode,
     onAgentModeChange,
     onRewind,
-    safeMode,
-    onSafeModeChange,
+    sequentialMode,
+    onSequentialModeChange,
     approvalMode,
     onApprovalModeChange,
     debugMode,
@@ -451,6 +451,7 @@ export const ChatArea = ({
 }: ChatAreaProps) => {
     const { t, i18n } = useTranslation();
     const [isModelSelectorOpen, setIsModelSelectorOpen] = useState(false);
+    const [isProviderSelectorOpen, setIsProviderSelectorOpen] = useState(false);
     const [isModeSelectorOpen, setIsModeSelectorOpen] = useState(false);
     const [modeFlash, setModeFlash] = useState(false);
     const modelSelectorRef = useRef<HTMLDivElement>(null);
@@ -840,6 +841,7 @@ export const ChatArea = ({
         const handleClickOutside = (event: MouseEvent) => {
             if (modelSelectorRef.current && !modelSelectorRef.current.contains(event.target as Node)) {
                 setIsModelSelectorOpen(false);
+                setIsProviderSelectorOpen(false);
             }
             if (modeSelectorRef.current && !modeSelectorRef.current.contains(event.target as Node)) {
                 setIsModeSelectorOpen(false);
@@ -861,6 +863,10 @@ export const ChatArea = ({
     const isEmeraldWithCustomBackground = config.theme === 'emerald' && Boolean(config.chatBackgroundImage);
 
     const availableModels = useMemo(() => models[currentProvider] || [], [models, currentProvider]);
+    const availableProviders = useMemo(() => {
+        const providers = Object.keys(PROVIDERS) as Provider[];
+        return providers.filter(provider => provider === currentProvider || (models[provider] || []).length > 0);
+    }, [models, currentProvider]);
     const activeModelName = useMemo(() => 
         availableModels.find(m => m.id === currentModelId)?.name || currentModelId || t('common.unknown_model'),
     [availableModels, currentModelId, t]);
@@ -876,6 +882,24 @@ export const ChatArea = ({
             [providerKey]: currentProvider 
         });
         setIsModelSelectorOpen(false);
+        setIsProviderSelectorOpen(false);
+    };
+
+    const handleProviderChange = (provider: Provider) => {
+        if (!onUpdatePartialConfig) return;
+        const isAgent = agentMode === 'agent';
+        const modelKey = isAgent ? 'agentModel' : 'chatModel';
+        const providerKey = isAgent ? 'agentProvider' : 'chatProvider';
+        const providerModels = models[provider] || [];
+        const nextModelId = provider === currentProvider
+            ? currentModelId || providerModels[0]?.id || ''
+            : providerModels[0]?.id || '';
+
+        onUpdatePartialConfig({
+            [providerKey]: provider,
+            [modelKey]: nextModelId
+        });
+        setIsProviderSelectorOpen(false);
     };
 
     // High-frequency UI isolation: Subscribing locally to the store nodes.
@@ -961,7 +985,7 @@ export const ChatArea = ({
                     messages,
                     timestamp: Date.now(),
                     agentMode,
-                    safeMode,
+                    safeMode: sequentialMode,
                     approvalMode,
                     debugMode,
                     draft: useAgentStore.getState().input
@@ -1001,13 +1025,13 @@ export const ChatArea = ({
                         : (sess?.title || t('common.new_neural_branch'));
                     persistence.saveSession({
                         id: sessionId, title: ttl, messages: msgs,
-                        timestamp: Date.now(), agentMode, safeMode, approvalMode, debugMode,
+                        timestamp: Date.now(), agentMode, safeMode: sequentialMode, approvalMode, debugMode,
                         draft: useAgentStore.getState().input,
                     });
                 }
             };
         }
-    }, [messages, sessionId, agentMode, safeMode, approvalMode, debugMode, sessions, onSessionsUpdate, t]);
+    }, [messages, sessionId, agentMode, sequentialMode, approvalMode, debugMode, sessions, onSessionsUpdate, t]);
     const inputRef = React.useRef<HTMLTextAreaElement>(null);
     const [isSent, setIsSent] = React.useState(false);
 
@@ -2086,7 +2110,7 @@ export const ChatArea = ({
                                                             const month = d.toLocaleString(i18n.language, { month: 'short' }).toUpperCase().replace('.', '');
                                                             const day = d.toLocaleString(i18n.language, { day: '2-digit' });
                                                             const time = d.toLocaleString(i18n.language, { hour: '2-digit', minute: '2-digit', hour12: false });
-                                                            return `${month}/${day} ${time}`;
+                                                            return `${time} ${month}/${day}`;
                                                         })()}
                                                     </span>
                                                 )}
@@ -2560,7 +2584,7 @@ export const ChatArea = ({
                         )}
                     </div>
 
-                    {/* Agent-only toggles: Approval Mode + Safe Mode */}
+                    {/* Agent-only toggles: Approval Mode + Execution Strategy */}
                     <div className={`mode-transition-wrap ${agentMode === 'agent' ? 'visible-mode agent-options-enter' : 'hidden-mode agent-options-exit'}`}>
                         <div className="flex items-center gap-2">
                             <div className={`w-px h-4 ${isCloudWithoutBackground ? 'bg-slate-400/70' : 'bg-slate-700/50'}`} />
@@ -2586,11 +2610,11 @@ export const ChatArea = ({
                                 <span className="-mb-[1px]">{approvalMode === 'manual' ? t('chat.actions.manual') : t('chat.actions.auto')}</span>
                             </button>
 
-                            {/* Safe Mode Toggle */}
+                            {/* Sequential/Parallel Execution Toggle */}
                             <button
-                                onClick={() => onSafeModeChange(!safeMode)}
+                                onClick={() => onSequentialModeChange(!sequentialMode)}
                                 className={`flex items-center justify-center gap-1.5 px-2.5 h-6 min-w-[80px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-300 leading-normal opacity-100 hover:shadow-[0_8px_15px_-3px_rgba(0,0,0,0.5)] active:scale-95 ${
-                                    safeMode
+                                    sequentialMode
                                         ? config.theme === 'cloud' && !config.chatBackgroundImage
                                             ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20 bg-gradient-to-b from-white/20 to-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.3),inset_0_-1px_0_rgba(0,0,0,0.4)] [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]'
                                             : `border-blue-500/40 text-blue-300 bg-gradient-to-b from-white/10 to-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.2),inset_0_-1px_0_rgba(0,0,0,0.3)] ${config.chatBackgroundImage ? 'bg-slate-900/60 hover:!bg-blue-600 text-blue-100 hover:!text-white shadow-lg [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]' : 'bg-blue-500/10 hover:!bg-blue-500/30'}`
@@ -2598,13 +2622,16 @@ export const ChatArea = ({
                                             ? 'bg-amber-500 border-amber-400 text-white shadow-lg shadow-amber-500/20 bg-gradient-to-b from-white/20 to-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.3),inset_0_-1px_0_rgba(0,0,0,0.4)] [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]'
                                             : `border-amber-500/40 text-amber-400 bg-gradient-to-b from-white/5 to-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.1),inset_0_-1px_0_rgba(0,0,0,0.2)] ${config.chatBackgroundImage ? 'bg-slate-900/60 hover:!bg-amber-600 text-amber-100 hover:!text-white shadow-lg [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]' : 'bg-amber-500/10 hover:!bg-amber-500/30'}`
                                 }`}
-                                title={safeMode
-                                    ? t('chat.actions.safe_mode_on_desc')
-                                    : t('chat.actions.safe_mode_off_desc')
+                                title={sequentialMode
+                                    ? t('chat.actions.sequential_mode_desc')
+                                    : t('chat.actions.parallel_mode_desc')
                                 }
                             >
-                                {safeMode ? <Icon name="shield-alt" className="icon-pulse" /> : <span className="font-black tracking-tighter mr-0.5 animate-pulse">{'>>>'}</span>}
-                                <span className="-mb-[1px]">{safeMode ? t('chat.actions.safe') : t('chat.actions.batch')}</span>
+                                {sequentialMode
+                                    ? <Icon name="list-check" className="icon-pulse" />
+                                    : <Icon name="layer-group" className="icon-pulse" />
+                                }
+                                <span className="-mb-[1px]">{sequentialMode ? t('chat.actions.sequential') : t('chat.actions.parallel')}</span>
                             </button>
                         </div>
                     </div>
@@ -2619,7 +2646,10 @@ export const ChatArea = ({
                         {/* Model Selector Dropdown */}
                         <div className="relative" ref={modelSelectorRef}>
                             <button
-                                onClick={() => setIsModelSelectorOpen(!isModelSelectorOpen)}
+                                onClick={() => {
+                                    setIsModelSelectorOpen(!isModelSelectorOpen);
+                                    setIsProviderSelectorOpen(false);
+                                }}
                                 className={`flex items-center justify-center gap-1.5 px-2.5 h-6 min-w-[120px] rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-all duration-300 leading-normal ${
                                     isModelSelectorOpen 
                                     ? 'bg-[var(--primary-color)] border-[var(--primary-color)] text-white shadow-[0_12px_25px_-5px_rgba(0,0,0,0.6),0_0_15px_rgba(var(--primary-rgb,59,130,246),0.4)] bg-gradient-to-b from-white/10 to-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.3),inset_0_-1px_0_rgba(0,0,0,0.4)] [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]' 
@@ -2637,34 +2667,85 @@ export const ChatArea = ({
                             </button>
 
                             {isModelSelectorOpen && (
-                                <div className="absolute bottom-full right-0 mb-2 w-48 bg-slate-950/90 backdrop-blur-xl border border-slate-800 rounded-lg shadow-2xl overflow-hidden z-[100] animate-in fade-in slide-in-from-bottom-2 duration-200">
-                                    <div className="px-3 py-1 border-b border-slate-800/50 bg-slate-900/40">
-                                        <span className="text-[8px] uppercase font-bold text-[var(--primary-color)] opacity-70 tracking-widest">{PROVIDERS[currentProvider]?.name || currentProvider}</span>
+                                <div className="absolute bottom-full right-0 mb-2 w-48 z-[100] animate-in fade-in slide-in-from-bottom-2 duration-200">
+                                    <div className="bg-slate-950/90 backdrop-blur-xl border border-slate-800 rounded-lg shadow-2xl overflow-hidden">
+                                        <div className="border-b border-slate-800/50 bg-slate-900/40">
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsProviderSelectorOpen(!isProviderSelectorOpen)}
+                                                className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-left transition-colors hover:bg-[var(--primary-color)]/10"
+                                                title={t('chat.actions.change_provider')}
+                                                aria-expanded={isProviderSelectorOpen}
+                                            >
+                                                <span className="text-[8px] uppercase font-bold text-[var(--primary-color)] opacity-80 tracking-widest truncate">
+                                                    {PROVIDERS[currentProvider]?.name || currentProvider}
+                                                </span>
+                                                <span className="relative flex h-2.5 w-2.5 shrink-0 items-center justify-center">
+                                                    <Icon
+                                                        name="plus"
+                                                        className={`absolute text-[9px] text-[var(--primary-color)] transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+                                                            isProviderSelectorOpen ? 'rotate-[135deg] scale-50 opacity-0' : 'rotate-0 scale-100 opacity-100'
+                                                        }`}
+                                                    />
+                                                    <Icon
+                                                        name="minus"
+                                                        className={`absolute text-[9px] text-[var(--primary-color)] transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+                                                            isProviderSelectorOpen ? 'rotate-0 scale-100 opacity-100' : 'rotate-[-135deg] scale-50 opacity-0'
+                                                        }`}
+                                                    />
+                                                </span>
+                                            </button>
+                                        </div>
+                                        <div className="max-h-[200px] overflow-y-auto chat-input-scrollbar">
+                                            {availableModels.length > 0 ? (
+                                                availableModels.map((model) => (
+                                                    <button
+                                                        key={model.id}
+                                                        onClick={() => handleModelChange(model.id)}
+                                                        className={`w-full flex items-center justify-between px-3 py-2 text-[10px] transition-all hover:bg-[var(--primary-color)]/10 group ${
+                                                            model.id === currentModelId ? 'text-[var(--primary-color)] bg-[var(--primary-color)]/5' : 'text-slate-400 hover:text-slate-200'
+                                                        }`}
+                                                    >
+                                                        <span className="truncate pr-2 font-mono">{model.name}</span>
+                                                        {model.id === currentModelId && <Icon name="check" className="text-[8px]" />}
+                                                    </button>
+                                                ))
+                                            ) : (
+                                                <div className="px-3 py-4 text-center">
+                                                    <span className="text-[10px] text-slate-600 italic">{t('chat.labels.no_models_available')}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="px-3 py-1.5 bg-slate-900/40 border-t border-slate-800/50">
+                                            <span className="text-[8px] text-slate-500 flex items-center gap-1">
+                                                <Icon name="info-circle" /> {t('chat.labels.temporary_change')}
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div className="max-h-[200px] overflow-y-auto chat-input-scrollbar">
-                                        {availableModels.length > 0 ? (
-                                            availableModels.map((model) => (
+                                    <div
+                                        className={`absolute right-full top-0 mr-2 w-44 max-h-[220px] overflow-y-auto chat-input-scrollbar bg-slate-950/95 backdrop-blur-xl border border-slate-800 rounded-lg shadow-2xl overflow-x-hidden origin-right transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                                            isProviderSelectorOpen
+                                                ? 'translate-x-0 scale-100 opacity-100 pointer-events-auto'
+                                                : 'translate-x-2 scale-95 opacity-0 pointer-events-none'
+                                        }`}
+                                        aria-hidden={!isProviderSelectorOpen}
+                                    >
+                                            {availableProviders.map((provider) => (
                                                 <button
-                                                    key={model.id}
-                                                    onClick={() => handleModelChange(model.id)}
+                                                    key={provider}
+                                                    type="button"
+                                                    onClick={() => handleProviderChange(provider)}
+                                                    tabIndex={isProviderSelectorOpen ? 0 : -1}
                                                     className={`w-full flex items-center justify-between px-3 py-2 text-[10px] transition-all hover:bg-[var(--primary-color)]/10 group ${
-                                                        model.id === currentModelId ? 'text-[var(--primary-color)] bg-[var(--primary-color)]/5' : 'text-slate-400 hover:text-slate-200'
+                                                        provider === currentProvider
+                                                            ? 'text-[var(--primary-color)] bg-[var(--primary-color)]/5'
+                                                            : 'text-slate-400 hover:text-slate-200'
                                                     }`}
                                                 >
-                                                    <span className="truncate pr-2 font-mono">{model.name}</span>
-                                                    {model.id === currentModelId && <Icon name="check" className="text-[8px]" />}
+                                                    <span className="truncate pr-2">{PROVIDERS[provider]?.name || provider}</span>
+                                                    {provider === currentProvider && <Icon name="check" className="text-[8px]" />}
                                                 </button>
-                                            ))
-                                        ) : (
-                                            <div className="px-3 py-4 text-center">
-                                                <span className="text-[10px] text-slate-600 italic">{t('chat.labels.no_models_available')}</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="px-3 py-1.5 bg-slate-900/40 border-t border-slate-800/50">
-                                        <span className="text-[8px] text-slate-500 flex items-center gap-1">
-                                            <Icon name="info-circle" /> {t('chat.labels.temporary_change')}
-                                        </span>
+                                            ))}
                                     </div>
                                 </div>
                             )}
@@ -2717,7 +2798,7 @@ export const ChatArea = ({
                     handleRemoveAttachment={handleRemoveAttachment}
                     boltGlow={boltGlow}
                     isSent={isSent}
-                    safeMode={safeMode}
+                    sequentialMode={sequentialMode}
                     approvalMode={approvalMode}
                     debugMode={debugMode}
                     onDebugModeChange={onDebugModeChange}

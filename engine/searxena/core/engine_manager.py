@@ -675,7 +675,7 @@ class EngineManager:
         # Ordenación Final de resultados por Score
         final.sort(key=lambda x: x["score"], reverse=True)
         
-        # Limitar resultados para limpieza absoluta
-        limited_results = final[:40]
-        
-        return limited_results, final_infoboxes
+        # La paginación pertenece a la API. Conservamos todo el conjunto
+        # agregado para que el consumidor pueda solicitar páginas posteriores
+        # sin repetir la búsqueda ni perder resultados válidos.
+        return final, final_infoboxes

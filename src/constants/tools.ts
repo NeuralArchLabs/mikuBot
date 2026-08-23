@@ -43,7 +43,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
         type: 'function',
         function: {
             name: 'patch_file',
-            description: 'Apply one or more smart patches to a file. Supports "fuzzy" match (line-based), "exact" match, and "lineNumber". Always creates a .bak backup.',
+            description: 'Apply one or more protected smart patches to a text file. Supports exact, whitespace-normalized, fuzzy (60% confidence), regex and lineNumber matching; validates integrity and creates a .bak backup.',
             parameters: {
                 type: 'object',
                 properties: {
@@ -104,17 +104,41 @@ export const AGENT_TOOLS: ToolDefinition[] = [
         type: 'function',
         function: {
             name: 'search_files',
-            description: 'High-performance search using native engines (RipGrep, Grep, Findstr). Finds text across all files in a folder.',
+            description: 'Find files by name or relative path using the filesystem index. This tool does not search inside file contents; use search_pattern for content or regex searches.',
             parameters: {
                 type: 'object',
                 properties: {
-                    query: { type: 'string', description: 'The text pattern to search for' },
+                    query: { type: 'string', description: 'The file name or relative path fragment to find' },
                     filePattern: { type: 'string', description: 'Optional glob filter (e.g. "*.js").' },
                     caseSensitive: { type: 'boolean', description: 'Defaults to false.' },
                     searchPath: { type: 'string', description: 'Specific sub-folder to search.' },
+                    head_limit: { type: 'number', description: 'Maximum number of result files per page. 0 means unlimited.' },
+                    offset: { type: 'number', description: 'Number of result files to skip for pagination.' },
                     source: { type: 'string', description: 'Defaults to "workSpace".', enum: ['workSpace', 'core', 'library', 'extra', 'tools', 'root'] }
                 },
                 required: ['query']
+            }
+        }
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'search_pattern',
+            description: 'Advanced search inside file contents using a text or regular-expression pattern. Supports context, glob filters, counts and pagination.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    pattern: { type: 'string', description: 'Text or regular-expression pattern to search inside file contents.' },
+                    path: { type: 'string', description: 'Optional sub-folder or authorized path to search.' },
+                    glob: { type: 'string', description: 'Optional comma-separated glob filters such as "*.ts,*.tsx".' },
+                    output_mode: { type: 'string', enum: ['content', 'files_with_matches', 'count'], default: 'content' },
+                    context: { type: 'number', description: 'Number of context lines before and after each match (0-20).' },
+                    head_limit: { type: 'number', description: 'Maximum number of result files per page. 0 means unlimited.' },
+                    offset: { type: 'number', description: 'Number of result files to skip for pagination.' },
+                    case_sensitive: { type: 'boolean', default: false },
+                    source: { type: 'string', description: 'Defaults to "workSpace".', enum: ['workSpace', 'core', 'library', 'extra', 'tools', 'root'] }
+                },
+                required: ['pattern']
             }
         }
     },
@@ -167,7 +191,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
         type: 'function',
         function: {
             name: 'web_search',
-            description: 'Search the web for real-time information. Use for news, documentation, or public data.',
+            description: 'Search the web for real-time information. Returns the first page, enriched article content for up to five useful results, snippets for the remaining results, and a search_id for web_search_more.',
             parameters: {
                 type: 'object',
                 properties: {
@@ -181,6 +205,22 @@ export const AGENT_TOOLS: ToolDefinition[] = [
                     search_depth: { type: 'string', description: 'Search depth', enum: ['basic', 'advanced'] }
                 },
                 required: ['query']
+            }
+        }
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'web_search_more',
+            description: 'Retrieve the next page of results from a previous web_search without repeating the search. Use the search_id and next_offset returned by web_search. The page may enrich up to five additional URLs while preserving snippets and multimedia metadata for the rest.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    search_id: { type: 'string', description: 'The search_id returned by web_search.' },
+                    offset: { type: 'integer', description: 'The next_offset returned by web_search.', default: 10 },
+                    limit: { type: 'integer', description: 'Number of results to return in this page.', default: 10 }
+                },
+                required: ['search_id']
             }
         }
     },

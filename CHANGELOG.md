@@ -243,7 +243,7 @@
 ## [2.0.0] - 2026-03-14
 ### Added
 - **Real-Time Task Sync (UI Priority)**: Implemented sequential task ticking in `TASKS.md` at the end of every turn to enable fluid UI progress animations.
-- **Universal Tool Detection**: Expanded task-matching logic to recognize all available skills, including `web_research`, `miku_clock`, and `get_system_metrics`.
+- **Universal Tool Detection**: Expanded task-matching logic to recognize all available skills, including `miku_clock` and `get_system_metrics`.
 - **Spanish Intent Recognition**: Added a comprehensive dictionary of Spanish synonyms for tools, allowing the agent to plan in natural language while maintaining automated tracking.
 - **Pre-Deletion Sincronization**: System now performs a "pre-tick" of all pending tasks (including the deletion itself) before `TASKS.md` is removed, ensuring the user sees the final progress checks.
 - **Agent Awareness Block**: Injected a direct instruction into the agent's status block confirming that `[PLAN_DE_TRABAJO_ACTUAL]` is an exact reflection of the disk file, eliminating redundant `read_file` calls.
@@ -276,7 +276,7 @@
 
 ## [1.9.2] - 2026-03-05
 ### Changed
-- **Local Search Engine Integration**: Migrated the `web_research` and `deep_research` neural skills from the external `duckduckgo_search` python library to the internal, locally hosted **SearXNG** engine. This ensures completely private, self-hosted, and stable search capabilities for the agent without API rate limits.
+- **Local Search Engine Integration**: Migrated the `deep_research` neural skill from the external `duckduckgo_search` python library to the internal, locally hosted **SearXNG** engine. This ensures completely private, self-hosted, and stable search capabilities for the agent without API rate limits.
 - **SearXNG Engine Stability**: Patched the local engine boot sequence to dynamically inject the required `SEARXNG_SECRET` on startup, preventing "fatal 10106" boot blocking errors.
 
 ## [1.9.1] - 2026-02-23

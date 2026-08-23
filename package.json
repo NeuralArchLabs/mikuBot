@@ -41,6 +41,10 @@
         "to": "backgrounds"
       }
     ],
+    "asarUnpack": [
+      "node_modules/@vscode/ripgrep/**",
+      "node_modules/@vscode/ripgrep-*/**"
+    ],
     "win": {
       "target": "nsis",
       "icon": "public/mikuBotICON.png"
@@ -74,6 +78,7 @@
     "electron:build": "npm run build && electron-builder"
   },
   "dependencies": {
+    "@vscode/ripgrep": "^1.17.1",
     "unzipper": "^0.12.3"
   },
   "devDependencies": {

@@ -64,7 +64,7 @@ export async function sendAgentMessage(
     onFinalRawHistory?: (history: any[]) => void,
     useTextExtraction: boolean = true,
     isAgentMode: boolean = false,
-    safeMode: boolean = false,
+    sequentialMode: boolean = false,
     approvalMode: ApprovalMode = 'auto',
     isInstructionMode: boolean = false,
     isScheduled: boolean = false,
@@ -136,7 +136,7 @@ export async function sendAgentMessage(
             const month = d.toLocaleString(locale, { month: 'short' }).toUpperCase().replace('.', '');
             const day = d.toLocaleString(locale, { day: '2-digit' });
             const time = d.toLocaleString(locale, { hour: '2-digit', minute: '2-digit', hour12: false });
-            const ts = `${month}/${day} ${time}`;
+            const ts = `${time} ${month}/${day}`;
             const content = msg.content || '';
             // Check if message contains system-level tags that should not be prepended
             const hasSystemTags = content.match(/^\[SISTEMA:|^\[AGENT_|^\[CHAT_/);
@@ -617,10 +617,10 @@ export async function sendAgentMessage(
                 break;
             }
 
-            // ─── TOOL EXECUTION ENGINE (SAFE vs BATCH) ───
+            // ─── TOOL EXECUTION ENGINE (SEQUENTIAL vs PARALLEL) ───
             localOnStatus({ phase: 'tool_calling' });
             const READ_ONLY = new Set([
-                'read_file', 'list_files', 'search_files', 'web_search', 'read_url', 'get_file_outline',
+                'read_file', 'list_files', 'search_files', 'search_pattern', 'web_search', 'web_search_more', 'read_url', 'get_file_outline',
                 'get_console_status', 'get_system_metrics', 'list_available_skills', 'instruction_booklet'
             ]);
 
@@ -890,19 +890,19 @@ export async function sendAgentMessage(
                 onChunk(allNarrative || ' ', true, [...allBlocks]);
             };
 
-            // ─── EXECUTION STRATEGY (SAFE vs BATCH) ───
-            // Sequential: One by one. Preferred for UX consistency and safety.
-            // Parallel: Simultaneous. Allowed for high-performance agentic batches.
-            const useSequential = safeMode || !isAgentMode;
+            // ─── EXECUTION STRATEGY (SEQUENTIAL vs PARALLEL) ───
+            // Sequential: one by one, rendering each result before continuing.
+            // Parallel: simultaneous execution for compatible agentic tool calls.
+            const useSequential = sequentialMode || !isAgentMode;
 
             if (useSequential) {
-                // SAFE/CHAT MODE: Strict sequential execution
+                // SEQUENTIAL/CHAT MODE: Strict sequential execution
                 for (const tc of toolsToExecute) {
                     if (useAgentStore.getState().agentStatus.phase === 'aborted') break;
                     await executeAndLog(tc);
                 }
             } else {
-                // BATCH MODE: High-performance parallel execution (Agent Mode only)
+                // PARALLEL MODE: High-performance parallel execution (Agent Mode only)
                 if (useAgentStore.getState().agentStatus.phase !== 'aborted') {
                     await Promise.all(toolsToExecute.map(tc => executeAndLog(tc)));
                 }
@@ -950,7 +950,7 @@ export async function sendAgentMessage(
                 const taskProgressBlock = `\nNext Action: ${nextAction}`;
                 const autoTaskInfo = turnAutoTasks.length > 0 ? `\n✨ AUTO-SYNC: Tasks automatically completed: ${turnAutoTasks.join(', ')}` : '';
                 const significantCalls = successfulCalls.filter(tc => 
-                    !['read_file', 'list_files', 'search_files', 'get_file_outline', 'get_system_metrics', 'read_url', 'add_scheduled_task'].includes(tc.function.name)
+                    !['read_file', 'list_files', 'search_files', 'search_pattern', 'get_file_outline', 'get_system_metrics', 'web_search', 'web_search_more', 'read_url', 'add_scheduled_task'].includes(tc.function.name)
                 );
                 const unplannedInfo = (significantCalls.length > 0 && turnAutoTasks.length === 0 && freshTasksContent.includes('[ ]'))
                     ? '\n⚠️ NOTE: You have performed actions that do not seem to match any pending task in your plan.' : '';

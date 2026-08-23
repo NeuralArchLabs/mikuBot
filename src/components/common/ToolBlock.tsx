@@ -6,8 +6,8 @@ import { Icon as IconComp } from './Common';
 /** Core built-in tools — anything NOT in this set is a Neural Skill */
 export const CORE_TOOLS = new Set([
     'read_file', 'update_file', 'patch_file', 'delete_file',
-    'list_files', 'search_files', 'get_system_metrics',
-    'web_search',
+    'list_files', 'search_files', 'search_pattern', 'get_system_metrics',
+    'web_search', 'web_search_more',
     'run_console', 'get_console_status', 'read_url', 'add_scheduled_task',
     'send_telegram_message', 'batch_operation', 'get_file_outline',
     'request_agent_mode'
@@ -233,11 +233,11 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
                 return t('tools.metrics_summary', { platform: data.platform || 'OS', cpu: data.cpu || '?', ram: data.ram || '?' });
             case 'web_search':
                 return t('tools.web_search_summary', { query: args.query });
-            case 'web_research':
-                return t('tools.web_research_summary', { 
-                    query: args.query, 
-                    count: data.extracted_sources?.length || 0,
-                    categories: (args.categories || ['general']).join(', ')
+            case 'web_search_more':
+                return t('tools.web_search_more_summary', {
+                    start: (data.meta?.offset ?? args.offset ?? 0) + 1,
+                    end: (data.meta?.offset ?? args.offset ?? 0) + (data.meta?.returned ?? data.results?.length ?? 0),
+                    total: data.meta?.total ?? '?'
                 });
             case 'deep_research':
                 if (data.status === 'plan_proposal') {
@@ -261,6 +261,8 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
                 return t('tools.patch_file_summary', { filename: args.filename });
             case 'search_files':
                 return t('tools.search_files_summary', { query: args.query });
+            case 'search_pattern':
+                return t('tools.search_pattern_summary', { pattern: args.pattern });
             case 'run_console':
                 return t('tools.run_console_summary', { command: `${args.command}${args.args ? ' ' + args.args : ''}` });
             case 'read_url':

@@ -21,7 +21,7 @@ If the user asks where to find features, use this layout:
 - **Neural Sessions:** Top-left sidebar. Thread management.
 - **Scheduler:** Top-right (near Load/Export). For managing automated tasks you create.
 - **Cortex & Command Editors:** Specialized UI sections for modifying internal system rules.
-- **Mode Toggles (Auto/Safe/Debug):** Located directly in the chat input area.
+- **Mode Toggles (Auto/Sequential/Debug):** Located directly in the chat input area. In Agent Mode, the execution toggle selects sequential or parallel tool execution.
 
 ### Example
 ```json
@@ -72,13 +72,15 @@ If the user asks where to find features, use this layout:
 ```
 
 ## [patch_file]
-**Purpose:** Efficiently edit files using various strategies without overwriting the entire file. Always creates a `.bak` backup.
+**Purpose:** Efficiently and safely edit text files using exact, normalized, fuzzy, regex, or line-number strategies. Always creates a `.bak` backup.
 **When to use:** Use this for partial file modifications, bug fixes, or injecting new functions into existing code.
 
 ### Strategies
-- **`auto`**: The default. Finds a block and replaces it. Requires the `find` block to be substantial and exact (including whitespaces).
+- **`auto`**: The default. Tries exact, whitespace-normalized, and confidence-scored fuzzy matching.
+- **`regex`**: Applies a regular-expression replacement. Use only when regex semantics are intended.
 - **`lineNumber`**: The safest. Replaces a specific line number.
 - **Multi-patching**: Use the `patches` array for multiple non-contiguous edits in a single call.
+- **Safety:** Rejects binary files, unbalanced structures, suspicious size changes, and duplicate blocks.
 
 ### Example 1: Basic Auto Patch
 ```json
@@ -159,11 +161,11 @@ If the user asks where to find features, use this layout:
 ```
 
 ## [search_files]
-**Purpose:** High-performance native search across all files in a folder using a text query.
-**When to use:** Extremely useful to find where a function is defined, where an API is called, or to locate specific text across the whole project.
+**Purpose:** Find files by name or relative path. It does not inspect file contents.
+**When to use:** Use this when you know part of a filename, extension, or path but not its exact location.
 
 ### Parameters
-- **`query`**: The exact string to search for.
+- **`query`**: The filename or path fragment to search for.
 - **`filePattern`**: (Optional) Glob pattern like `*.js` or `!node_modules/*` to narrow down results.
 - **`searchPath`**: (Optional) Subfolder to start searching from.
 - **`caseSensitive`**: (Optional) Boolean.
@@ -173,7 +175,7 @@ If the user asks where to find features, use this layout:
 {
   "name": "search_files",
   "arguments": {
-    "query": "function calculateTotal",
+    "query": "FileEditor",
     "source": "workSpace",
     "filePattern": "*.ts",
     "searchPath": "src/utils",
@@ -181,6 +183,18 @@ If the user asks where to find features, use this layout:
   }
 }
 ```
+
+## [search_pattern]
+**Purpose:** Search inside file contents using text or regular-expression patterns.
+**When to use:** Use this to find functions, API calls, symbols, strings, or code patterns inside files.
+
+### Parameters
+- **`pattern`**: Text or regular-expression pattern.
+- **`path`**, **`glob`**, **`case_sensitive`**: Optional scope and matching controls.
+- **`context`**, **`head_limit`**, **`offset`**: Optional context and pagination controls.
+- **`output_mode`**: `content`, `files_with_matches`, or `count`.
+
+If a content search is accidentally sent to `search_files`, explain that `search_files` locates filenames and recommend `search_pattern` politely.
 
 ## [get_file_outline]
 **Purpose:** Extract classes, functions, and interfaces from a source file without reading the entire content.
@@ -219,8 +233,8 @@ If the user asks where to find features, use this layout:
 ```
 
 ## [web_search]
-**Purpose:** Perform a quick superficial search using SearXena (Tier 1 Research). Returns short titles and snippets.
-**When to use:** Use this when you need a quick fact, recent news, or general context without reading full articles.
+**Purpose:** Search SearXena and return the first page from the complete result set. Up to five candidate URLs are enriched with full extracted content; the remaining results retain cleaned snippets, URLs, and multimedia metadata. The response includes `search_id` and `next_offset` for pagination.
+**When to use:** Use this for current facts, recent news, or general context. Use `read_url` when a specific source needs to be read directly.
 
 ### Categories
 Can be: `general`, `images`, `videos`, `news`, `maps`, `shopping`.
@@ -236,6 +250,22 @@ Can be: `general`, `images`, `videos`, `news`, `maps`, `shopping`.
 }
 ```
 
+## [web_search_more]
+**Purpose:** Retrieve another page from a previous `web_search` using its `search_id`, without repeating the search. The page tries to enrich up to five additional URLs and preserves the remaining results as snippets.
+**When to use:** Use this when the first page does not contain enough relevant sources or when the model needs to inspect the rest of the original result set.
+
+### Example
+```json
+{
+  "name": "web_search_more",
+  "arguments": {
+    "search_id": "search-<id>",
+    "offset": 10,
+    "limit": 10
+  }
+}
+```
+
 ## [read_url]
 **Purpose:** Directly read a specific URL to extract textual content and clean HTML (Tier 2 Research).
 **When to use:** Use this when you already have a specific link (perhaps from a `web_search`) and need to read the full article or documentation page.
@@ -246,22 +276,6 @@ Can be: `general`, `images`, `videos`, `news`, `maps`, `shopping`.
   "name": "read_url",
   "arguments": {
     "url": "https://example.com/article"
-  }
-}
-```
-
-## [web_research]
-**Purpose:** Intelligent web research skill (Tier 3) that searches and automatically extracts and analyzes the true content of the most relevant sites.
-**When to use:** Use this for complex topics where you need accurate information from multiple sources to avoid hallucinations.
-
-### Example
-```json
-{
-  "name": "web_research",
-  "arguments": {
-    "query": "Microfrontends arch with Module Federation",
-    "categories": ["general", "news"],
-    "max_sites": 3
   }
 }
 ```

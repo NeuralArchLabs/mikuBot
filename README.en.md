@@ -105,7 +105,8 @@ mikuBot utilizes a robust ecosystem of tools divided into two main categories to
 **2. Neural Skills (Advanced Skills):** Dynamic and extensible modules that empower the agent's reasoning. Users can create their own custom skills and easily integrate them into the ecosystem.
 - **Semantic Memory (`recall`):** Long-term memory skill that allows the assistant to remember preferences, facts, and evolve its user model.
 - **Micro-Apps (`dynamic_widgets`):** Ability to generate, launch, and manage independent visual interfaces on the desktop.
-- **Deep Investigation (`deep_research` / `web_research`):** Web search and auditing engines to avoid hallucinations and obtain precise technical data.
+- **Web Investigation (`web_search`, `web_search_more`, `read_url`):** Paginated search, selective extraction, and direct source reading.
+- **Deep Investigation (`deep_research`):** Plan-first, auditable research engine to avoid hallucinations and obtain precise technical data.
 - **Advanced Calculation (`compute`):** Scientific and symbolic calculator skill powered by SymPy for exact and complex math operations.
 - **Universal Connectivity (`api_fetcher`):** Integrated HTTP client to consume any external REST API.
 - **Self-Documentation (`instruction_booklet`):** Internal query system for the agent to understand its own capabilities and technical parameters.

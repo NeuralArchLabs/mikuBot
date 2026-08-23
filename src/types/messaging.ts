@@ -77,6 +77,7 @@ export interface Session {
     messages: Message[];
     timestamp: number;
     agentMode?: 'chat' | 'agent';
+    /** Legacy persisted field name; true selects sequential tool execution. */
     safeMode?: boolean;
     approvalMode?: 'auto' | 'manual';
     debugMode?: boolean;

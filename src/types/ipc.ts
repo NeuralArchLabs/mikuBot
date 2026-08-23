@@ -22,7 +22,7 @@ export type IpcChannel =
     // Native FS
     | 'fs-select-folder' | 'fs-open-folder' | 'fs-read-folder' | 'fs-write-file' | 'fs-delete-file' | 'get-default-path' | 'setup-onboarding' | 'fs-check-existing' | 'export-backup' | 'import-backup'
     // Console & Python engine
-    | 'run-console' | 'run-search' | 'run-extract'
+    | 'run-console' | 'run-search' | 'run-web-search-more' | 'run-extract'
     // Network proxy
     | 'fetch-proxy' | 'api-stream'
     // Skills

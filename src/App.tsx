@@ -968,7 +968,9 @@ export const App = () => {
                             }));
                             
                             await telegramService.answerCallback(state.config.telegramBotToken!, callback.id, `Modo ${mode.toUpperCase()} activado 🎯`);
-                            sendToTelegramRef.current?.(`🎯 Modo cambiado a: <b>${mode === 'agent' ? '🤖 Agent' : '💬 Chat'}</b>${mode === 'agent' ? ' (Safe Mode: ON)' : ''}`);
+                            const modeLabel = mode === 'agent' ? '🤖 Agent' : '💬 Chat';
+                            const executionLabel = mode === 'agent' ? ` (${t('chat.actions.sequential')})` : '';
+                            sendToTelegramRef.current?.(`🎯 Modo cambiado a: <b>${modeLabel}</b>${executionLabel}`);
                             return;
                         }
 
@@ -2027,7 +2029,7 @@ To see all your additional enabled skills and their full technical parameters, y
                         const statusMsg = `${t('commands_exec.telegram_status_title')}\n\n` +
                                         `${t('commands_exec.telegram_status_orchestration')}\n` +
                                         `${t('commands_exec.telegram_status_mode')} <b>${state.agentMode.toUpperCase()}</b>\n` +
-                                        `${t('commands_exec.telegram_status_security')} <b>${state.safeMode ? t('commands_exec.telegram_status_safe_on') : t('commands_exec.telegram_status_safe_off')}</b>\n` +
+                                        `${t('commands_exec.telegram_status_execution')} <b>${state.safeMode ? t('commands_exec.telegram_status_sequential') : t('commands_exec.telegram_status_parallel')}</b>\n` +
                                         `${t('commands_exec.telegram_status_approval')} <code>${state.approvalMode}</code>\n\n` +
                                         `${t('commands_exec.telegram_status_stack')}\n` +
                                         `${t('commands_exec.telegram_status_chat')} <code>${cfg.chatProvider}</code> / <code>${cfg.chatModel || 'default'}</code>\n` +
@@ -2370,7 +2372,7 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
             const toolsForSession = isChatTools
                 ? [
                     ...AGENT_TOOLS.filter(t => [
-                        'read_file', 'list_files', 'search_files', 'web_search', 'read_url', 
+                        'read_file', 'list_files', 'search_files', 'search_pattern', 'web_search', 'web_search_more', 'read_url',
                         'update_file', 'patch_file', 'delete_file', 'add_scheduled_task',
                         'get_file_outline', 'get_system_metrics', 'send_telegram_message',
                         'request_agent_mode', 'run_console', 'get_console_status'
@@ -2426,7 +2428,7 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                     const toolsForMode = (latestMode === 'chat')
                         ? [
                             ...AGENT_TOOLS.filter(t => [
-                                'read_file', 'list_files', 'search_files', 'web_search', 'read_url', 
+                                'read_file', 'list_files', 'search_files', 'search_pattern', 'web_search', 'web_search_more', 'read_url',
                                 'update_file', 'patch_file', 'delete_file', 'add_scheduled_task',
                                 'get_file_outline', 'get_system_metrics', 'send_telegram_message',
                                 'request_agent_mode', 'run_console', 'get_console_status'
@@ -2497,7 +2499,7 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                             ac.signal.removeEventListener('abort', abortHandler);
                             if (result.approved && toolCall.function.name === 'request_agent_mode') {
                                 console.log('[App] Auto-switching to AGENT mode via tool approval');
-                                // When auto-switching to agent, we allow the current safeMode/approvalMode 
+                                // When auto-switching to agent, preserve the current execution strategy/approval mode
                                 // but ensure we are in 'agent' mode.
                                 setState(prev => ({ ...prev, agentMode: 'agent' }));
                                 
@@ -3001,12 +3003,12 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                         models={models}
                         onAgentModeChange={(m) => {
                             const isAgent = m === 'agent';
-                            // 🛡️ MODE ISOLATION: Chat mode ALWAYS uses safeMode:true and approvalMode:auto.
+                            // MODE ISOLATION: Chat mode ALWAYS uses sequential execution and auto approval.
                             // Settings changed in Agent mode should NOT leak into Chat mode.
-                            const nextSafeMode = isAgent ? state.safeMode : true;
+                            const nextSequentialMode = isAgent ? state.safeMode : true;
                             const nextApprovalMode = isAgent ? state.approvalMode : 'auto';
 
-                            setState(p => ({ ...p, agentMode: m, safeMode: nextSafeMode, approvalMode: nextApprovalMode }));
+                            setState(p => ({ ...p, agentMode: m, safeMode: nextSequentialMode, approvalMode: nextApprovalMode }));
                             
                             // ⚡ Immediate Persistence
                             if (state.sessionId) {
@@ -3015,14 +3017,14 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
                                     title: sessions.find(s => s.id === state.sessionId)?.title || t('common.active_session'),
                                     messages: stripHeavyAttachments(useAgentStore.getState().messages),
                                     agentMode: m,
-                                    safeMode: nextSafeMode,
+                                    safeMode: nextSequentialMode,
                                     approvalMode: nextApprovalMode,
                                     timestamp: Date.now()
                                 });
                             }
                         }}
-                        safeMode={state.safeMode} 
-                        onSafeModeChange={(s) => {
+                        sequentialMode={state.safeMode}
+                        onSequentialModeChange={(s) => {
                             setState(p => ({ ...p, safeMode: s }));
                             // ⚡ Immediate Persistence
                             if (state.sessionId) {

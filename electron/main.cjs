@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const { Readable } = require('stream');
 const http = require('http');
+const { randomUUID } = require('crypto');
 const { planTtsChunks } = require('../shared/ttsChunkPlanner.cjs');
 
 // --- DYNAMIC WIDGETS HOOK (Production App Support) ---
@@ -161,6 +162,11 @@ let isSearXenaInstalling = false; // Lock for installation
 let deferWindowShow = false; // Flag to defer window show until installation completes
 const sessionSaveTimers = new Map(); // Debounce map for heavy session saving
 const deletedSessionIds = new Set(); // Guard against late-arriving saves resurrecting deleted sessions
+const searchSessions = new Map(); // Search pools retained for web_search_more pagination
+const SEARCH_PAGE_SIZE = 10;
+const SEARCH_ENRICH_COUNT = 5;
+const SEARCH_SESSION_TTL_MS = 15 * 60 * 1000;
+const SEARCH_SESSION_MAX = 24;
 
 /**
  * Robust App Icon Loader
@@ -2787,103 +2793,285 @@ ipcMain.handle('poll-console-notifications', async (event) => {
     return notifications;
 });
 
-ipcMain.handle('run-search', async (event, { query, category }) => {
-    return new Promise((resolve) => {
-        console.log(`[Main Process] Native Search (API): "${query}" [Category: ${category || 'general'}]`);
-        const http = require('http');
-        const data = JSON.stringify({ query: query, category: category || 'general', limit: 10 });
-        
-        const options = {
+function requestSearXenaApi(apiPath, payload, timeoutMs = 30000) {
+    return new Promise((resolve, reject) => {
+        const body = JSON.stringify(payload || {});
+        const req = http.request({
             hostname: '127.0.0.1',
             port: 8000,
-            path: '/api/v1/search',
+            path: apiPath,
             method: 'POST',
             agent: false,
             headers: {
                 'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(data),
+                'Content-Length': Buffer.byteLength(body),
                 'Connection': 'close'
             },
-            timeout: 30000
-        };
-
-        const req = http.request(options, (res) => {
-            let body = '';
-            res.on('data', (chunk) => body += chunk);
+            timeout: timeoutMs
+        }, (res) => {
+            let responseBody = '';
+            res.setEncoding('utf8');
+            res.on('data', (chunk) => responseBody += chunk);
             res.on('end', () => {
-                if (res.statusCode === 200) {
-                    try {
-                        const parsed = JSON.parse(body);
-                        resolve({ ok: true, data: parsed });
-                    } catch (e) {
-                        resolve({ ok: false, error: 'Failed to parse search results' });
-                    }
-                } else {
-                    resolve({ ok: false, error: `Search engine returned status ${res.statusCode}` });
+                if (res.statusCode !== 200) {
+                    reject(new Error(`SearXena returned status ${res.statusCode}`));
+                    return;
+                }
+                try {
+                    resolve(JSON.parse(responseBody));
+                } catch (error) {
+                    reject(new Error(`Invalid JSON from SearXena: ${error.message}`));
                 }
             });
         });
 
-        req.on('error', (e) => {
-            console.error('[Main Process] Search API Error:', e);
-            resolve({ ok: false, error: 'El motor searXena no responde en el puerto 8000. Asegúrate de iniciarlo.' });
-        });
-
-        req.on('timeout', () => {
-            req.destroy();
-            resolve({ ok: false, error: 'Timeout waiting for search engine' });
-        });
-
-        req.write(data);
+        req.on('error', reject);
+        req.on('timeout', () => req.destroy(new Error('Timeout waiting for SearXena')));
+        req.write(body);
         req.end();
     });
+}
+
+function decodeSearchEntities(value) {
+    return String(value || '')
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/&amp;/gi, '&')
+        .replace(/&quot;/gi, '"')
+        .replace(/&#39;|&apos;/gi, "'")
+        .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
+        .replace(/&#x([\da-f]+);/gi, (_, code) => String.fromCodePoint(parseInt(code, 16)));
+}
+
+function htmlToSearchText(value) {
+    const html = String(value || '');
+    if (!html) return '';
+    return decodeSearchEntities(
+        html
+            .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ')
+            .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ')
+            .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, ' ')
+            .replace(/<\/(?:p|div|article|section|h[1-6]|li|blockquote|br|tr)>/gi, '\n')
+            .replace(/<[^>]+>/g, ' ')
+    )
+        .replace(/[ \t]+/g, ' ')
+        .replace(/[ \t]*\n[ \t]*/g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+}
+
+function absoluteMediaUrl(value, baseUrl) {
+    const raw = decodeSearchEntities(String(value || '').trim());
+    if (!raw || raw.startsWith('data:') || raw.startsWith('javascript:')) return '';
+    try {
+        return new URL(raw, baseUrl).toString();
+    } catch {
+        return raw.startsWith('http://') || raw.startsWith('https://') ? raw : '';
+    }
+}
+
+function extractMediaUrls(content, baseUrl) {
+    const urls = new Set();
+    const tagPattern = /<(?:img|video|audio|source|iframe|embed|object)[^>]+>/gi;
+    const attrPattern = /(?:src|data-src|poster|data-video-url)=["']([^"']+)["']/i;
+    for (const tag of String(content || '').match(tagPattern) || []) {
+        const match = tag.match(attrPattern);
+        const url = absoluteMediaUrl(match?.[1], baseUrl);
+        if (url) urls.add(url);
+    }
+    return [...urls];
+}
+
+function mergeSearchMedia(result, extraction) {
+    const resultMetadata = result?.metadata || {};
+    const metadata = extraction?.metadata || {};
+    const existingMedia = Array.isArray(result?.media_urls)
+        ? result.media_urls
+        : (typeof result?.media_urls === 'string' ? [result.media_urls] : []);
+    const candidates = [
+        ...existingMedia,
+        result.img_src,
+        result.thumbnail_src,
+        result.thumbnail,
+        result.image,
+        resultMetadata.image,
+        resultMetadata.hero_image,
+        metadata.image,
+        metadata.hero_image,
+        ...extractMediaUrls(extraction?.content, result.url)
+    ];
+    return [...new Set(candidates.map((value) => absoluteMediaUrl(value, result.url)).filter(Boolean))];
+}
+
+function cleanSearchSnippet(value) {
+    return htmlToSearchText(value).replace(/(?:^|\n)(?:las )?cookies?[^\n]*/gi, '').replace(/\s{2,}/g, ' ').trim();
+}
+
+function isUsefulSearchExtraction(text) {
+    const normalized = String(text || '').trim();
+    if (normalized.length < 600 || normalized.split(/\s+/).length < 90) return false;
+    const lower = normalized.toLowerCase();
+    const boilerplateMarkers = [
+        'enable javascript and cookies',
+        'checking your browser',
+        'access denied',
+        'las cookies, los identificadores'
+    ];
+    return !boilerplateMarkers.some((marker) => lower.includes(marker));
+}
+
+function initializeSearchSession(searchData, query, category) {
+    const sessionId = `search-${randomUUID()}`;
+    const results = (Array.isArray(searchData?.results) ? searchData.results : []).map((item, index) => {
+        const snippet = cleanSearchSnippet(item.content || item.snippet || '');
+        return {
+            ...item,
+            rank: index + 1,
+            snippet,
+            content: snippet,
+            content_source: 'snippet',
+            extraction_status: 'pending',
+            media_urls: mergeSearchMedia(item, { content: '' })
+        };
+    });
+    const session = {
+        id: sessionId,
+        query,
+        category: category || 'general',
+        results,
+        createdAt: Date.now(),
+        lastAccessedAt: Date.now(),
+        nextOffset: SEARCH_PAGE_SIZE
+    };
+    searchSessions.set(sessionId, session);
+    pruneSearchSessions();
+    return session;
+}
+
+function pruneSearchSessions() {
+    const now = Date.now();
+    for (const [id, session] of searchSessions) {
+        if (now - session.lastAccessedAt > SEARCH_SESSION_TTL_MS) searchSessions.delete(id);
+    }
+    while (searchSessions.size > SEARCH_SESSION_MAX) {
+        const oldest = [...searchSessions.entries()].sort((a, b) => a[1].lastAccessedAt - b[1].lastAccessedAt)[0];
+        if (!oldest) break;
+        searchSessions.delete(oldest[0]);
+    }
+}
+
+async function enrichSearchSession(session, startOffset = 0, targetCount = SEARCH_ENRICH_COUNT) {
+    let enriched = 0;
+    for (let index = Math.max(0, startOffset); index < session.results.length && enriched < targetCount; index++) {
+        const result = session.results[index];
+        if (result.content_source === 'extracted') {
+            enriched++;
+            continue;
+        }
+
+        if (!result.url || !/^https?:\/\//i.test(result.url)) {
+            result.extraction_status = 'invalid_url';
+            continue;
+        }
+
+        try {
+            const extraction = await requestSearXenaApi('/api/v1/extract', { url: result.url }, 30000);
+            const text = htmlToSearchText(extraction?.content || extraction?.text || extraction?.extracted_text || '');
+            if (isUsefulSearchExtraction(text)) {
+                result.content = text;
+                result.content_source = 'extracted';
+                result.extraction_status = extraction.status || 'success';
+                result.word_count = extraction.word_count || text.split(/\s+/).length;
+                result.media_urls = mergeSearchMedia(result, extraction);
+                enriched++;
+                continue;
+            }
+            result.extraction_status = 'short_extraction';
+        } catch (error) {
+            result.extraction_status = 'error';
+            result.extraction_error = error.message;
+        }
+
+        result.content = result.snippet || cleanSearchSnippet(result.content);
+        result.content_source = 'snippet_fallback';
+    }
+    return enriched;
+}
+
+function publicSearchResult(result) {
+    const { extraction_error, ...publicResult } = result;
+    return publicResult;
+}
+
+function buildSearchPage(session, offset = 0, requestedLimit = SEARCH_PAGE_SIZE) {
+    const start = Math.max(0, Number(offset) || 0);
+    const limit = Math.max(1, Math.min(50, Number(requestedLimit) || SEARCH_PAGE_SIZE));
+    const page = session.results.slice(start, start + limit).map(publicSearchResult);
+    const nextOffset = start + page.length < session.results.length ? start + page.length : null;
+    session.lastAccessedAt = Date.now();
+    session.nextOffset = nextOffset;
+    return {
+        results: page,
+        meta: {
+            search_id: session.id,
+            query: session.query,
+            category: session.category,
+            total: session.results.length,
+            offset: start,
+            limit,
+            returned: page.length,
+            has_more: nextOffset !== null,
+            next_offset: nextOffset,
+            enriched: session.results.filter((item) => item.content_source === 'extracted').length,
+            info: nextOffset !== null
+                ? `Mostrando ${start + 1}-${start + page.length} de ${session.results.length}. Usa web_search_more con search_id y offset ${nextOffset}.`
+                : `Mostrando ${start + 1}-${start + page.length} de ${session.results.length}.`
+        }
+    };
+}
+
+ipcMain.handle('run-search', async (event, { query, category, language }) => {
+    try {
+        console.log(`[Main Process] Native Search (API): "${query}" [Category: ${category || 'general'}]`);
+        const searchData = await requestSearXenaApi('/api/v1/search', {
+            query,
+            category: category || 'general',
+            language,
+            limit: 0,
+            offset: 0
+        }, 30000);
+        const session = initializeSearchSession(searchData, query, category);
+        await enrichSearchSession(session, 0, SEARCH_ENRICH_COUNT);
+        return { ok: true, data: buildSearchPage(session, 0, SEARCH_PAGE_SIZE) };
+    } catch (error) {
+        console.error('[Main Process] Search API Error:', error);
+        return { ok: false, error: 'El motor searXena no responde o devolvió una respuesta inválida.' };
+    }
+});
+
+ipcMain.handle('run-web-search-more', async (event, { searchId, offset, limit } = {}) => {
+    pruneSearchSessions();
+    const session = searchSessions.get(searchId);
+    if (!session) {
+        return { ok: false, error: 'La sesión de búsqueda expiró. Ejecuta web_search nuevamente.' };
+    }
+
+    const requestedOffset = offset === undefined || offset === null || offset === ''
+        ? session.nextOffset
+        : Number(offset);
+    const start = Math.max(0, Number.isFinite(requestedOffset) ? requestedOffset : SEARCH_PAGE_SIZE);
+    await enrichSearchSession(session, start, SEARCH_ENRICH_COUNT);
+    return { ok: true, data: buildSearchPage(session, start, limit || SEARCH_PAGE_SIZE) };
 });
 
 ipcMain.handle('run-extract', async (event, { url }) => {
-    return new Promise((resolve) => {
+    try {
         console.log(`[Main Process] Native Extract (API): "${url}"`);
-        const http = require('http');
-        const data = JSON.stringify({ url: url });
-        
-        const options = {
-            hostname: '127.0.0.1',
-            port: 8000,
-            path: '/api/v1/extract',
-            method: 'POST',
-            agent: false,
-            headers: {
-                'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(data),
-                'Connection': 'close'
-            },
-            timeout: 30000
-        };
-
-        const req = http.request(options, (res) => {
-            let body = '';
-            res.on('data', (chunk) => body += chunk);
-            res.on('end', () => {
-                if (res.statusCode === 200) {
-                    try {
-                        const parsed = JSON.parse(body);
-                        resolve({ ok: true, data: parsed });
-                    } catch (e) {
-                        resolve({ ok: false, error: 'Failed to parse extraction results' });
-                    }
-                } else {
-                    resolve({ ok: false, error: `Extraction engine returned status ${res.statusCode}` });
-                }
-            });
-        });
-
-        req.on('error', (e) => {
-            console.error('[Main Process] Extraction API Error:', e);
-            resolve({ ok: false, error: 'El motor de extracción no responde. Asegúrate de que searXena esté al día.' });
-        });
-
-        req.write(data);
-        req.end();
-    });
+        const data = await requestSearXenaApi('/api/v1/extract', { url }, 30000);
+        return { ok: true, data };
+    } catch (error) {
+        console.error('[Main Process] Extraction API Error:', error);
+        return { ok: false, error: 'El motor de extracción no responde. Asegúrate de que searXena esté al día.' };
+    }
 });
 
 ipcMain.handle('select-files', async () => {

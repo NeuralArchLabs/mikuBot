@@ -92,16 +92,22 @@ export const TOOL_NAME_ALIASES: Record<string, string> = {
     'browse_files': 'list_files',
     'file_list': 'list_files',
 
-    // ── search_files variants ───────────────────────────────────────
+    // ── search_pattern variants (content search) ────────────────────
+    'searchpattern': 'search_pattern',
+    'pattern_search': 'search_pattern',
+    'content_search': 'search_pattern',
+    'search_content': 'search_pattern',
+    'search_text': 'search_pattern',
+    'code_search': 'search_pattern',
+    'grep': 'search_pattern',
+    'find_in_files': 'search_pattern',
+    // ── search_files variants (file-name/path search) ───────────────
     'searchfiles': 'search_files',
     'file_search': 'search_files',
     'filesearch': 'search_files',
-    'grep': 'search_files',
     'find_file': 'search_files',
     'find_files': 'search_files',
     'search_in_files': 'search_files',
-    'search_content': 'search_files',
-    'find_in_files': 'search_files',
     'recursive_search': 'search_files',
     'search_recursive': 'search_files',
     'locate_file': 'search_files',
@@ -124,10 +130,17 @@ export const TOOL_NAME_ALIASES: Record<string, string> = {
     'query_web': 'web_search',
     'search_online': 'web_search',
     
-    // ── web_research & deep_research variants ────────────────────────
-    'webresearch': 'web_research',
-    'investigacion_web': 'web_research',
-    'investigar_web': 'web_research',
+    // ── web_search_more & deep_research variants ────────────────────
+    'searchmore': 'web_search_more',
+    'websearchmore': 'web_search_more',
+    'more_results': 'web_search_more',
+    'next_results': 'web_search_more',
+    'next_page': 'web_search_more',
+    'buscar_mas': 'web_search_more',
+    'buscar_más': 'web_search_more',
+    'mas_resultados': 'web_search_more',
+    'más_resultados': 'web_search_more',
+    'siguientes_resultados': 'web_search_more',
     'deepresearch': 'deep_research',
     'investigacion_profunda': 'deep_research',
     'investigar_profundo': 'deep_research',
@@ -424,6 +437,27 @@ export const ARG_KEY_ALIASES: Record<string, Record<string, string>> = {
         'destino': 'source',
         'destinos': 'source',
     },
+    search_pattern: {
+        // -> pattern
+        'query': 'pattern',
+        'search': 'pattern',
+        'search_text': 'pattern',
+        'searchtext': 'pattern',
+        'text': 'pattern',
+        'term': 'pattern',
+        'keyword': 'pattern',
+        'regex': 'pattern',
+        'consulta': 'pattern',
+        'busqueda': 'pattern',
+        'búsqueda': 'pattern',
+        // IDE-compatible aliases
+        'file_pattern': 'glob',
+        'filepath': 'path',
+        'directory': 'path',
+        'search_path': 'path',
+        'case_sensitive': 'case_sensitive',
+        'casesensitive': 'case_sensitive',
+    },
     web_search: {
         // -> query
         'search': 'query',
@@ -438,6 +472,16 @@ export const ARG_KEY_ALIASES: Record<string, Record<string, string>> = {
         // -> search_depth
         'profundidad': 'search_depth',
         'depth': 'search_depth',
+    },
+    web_search_more: {
+        'id': 'search_id',
+        'session': 'search_id',
+        'session_id': 'search_id',
+        'search_session': 'search_id',
+        'start': 'offset',
+        'skip': 'offset',
+        'page_offset': 'offset',
+        'count': 'limit',
     },
     read_url: {
         // -> url

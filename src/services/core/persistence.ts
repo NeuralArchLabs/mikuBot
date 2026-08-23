@@ -11,8 +11,9 @@ const STORAGE_KEY = 'mikucentral_settings';
 export const persistence = {
     // ── Settings ─────────────────────────────────────────────────────
 
-    async saveSettings(config: AppConfig, agentMode: string, safeMode: boolean, approvalMode: string): Promise<boolean> {
-        const payload = { config, agentMode, safeMode, approvalMode };
+    async saveSettings(config: AppConfig, agentMode: string, sequentialMode: boolean, approvalMode: string): Promise<boolean> {
+        // Keep the persisted key stable while exposing its actual meaning in code.
+        const payload = { config, agentMode, safeMode: sequentialMode, approvalMode };
 
         if (electron) {
             try {
@@ -117,8 +118,8 @@ export const persistence = {
     /**
      * Export current settings to a downloadable JSON file.
      */
-    exportToFile(config: AppConfig, agentMode: string, safeMode: boolean, approvalMode: string): void {
-        const payload = JSON.stringify({ config, agentMode, safeMode, approvalMode }, null, 4);
+    exportToFile(config: AppConfig, agentMode: string, sequentialMode: boolean, approvalMode: string): void {
+        const payload = JSON.stringify({ config, agentMode, safeMode: sequentialMode, approvalMode }, null, 4);
         const blob = new Blob([payload], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
 

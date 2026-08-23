@@ -119,7 +119,7 @@ export async function sendStreamingMessage(
                 const month = d.toLocaleString(locale, { month: 'short' }).toUpperCase().replace('.', '');
                 const day = d.toLocaleString(locale, { day: '2-digit' });
                 const time = d.toLocaleString(locale, { hour: '2-digit', minute: '2-digit', hour12: false });
-                const ts = `${month}/${day} ${time}`;
+                const ts = `${time} ${month}/${day}`;
                 return { ...m, content: `[${ts}] ${m.content || ''}` };
             }
             return { ...m, content: m.content || '' };
