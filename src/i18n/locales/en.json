@@ -362,6 +362,30 @@
     }
   },
   "settings": {
+    "codex": {
+      "title": "ChatGPT · Codex",
+      "description": "Sign in with ChatGPT to use your account's Codex models and limits. No API key is needed.",
+      "deep_research_note": "Deep Research needs another compatible provider; it does not support Codex sign-in yet.",
+      "login": "Sign in with ChatGPT",
+      "logout": "Sign out",
+      "cancel_login": "Cancel sign-in",
+      "refresh": "Refresh status and models",
+      "manage_account": "Manage ChatGPT account",
+      "connected": "Signed in",
+      "disconnected": "Signed out",
+      "pending": "Waiting for sign-in",
+      "browser_pending": "Complete sign-in in your browser. The connection will update automatically.",
+      "unavailable": "Codex is unavailable. Check the error and refresh the status from the desktop app.",
+      "limits_title": "Codex limits",
+      "limits_description": "These limits are shared with your account's other Codex usage. Refresh the status to see the latest usage.",
+      "usage_unavailable": "Usage unavailable",
+      "usage_window": "Usage window",
+      "window_days": "{{count}} days",
+      "window_hours": "{{count}} h",
+      "window_minutes": "{{count}} min",
+      "remaining": "{{percent}}% remaining",
+      "resets": "Resets: {{date}}"
+    },
     "title": "System Configuration",
     "language_select": "Interface Language",
     "language_desc": "Select the global language for mikuBot",
@@ -413,12 +437,25 @@
       "provider": "Routing Provider",
       "model": "Active Model",
       "sync": "Sync",
-      "select_model": "Select Target Architecture..."
+      "select_model": "Select Target Architecture...",
+      "reasoning": "Reasoning effort",
+      "reasoning_desc": "Controls how much effort the model spends reasoning. Auto keeps the model's native setting.",
+      "reasoning_auto": "Auto",
+      "reasoning_none": "Off",
+      "reasoning_minimal": "Minimal",
+      "reasoning_low": "Low",
+      "reasoning_medium": "Medium",
+      "reasoning_high": "High",
+      "reasoning_xhigh": "Very high",
+      "reasoning_max": "Max",
+      "reasoning_ultra": "Ultra",
+      "reasoning_model_default": "Model default",
+      "reasoning_levels": "levels"
     },
     "security": {
       "title": "Security & Main Engine Settings",
       "vault_title": "Secure Credential Vault",
-      "vault_desc": "Manage master logic fallbacks and encrypted API keys",
+      "vault_desc": "Manage provider accounts and encrypted API keys",
       "fallback_title": "Master Fallback Routing",
       "provider_label": "Master Provider",
       "model_label": "Master Model",
@@ -516,6 +553,11 @@
     "alerts": {
       "ollama_error_title": "Local Engine Unresponsive",
       "ollama_error_desc": "Verify Ollama is active on {{url}} and that at least one model is initialized."
+    },
+    "unsloth": {
+      "endpoint": "Unsloth Desktop URL",
+      "key_hint": "Save the URL and API key from Settings → API. Leave the key blank only when Keyless API Access: Inference is enabled in Unsloth. Local models refresh automatically every 10 seconds.",
+      "connection_error": "Could not connect to Unsloth: {{error}}"
     }
   },
   "sidebar": {
@@ -535,10 +577,10 @@
       "expand_library": "Expand Library",
       "new_doc": "New Context Document",
       "delete_file": "Delete {{filename}}",
-    "close_manager": "Close Session Manager",
-    "collapse_sidebar": "Collapse sidebar",
-    "expand_sidebar": "Expand sidebar"
-  },
+      "close_manager": "Close Session Manager",
+      "collapse_sidebar": "Collapse sidebar",
+      "expand_sidebar": "Expand sidebar"
+    },
     "footer": {
       "no_cortex": "No files"
     }

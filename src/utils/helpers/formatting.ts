@@ -589,7 +589,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         const isMdBlock = (lang: string) =>
             lang === 'markdown' || lang === 'md' || lang === 'mdx';
 
-        const buildBlock = (langClean: string, codeTrimmed: string) => {
+        const buildBlock = (langClean: string, codeTrimmed: string, leadingIndent = '') => {
             const highlighted  = highlightCode(codeTrimmed.trim(), langClean);
             const encodedCode  = encodeURIComponent(codeTrimmed.trim());
             const isDiagram    = ['mermaid','flowchart','graph','sequenceDiagram','gantt','pie',
@@ -605,11 +605,11 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
             const codeBox  = 'relative group/code bg-black/45 pt-8 pb-8 px-6 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_15px_45px_rgba(0,0,0,0.65)] backdrop-blur-md max-w-full min-w-0 md:mx-2';
             const diagBox  = 'relative group/code bg-black/45 pt-8 pb-8 px-6 rounded-2xl my-10 border border-transparent hover:border-cyan-500/10 shadow-[0_15px_45px_rgba(0,0,0,0.65)] max-w-full min-w-0 selection:bg-cyan-500/30';
             const header   = `\n            <div class="absolute top-2 left-6 flex items-center gap-2 non-typing select-none pointer-events-none">\n                <i class="fas fa-terminal text-[9px] ${accent} opacity-60"></i>\n                <span class="text-[9px] font-black uppercase tracking-[0.25em] ${accent} opacity-80">${displayLang}</span>\n            </div>`;
-            const copyBtn  = `<div class="absolute top-0 right-6 h-8 flex items-center z-20 opacity-0 group-hover/code:opacity-100 transition-opacity duration-300"><button class="group/btn text-slate-500/50 hover:text-cyan-400 p-2 cursor-pointer" title="Copiar Código" data-code="${encodedCode}" onclick="var btn=this,icon=btn.querySelector('i'),code=decodeURIComponent(btn.dataset.code);navigator.clipboard.writeText(code).then(function(){icon.className='fas fa-check text-emerald-400 inline-block transition-transform duration-200 transform-gpu group-hover/btn:scale-110 group-active/btn:scale-95';setTimeout(function(){icon.className='fas fa-clone text-[13px] inline-block transition-transform duration-200 transform-gpu group-hover/btn:scale-110 group-active/btn:scale-95'},2000)})"><i class="fas fa-clone text-[13px] inline-block transition-transform duration-200 transform-gpu group-hover/btn:scale-110 group-active/btn:scale-95"></i></button></div>`;
+            const copyBtn  = `<div class="absolute top-0 right-6 h-8 flex items-center z-20 opacity-0 group-hover/code:opacity-100 transition-opacity duration-300"><button type="button" class="group/btn text-slate-500/50 hover:text-cyan-400 p-2 cursor-pointer" title="Copiar Código" data-copy-code="${encodedCode}"><i class="fas fa-clone text-[13px] inline-block transition-transform duration-200 transform-gpu group-hover/btn:scale-110 group-active/btn:scale-95"></i></button></div>`;
             const id       = `__BLOCK_${pieces.length}__`;
             if (isDiagram) {
                 const codeBtnLabel = i18n.t('common.code', { defaultValue: 'Código' });
-                const codeBtn  = `<div class="absolute top-0 right-14 h-8 flex items-center z-20 opacity-0 group-hover/code:opacity-100 transition-opacity duration-300"><button class="group/btn text-slate-500/50 hover:text-cyan-400 p-2 cursor-pointer" title="${codeBtnLabel}" onclick="var container=this.closest('.group\\\\/code'); var svg=container.querySelector('.mermaid'); var raw=container.querySelector('.mermaid-raw-code'); if(svg.style.display==='none'){svg.style.display='flex';raw.style.display='none';svg.style.animation='none';svg.offsetHeight;svg.style.animation='slide-up-fade 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards';this.classList.remove('text-cyan-400');this.classList.add('text-slate-500/50');}else{svg.style.display='none';raw.style.display='block';raw.style.animation='none';raw.offsetHeight;raw.style.animation='slide-up-fade 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards';this.classList.remove('text-slate-500/50');this.classList.add('text-cyan-400');}"><i class="fas fa-code text-[13px] inline-block transition-transform duration-200 transform-gpu group-hover/btn:scale-110 group-active/btn:scale-95"></i></button></div>`;
+                const codeBtn  = `<div class="absolute top-0 right-14 h-8 flex items-center z-20 opacity-0 group-hover/code:opacity-100 transition-opacity duration-300"><button type="button" class="group/btn text-slate-500/50 hover:text-cyan-400 p-2 cursor-pointer" title="${codeBtnLabel}" data-action="toggle-mermaid-code" aria-pressed="false"><i class="fas fa-code text-[13px] inline-block transition-transform duration-200 transform-gpu group-hover/btn:scale-110 group-active/btn:scale-95"></i></button></div>`;
                 const cls  = isStreaming ? `${diagBox} isolate overflow-visible is-visible` : `${diagBox} overflow-visible code-block-anim opacity-0 scale-95 transition-all duration-500 ease-in-out will-change-transform transform translate-z-0`;
                 const attr = isStreaming ? 'data-animated="true"' : '';
                 pieces.push(`<div class="${cls}" ${attr}>${header}${copyBtn}${codeBtn}<div class="overflow-x-auto overflow-y-hidden w-full px-0 custom-scrollbar"><div class="mermaid min-h-[100px] flex items-center justify-center" data-mermaid-src="${encodedCode}"></div><div class="mermaid-raw-code hidden w-full bg-black/20 shadow-[0_3px_12px_rgba(0,0,0,0.3),0_1px_3px_rgba(0,0,0,0.15)] rounded-xl p-5 border border-transparent"><pre class="bg-transparent border-none p-0 m-0" style="background: transparent !important; box-shadow: none !important;"><code class="text-sm shadow-none font-mono leading-relaxed block">${highlighted}</code></pre></div></div></div>`);
@@ -618,7 +618,9 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                 const attr = isStreaming ? 'data-animated="true"' : '';
                 pieces.push(`<div class="${cls}" ${attr}>${header}${copyBtn}<div class="overflow-x-auto w-full bg-black/20 shadow-[0_3px_12px_rgba(0,0,0,0.3),0_1px_3px_rgba(0,0,0,0.15)] rounded-xl p-5 border border-transparent"><pre class="bg-transparent border-none p-0 m-0" style="background: transparent !important; box-shadow: none !important;"><code class="text-sm shadow-none font-mono leading-relaxed block">${highlighted}</code></pre></div></div>`);
             }
-            return `\n${id}\n`;
+            // Keep the indentation of a fenced block so the list renderer can
+            // recognize it as continuation content of the current item.
+            return `\n${leadingIndent}${id}\n`;
         };
 
         const lines        = input.split('\n');
@@ -627,6 +629,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         let fenceChar      = '';
         let fenceLen       = 0;
         let blockLang      = '';
+        let blockIndent    = '';
         let contentLines: string[] = [];
         let innerDepth     = 0;
 
@@ -642,6 +645,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                     fenceChar    = char;
                     fenceLen     = len;
                     blockLang    = lang.toLowerCase();
+                    blockIndent  = m[1];
                     innerDepth   = 0;
                     contentLines = [];
                 } else if (isMdBlock(blockLang)) {
@@ -650,13 +654,14 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                         innerDepth++;
                         contentLines.push(line);
                     } else if (char === fenceChar && len >= fenceLen) {
-                        if (innerDepth > 0) {
+                    if (innerDepth > 0) {
                             innerDepth--;
                             contentLines.push(line);
                         } else {
                             // Closes the outer markdown block
-                            out.push(buildBlock(blockLang, contentLines.join('\n')));
+                            out.push(buildBlock(blockLang, contentLines.join('\n'), blockIndent));
                             inBlock = false;
+                            blockIndent = '';
                         }
                     } else {
                         contentLines.push(line);
@@ -664,8 +669,9 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                 } else {
                     // Regular block: bare fence closes it
                     if (char === fenceChar && len >= fenceLen && lang === '' && rest === '') {
-                        out.push(buildBlock(blockLang, contentLines.join('\n')));
+                        out.push(buildBlock(blockLang, contentLines.join('\n'), blockIndent));
                         inBlock = false;
+                        blockIndent = '';
                     } else {
                         contentLines.push(line);
                     }
@@ -681,8 +687,9 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
                         const isLikelyHeading = /^#{2,3}\s/.test(t) || /^---$/.test(t);
                         const hasKnownLang = blockLang !== '';
                         if (isLikelyHeading && !hasKnownLang) {
-                            out.push(buildBlock(blockLang, contentLines.join('\n')));
+                            out.push(buildBlock(blockLang, contentLines.join('\n'), blockIndent));
                             inBlock = false;
+                            blockIndent = '';
                             out.push(line);
                             continue;
                         }
@@ -695,7 +702,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         }
         // Unclosed block at end of input
         if (inBlock) {
-            out.push(buildBlock(blockLang, contentLines.join('\n')));
+            out.push(buildBlock(blockLang, contentLines.join('\n'), blockIndent));
         }
         return out.join('\n');
     }
@@ -814,12 +821,12 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
 
                 fullTagContent = `<div class="image-container relative group/img w-full flex flex-col items-center justify-center my-4" style="text-align:center;">` +
                     `<div class="relative overflow-hidden rounded-2xl border border-white/10 shadow-2xl" style="${style}">` +
-                        `<img src="${src}" alt="${alt}" ${width} ${height} class="max-w-full h-auto cursor-pointer" onclick="window.openImageFullscreen(this.src, this.alt || '')" />` +
+                        `<img src="${src}" alt="${alt}" ${width} ${height} class="max-w-full h-auto cursor-pointer" data-action="open-image" />` +
                         `<div class="absolute top-3 right-3 flex gap-2 z-10 opacity-0 group-hover/img:opacity-100 transition-opacity duration-300">` +
-                            `<button class="w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-cyan-500/80 text-white rounded-lg cursor-pointer transition border border-white/10" title="Ampliar imagen" onclick="window.openImageFullscreen(this.closest('.relative').querySelector('img').src, this.closest('.relative').querySelector('img').alt || '')">` +
+                            `<button type="button" class="w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-cyan-500/80 text-white rounded-lg cursor-pointer transition border border-white/10" title="Ampliar imagen" data-action="open-image">` +
                                 `<i class="fas fa-expand text-xs"></i>` +
                             `</button>` +
-                            `<button class="w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-cyan-500/80 text-white rounded-lg cursor-pointer transition border border-white/10" title="Descargar imagen" onclick="window.downloadImage(this.closest('.relative').querySelector('img').src, this.closest('.relative').querySelector('img').alt || '')">` +
+                            `<button type="button" class="w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-cyan-500/80 text-white rounded-lg cursor-pointer transition border border-white/10" title="Descargar imagen" data-action="download-image">` +
                                 `<i class="fas fa-download text-xs"></i>` +
                             `</button>` +
                         `</div>` +
@@ -1244,6 +1251,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
     // 1c. Universal Admonition Parser — Phase 1
     // Matches [!TYPE] or > [!TYPE]. Supports custom types with fallback to INFO style.
     html = html.replace(/^[ \t]*(?:>\s*)?\[!([A-Z_]+)\]([\-\+])?(?:[ \t]+(.*))?\s*?\n?((?:(?!(?:[ \t]*>\s*\[!)).*\n?)*)/gim, (match, type, collapseSign, title, body) => {
+        const leadingIndent = match.match(/^[ \t]*/)?.[0] || '';
         const id = `__BLOCK_${pieces.length}__`;
         const typeUp = type.toUpperCase();
         
@@ -1364,7 +1372,8 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         }
         
         const remainder = bodyLines.slice(actualBody.length).join('\n');
-        return `\n${id}\n${remainder}`;
+        // Preserve list continuation indentation for the later list pass.
+        return `\n${leadingIndent}${id}\n${remainder}`;
     });
 
     // 1d. Standard Blockquote Parser (Phase 1) — Nesting-aware with recursive rendering
@@ -1372,6 +1381,7 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
     html = html.replace(/(^[ \t]*>.*(?:\n[ \t]*>.*)*)/gm, (match) => {
         // Verify at least one real > line exists (not just whitespace)
         if (!/^[ \t]*>/m.test(match)) return match;
+        const leadingIndent = match.match(/^[ \t]*/)?.[0] || '';
         const id = `__BLOCK_${pieces.length}__`;
         // Restore parent-scope __BLOCK_N__ tokens before passing to blockquote renderer,
         // since convertBlockquotesToHtml calls toHtml() recursively with its own pieces[].
@@ -1380,7 +1390,8 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
             return (idx >= 0 && idx < pieces.length) ? pieces[idx] : m;
         });
         pieces.push(convertBlockquotesToHtml(matchRestored, isStreaming));
-        return `\n${id}\n`;
+        // Preserve list continuation indentation for the later list pass.
+        return `\n${leadingIndent}${id}\n`;
     });
 
     // 1e. Image & Asset Protection (Phase 2)
@@ -1410,12 +1421,12 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
         const extra = isStreaming ? 'data-animated="true" is-visible' : '';
         pieces.push(`<div ${extra} class="image-container relative group/img w-full flex flex-col items-center justify-center my-4" style="text-align:center;">` +
             `<div class="relative overflow-hidden rounded-2xl border border-white/10 shadow-2xl">` +
-                `<img src="${url}" alt="${cleanAlt}" ${width} ${height} class="max-w-full h-auto cursor-pointer" onclick="window.openImageFullscreen(this.src, this.alt || '')" />` +
+                `<img src="${url}" alt="${cleanAlt}" ${width} ${height} class="max-w-full h-auto cursor-pointer" data-action="open-image" />` +
                 `<div class="absolute top-3 right-3 flex gap-2 z-10 opacity-0 group-hover/img:opacity-100 transition-opacity duration-300">` +
-                    `<button class="w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-cyan-500/80 text-white rounded-lg cursor-pointer transition border border-white/10" title="Ampliar imagen" onclick="window.openImageFullscreen(this.closest('.relative').querySelector('img').src, this.closest('.relative').querySelector('img').alt || '')">` +
+                    `<button type="button" class="w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-cyan-500/80 text-white rounded-lg cursor-pointer transition border border-white/10" title="Ampliar imagen" data-action="open-image">` +
                         `<i class="fas fa-expand text-xs"></i>` +
                     `</button>` +
-                    `<button class="w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-cyan-500/80 text-white rounded-lg cursor-pointer transition border border-white/10" title="Descargar imagen" onclick="window.downloadImage(this.closest('.relative').querySelector('img').src, this.closest('.relative').querySelector('img').alt || '')">` +
+                    `<button type="button" class="w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-cyan-500/80 text-white rounded-lg cursor-pointer transition border border-white/10" title="Descargar imagen" data-action="download-image">` +
                         `<i class="fas fa-download text-xs"></i>` +
                     `</button>` +
                 `</div>` +
@@ -1623,31 +1634,6 @@ export const toHtml = (md: string, isStreaming: boolean = false, mode: 'full' | 
 
     // 13h. Apply cached abbreviations to text
     html = applyAbbreviationsToHtml(html);
-
-    // 13i. Cross-browser client-side Spanish/English text hyphenator
-    // Guarantees clean justification even on platforms (like Chrome/Windows) lacking native dictionaries.
-    const htmlParts = html.split(/(<[^>]+>)/g);
-    for (let i = 0; i < htmlParts.length; i++) {
-        if (i % 2 === 0) {
-            htmlParts[i] = htmlParts[i].replace(/[a-záéíóúüñ]{7,}/gi, (word) => {
-                return word
-                    .replace(/([aeoáéó])([aeoáéó])/gi, '$1\u00ad$2')
-                    .replace(/([aeiouáéíóúü])([bcdfghjklmnñpqrstvwxyz][aeiouáéíóúü])/gi, '$1\u00ad$2')
-                    .replace(/([aeiouáéíóúü][bcdfghjklmnñpqrstvwxyz])([bcdfghjklmnñpqrstvwxyz][aeiouáéíóúü])/gi, (m, p1, p2) => {
-                        const first = p1[p1.length - 1].toLowerCase();
-                        const second = p2[0].toLowerCase();
-                        if ((second === 'l' || second === 'r') && 'bcfgptd'.includes(first)) {
-                            return p1 + p2;
-                        }
-                        if (first === 'c' && second === 'h') return p1 + p2;
-                        if (first === 'l' && second === 'l') return p1 + p2;
-                        if (first === 'r' && second === 'r') return p1 + p2;
-                        return p1 + '\u00ad' + p2;
-                    });
-            });
-        }
-    }
-    html = htmlParts.join('');
 
     // 14. Restoration: inject protected blocks back
     // Use multi-pass for nested blocks (e.g., inline code inside details)
@@ -2020,6 +2006,8 @@ function convertBlockquotesToHtml(block: string, isStreaming: boolean = false): 
 
 /**
  * Converts markdown lists (ul/ol) with task list support to HTML.
+ * Ordered Markdown keeps numeric markers at the root and uses alphabetic
+ * markers for ordered nested lists via the stylesheet.
  */
 function convertListsToHtml(html: string): string {
     const contentLines = html.split('\n');
@@ -2045,9 +2033,9 @@ function convertListsToHtml(html: string): string {
     // Depth-aware style profiles for <li> items (indexed by effectiveDepth)
     const liDepthStyles = [
         'pl-1 text-slate-200 leading-relaxed',           // Level 0 — primary items
-        'pl-1 text-sm text-slate-300/90 leading-relaxed', // Level 1 — first nesting
-        'pl-1 text-sm text-slate-400/80 leading-snug',    // Level 2 — deep nesting
-        'pl-1 text-xs text-slate-500/70 leading-snug',    // Level 3+ — very deep
+        'pl-1 text-sm text-slate-300/95 leading-relaxed', // Level 1 — first nesting
+        'pl-1 text-sm text-slate-300/90 leading-snug',    // Level 2 — deep nesting
+        'pl-1 text-xs text-slate-400/85 leading-snug',    // Level 3+ — very deep
     ];
     const getLiStyle = (d: number) => liDepthStyles[Math.min(d, liDepthStyles.length - 1)];
 
@@ -2055,10 +2043,10 @@ function convertListsToHtml(html: string): string {
         const line = contentLines[i];
         const trimmed = line.trim();
 
-        // Task list: - [x], - [ ], or - [/] — \s+ to tolerate variable spacing from LLMs
-        const taskMatch = line.match(/^(\s*)([\*\-\u2022\u00B7])\s+\[(x| |\/)\]\s+(.*)$/i);
+        // Task list: -, *, + [x], - [ ], or - [/] — \s+ tolerates variable spacing from LLMs
+        const taskMatch = line.match(/^(\s*)([\*\-+\u2022\u00B7])\s+\[(x| |\/)\]\s+(.*)$/i);
         // Standard unordered list
-        const ulMatch = !taskMatch ? line.match(/^(\s*)([\*\-\u2022\u00B7])\s+(.*)$/) : null;
+        const ulMatch = !taskMatch ? line.match(/^(\s*)([\*\-+\u2022\u00B7])\s+(.*)$/) : null;
         // Ordered list
         const olMatch = !taskMatch && !ulMatch ? line.match(/^(\s*)(\d+)\.\s+(.*)$/) : null;
 
@@ -2066,6 +2054,8 @@ function convertListsToHtml(html: string): string {
 
         if (taskMatch || ulMatch || olMatch) {
             const isTask = !!taskMatch;
+            // Preserve the source tag for accessibility and document
+            // semantics. The stylesheet controls the marker hierarchy.
             const isUl = isTask || !!ulMatch;
             const type: 'ul' | 'ol' = isUl ? 'ul' : 'ol';
             const content = isTask ? taskMatch[4] : (ulMatch ? ulMatch[3] : olMatch![3]);
@@ -2076,14 +2066,14 @@ function convertListsToHtml(html: string): string {
             if (listStack.length === 0) {
                 // First list item ever — open a new list
                 const marginClass = 'my-2';
-                processed.push(`<${type} class="space-y-1 ${marginClass} ml-6 cursor-default marker:text-indigo-400/60">`);
+                processed.push(`<${type} class="space-y-1 ${marginClass} ${isUl ? 'list-disc' : 'list-decimal'} ml-6 cursor-default marker:text-indigo-400/60">`);
                 listStack.push({ type, indent });
             } else {
                 const top = listStack[listStack.length - 1];
 
                 if (indent > top.indent) {
                     // Deeper nesting — open new nested list
-                    processed.push(`<${type} class="space-y-0.5 mt-1 ml-4 cursor-default marker:text-cyan-400/50">`);
+                    processed.push(`<${type} class="space-y-0.5 mt-1 ml-4 ${isUl ? 'list-disc' : 'list-decimal'} cursor-default marker:text-cyan-400/50">`);
                     listStack.push({ type, indent });
                 } else if (indent < top.indent) {
                     // Returning to a higher level — close deeper lists
@@ -2096,6 +2086,13 @@ function convertListsToHtml(html: string): string {
                         processed.push(`<${type} class="space-y-1 my-3 ${isUl ? 'list-disc' : 'list-decimal'} list-outside ml-6 marker:text-indigo-400/60">`);
                         listStack.push({ type, indent });
                     }
+                } else if (type !== top.type) {
+                    // A marker-type change at the same indentation starts a
+                    // separate list instead of inheriting the previous list's
+                    // marker style.
+                    processed.push(`</li></${top.type}>`);
+                    processed.push(`<${type} class="space-y-1 my-2 ${isUl ? 'list-disc' : 'list-decimal'} list-outside ml-6 marker:text-indigo-400/60">`);
+                    listStack[listStack.length - 1] = { type, indent };
                 } else {
                     // Same level — close previous <li>, stay in same list
                     processed.push('</li>');
@@ -2132,12 +2129,37 @@ function convertListsToHtml(html: string): string {
             } else {
                 processed.push(`<li class="${getLiStyle(effectiveDepth)}">${content}`);
             }
-        } else if (trimmed === "" && i < contentLines.length - 1 && (contentLines[i+1].match(/^(\s*)[\*\-] /) || contentLines[i+1].match(/^(\s*)\d+\. /))) {
-            // Skip empty lines between list groups (keep list context open)
-            continue;
         } else {
-            // Non-list line — close everything
-            if (listStack.length > 0) {
+            const currentList = listStack[listStack.length - 1];
+            const lineIndent = line.match(/^[ \t]*/)?.[0].length || 0;
+            const isListItemLine = (value: string) => /^(?:[ \t]*[\*\-+\u2022\u00B7]\s+|[ \t]*\d+\.\s+)/.test(value);
+            const nextNonEmpty = contentLines.slice(i + 1).find(candidate => candidate.trim() !== '');
+
+            if (currentList && !trimmed) {
+                // Keep the list open across Markdown's blank separator when
+                // the following block is another item or is indented content
+                // belonging to the current item.
+                if (nextNonEmpty && (isListItemLine(nextNonEmpty) || (nextNonEmpty.match(/^[ \t]*/)?.[0].length || 0) > currentList.indent)) {
+                    continue;
+                }
+                closeAllLists();
+                continue;
+            }
+
+            if (currentList && lineIndent > currentList.indent) {
+                // Paragraphs and protected block placeholders keep their
+                // indentation and remain inside the current <li>.
+                const isBlock = /^<\/?(?:h[1-6]|pre|table|iframe|canvas|svg|style|script|div|p|ul|ol|li|blockquote|details|summary|section|article|aside|figure|figcaption|header|footer|nav|main|form|video|audio)\b/i.test(trimmed)
+                    || /^__BLOCK_\d+__$/.test(trimmed);
+                const continuationClass = isBlock
+                    ? 'list-item-continuation'
+                    : 'list-item-continuation mb-3 leading-loose';
+                processed.push(`<div class="${continuationClass}">${trimmed}</div>`);
+                continue;
+            }
+
+            // Non-list line — close everything before rendering it at the root.
+            if (currentList) {
                 closeAllLists();
             }
 
@@ -2274,51 +2296,6 @@ function applyAbbreviationsToHtml(html: string): string {
 
 
 
-/**
- * Formats date to locale string
- */
-export function formatDate(timestamp: number): string {
-    return new Date(timestamp).toLocaleString();
-}
-
-/**
- * Formats file size in human readable format
- */
-export function formatFileSize(bytes: number): string {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
-}
-
-/**
- * Formats duration in milliseconds to human readable format
- */
-export function formatDuration(ms: number): string {
-    const seconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-
-    if (days > 0) return `${days}d ${hours % 24}h`;
-    if (hours > 0) return `${hours}h ${minutes % 60}m`;
-    if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
-    return `${seconds}s`;
-}
-
-/**
- * Formats number with locale specific formatting
- */
-export function formatNumber(num: number, decimals: number = 0): string {
-    return num.toLocaleString(undefined, {
-        minimumFractionDigits: decimals,
-        maximumFractionDigits: decimals
-    });
-}
-
-
-/**
 /**
  * Dependency-free minimal syntax highlighter for Mermaid and common languages.
  * Uses a two-pass placeholder system to prevent self-matching inside HTML tags.

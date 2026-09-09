@@ -31,25 +31,30 @@ import {
     telegramService,
     neuralScheduler,
     executeCommand,
-    formatTelegramResponse
+    TelegramFormatter
 } from './services';
 import { cleanTtsText, splitTextIntoExactPartitionChunks } from './utils/helpers/ttsHelper';
 import { DeepResearchPanel } from './components/panels/DeepResearchPanel';
+import { blocksToAgentMessages } from './services/core/conversationSerializer';
 
 const electron = (window as any).electron;
 const SIDEBAR_COLLAPSE_BREAKPOINT = 1024;
 
 const isModelProviderConfigured = (provider: Provider, config: AppConfig): boolean => {
+    if (provider === 'unsloth') return Boolean(electron?.getUnslothModels)
+        && [config.provider, config.chatProvider, config.agentProvider, config.visionProvider].includes('unsloth');
+    if (provider === 'codex') return Boolean(electron?.codexGetStatus);
     if (provider === 'ollama') return Boolean(config.ollamaUrl?.trim());
     return Boolean(config.apiKeys?.[provider]?.trim());
 };
 
 const getModelConnectionSignature = (provider: Provider, config: AppConfig): string => {
     if (!isModelProviderConfigured(provider, config)) return '';
+    if (provider === 'codex') return 'codex:managed-chatgpt';
     if (provider === 'ollama') return `ollama:${config.ollamaUrl.trim()}`;
     // Keep the key out of logs while still detecting when a credential changes.
     const key = config.apiKeys?.[provider]?.trim() || '';
-    return `${provider}:${key.length}:${key.slice(0, 4)}:${key.slice(-4)}`;
+    return `${provider}:${provider === 'unsloth' ? config.unslothUrl || 'http://localhost:8888/v1' : ''}:${key.length}:${key.slice(0, 4)}:${key.slice(-4)}`;
 };
 
 /**
@@ -109,116 +114,20 @@ const stripHeavyAttachments = (messages: Message[]): Message[] => {
     });
 };
 
-/**
- * BLOCKS -> AGENT MESSAGES RECONSTRUCTION
- * Converts stored blocks (single source of truth) into the API
- * message sequence expected by all providers.
- */
-function blocksToAgentMessages(blocks: MessageBlock[]): any[] {
-    const messages: any[] = [];
-    if (!blocks || blocks.length === 0) return messages;
+// A renderer reload must not inherit a stale streaming flag left by a closed or
+// interrupted app. Preserve the flag only when the agent is still executing that
+// exact session in the current process (for example, while viewing another chat).
+const normalizeLoadedMessages = (messages: Message[], sessionId: string): Message[] => {
+    if (useAgentStore.getState().executingSessionId === sessionId) return messages;
 
-    let currentAssistant: any = null;
-    let queuedToolResponses: any[] = [];
-
-    const finalizeCurrentAssistant = () => {
-        if (currentAssistant) {
-            messages.push(currentAssistant);
-            currentAssistant = null;
-        }
-        if (queuedToolResponses.length > 0) {
-            messages.push(...queuedToolResponses);
-            queuedToolResponses = [];
-        }
-    };
-
-    for (const b of blocks) {
-        if (b.type === 'thought') {
-            if (queuedToolResponses.length > 0) {
-                finalizeCurrentAssistant();
-            }
-            if (!currentAssistant) {
-                currentAssistant = { role: 'assistant', content: '' };
-            }
-            const sig = (b as any).thought_signature || (b as any).thoughtSignature || (b.toolCall as any)?.thought_signature || (b.toolCall as any)?.thoughtSignature;
-            if (sig) {
-                currentAssistant.thought_signature = sig;
-            }
-            const thinkingText = `<thinking>\n${b.content.trim()}\n</thinking>`;
-            currentAssistant.content = currentAssistant.content
-                ? `${currentAssistant.content}\n\n${thinkingText}`
-                : thinkingText;
-        } else if (b.type === 'text' || b.type === 'answer') {
-            if (queuedToolResponses.length > 0) {
-                finalizeCurrentAssistant();
-            }
-            if (!currentAssistant) {
-                currentAssistant = { role: 'assistant', content: '' };
-            }
-            currentAssistant.content = currentAssistant.content
-                ? `${currentAssistant.content}\n\n${b.content.trim()}`
-                : b.content.trim();
-        } else if (b.type === 'tool_call') {
-            const tc = b.toolCall;
-            if (tc && tc.id) {
-                if (!currentAssistant) {
-                    currentAssistant = { role: 'assistant', content: null };
-                }
-                if (!currentAssistant.tool_calls) {
-                    currentAssistant.tool_calls = [];
-                }
-                const sig = (tc as any).thought_signature || (tc as any).thoughtSignature || (b as any).thought_signature || (b as any).thoughtSignature;
-                const toolCall: any = {
-                    id: tc.id,
-                    type: 'function',
-                    function: {
-                        name: tc.function.name,
-                        arguments: tc.function.arguments ?? {}
-                    }
-                };
-                if (sig) {
-                    toolCall.thought_signature = sig;
-                    if (!currentAssistant.thought_signature) {
-                        currentAssistant.thought_signature = sig;
-                    }
-                }
-                currentAssistant.tool_calls.push(toolCall);
-
-                // Reconstruct tool response
-                let rawOutput = '';
-                if (b.result) {
-                    if (b.status === 'success') {
-                        rawOutput = typeof b.result.data === 'string' ? b.result.data : JSON.stringify(b.result.data ?? b.result);
-                    } else {
-                        rawOutput = b.result.error || 'Execution failed';
-                    }
-                } else {
-                    rawOutput = b.status === 'denied' ? 'manual mode error: user denied tool excecution' : '';
-                }
-
-                const toolResponse: any = {
-                    role: 'tool',
-                    tool_name: tc.function.name,
-                    tool_call_id: tc.id,
-                    content: rawOutput
-                };
-                if (sig) {
-                    toolResponse.thought_signature = sig;
-                }
-                queuedToolResponses.push(toolResponse);
-            }
-        }
-    }
-
-    finalizeCurrentAssistant();
-
-    return messages.map(m => {
-        if (m.role === 'assistant' && typeof m.content === 'string') {
-            m.content = m.content.trim() || null;
-        }
-        return m;
+    let changed = false;
+    const normalized = messages.map(message => {
+        if (!message.isStreaming) return message;
+        changed = true;
+        return { ...message, isStreaming: false };
     });
-}
+    return changed ? normalized : messages;
+};
 
 export const App = () => {
     const { i18n, t } = useTranslation();
@@ -290,9 +199,14 @@ export const App = () => {
     const [loadingSessions, setLoadingSessions] = useState(true);
     const [loadingSettings, setLoadingSettings] = useState(true);
     const [lastNeuralTrigger, setLastNeuralTrigger] = useState<number>(0);
-    const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
+    // The sidebar only depends on which side of the responsive breakpoint the
+    // window is on. Keeping the raw width in React state caused the entire app
+    // tree to render once for every native resize event while the window was
+    // being dragged.
+    const [sidebarAutoCollapsed, setSidebarAutoCollapsed] = useState(
+        () => window.innerWidth < SIDEBAR_COLLAPSE_BREAKPOINT
+    );
     const [sidebarManuallyCollapsed, setSidebarManuallyCollapsed] = useState(false);
-    const sidebarAutoCollapsed = viewportWidth < SIDEBAR_COLLAPSE_BREAKPOINT;
     const sidebarCollapsed = sidebarAutoCollapsed || sidebarManuallyCollapsed;
     const abortControllerRef = useRef<AbortController | null>(null);
     const lastUserTextRef = useRef<string>('');
@@ -322,6 +236,7 @@ export const App = () => {
     const modelConnectionSignaturesRef = useRef<Partial<Record<Provider, string>>>({});
     const lastProcessedUpdateIdRef = useRef<number>(0);
     const sessionLoadingRef = useRef(false);
+    const initialSessionSelectionStartedRef = useRef(false);
     const namedSessionsTurnsRef = useRef<Map<string, number>>(new Map());
     const skillsCacheRef = useRef<any[]>([]);
     const lastSkillsFetchRef = useRef<number>(0);
@@ -334,7 +249,12 @@ export const App = () => {
     const deepResearchCompletionInFlightRef = useRef<Map<string, symbol>>(new Map());
 
     useEffect(() => {
-        const handleViewportResize = () => setViewportWidth(window.innerWidth);
+        const handleViewportResize = () => {
+            const nextAutoCollapsed = window.innerWidth < SIDEBAR_COLLAPSE_BREAKPOINT;
+            setSidebarAutoCollapsed(current => (
+                current === nextAutoCollapsed ? current : nextAutoCollapsed
+            ));
+        };
         window.addEventListener('resize', handleViewportResize);
         return () => window.removeEventListener('resize', handleViewportResize);
     }, []);
@@ -740,7 +660,7 @@ export const App = () => {
                 debugMode: false // Always close debug mode on selection
             }));
 
-            setMessagesStore(session.messages || []);
+            setMessagesStore(normalizeLoadedMessages(session.messages || [], id));
             setInputStore(session.draft || '');
         } else {
             setState(prev => ({
@@ -836,7 +756,8 @@ export const App = () => {
 
     // Ensure there is always an active session
     useEffect(() => {
-        if (!loadingSessions && !loadingSettings) {
+        if (!loadingSessions && !loadingSettings && !initialSessionSelectionStartedRef.current) {
+            initialSessionSelectionStartedRef.current = true;
             if (sessions.length === 0 && !state.sessionId) {
                 onNewSession();
             } else if (sessions.length > 0 && !state.sessionId) {
@@ -1613,8 +1534,27 @@ export const App = () => {
         setConnectionStatus('testing');
         try {
             const fetchedModels = await fetchModels(providerToTest, state.config);
+            if (providerToTest === 'unsloth' && (state.config.unslothUrl !== stateRef.current.config.unslothUrl
+                || state.config.apiKeys?.unsloth !== stateRef.current.config.apiKeys?.unsloth)) return;
             setModels(prev => ({ ...prev, [providerToTest]: fetchedModels }));
             setConnectionStatus('connected');
+
+            if ((providerToTest === 'codex' && fetchedModels.length > 0) || providerToTest === 'unsloth') {
+                // The account controls the catalog. Replace stale models after
+                // a provider/account switch in every mode using this account.
+                setState(prev => {
+                    const next = { ...prev.config };
+                    const available = new Set(fetchedModels.map(model => model.id));
+                    const fallback = fetchedModels[0]?.id || '';
+                    if (next.provider === providerToTest && !available.has(next.model)) next.model = fallback;
+                    if (next.chatProvider === providerToTest && !available.has(next.chatModel)) next.chatModel = fallback;
+                    if (next.agentProvider === providerToTest && !available.has(next.agentModel)) next.agentModel = fallback;
+                    if (next.visionProvider === providerToTest && !available.has(next.visionModel)) {
+                        next.visionModel = fetchedModels.find(model => model.capabilities?.includes('vision'))?.id || '';
+                    }
+                    return JSON.stringify(next) === JSON.stringify(prev.config) ? prev : { ...prev, config: next };
+                });
+            }
 
             // Auto-select if model is empty for this specific provider configuration
             if (fetchedModels.length > 0) {
@@ -1630,6 +1570,10 @@ export const App = () => {
         } catch (error) {
             console.error(`[App] Connection Test Failed for ${providerToTest}:`, error);
             setConnectionStatus('error');
+            if (providerToTest === 'unsloth') {
+                setModels(prev => ({ ...prev, unsloth: [] }));
+                if (!options?.silent) await askAlert(error instanceof Error ? error.message : String(error));
+            }
             if (providerToTest === 'ollama' && !options?.silent) {
                 await askAlert(t('common.ollama_error', { url: state.config.ollamaUrl, error: error instanceof Error ? error.message : String(error) }));
             }
@@ -1674,6 +1618,13 @@ export const App = () => {
         }, 250);
 
         return () => window.clearTimeout(timer);
+    }, [handleTestConnection, state.config]);
+
+    // Desktop may install or unload models while this app stays open.
+    useEffect(() => {
+        if (!isModelProviderConfigured('unsloth', state.config)) return;
+        const timer = window.setInterval(() => void handleTestConnection('unsloth', { silent: true }), 10000);
+        return () => window.clearInterval(timer);
     }, [handleTestConnection, state.config]);
 
     const constructSystemInstruction = (
@@ -1886,7 +1837,7 @@ To see all your additional enabled skills and their full technical parameters, y
         const wasVoiceRequest = isVoiceRequestRef.current;
         isVoiceRequestRef.current = false;
 
-        const chunks = formatTelegramResponse(text);
+        const chunks = new TelegramFormatter().formatAsChunks(text);
         
         // Use a simple loop to send chunks sequentially
         // For production, a more robust queue/retry might be better, but this handles simple multi-part
@@ -2386,6 +2337,12 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                 ...currentState.config,
                 provider: effectiveProvider as Provider,
                 model: effectiveModel,
+                // Each runtime may select its own reasoning intensity while
+                // the provider adapters still receive one normalized field.
+                reasoningEffort: (useAgentEngine
+                    ? currentState.config.agentReasoningEffort
+                    : currentState.config.chatReasoningEffort)
+                    ?? currentState.config.reasoningEffort,
                 // Long-running skills must stay on the runtime configured for
                 // the active mode. A conversational master fallback must not
                 // silently reroute Deep Research to another quota/model.
@@ -2395,7 +2352,7 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
 
             // --- Master Fallback Logic ---
             // Determine if a different master fallback is available for retry
-            const hasMasterFallback = currentState.config.model
+            const hasMasterFallback = effectiveProvider !== 'codex' && currentState.config.model
                 && (currentState.config.provider !== effectiveProvider || currentState.config.model !== effectiveModel);
 
             const runInference = async (inferenceConfig: typeof effectiveConfig, isFallback = false) => {

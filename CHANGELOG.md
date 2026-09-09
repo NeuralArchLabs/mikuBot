@@ -1,3 +1,14 @@
+## Unreleased
+### Changed
+- **Lossless Response Pipeline:** Removed the Gemma/standard formatter factory, global hallucination dictionaries, semantic text cleanup, and model-name prompt injections. Reasoning and tool history now remain structured, while raw rich HTML is sanitized at the renderer boundary and active artifacts run in sandboxed frames.
+- **Observed Compatibility Fallbacks:** Native tool and Gemini system-instruction fallbacks are now activated only after the configured runtime explicitly rejects the native capability.
+- **Provider-Neutral Reasoning Effort:** Added Auto/None/Minimal/Low/Medium/High/XHigh/Max/Ultra vocabulary per Chat and Agent runtime, with model catalog metadata and native translations for Codex, Gemini, Groq, Unsloth, Ollama, and Z.AI. Each selector now stays tied to the levels the active provider actually advertises for that model; requests also ask Codex for readable reasoning summaries when enabled. Legacy `ollamaThink` remains scoped to Ollama.
+
+### Fixed
+- **Codex Dynamic Tools:** Kept Codex's internal `code_mode_host` transport enabled while leaving native execution surfaces disabled, so `web_search` and the other Miku tools reach the existing approval and execution flow.
+- **Ollama Gemma 4 Native Vision:** Removed the temporary Gemma 4-specific extraction route and capability blocks so current multimodal tags receive images directly. Added troubleshooting guidance for older E4B artifacts that can decode an image but fail to recognize it, with `gemma4:e4b-it-qat` as the verified replacement.
+- **Native Tool Transport Isolation:** Replaced global free-form tool-call recovery with explicit `native`, `text-fallback`, and `none` transports. Reasoning, plain JSON, prose, and code examples are now non-executable; leaked native payloads are quarantined and retried without exposing transport syntax in the chat stream.
+
 ## [2.5.0] - 2026-08-21
 ### Added
 - **🔎 Deep Research Workflow**: Added an approval-first research flow with planning, execution, verification, and synthesis stages, live progress tracking, validated sources, persistent checkpoints, resume support, plan adjustments, Markdown persistence, and PDF report export.

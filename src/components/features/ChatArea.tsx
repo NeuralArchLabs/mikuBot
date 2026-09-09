@@ -13,7 +13,7 @@ import { ChatWelcome } from './chat-welcome';
 import { useAgentStore, selectInput, selectMessages, selectAgentStatus, selectIsLoading, selectIsViewing, selectPendingToolApproval, selectExecutingSessionId, selectIsDeepResearchPanelTransitioning } from '../../stores/useAgentStore';
 import { persistence, VisionService } from '../../services';
 import { PROVIDERS } from '../../constants/providers';
-import { cleanTtsText, splitTextIntoExactPartitionChunks } from '../../utils/helpers/ttsHelper';
+import { splitTextIntoExactPartitionChunks } from '../../utils/helpers/ttsHelper';
 
 interface ChatAreaProps {
     sessionId: string;
@@ -876,10 +876,12 @@ export const ChatArea = ({
         const isAgent = agentMode === 'agent';
         const modelKey = isAgent ? 'agentModel' : 'chatModel';
         const providerKey = isAgent ? 'agentProvider' : 'chatProvider';
+        const reasoningKey = isAgent ? 'agentReasoningEffort' : 'chatReasoningEffort';
         
         onUpdatePartialConfig({ 
             [modelKey]: modelId,
-            [providerKey]: currentProvider 
+            [providerKey]: currentProvider,
+            [reasoningKey]: 'auto'
         });
         setIsModelSelectorOpen(false);
         setIsProviderSelectorOpen(false);
@@ -890,6 +892,7 @@ export const ChatArea = ({
         const isAgent = agentMode === 'agent';
         const modelKey = isAgent ? 'agentModel' : 'chatModel';
         const providerKey = isAgent ? 'agentProvider' : 'chatProvider';
+        const reasoningKey = isAgent ? 'agentReasoningEffort' : 'chatReasoningEffort';
         const providerModels = models[provider] || [];
         const nextModelId = provider === currentProvider
             ? currentModelId || providerModels[0]?.id || ''
@@ -897,7 +900,8 @@ export const ChatArea = ({
 
         onUpdatePartialConfig({
             [providerKey]: provider,
-            [modelKey]: nextModelId
+            [modelKey]: nextModelId,
+            [reasoningKey]: 'auto'
         });
         setIsProviderSelectorOpen(false);
     };
@@ -944,6 +948,8 @@ export const ChatArea = ({
     // write the NEW session's messages to the OLD session's file (data corruption).
     const skipSaveRef = useRef(false);
     const prevSessionIdRef = useRef(sessionId);
+    const sessionsRef = useRef(sessions);
+    sessionsRef.current = sessions;
     if (sessionId !== prevSessionIdRef.current) {
         prevSessionIdRef.current = sessionId;
         skipSaveRef.current = true;
@@ -966,7 +972,7 @@ export const ChatArea = ({
 
         if (sessionId && sessions && onSessionsUpdate) {
             const timer = setTimeout(() => {
-                const currentSession = sessions.find(s => s.id === sessionId);
+                const currentSession = sessionsRef.current?.find(s => s.id === sessionId);
                 const firstRealMsg = messages.find(m => !m.excludeFromContext && m.role === 'user');
                 const candidateContent = firstRealMsg?.text?.slice(0, 30);
 
@@ -1013,7 +1019,7 @@ export const ChatArea = ({
                 // was set up, which belongs to the correct session.
                 const msgs = messages;
                 if (sessionId && msgs.length > 0) {
-                    const sess = sessions?.find(s => s.id === sessionId);
+                    const sess = sessionsRef.current?.find(s => s.id === sessionId);
                     const firstMsg = msgs.find(m => !m.excludeFromContext && m.role === 'user');
                     const cand = firstMsg?.text?.slice(0, 30);
                     const isDef = !sess?.title ||
@@ -1031,7 +1037,7 @@ export const ChatArea = ({
                 }
             };
         }
-    }, [messages, sessionId, agentMode, sequentialMode, approvalMode, debugMode, sessions, onSessionsUpdate, t]);
+    }, [messages, sessionId, agentMode, sequentialMode, approvalMode, debugMode, onSessionsUpdate, t]);
     const inputRef = React.useRef<HTMLTextAreaElement>(null);
     const [isSent, setIsSent] = React.useState(false);
 
@@ -1883,7 +1889,7 @@ export const ChatArea = ({
             <div
                 id="chat-scroll-container"
                 key={sessionId}
-                className={`flex-1 overflow-y-auto p-4 custom-scrollbar chat-area-scroll chat-fade-mask relative animate-chat flex flex-col transform-gpu z-10 ${shouldFadeChatScrollbar ? 'deep-research-chat-scroll-fading' : ''}`}
+                className={`flex-1 overflow-y-auto p-4 custom-scrollbar chat-area-scroll chat-fade-mask relative animate-chat flex flex-col z-10 ${shouldFadeChatScrollbar ? 'deep-research-chat-scroll-fading' : ''}`}
                 ref={scrollRef}
                 style={{ 
                     fontFamily: 'var(--chat-font)',
@@ -1943,7 +1949,7 @@ export const ChatArea = ({
                                             if (node) ttsBubbleRefs.current.set(ttsMessageKey, node);
                                             else ttsBubbleRefs.current.delete(ttsMessageKey);
                                         } : undefined}
-                                        className={`message-bubble-wrapper relative w-auto max-w-[95%] lg:max-w-[90%] break-words message-pop-in rounded-[32px] ${
+                                        className={`message-bubble-wrapper relative w-auto max-w-[95%] lg:max-w-[90%] break-words ${msg.isStreaming ? 'message-pop-in' : ''} rounded-[32px] ${
                                         msg.role === 'user' ? 'message-bubble-user' : 'message-bubble-assistant'} ${
                                         msg.role === 'user' ? 'rounded-br-none' : 'rounded-bl-none lg:ml-6'
                                     }`}
@@ -2155,6 +2161,16 @@ export const ChatArea = ({
                                                             // and "narrative" (answer blocks). Each loop segment gets wrapped in
                                                             // a ToolLoopCollapsible for auto-collapse after execution.
                                                             const blocks = msg.blocks!;
+                                                            // A model may reference an image it just generated in its final HTML.
+                                                            // Pass only exact image_generator URLs to the renderer; arbitrary
+                                                            // local:// paths from model-authored content remain blocked.
+                                                            const trustedLocalMediaUrls = Array.from(new Set(blocks.flatMap(block => {
+                                                                if (block.type !== 'tool_call' || block.toolCall?.function.name !== 'image_generator' || !block.result?.success) return [];
+                                                                const urls = (block.result.data as any)?.image_urls;
+                                                                return Array.isArray(urls)
+                                                                    ? urls.filter((url): url is string => typeof url === 'string' && url.startsWith('local://'))
+                                                                    : [];
+                                                            })));
                                                             const hasAnyTool = blocks.some(b => b.type === 'tool_call');
                                                             
                                                             // If no tool calls at all, render flat (no loop wrapper needed)
@@ -2248,7 +2264,7 @@ export const ChatArea = ({
                                                                                     )
                                                                                 ) : (block.type === 'answer' || block.type === 'text') ? (
                                                                                     <div className="pl-6 mb-4">
-                                                                                        <MarkdownRenderer content={block.content} isStreaming={msg.isStreaming} />
+                                                                                        <MarkdownRenderer content={block.content} isStreaming={msg.isStreaming} trustedLocalMediaUrls={trustedLocalMediaUrls} />
                                                                                     </div>
                                                                                 ) : block.type === 'thought' ? (() => {
                                                                                     const forceCollapse = isOld || (hasAnyTool && !debugMode) || true;
@@ -2289,7 +2305,7 @@ export const ChatArea = ({
                                                                     return (
                                                                         <div key={globalIdx} id={`block-${msg.id}-${globalIdx}`} className={spacingClass} data-block-type={block.type}>
                                                                             {block.type === 'answer' ? (
-                                                                                <MarkdownRenderer content={block.content} isStreaming={msg.isStreaming} />
+                                                                                <MarkdownRenderer content={block.content} isStreaming={msg.isStreaming} trustedLocalMediaUrls={trustedLocalMediaUrls} />
                                                                             ) : (block.type === 'thought' || block.type === 'text') ? (() => {
                                                                                 const forceCollapse = isOld || (hasAnyTool && !debugMode) || block.type === 'thought';
                                                                                 return <CollapsibleTextBlock content={block.content} forceCollapse={forceCollapse} isThought={block.type === 'thought'} isStreaming={msg.isStreaming} mode={block.type === 'thought' ? 'minimal' : 'full'} hasCustomBg={!!config.chatBackgroundImage} />;

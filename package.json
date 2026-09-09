@@ -42,6 +42,7 @@
       }
     ],
     "asarUnpack": [
+      "node_modules/@openai/codex*/**",
       "node_modules/@vscode/ripgrep/**",
       "node_modules/@vscode/ripgrep-*/**"
     ],
@@ -73,11 +74,18 @@
     "dev": "vite",
     "build": "vite build",
     "test:tts-chunks": "node --test shared/ttsChunkPlanner.test.cjs",
+    "test:tool-transport": "node --test tests/toolTransport.test.mjs",
+    "test:formatting": "node --test tests/formattingPipeline.test.mjs",
+    "test:conversation": "node --test tests/conversationSerializer.test.mjs",
+    "test:codex": "node --test tests/codexService.test.cjs tests/codexProvider.test.mjs tests/codexIpc.test.cjs",
+    "verify": "npm run test:tts-chunks && npm run test:tool-transport && npm run test:formatting && npm run test:conversation && npm run test:codex && npm run test:unsloth && npm run typecheck && npm run build",
     "preview": "vite preview",
     "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3001 && electron .\"",
-    "electron:build": "npm run build && electron-builder"
+    "electron:build": "npm run build && electron-builder",
+    "test:unsloth": "node --test tests/unslothIntegration.test.mjs"
   },
   "dependencies": {
+    "@openai/codex": "0.153.4",
     "@vscode/ripgrep": "^1.17.1",
     "unzipper": "^0.12.3"
   },
@@ -97,12 +105,14 @@
     "@fontsource/sacramento": "^5.2.8",
     "@fortawesome/fontawesome-free": "^7.1.0",
     "@tailwindcss/vite": "^4.1.18",
+    "@types/hyphen": "^1.14.0",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.4.24",
     "concurrently": "^9.2.1",
     "electron": "^40.2.1",
     "electron-builder": "^26.7.0",
+    "hyphen": "^1.14.1",
     "i18next": "^26.0.2",
     "mermaid": "^11.14.0",
     "pdf-lib": "^1.17.1",

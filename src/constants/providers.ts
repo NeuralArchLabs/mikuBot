@@ -29,6 +29,20 @@ export const PROVIDERS: Record<Provider, ProviderConfig> = {
         apiKeyRequired: false,
         baseUrl: 'http://localhost:11434'
     },
+    unsloth: {
+        name: 'Unsloth Desktop',
+        icon: 'leaf',
+        color: 'from-lime-500 to-emerald-500',
+        apiKeyRequired: false,
+        baseUrl: 'http://localhost:8888/v1'
+    },
+    codex: {
+        name: 'ChatGPT (Codex)',
+        icon: 'comments',
+        color: 'from-emerald-500 to-teal-500',
+        apiKeyRequired: false,
+        baseUrl: ''
+    },
     zai: {
         name: 'Z.AI (BigModel)',
         icon: 'bolt',

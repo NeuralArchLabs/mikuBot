@@ -25,9 +25,18 @@ import {
     LAX_CONSOLE_ALLOWED_COMMANDS
 } from '../../constants';
 import { validateToolArgs, safeFetch, obfuscatePaths } from '../../utils';
-import { recoverToolCallsFromText, normalizeRawToolCall, RecoveredCall } from '../formatters/toolCallNormalizer';
-import { createFormatter } from '../formatters/formatterFactory';
+import { validateStructuredToolCall } from './tooling/toolCallValidation';
+import type { RecoveredCall } from './tooling/toolCallValidation';
 import type { ProviderOptions } from './ModelProviders';
+import {
+    canRecoverTextToolCalls,
+    extractTextFallbackToolCalls,
+    getInitialToolTransport,
+    getToolCapabilityKey,
+    injectTextToolFallbackInstruction,
+    rememberNativeToolsUnsupported,
+    ToolTransport
+} from './toolTransport';
 
 
 // Modular Imports (The Rewire)
@@ -38,6 +47,7 @@ import {
 import { executeToolCall } from './agent/tools';
 import { 
     segmentThoughtsAndNarrative, 
+    cleanNativeReasoningForDisplay,
     extractToolSnippet, 
     autoExtractSources, 
     applyBatchTaskTicking,
@@ -62,7 +72,7 @@ export async function sendAgentMessage(
     onAddTask: (task: any) => Promise<string>,
     abortSignal: AbortSignal,
     onFinalRawHistory?: (history: any[]) => void,
-    useTextExtraction: boolean = true,
+    toolsEnabled: boolean = true,
     isAgentMode: boolean = false,
     sequentialMode: boolean = false,
     approvalMode: ApprovalMode = 'auto',
@@ -86,16 +96,18 @@ export async function sendAgentMessage(
         onStatus({ log: [{ timestamp: Date.now(), type, message, details }] });
     };
 
-    let modelSupportsNativeTools = true;
+    let toolCapabilityKey = getToolCapabilityKey(config);
+    let toolTransport: ToolTransport = getInitialToolTransport(toolsEnabled, tools, toolCapabilityKey);
     let allBlocks: MessageBlock[] = [];
 
     async function streamModelRequest(
         messages: any[],
-        useTools: boolean,
+        requestTools: boolean,
         customOnStatus?: (status: Partial<AgentStatus>) => void
     ): Promise<{ content: string; toolCalls: any[]; reasoning?: string; reasoningFollowsContent?: boolean; finishReason?: string }> {
         const provider = config.provider;
         const isElectronProxy = !!(window as any).electron?.apiStream;
+        const requestTransport: ToolTransport = requestTools ? toolTransport : 'none';
 
         const options: ProviderOptions = {
             config,
@@ -104,21 +116,33 @@ export async function sendAgentMessage(
                 // Provider internally calls this
             },
             abortSignal: abortSignal!,
-            useTools: useTools && modelSupportsNativeTools,
+            useTools: requestTransport === 'native',
             tools,
             isElectronProxy
         };
 
         const { ProviderFactory } = await import('./ModelProviders');
         const providerInstance = ProviderFactory.create(provider, options);
+
+        if (requestTransport === 'native' && !providerInstance.supportsNativeTools()) {
+            rememberNativeToolsUnsupported(toolCapabilityKey);
+            toolTransport = 'text-fallback';
+            log('warn', 'Native tool calling is unavailable for this model. Activating the isolated text fallback.');
+            return streamModelRequest(messages, requestTools, customOnStatus);
+        }
+
+        const requestMessages = requestTransport === 'text-fallback'
+            ? injectTextToolFallbackInstruction(messages, tools)
+            : messages;
         
         try {
-            return await providerInstance.streamRequest(messages);
+            return await providerInstance.streamRequest(requestMessages);
         } catch (err: any) {
-            if (useTools && modelSupportsNativeTools && providerInstance.shouldFallback(err)) {
-                log('warn', `⚠️ Este modelo está siendo optimizado para el llamado de herramientas nativas. Activando motor de extracción secundaria de respaldo.`);
-                modelSupportsNativeTools = false;
-                return streamModelRequest(messages, useTools, customOnStatus);
+            if (requestTransport === 'native' && providerInstance.shouldFallback(err)) {
+                rememberNativeToolsUnsupported(toolCapabilityKey);
+                log('warn', 'Native tool calling was rejected by the provider. Activating the isolated text fallback.');
+                toolTransport = 'text-fallback';
+                return streamModelRequest(messages, requestTools, customOnStatus);
             }
             throw err;
         }
@@ -175,7 +199,6 @@ export async function sendAgentMessage(
     let actionHistory: string[] = [];
     const missionTrigger = [...historicalContext].reverse().find(m => m.role === 'user')?.content || 'Sin objetivo definido.';
     let lastExecutionFeedback = 'Inicio de misión.';
-    const signatureRegex = /\{\{?[\s\S]*?⫪╠╝\^\.⫫\.╠╝\^⫪┐⌵[\s\S]*?\}\}?/;
 
     // Strict System Task Discovery (Predefined Route: @CORE/tasks.md)
     const getSystemTasks = () => {
@@ -192,12 +215,6 @@ export async function sendAgentMessage(
     };
 
     let lastStreamUpdate = 0;
-    const cleanNativeReasoningForDisplay = (text?: string): string => (text || '')
-        // Native reasoning sometimes arrives wrapped in the same tags used by
-        // text-mode models. Keep its content, never render the transport tags.
-        .replace(/<\\?\/?(?:thinking|thought|reflection|think)\b[^>]*>/gi, '')
-        .trim();
-
     const bridgedOnStatus = (status: Partial<AgentStatus>) => {
         localOnStatus(status);
         if (status.phase === 'streaming' && (status.streamedText !== undefined || status.streamedReasoning !== undefined)) {
@@ -207,7 +224,7 @@ export async function sendAgentMessage(
                 const tempIterationBlocks: MessageBlock[] = [];
                 const streamedReasoning = cleanNativeReasoningForDisplay(status.streamedReasoning);
                 if (status.streamedText) {
-                    const segmented = segmentThoughtsAndNarrative(status.streamedText, signatureRegex);
+                    const segmented = segmentThoughtsAndNarrative(status.streamedText);
                     if (status.streamedReasoningFollowsText) {
                         tempIterationBlocks.push(...segmented);
                     } else {
@@ -228,10 +245,19 @@ export async function sendAgentMessage(
                     tempIterationBlocks[0].startTime = startTime;
                 }
 
-                // Call with chunk text as empty or already summarized to avoid App.tsx re-concatenating
-                // app.tsx does: finalAssistantText = replace ? chunk : finalAssistantText + chunk;
-                // Since streamedText is the TOTAL accumulated, we MUST use replace=true to avoid internal duplication
-                onChunk(status.streamedText || '', true, [...allBlocks, ...tempIterationBlocks.filter(b => b.content.trim() !== '')]);
+                const streamedNarrative = tempIterationBlocks
+                    .filter(block => block.type === 'answer')
+                    .map(block => block.content)
+                    .filter(Boolean)
+                    .join('\n\n');
+                const visibleText = [allNarrative, streamedNarrative]
+                    .filter(part => part && part.trim())
+                    .join('\n\n');
+
+                // Never make raw provider transport the canonical message text.
+                // The renderer still receives thought blocks, but tool payloads
+                // remain quarantined until they are normalized and validated.
+                onChunk(visibleText || ' ', true, [...allBlocks, ...tempIterationBlocks.filter(b => b.content.trim() !== '')]);
             }
         }
     };
@@ -298,6 +324,8 @@ export async function sendAgentMessage(
                         config.activeModeProvider = fresh.activeModeProvider;
                         config.activeModeModel = fresh.activeModeModel;
                     }
+                    toolCapabilityKey = getToolCapabilityKey(config);
+                    toolTransport = getInitialToolTransport(toolsEnabled, tools, toolCapabilityKey);
                     
                     // Update system instruction in-place to reflect new identity/protocol
                     if (agentMessages[0] && agentMessages[0].role === 'system') {
@@ -401,7 +429,7 @@ export async function sendAgentMessage(
                         });
                     }
                 }
-                const res = await streamModelRequest([...agentMessages], useTextExtraction, bridgedOnStatus);
+                const res = await streamModelRequest([...agentMessages], toolsEnabled, bridgedOnStatus);
                 content = res.content;
                 nativeToolCalls = res.toolCalls;
                 nativeReasoning = res.reasoning;
@@ -419,16 +447,26 @@ export async function sendAgentMessage(
 
             let finalToolCalls: ToolCall[] = [];
             let positionalCalls: RecoveredCall[] = [];
-            if (content && useTextExtraction) {
-                const { calls } = recoverToolCallsFromText(content, tools);
-                positionalCalls = calls;
-                finalToolCalls = calls.map(c => c.toolCall);
+            if (content && canRecoverTextToolCalls(toolTransport, 'content')) {
+                for (const recovered of extractTextFallbackToolCalls(content, tools)) {
+                    const normalized = validateStructuredToolCall({
+                        name: recovered.name,
+                        arguments: recovered.arguments
+                    }, tools);
+                    if (!normalized.toolCall || normalized.blocked) continue;
+                    positionalCalls.push({
+                        toolCall: normalized.toolCall,
+                        start: recovered.start,
+                        end: recovered.end
+                    });
+                    finalToolCalls.push(normalized.toolCall);
+                }
             }
             if (nativeToolCalls && nativeToolCalls.length > 0) {
                 for (const tc of nativeToolCalls) {
                     try {
                         const rawArgs = typeof tc.function.arguments === 'string' ? JSON.parse(tc.function.arguments) : tc.function.arguments;
-                        const norm = normalizeRawToolCall({ name: tc.function.name, arguments: rawArgs }, tools);
+                        const norm = validateStructuredToolCall({ name: tc.function.name, arguments: rawArgs }, tools);
                         if (norm.toolCall) {
                             norm.toolCall.id = tc.id || norm.toolCall.id;
                             const fp = getActionFingerprint(norm.toolCall.function.name, norm.toolCall.function.arguments);
@@ -480,8 +518,12 @@ export async function sendAgentMessage(
             let curIdx = 0;
             const seenFpForInterleaving = new Set<string>();
             for (const rc of [...positionalCalls].sort((a, b) => a.start - b.start)) {
-                const segmentBlocks = segmentThoughtsAndNarrative((content || '').substring(curIdx, rc.start), signatureRegex);
+                const segmentBlocks = segmentThoughtsAndNarrative((content || '').substring(curIdx, rc.start));
                 segmentBlocks.forEach(b => iterationBlocks.push(b));
+                // Text-fallback calls are intentionally visible. They remain
+                // executable only after strict parsing and validation above.
+                const rawCallBlocks = segmentThoughtsAndNarrative((content || '').substring(rc.start, rc.end));
+                rawCallBlocks.forEach(block => iterationBlocks.push(block));
                 if (uniqueToolCalls.some(utc => utc.id === rc.toolCall.id)) {
                     const args = rc.toolCall.function.arguments;
                     const thoughtKey = Object.keys(args).find(k => ['thought', 'reasoning', 'think'].includes(k.toLowerCase()));
@@ -496,7 +538,7 @@ export async function sendAgentMessage(
                 }
                 curIdx = rc.end;
             }
-            const finalBlocks = segmentThoughtsAndNarrative((content || '').substring(curIdx), signatureRegex);
+            const finalBlocks = segmentThoughtsAndNarrative((content || '').substring(curIdx));
             iterationBlocks.push(...finalBlocks);
             if (displayNativeReasoning && nativeReasoningFollowsContent) {
                 iterationBlocks.push({
@@ -525,19 +567,23 @@ export async function sendAgentMessage(
                 .filter(b => b.type === 'answer')
                 .map(b => b.content)
                 .join('\n\n');
+            const hasVisibleAnswer = cleanTurnNarrative.trim().length > 0;
+            const quarantinedNativeToolTransport = toolTransport === 'native'
+                && uniqueToolCalls.length === 0
+                && /(?:<\|tool_call(?:\|)?>|<tool_call>|<function_call>|<tool_use>)/i.test(content || '');
+            if (quarantinedNativeToolTransport) {
+                log('warn', 'A textual tool payload was quarantined in native mode and was not executed.');
+            }
             if (cleanTurnNarrative.trim()) {
                 allNarrative += (allNarrative ? '\n\n' : '') + cleanTurnNarrative;
             }
 
             const cleanedReasoning = displayNativeReasoning;
                 
-            const contentForHistory = cleanedReasoning
-                ? `<thinking>\n${cleanedReasoning}\n</thinking>\n\n${cleanTurnNarrative || ''}`.trim()
-                : (cleanTurnNarrative || ' ');
-
             const assistantMsg: any = {
                 role: 'assistant',
-                content: contentForHistory,
+                content: cleanTurnNarrative || null,
+                reasoning: cleanedReasoning || undefined,
                 thought_signature: nativeThoughtSignature || undefined,
             };
             if (uniqueToolCalls.length > 0) {
@@ -561,12 +607,12 @@ export async function sendAgentMessage(
                 // A generated image is already a complete, visible response. Some
                 // providers legitimately emit no follow-up tokens after a tool;
                 // do not create an artificial EMPTY RESPONSE retry in that case.
-                if ((!content || content.trim() === '') && hasFinalToolVisual) {
+                if (!hasVisibleAnswer && hasFinalToolVisual) {
                     onChunk(allNarrative, true, allBlocks);
                     break;
                 }
 
-                if (retries < MAX_RETRIES && (!content || content.trim() === '')) {
+                if (retries < MAX_RETRIES && !hasVisibleAnswer) {
                     // Wait before sending nudge to give model time
                     await new Promise(resolve => setTimeout(resolve, NUDGE_DELAY_MS));
 
@@ -575,7 +621,9 @@ export async function sendAgentMessage(
 
                     retries++;
                     consecutiveNudges++;
-                    const nudge = (turnHasFailure || lastExecutionFeedback.includes('⚠️'))
+                    const nudge = quarantinedNativeToolTransport
+                        ? '⚠️ INVALID TOOL TRANSPORT: The textual tool payload was quarantined and not executed. Invoke the tool through the native structured tool interface, outside assistant content and reasoning.'
+                        : (turnHasFailure || lastExecutionFeedback.includes('⚠️'))
                         ? "⚠️ TURN GENERATED NO ACTIONS: Blockers or errors detected. Do not stop, try a different approach."
                         : (isAgentMode || isInstructionMode)
                             ? "⚠️ INCOMPLETE AGENT PROTOCOL: You must provide a response or execute tools to proceed."
@@ -836,19 +884,9 @@ export async function sendAgentMessage(
                 const skillData = res.data as any;
                 const imageUrls = skillData?.image_urls;
                 if (res.success && tc.function.name === 'image_generator' && Array.isArray(imageUrls) && imageUrls.length > 0) {
-                    const count = imageUrls.length;
-                    const visualMessage = count === 1
-                        ? 'Imagen generada correctamente.'
-                        : `${count} imágenes generadas correctamente.`;
-                    allNarrative = allNarrative
-                        ? `${allNarrative}\n\n${visualMessage}`
-                        : visualMessage;
-                    allBlocks.push({
-                        type: 'answer',
-                        content: visualMessage,
-                        status: 'success',
-                        isFromFinalTool: true
-                    });
+                    // The tool block already owns the generated visual and its
+                    // completion state. Do not inject a synthetic assistant answer:
+                    // it splits the execution loop and can be mistaken for model text.
                     hasFinalToolVisual = true;
                 }
 

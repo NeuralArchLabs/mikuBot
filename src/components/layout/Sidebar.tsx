@@ -33,7 +33,12 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
      const { t } = useTranslation();
      const [sessionModalOpen, setSessionModalOpen] = useState(false);
     const [isClosing, setIsClosing] = useState(false);
-    const [windowHeight, setWindowHeight] = useState(window.innerHeight);
+    // Compact mode only changes at this breakpoint. Storing the raw height
+    // made Sidebar render for every resize event even when its layout was
+    // unchanged.
+    const [isCompactMode, setIsCompactMode] = useState(
+        () => window.innerHeight < 650
+    );
     const { setOverlayActive } = useUIStore();
 
     React.useEffect(() => {
@@ -41,12 +46,16 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
     }, [sessionModalOpen, isClosing, setOverlayActive]);
 
     React.useEffect(() => {
-        const handleResize = () => setWindowHeight(window.innerHeight);
+        const handleResize = () => {
+            const nextCompactMode = window.innerHeight < 650;
+            setIsCompactMode(current => (
+                current === nextCompactMode ? current : nextCompactMode
+            ));
+        };
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    const isCompactMode = windowHeight < 650;
     const topSectionHeight = isCollapsed
         ? 'min-h-full'
         : isCompactMode
@@ -328,11 +337,11 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                              <div className="flex items-center justify-between flex-none mb-2">
                                 <button
                                     onClick={() => setState(prev => ({ ...prev, isLibraryExpanded: true }))}
-                                    className="text-[10px] font-extrabold text-[var(--text-secondary)] hover:text-indigo-400 uppercase tracking-[0.18em] flex items-center gap-1.5 transition-colors group cursor-pointer"
+                                    className="min-w-0 max-w-full flex-nowrap overflow-hidden text-[10px] font-extrabold text-[var(--text-secondary)] hover:text-indigo-400 uppercase tracking-[0.18em] flex items-center gap-1.5 transition-colors group cursor-pointer"
                                     title={t('sidebar.tooltips.expand_library')}
                                 >
-                                    <Icon name="book" className="text-[9px] opacity-30 group-hover:opacity-100 transition-all" />
-                                    {t('sidebar.tooltips.library')}
+                                    <Icon name="book" className="shrink-0 text-[9px] opacity-30 group-hover:opacity-100 transition-all" />
+                                    <span className="min-w-0 truncate whitespace-nowrap">{t('sidebar.tooltips.library')}</span>
                                 </button>
                                 {!isCompactMode && (
                                     <button

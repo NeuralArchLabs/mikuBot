@@ -46,17 +46,20 @@ export function cleanTtsText(text: string, lang: string = 'es'): string {
                  .replace(/&Uacute;/g, 'Ú')
                  .replace(/&Ntilde;/g, 'Ñ');
 
-    // 3. Fix standalone accent characters typed or parsed after a vowel
-    clean = clean.replace(/a[´']/g, 'á')
-                 .replace(/e[´']/g, 'é')
-                 .replace(/i[´']/g, 'í')
-                 .replace(/o[´']/g, 'ó')
-                 .replace(/u[´']/g, 'ú')
-                 .replace(/A[´']/g, 'Á')
-                 .replace(/E[´']/g, 'É')
-                 .replace(/I[´']/g, 'Í')
-                 .replace(/O[´']/g, 'Ó')
-                 .replace(/U[´']/g, 'Ú');
+    // Repair decomposed-looking accents only for Spanish speech. Applying this
+    // globally corrupts contractions, names, and source text in other languages.
+    if (lang.toLowerCase().startsWith('es')) {
+        clean = clean.replace(/a[´']/g, 'á')
+                     .replace(/e[´']/g, 'é')
+                     .replace(/i[´']/g, 'í')
+                     .replace(/o[´']/g, 'ó')
+                     .replace(/u[´']/g, 'ú')
+                     .replace(/A[´']/g, 'Á')
+                     .replace(/E[´']/g, 'É')
+                     .replace(/I[´']/g, 'Í')
+                     .replace(/O[´']/g, 'Ó')
+                     .replace(/U[´']/g, 'Ú');
+    }
 
     // Code examples take precedence over Signature Shield. Removing them here
     // prevents signature-like literals from consuming part of a closing fence.
@@ -88,9 +91,10 @@ export function cleanTtsText(text: string, lang: string = 'es'): string {
         return /^\s|\s$/.test(match) ? ' ' : '';
     });
 
-    // Fallbacks for generic curly/bracket structures
-    clean = clean.replace(/\{\{[\s\S]*?\}\}/g, '');
-    clean = clean.replace(/\[\[[\s\S]*?\]\]/g, '');
+    // Generic template-like delimiters are not signatures. Keep their content
+    // readable instead of silently deleting it from speech.
+    clean = clean.replace(/\{\{([\s\S]*?)\}\}/g, '$1');
+    clean = clean.replace(/\[\[([\s\S]*?)\]\]/g, '$1');
 
     // 3c. Remove leftover leading punctuation and symbols resulting from signature removal
     clean = clean.replace(/^[.,;:!?()\-—\s]+/, '');

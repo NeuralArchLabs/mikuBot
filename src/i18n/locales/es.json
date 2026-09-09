@@ -345,6 +345,30 @@
     }
   },
   "settings": {
+    "codex": {
+      "title": "ChatGPT · Codex",
+      "description": "Inicia sesión con ChatGPT para usar los modelos y límites de Codex de tu cuenta. No necesitas una clave API.",
+      "deep_research_note": "Deep Research necesita otro proveedor compatible; por ahora no admite la sesión de Codex.",
+      "login": "Iniciar sesión con ChatGPT",
+      "logout": "Cerrar sesión",
+      "cancel_login": "Cancelar inicio de sesión",
+      "refresh": "Actualizar estado y modelos",
+      "manage_account": "Gestionar cuenta de ChatGPT",
+      "connected": "Sesión iniciada",
+      "disconnected": "Sin sesión",
+      "pending": "Esperando inicio de sesión",
+      "browser_pending": "Completa el inicio de sesión en el navegador. La conexión se actualizará automáticamente.",
+      "unavailable": "Codex no está disponible. Revisa el error y actualiza el estado desde la aplicación de escritorio.",
+      "limits_title": "Límites de Codex",
+      "limits_description": "Estos límites se comparten con el resto del uso de Codex de tu cuenta. Actualiza el estado para ver el uso más reciente.",
+      "usage_unavailable": "Uso no disponible",
+      "usage_window": "Ventana de uso",
+      "window_days": "{{count}} días",
+      "window_hours": "{{count}} h",
+      "window_minutes": "{{count}} min",
+      "remaining": "{{percent}} % disponible",
+      "resets": "Se restablece: {{date}}"
+    },
     "title": "Configuración del Sistema",
     "language_select": "Idioma de la Interfaz",
     "language_desc": "Selecciona el idioma global de mikuBot",
@@ -397,6 +421,19 @@
       "model": "Modelo Activo",
       "sync": "Sincronizar Arquitecturas",
       "select_model": "Seleccionar Arquitectura...",
+      "reasoning": "Nivel de razonamiento",
+      "reasoning_desc": "Controla cuánto esfuerzo dedica el modelo a razonar. Automático conserva la configuración nativa.",
+      "reasoning_auto": "Automático",
+      "reasoning_none": "Desactivado",
+      "reasoning_minimal": "Mínimo",
+      "reasoning_low": "Bajo",
+      "reasoning_medium": "Medio",
+      "reasoning_high": "Alto",
+      "reasoning_xhigh": "Muy alto",
+      "reasoning_max": "Máximo",
+      "reasoning_ultra": "Ultra",
+      "reasoning_model_default": "Predeterminado del modelo",
+      "reasoning_levels": "niveles",
       "routing_provider": "Proveedor en Ruta",
       "connection_active": "Conexión/Llave Activa",
       "config_pending": "Configuración Pendiente"
@@ -404,7 +441,7 @@
     "security": {
       "title": "Seguridad y motor principal",
       "vault_title": "Bóveda de Credenciales",
-      "vault_desc": "Gestión de fallbacks y llaves cifradas",
+      "vault_desc": "Cuentas y llaves cifradas para tus proveedores",
       "fallback_title": "Enrutamiento Maestro de Respaldo",
       "provider_label": "Proveedor Maestro",
       "model_label": "Modelo Maestro",
@@ -511,6 +548,11 @@
     "alerts": {
       "ollama_error_title": "Motor local no responde",
       "ollama_error_desc": "Verifica que Ollama esté activo en {{url}} y que al menos un modelo esté inicializado."
+    },
+    "unsloth": {
+      "endpoint": "Dirección de Unsloth Desktop",
+      "key_hint": "Guarda la dirección y la API key de Settings → API. Deja la clave vacía solo si habilitaste Keyless API Access: Inference en Unsloth. Los modelos locales se actualizan automáticamente cada 10 segundos.",
+      "connection_error": "No se pudo conectar con Unsloth: {{error}}"
     }
   },
   "sidebar": {
@@ -530,10 +572,10 @@
       "expand_library": "Expandir Biblioteca",
       "new_doc": "Nuevo Documento de Contexto",
       "delete_file": "Eliminar {{filename}}",
-    "close_manager": "Cerrar Gestor de Sesiones",
-    "collapse_sidebar": "Contraer barra lateral",
-    "expand_sidebar": "Expandir barra lateral"
-  },
+      "close_manager": "Cerrar Gestor de Sesiones",
+      "collapse_sidebar": "Contraer barra lateral",
+      "expand_sidebar": "Expandir barra lateral"
+    },
     "footer": {
       "no_cortex": "Sin archivos"
     }

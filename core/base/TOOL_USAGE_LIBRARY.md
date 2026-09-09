@@ -233,7 +233,7 @@ If a content search is accidentally sent to `search_files`, explain that `search
 ```
 
 ## [web_search]
-**Purpose:** Search SearXena and return the first page from the complete result set. Up to five candidate URLs are enriched with full extracted content; the remaining results retain cleaned snippets, URLs, and multimedia metadata. The response includes `search_id` and `next_offset` for pagination.
+**Purpose:** Search SearXena and return the first page from the complete result set. Up to five candidate URLs receive expanded extracted-content previews (about 6,000 characters maximum); the remaining results retain cleaned snippets, URLs, and reduced typed media entries in `media` (`type` and `url`). PDF URLs are processed with MarkItDown and YouTube URLs with `video_transcriber` when available. The accepted full extraction is cached, so `read_url` can read it completely without repeating extraction. The response includes `search_id` and `next_offset` for pagination.
 **When to use:** Use this for current facts, recent news, or general context. Use `read_url` when a specific source needs to be read directly.
 
 ### Categories
@@ -251,7 +251,7 @@ Can be: `general`, `images`, `videos`, `news`, `maps`, `shopping`.
 ```
 
 ## [web_search_more]
-**Purpose:** Retrieve another page from a previous `web_search` using its `search_id`, without repeating the search. The page tries to enrich up to five additional URLs and preserves the remaining results as snippets.
+**Purpose:** Retrieve another page from a previous `web_search` using its `search_id`, without repeating the search. The page tries to enrich up to five additional URLs with expanded previews and preserves the remaining results as snippets.
 **When to use:** Use this when the first page does not contain enough relevant sources or when the model needs to inspect the rest of the original result set.
 
 ### Example

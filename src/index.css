@@ -1,9 +1,7 @@
-@import "tailwindcss";
-@source not "../engine";
-@source not "../release";
-@source not "../dist";
-@source not "../core";
-@source not "../backgrounds";
+@import "tailwindcss" source(none);
+/* Scan only UI sources; runtime data and temporary tools can contain asset URLs. */
+@source "./";
+@source "../index.html";
 
 /* Categorized Local Fonts (@fontsource) */
 /* Sans-Serif */
@@ -239,18 +237,19 @@ body, html {
 
 .markdown-body ul,
 .markdown-body ol {
+  margin-left: 1.5rem;
+  padding-left: 1.25rem;
   margin-bottom: 0.5em;
   list-style-position: outside;
 }
 
-.markdown-body ul {
-  margin-left: 2em;
-  padding-left: 0.5em;
-}
-
-.markdown-body ol {
-  margin-left: 2.5em;
-  padding-left: 0.75em;
+/* Nested lists use the same grid for every list type. */
+.markdown-body ul ul,
+.markdown-body ul ol,
+.markdown-body ol ul,
+.markdown-body ol ol {
+  margin-left: 1.5rem;
+  padding-left: 1.25rem;
 }
 
 /* Unordered List Hierarchy */
@@ -258,16 +257,43 @@ body, html {
 .markdown-body ul ul { list-style-type: circle; }
 .markdown-body ul ul ul { list-style-type: square; }
 
-/* Ordered List Hierarchy */
+/* Ordered hierarchy: numbers at the root, alphabetic incisos, then Roman numerals. */
 .markdown-body ol { list-style-type: decimal; }
-.markdown-body ol ol { list-style-type: upper-alpha; }
-.markdown-body ol ol ol { list-style-type: upper-roman; }
+.markdown-body ol ol,
+.markdown-body ul ol { list-style-type: lower-alpha; }
+.markdown-body ol ol ol,
+.markdown-body ul ol ol { list-style-type: lower-roman; }
 
 .markdown-body li {
   margin-bottom: 0.3em;
   line-height: 1.55;
   display: list-item;
-  padding-left: 0.5rem;
+  padding-left: 0.25rem;
+}
+
+/* Task markers are rendered as content spans, so give them the same marker
+   column that native list markers occupy. */
+.markdown-body li.list-none {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding-left: 0.25rem;
+}
+
+.markdown-body li.list-none > span:first-child {
+  flex: 0 0 1.25rem;
+  width: 1.25rem;
+  margin-left: -1.5rem;
+  margin-right: 0;
+  text-align: center;
+}
+
+/* Block content belonging to a list item starts at the same text column as
+   the item itself. */
+.markdown-body .list-item-continuation {
+  width: 100%;
+  margin-left: 0;
+  padding-left: 0;
 }
 
 /* Ensure list markers are visible and colored by level */
@@ -283,12 +309,12 @@ body, html {
 
 .markdown-body ul ul li::marker, 
 .markdown-body ol ol li::marker {
-  color: rgba(129, 140, 248, 0.4);
+  color: rgba(129, 140, 248, 0.55);
 }
 
 .markdown-body ul ul ul li::marker, 
 .markdown-body ol ol ol li::marker {
-  color: rgba(129, 140, 248, 0.25);
+  color: rgba(129, 140, 248, 0.45);
 }
 
 /* Fix for list items with custom marker classes */
@@ -493,6 +519,11 @@ pre code .hl-directive { color: #fb7185 !important; font-weight: 700; }
 
 .markdown-body img:hover {
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.markdown-body :is(pre, code, kbd, samp) {
+  hyphens: none;
+  -webkit-hyphens: none;
 }
 
 /* Inline code — ensure styled even without Tailwind class attributes */
@@ -3426,8 +3457,9 @@ select.premium-input option {
 }
 
 .markdown-body.is-streaming {
-    /* Attached to the root node which is NEVER destroyed by innerHTML */
-    animation: global-sig-scan 1.2s infinite alternate ease-in-out;
+    /* Do not animate the entire rich-content surface. A compositor animation on
+       this ancestor makes embedded iframes repaint continuously in Chromium. */
+    animation: none !important;
 }
 
 /* Maintain the initial bracket configuration statically */
@@ -3450,7 +3482,7 @@ select.premium-input option {
         rgba(168, 85, 247, 0.8) 70%, 
         transparent
     ) !important;
-    animation: none !important;
+    animation: global-sig-scan 1.2s infinite alternate ease-in-out !important;
 }
 
 /* Keep internal text structurally hidden so ONLY the brackets pressed together are visible */

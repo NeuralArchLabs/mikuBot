@@ -5,6 +5,13 @@
 
 import { AppConfig, Provider, AgentStatus, ToolDefinition } from '../../types';
 import { streamViaProxy } from '../../utils/helpers/streamProxy';
+import {
+    streamViaCodex,
+    getConfiguredReasoningEffort,
+    isReasoningParameterError,
+    resolveGeminiThinkingConfig,
+    resolveOllamaThink
+} from '../../utils/helpers/codexStream';
 
 export interface ProviderResponse {
     content: string;
@@ -28,16 +35,31 @@ export interface ProviderOptions {
 }
 
 /**
- * Extracts the content of a <thinking> block from a message content string.
- * The <thinking> block is the single source of truth for reasoning in stored history.
- * Returns the thinking text and the remainder (visible response) separately.
+ * Read-only compatibility for histories saved before reasoning became a
+ * structured message field. New messages must never write this representation.
  */
-function extractThinkingBlock(content: string): { thinking: string; rest: string } {
+function extractLegacyThinkingBlock(content: string): { thinking: string; rest: string } {
     const match = content.match(/^<thinking>\n?([\s\S]*?)\n?<\/thinking>\n*/m);
     if (match) {
         return { thinking: match[1].trim(), rest: content.slice(match[0].length).trim() };
     }
     return { thinking: '', rest: content };
+}
+
+/** Some OpenAI-compatible servers send a structured error as an SSE event
+ * after returning HTTP 200. Preserve it so the chat never renders a blank
+ * assistant reply for an overlong request or another stream-side failure. */
+function streamErrorMessage(parsed: any): string | null {
+    if (!parsed || typeof parsed !== 'object' || !Object.prototype.hasOwnProperty.call(parsed, 'error')) return null;
+    const error = parsed.error;
+    if (error == null) return null;
+    if (typeof error === 'string' && error.trim()) return error.trim();
+    if (error && typeof error === 'object') {
+        for (const candidate of [error.message, error.detail, error.error]) {
+            if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
+        }
+    }
+    return 'El servidor devolvió un error durante la respuesta en streaming.';
 }
 
 export abstract class ModelProvider {
@@ -80,7 +102,7 @@ export abstract class ModelProvider {
     /**
      * Helper to process stream chunks by lines, handling buffer and SSE syntax.
      */
-    protected handleStreamRaw(raw: string, bufferState: { buffer: string }, useSSE: boolean = true) {
+    protected handleStreamRaw(raw: string, bufferState: { buffer: string }, useSSE: boolean = true): string | null {
         bufferState.buffer += raw;
         const lines = bufferState.buffer.split('\n');
         bufferState.buffer = lines.pop() || '';
@@ -88,6 +110,7 @@ export abstract class ModelProvider {
         const prevContentLen = this.fullContent.length;
         const prevReasoningLen = this.fullReasoning.length;
         let hasChanges = false;
+        let streamedError: string | null = null;
 
         for (const line of lines) {
             const cleanLine = line.trim();
@@ -95,8 +118,8 @@ export abstract class ModelProvider {
 
             let data = cleanLine;
             if (useSSE) {
-                if (!cleanLine.startsWith('data: ')) continue;
-                data = cleanLine.slice(6);
+                if (!cleanLine.startsWith('data:')) continue;
+                data = cleanLine.slice(5).trimStart();
                 if (data === '[DONE]') continue;
             }
 
@@ -104,6 +127,11 @@ export abstract class ModelProvider {
                 const contentLengthBeforeDelta = this.fullContent.length;
                 const reasoningLengthBeforeDelta = this.fullReasoning.length;
                 const parsed = JSON.parse(data);
+                const error = streamErrorMessage(parsed);
+                if (error) {
+                    streamedError ||= error;
+                    continue;
+                }
                 this.processDelta(parsed.choices?.[0]?.delta, parsed);
                 if (this.fullContent.length > contentLengthBeforeDelta && this.firstContentSequence === undefined) {
                     this.firstContentSequence = ++this.streamSequence;
@@ -129,6 +157,7 @@ export abstract class ModelProvider {
                 phase: 'streaming' 
             });
         }
+        return streamedError;
     }
 
     /**
@@ -146,12 +175,19 @@ export abstract class ModelProvider {
 
         if (!response.ok) {
             const err = await response.json().catch(() => ({}));
-            throw new Error(err.error?.message || `HTTP ${response.status}`);
+            const message = typeof err === 'string'
+                ? err
+                : err?.error?.message
+                    || (typeof err?.error === 'string' ? err.error : undefined)
+                    || err?.message
+                    || err?.detail;
+            throw new Error(message || `HTTP ${response.status}`);
         }
 
         const reader = response.body?.getReader();
         const decoder = new TextDecoder();
         const streamState = { buffer: '' };
+        let streamedError: string | null = null;
 
         if (reader) {
             while (true) {
@@ -160,9 +196,13 @@ export abstract class ModelProvider {
                 if (done) break;
 
                 const raw = decoder.decode(value, { stream: true });
-                this.handleStreamRaw(raw, streamState, useSSE);
+                const chunkError = this.handleStreamRaw(raw, streamState, useSSE);
+                streamedError ||= chunkError;
             }
         }
+        const finalError = this.handleStreamRaw(decoder.decode() + '\n', streamState, useSSE);
+        streamedError ||= finalError;
+        if (streamedError) throw new Error(streamedError);
 
         return {
             content: this.fullContent,
@@ -177,6 +217,7 @@ export abstract class ModelProvider {
 
     protected async streamProxy(provider: string, body: any, useSSE: boolean = true, overrideUrl?: string): Promise<ProviderResponse> {
         const streamState = { buffer: '' };
+        let streamedError: string | null = null;
         await streamViaProxy({
             provider,
             model: this.options.config.model,
@@ -185,9 +226,13 @@ export abstract class ModelProvider {
             overrideUrl,
             abortSignal: this.options.abortSignal,
             onChunk: (raw) => {
-                this.handleStreamRaw(raw, streamState, useSSE);
+                const chunkError = this.handleStreamRaw(raw, streamState, useSSE);
+                streamedError ||= chunkError;
             }
         });
+        const finalError = this.handleStreamRaw('\n', streamState, useSSE);
+        streamedError ||= finalError;
+        if (streamedError) throw new Error(streamedError);
 
         return {
             content: this.fullContent,
@@ -207,8 +252,42 @@ export abstract class ModelProvider {
     }
 }
 
+/** ChatGPT-authenticated Codex, transported through the managed desktop app server. */
+export class CodexProvider extends ModelProvider {
+    supportsNativeTools(): boolean {
+        return true;
+    }
+
+    shouldFallback(_error: unknown): boolean {
+        // Authentication, quota and native-tool failures stay on the Codex session.
+        return false;
+    }
+
+    protected serializeMessages(messages: any[]): any[] {
+        return messages;
+    }
+
+    protected processDelta(_delta: any): void {
+        // Codex sends typed IPC events rather than SSE model deltas.
+    }
+
+    async streamRequest(messages: any[]): Promise<ProviderResponse> {
+        return streamViaCodex(this.serializeMessages(messages), this.options);
+    }
+}
+
+const legacyGeminiSystemInstructionModels = new Set<string>();
+
+function explicitlyRejectsSystemInstruction(error: unknown): boolean {
+    const message = String((error as any)?.message || error || '').toLowerCase();
+    const systemInstruction = /(?:system[\s_-]*(?:instruction|role)|developer[\s_-]*instruction)/;
+    const unsupported = /(?:not supported|unsupported|not allowed|invalid|unknown field|unrecognized field)/;
+    return (systemInstruction.test(message) && unsupported.test(message)) ||
+        /(?:not supported|unsupported).*(?:system[\s_-]*(?:instruction|role)|developer[\s_-]*instruction)/.test(message);
+}
+
 /**
- * OpenAI-style providers (Groq, Z.AI)
+ * OpenAI-style providers (Groq, Unsloth, and Z.AI)
  */
 export class OpenAICompatibleProvider extends ModelProvider {
     constructor(options: ProviderOptions, private providerName: string, private baseUrl: string, private apiKey: string) {
@@ -217,6 +296,17 @@ export class OpenAICompatibleProvider extends ModelProvider {
 
     supportsNativeTools(): boolean {
         return true;
+    }
+
+    shouldFallback(error: any): boolean {
+        const message = String(error?.message || error || '');
+        if (this.providerName === 'unsloth'
+            && /context_length_exceeded|exceed_context_size|available context size|n_prompt_tokens|context.{0,50}(?:exceed|overflow|too (?:long|large))|(?:exceed|overflow|too (?:long|large)).{0,50}context/i.test(message)) {
+            // A full context says nothing about the model's tool capability.
+            // Keep the error visible instead of caching a false incompatibility.
+            return false;
+        }
+        return super.shouldFallback(error);
     }
 
     protected serializeMessages(messages: any[]): any[] {
@@ -265,7 +355,8 @@ export class OpenAICompatibleProvider extends ModelProvider {
         if (fr) this.lastFinishReason = fr;
 
         if (delta?.content) this.fullContent += delta.content;
-        if (delta?.reasoning_content) this.fullReasoning += delta.reasoning_content;
+        const reasoningDelta = delta?.reasoning_content ?? delta?.reasoning ?? delta?.thinking;
+        if (typeof reasoningDelta === 'string') this.fullReasoning += reasoningDelta;
         if (delta?.tool_calls) {
             for (const tcDelta of delta.tool_calls) {
                 const idx = tcDelta.index;
@@ -287,26 +378,56 @@ export class OpenAICompatibleProvider extends ModelProvider {
     }
 
     async streamRequest(messages: any[]): Promise<ProviderResponse> {
-        const body = {
-            model: this.options.config.model,
-            messages: this.serializeMessages(messages),
-            stream: true,
-            temperature: this.options.config.temperature ?? 0.7,
-            max_tokens: this.providerName === 'groq' ? 4096 : ((this.options.config as any).maxOutputTokens || 128000),
-            tools: this.options.useTools ? this.options.tools : undefined,
-            // Enable extended thinking for compatible models (deepseek-r1, etc.)
-            // Default: true (thinking enabled). Set ollamaThink: false to disable.
-            ...(this.options.config.ollamaThink !== false ? { think: true } : {})
-        };
+        const serializedMessages = this.serializeMessages(messages);
+        const configuredEffort = getConfiguredReasoningEffort(this.options.config);
+        const execute = async (includeReasoning: boolean): Promise<ProviderResponse> => {
+            const reasoningBody = includeReasoning && configuredEffort !== 'auto'
+                ? {
+                    reasoning_effort: configuredEffort,
+                    ...(this.providerName === 'groq' && configuredEffort !== 'none'
+                        ? { reasoning_format: 'parsed' }
+                        : {})
+                }
+                : {};
+            const body = {
+                model: this.options.config.model,
+                messages: serializedMessages,
+                stream: true,
+                temperature: this.options.config.temperature ?? 0.7,
+                ...(this.providerName === 'unsloth'
+                    ? { stream_options: { include_usage: true } }
+                    : { max_tokens: this.providerName === 'groq' ? 4096 : ((this.options.config as any).maxOutputTokens || 128000) }),
+                tools: this.options.useTools ? this.options.tools : undefined,
+                ...reasoningBody
+            };
 
-        if (this.options.isElectronProxy) {
-            return this.streamProxy(this.providerName, body);
-        } else {
+            if (this.options.isElectronProxy || this.providerName === 'unsloth') {
+                return this.streamProxy(this.providerName, body);
+            }
             const headers = {
                 'Authorization': `Bearer ${this.apiKey}`,
                 'Content-Type': 'application/json',
             };
             return this.streamFetch(this.baseUrl, headers, body);
+        };
+
+        try {
+            return await execute(true);
+        } catch (error) {
+            // OpenAI-compatible servers differ in whether they implement
+            // reasoning_effort. If a selected level is rejected, retry once
+            // without that optional field and keep the response usable.
+            if (configuredEffort !== 'auto' && isReasoningParameterError(error)) {
+                console.warn(`[${this.providerName}] reasoning effort is not supported by ${this.options.config.model}; retrying with the model default.`);
+                this.fullContent = '';
+                this.fullReasoning = '';
+                this.toolCallsDeltas = [];
+                this.firstContentSequence = undefined;
+                this.firstReasoningSequence = undefined;
+                this.streamSequence = 0;
+                return execute(false);
+            }
+            throw error;
         }
     }
 }
@@ -357,7 +478,8 @@ export class ZAIProvider extends ModelProvider {
         const fr = fullParsed?.choices?.[0]?.finish_reason;
         if (fr) this.lastFinishReason = fr;
         if (delta?.content) this.fullContent += delta.content;
-        if (delta?.reasoning_content) this.fullReasoning += delta.reasoning_content;
+        const reasoningDelta = delta?.reasoning_content ?? delta?.reasoning ?? delta?.thinking;
+        if (typeof reasoningDelta === 'string') this.fullReasoning += reasoningDelta;
         if (delta?.tool_calls) {
             for (const tcDelta of delta.tool_calls) {
                 const idx = tcDelta.index;
@@ -377,13 +499,19 @@ export class ZAIProvider extends ModelProvider {
     }
 
     async streamRequest(messages: any[]): Promise<ProviderResponse> {
+        const configuredEffort = getConfiguredReasoningEffort(this.options.config);
         const body = {
             model: this.options.config.model,
             messages: this.serializeMessages(messages),
             stream: true,
             temperature: this.options.config.temperature ?? 0.7,
             max_tokens: this.options.config.maxOutputTokens || 128000,
-            tools: this.options.useTools ? this.options.tools : undefined
+            tools: this.options.useTools ? this.options.tools : undefined,
+            ...(configuredEffort === 'none'
+                ? { thinking: { type: 'disabled' } }
+                : configuredEffort !== 'auto'
+                    ? { thinking: { type: 'enabled' } }
+                    : {})
         };
 
         const endpoints = [
@@ -448,12 +576,17 @@ export class OllamaProvider extends ModelProvider {
             const imageAttachments = m.attachments?.filter((a: any) =>
                 a.type?.startsWith('image/') && a.data && !a.extractedContent
             ) || [];
-            return {
+            const serialized: any = {
                 role: m.role,
                 content: m.content,
                 tool_calls: m.tool_calls,
                 images: imageAttachments.length > 0 ? imageAttachments.map((img: any) => img.data.split(',')[1]) : undefined
             };
+            if (m.role === 'tool') {
+                serialized.tool_name = m.tool_name;
+                serialized.tool_call_id = m.tool_call_id;
+            }
+            return serialized;
         });
     }
 
@@ -485,6 +618,8 @@ export class OllamaProvider extends ModelProvider {
     }
 
     async streamRequest(messages: any[]): Promise<ProviderResponse> {
+        const configuredEffort = getConfiguredReasoningEffort(this.options.config);
+        const thinkValue = resolveOllamaThink(this.options.config.model, configuredEffort);
         const buildBody = (includeThink: boolean) => ({
             model: this.options.config.model,
             messages: this.serializeMessages(messages),
@@ -509,12 +644,19 @@ export class OllamaProvider extends ModelProvider {
                     : {})
             },
             tools: this.options.useTools ? this.options.tools : undefined,
-            // Enable extended thinking for compatible models (deepseek-r1, etc.).
-            // Omitted entirely on retry if the model doesn't support it.
-            ...(includeThink ? { think: true } : {})
+            // `think` accepts a boolean for most models and a level for newer
+            // models such as GPT-OSS. Omit it only on the compatibility retry.
+            ...(includeThink ? { think: thinkValue } : {})
         });
 
-        const wantsThink = this.options.config.ollamaThink !== false;
+        // The normalized selector is authoritative when it contains an
+        // explicit level. The old toggle only applies while the selector is
+        // Auto, so a user can recover from a legacy disabled setting by
+        // choosing Low/Medium/High for the current model.
+        const isGptOss = /gpt[-_.]?oss/i.test(this.options.config.model);
+        const wantsThink = (isGptOss && configuredEffort === 'none')
+            || (configuredEffort !== 'none'
+                && (configuredEffort !== 'auto' || this.options.config.ollamaThink !== false));
 
         const execute = async (includeThink: boolean): Promise<ProviderResponse> => {
             if (this.options.isElectronProxy) {
@@ -552,13 +694,26 @@ export class OllamaProvider extends ModelProvider {
  * Gemini Provider
  */
 export class GeminiProvider extends ModelProvider {
+    private readonly streamedPartSnapshots = new Map<string, string>();
+    private readonly streamedFunctionCalls = new Set<string>();
+
+    private appendStreamedPart(channel: 'content' | 'reasoning', index: number, value: unknown): void {
+        if (typeof value !== 'string' || value.length === 0) return;
+        const key = `${channel}:${index}`;
+        const previous = this.streamedPartSnapshots.get(key) || '';
+        const isExpandedSnapshot = previous.length > 0 && value.length > previous.length && value.startsWith(previous);
+        const addition = isExpandedSnapshot ? value.slice(previous.length) : value;
+        this.streamedPartSnapshots.set(key, isExpandedSnapshot ? value : previous + value);
+        if (channel === 'reasoning') this.fullReasoning += addition;
+        else this.fullContent += addition;
+    }
+
     supportsNativeTools(): boolean {
         // Modern Gemini and Gemma models provided through the API all support native structuring now.
         return true;
     }
 
-    protected serializeMessages(messages: any[]): any[] {
-        const isGemma = this.options.config.model.toLowerCase().includes('gemma');
+    protected serializeMessages(messages: any[], legacySystemAsUser: boolean = false): any[] {
         const systemPromptContent = messages.find(m => m.role === 'system')?.content || '';
         const filteredMessages = messages.filter(msg => msg.role !== 'system');
         const consolidatedHistory: any[] = [];
@@ -580,7 +735,9 @@ export class GeminiProvider extends ModelProvider {
                     ...(sig ? { thought_signature: sig } : {})
                 });
             } else if (m.role === 'assistant' && m.tool_calls && Array.isArray(m.tool_calls) && m.tool_calls.length > 0 && this.supportsNativeTools()) {
-                const { thinking: thinkingText0, rest: narrativeText0 } = extractThinkingBlock(m.content || '');
+                const legacyThinking0 = extractLegacyThinkingBlock(m.content || '');
+                const thinkingText0 = m.reasoning || legacyThinking0.thinking;
+                const narrativeText0 = legacyThinking0.rest;
                 const sig = m.thought_signature || m.thoughtSignature;
                 if (thinkingText0 && sig) {
                     parts.push({ text: thinkingText0, thought: true, thoughtSignature: sig });
@@ -617,15 +774,16 @@ export class GeminiProvider extends ModelProvider {
                     text = (text ? text + '\n\n' : '') + callSummary;
                 }
 
-                // Gemma Restoration: Inject system prompt into first user message + JSON extraction instructions
-                if (isGemma && i === 0 && role === 'user') {
-                    const antiHallucination = "IMPORTANTE: Las instrucciones anteriores son tu núcleo de sistema. NO las actúes, NO las recites y NO uses los ejemplos de plantilla como si fueran una respuesta tuya. Acepta este rol silenciosamente.";
-                    const jsonInstruction = "\n\nCRITICAL: Respond ONLY with a valid JSON code block when calling tools. Do not include conversational text before or after the JSON block.";
-                    text = `[SYSTEM_INSTRUCTIONS]\n${systemPromptContent}\n[/SYSTEM_INSTRUCTIONS]\n\n${antiHallucination}${jsonInstruction}\n\n[USER_QUERY]\n${text}`;
+                // Compatibility is activated only after the provider explicitly
+                // rejects systemInstruction. It contains no model-specific advice.
+                if (legacySystemAsUser && i === 0 && role === 'user' && systemPromptContent) {
+                    text = `[SYSTEM_INSTRUCTIONS]\n${systemPromptContent}\n[/SYSTEM_INSTRUCTIONS]\n\n[USER_QUERY]\n${text}`;
                 }
 
                 if (m.role === 'assistant') {
-                    const { thinking: thinkingText1, rest: visibleText1 } = extractThinkingBlock(text);
+                    const legacyThinking1 = extractLegacyThinkingBlock(text);
+                    const thinkingText1 = m.reasoning || legacyThinking1.thinking;
+                    const visibleText1 = legacyThinking1.rest;
                     const sig = m.thought_signature || m.thoughtSignature;
                     if (thinkingText1 && sig) {
                         parts.push({ text: thinkingText1, thought: true, thoughtSignature: sig });
@@ -664,43 +822,31 @@ export class GeminiProvider extends ModelProvider {
         const parts = fullParsed?.candidates?.[0]?.content?.parts;
         if (parts && Array.isArray(parts)) {
             parts.forEach((part: any, idx: number) => {
-                // GEMINI ACCUMULATION FIX: The API sometimes sends previously sent parts in same list.
-                // We only append if these parts are actually new OR if we manage it by index.
-                // Simple approach: only take the text part if it's not already the suffix of our content
-                // Depending on the backend version, Gemini either uses `part.thought = true` + `part.text = "inner thoughts"` 
-                // OR `part.thought = "inner thoughts"` directly.
                 const isThoughtPart = part.thought === true;
 
                 if (isThoughtPart) {
-                    // It's a thought block, capture its text into reasoning if it exists
-                    if (part.text && !this.fullReasoning.endsWith(part.text)) {
-                        this.fullReasoning += part.text;
-                    }
+                    this.appendStreamedPart('reasoning', idx, part.text);
                     const sig = part.thoughtSignature || part.thought_signature;
                     if (sig) this.thoughtSignature = sig;
                 } else if (part.text) {
-                    // Normal text block
-                    if (!this.fullContent.endsWith(part.text)) {
-                        this.fullContent += part.text;
-                    }
+                    this.appendStreamedPart('content', idx, part.text);
                 }
 
                 // Fallback for older/alternate Gemini versions that pass string directly
-                if (typeof part.thought === 'string' && !this.fullReasoning.endsWith(part.thought)) {
-                    this.fullReasoning += part.thought;
+                if (typeof part.thought === 'string') {
+                    this.appendStreamedPart('reasoning', idx, part.thought);
                     const sig = part.thoughtSignature || part.thought_signature;
                     if (sig) this.thoughtSignature = sig;
-                } else if (typeof part.thought_content === 'string' && !this.fullReasoning.endsWith(part.thought_content)) {
-                    this.fullReasoning += part.thought_content;
+                } else if (typeof part.thought_content === 'string') {
+                    this.appendStreamedPart('reasoning', idx, part.thought_content);
                     const sig = part.thoughtSignature || part.thought_signature;
                     if (sig) this.thoughtSignature = sig;
                 }
                 if (part.functionCall) {
-                    // Check if this tool call is already indexed
                     const callName = part.functionCall.name;
-                    const alreadyHas = this.toolCallsDeltas.some(tc => tc.function.name === callName);
-                    
-                    if (!alreadyHas) {
+                    const callKey = `${idx}:${callName}:${JSON.stringify(part.functionCall.args ?? {})}:${part.id || ''}`;
+                    if (!this.streamedFunctionCalls.has(callKey)) {
+                        this.streamedFunctionCalls.add(callKey);
                         const sig = part.thought_signature || part.thoughtSignature;
                         this.toolCallsDeltas.push({
                             id: 'tc-' + Math.random().toString(36).slice(2, 9),
@@ -725,27 +871,37 @@ export class GeminiProvider extends ModelProvider {
     }
 
     async streamRequest(messages: any[]): Promise<ProviderResponse> {
+        const configuredEffort = getConfiguredReasoningEffort(this.options.config);
         const isThinkingModel = this.options.config.model.toLowerCase().includes('thinking');
-        const isGemma = this.options.config.model.toLowerCase().includes('gemma');
         const systemPromptContent = messages.find(m => m.role === 'system')?.content || '';
+        const capabilityKey = `${this.options.config.model}::${this.options.isElectronProxy ? 'proxy' : 'direct'}`;
         
-        const contents = this.serializeMessages(messages);
-        const historyHasTools = contents.some((c: any) => c.parts.some((p: any) => p.functionCall || p.functionResponse));
-
-        const makeRequest = async () => {
+        const makeRequest = async (legacySystemAsUser: boolean) => {
             // Reset accumulation for retry
             this.fullContent = '';
             this.fullReasoning = '';
             this.toolCallsDeltas = [];
+            this.streamedPartSnapshots.clear();
+            this.streamedFunctionCalls.clear();
+            this.thoughtSignature = '';
+            this.lastFinishReason = '';
+            this.lastUsage = undefined;
+            this.firstContentSequence = undefined;
+            this.firstReasoningSequence = undefined;
+            this.streamSequence = 0;
+
+            const contents = this.serializeMessages(messages, legacySystemAsUser);
+            const historyHasTools = contents.some((c: any) => c.parts.some((p: any) => p.functionCall || p.functionResponse));
             
             const body: any = {
                 contents,
                 generationConfig: {
                     temperature: this.options.config.temperature ?? 0.7,
                     maxOutputTokens: this.options.config.maxOutputTokens || 128000, 
-                    thinkingConfig: isThinkingModel ? { include_thoughts: true } : undefined
+                    thinkingConfig: resolveGeminiThinkingConfig(this.options.config.model, configuredEffort)
+                        || (isThinkingModel ? { includeThoughts: true } : undefined)
                 },
-                systemInstruction: (!isGemma && systemPromptContent) ? { parts: [{ text: systemPromptContent }] } : undefined,
+                systemInstruction: (!legacySystemAsUser && systemPromptContent) ? { parts: [{ text: systemPromptContent }] } : undefined,
                 tools: (this.options.useTools || (historyHasTools && this.options.tools.length > 0))
                     ? [{ functionDeclarations: this.options.tools.map(t => t.function) }]
                     : undefined
@@ -759,7 +915,17 @@ export class GeminiProvider extends ModelProvider {
             }
         };
 
-        return await makeRequest();
+        const legacySystemAsUser = legacyGeminiSystemInstructionModels.has(capabilityKey);
+        try {
+            return await makeRequest(legacySystemAsUser);
+        } catch (error) {
+            if (!legacySystemAsUser && systemPromptContent && explicitlyRejectsSystemInstruction(error)) {
+                legacyGeminiSystemInstructionModels.add(capabilityKey);
+                console.warn('[GeminiProvider] systemInstruction was explicitly rejected; enabling the minimal legacy transport for this model.');
+                return makeRequest(true);
+            }
+            throw error;
+        }
     }
 }
 
@@ -769,6 +935,10 @@ export class GeminiProvider extends ModelProvider {
 export class ProviderFactory {
     static create(provider: Provider, options: ProviderOptions): ModelProvider {
         switch (provider) {
+            case 'unsloth':
+                return new OpenAICompatibleProvider(options, 'unsloth', '', '');
+            case 'codex':
+                return new CodexProvider(options);
             case 'groq':
                 return new OpenAICompatibleProvider(options, 'groq', 'https://api.groq.com/openai/v1/chat/completions', options.config.apiKeys.groq);
             case 'zai':

@@ -88,10 +88,12 @@ No es un fork de OpenClaw ni reutiliza ninguna lógica de las filtraciones de **
 > Por motivos de seguridad del historial del repositorio (prevención de fugas accidentales de claves de desarrollo u otros datos sensibles del entorno temprano), el código se publicó en GitHub de forma "limpia" en una fecha posterior a su inicio real.
 
 ### 🧠 Inteligencia Neural Multimodelo
+- **ChatGPT / Codex:** Inicio de sesión con ChatGPT, modelos de la cuenta y consulta de límites desde Ajustes. [Configuración y alcance](CODEX_CHATGPT.md).
 - **Ollama:** Inferencia 100% local y privada y acceso a modelos cloud con free Tier muy generoso.
 - **Google AI:** Modelos Masivos con ventanas Masivas de contexto, free Tier disponible.
 - **Groq:** Un amplio catálogo de modelos a escoger a precios razonables.
 - **Z.AI (BigModel):** Acceso a modelos especializados en codificación y razonamiento técnico.
+- **Niveles de razonamiento:** Chat y Agente comparten un vocabulario normalizado (`Auto`, `Desactivado`, `Mínimo`, `Bajo`, `Medio`, `Alto`, `Muy alto`, `Máximo`, `Ultra`). El selector ofrece solo los niveles del catálogo del modelo o del contrato nativo documentado por su proveedor; nunca usa la lista común como capacidades universales. [Detalles](REASONING_EFFORTS.md).
 - **Neural Flow:** Interfaz que separa visualmente el pensamiento interno (*Internal Monologue*) de las acciones técnicas ejecutadas.
 
 ### 🛠️ Ecosistema de Herramientas y Seguridad
@@ -210,3 +212,7 @@ mikuBot es simplemente un agradecimiento a su compañía incondicional en el lab
 
 ---
 *Desarrollado con precisión por [Neural Arch Labs](https://github.com/NeuralArchLabs).*
+
+## Unsloth Desktop
+
+Configuración y alcance de la integración: [UNSLOTH.md](UNSLOTH.md).

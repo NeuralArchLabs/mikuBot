@@ -18,8 +18,12 @@ export const DEFAULT_CONFIG: AppConfig = {
     agentModel: '',
     visionProvider: 'gemini',
     visionModel: '',
-    apiKeys: { groq: '', gemini: '', ollama: '', zai: '' },
+    apiKeys: { groq: '', gemini: '', ollama: '', zai: '', codex: '', unsloth: '' },
     ollamaUrl: 'http://localhost:11434',
+    unslothUrl: 'http://localhost:8888/v1',
+    reasoningEffort: 'auto',
+    chatReasoningEffort: 'auto',
+    agentReasoningEffort: 'auto',
     temperature: 0.7,
     telegramBotToken: '',
 

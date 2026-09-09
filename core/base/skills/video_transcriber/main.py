@@ -90,8 +90,8 @@ def fetch_youtube_transcript_api(video_id, lang_override="auto"):
 def no_captions_response(url):
     """Return a friendly, explicit response when captions are unavailable."""
     message = (
-        "No hay captions o subtítulos disponibles para este video. "
-        "No se descargó audio ni se realizó una transcripción local."
+        "No captions or subtitles are available for this video. "
+        "No audio was downloaded and no local transcription was performed."
     )
     return {"success": False, "url": url, "error": message, "message": message}
 

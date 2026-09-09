@@ -343,6 +343,30 @@
     }
   },
   "settings": {
+    "codex": {
+      "title": "ChatGPT · Codex",
+      "description": "使用 ChatGPT 登录，即可使用你账户的 Codex 模型和额度，无需 API 密钥。",
+      "deep_research_note": "Deep Research 需要其他兼容的服务提供商，目前尚不支持 Codex 登录。",
+      "login": "使用 ChatGPT 登录",
+      "logout": "退出登录",
+      "cancel_login": "取消登录",
+      "refresh": "刷新状态和模型",
+      "manage_account": "管理 ChatGPT 账户",
+      "connected": "已登录",
+      "disconnected": "未登录",
+      "pending": "等待登录",
+      "browser_pending": "请在浏览器中完成登录。连接状态将自动更新。",
+      "unavailable": "Codex 不可用。请查看错误，并在桌面应用中刷新状态。",
+      "limits_title": "Codex 额度",
+      "limits_description": "此额度与你账户在其他地方使用 Codex 的额度共享。刷新状态可查看最新用量。",
+      "usage_unavailable": "用量暂不可用",
+      "usage_window": "用量周期",
+      "window_days": "{{count}} 天",
+      "window_hours": "{{count}} 小时",
+      "window_minutes": "{{count}} 分钟",
+      "remaining": "剩余 {{percent}}%",
+      "resets": "重置时间：{{date}}"
+    },
     "title": "系统设置",
     "language_select": "界面语言",
     "language_desc": "为 mikuBot 选择全局语言",
@@ -394,12 +418,25 @@
       "provider": "活动供应商",
       "model": "激活模型",
       "sync": "同步",
-      "select_model": "选择目标架构..."
+      "select_model": "选择目标架构...",
+      "reasoning": "推理强度",
+      "reasoning_desc": "控制模型用于推理的计算量。自动使用模型的原生设置。",
+      "reasoning_auto": "自动",
+      "reasoning_none": "关闭",
+      "reasoning_minimal": "最小",
+      "reasoning_low": "低",
+      "reasoning_medium": "中",
+      "reasoning_high": "高",
+      "reasoning_xhigh": "很高",
+      "reasoning_max": "最大",
+      "reasoning_ultra": "Ultra",
+      "reasoning_model_default": "模型默认",
+      "reasoning_levels": "级别"
     },
     "security": {
       "title": "安全与主引擎设置",
       "vault_title": "安全凭据库",
-      "vault_desc": "管理主逻辑回退和加密的 API 密钥",
+      "vault_desc": "管理供应商账户和加密的 API 密钥",
       "fallback_title": "主回退路由",
       "provider_label": "主提供者",
       "model_label": "主模型",
@@ -490,6 +527,11 @@
     "alerts": {
       "ollama_error_title": "本地引擎无响应",
       "ollama_error_desc": "请确认 Ollama 已在 {{url}} 上运行，且至少有一个模型已初始化。"
+    },
+    "unsloth": {
+      "endpoint": "Unsloth Desktop 地址",
+      "key_hint": "保存地址以及 Settings → API 中的 API 密钥。仅在 Unsloth 中启用 Keyless API Access: Inference 后才可留空。每 10 秒自动刷新本地模型。",
+      "connection_error": "无法连接 Unsloth：{{error}}"
     }
   },
   "sidebar": {
@@ -509,10 +551,10 @@
       "expand_library": "展开库",
       "new_doc": "新上下文文档",
       "delete_file": "删除 {{filename}}",
-    "close_manager": "关闭会话管理器",
-    "collapse_sidebar": "收起侧边栏",
-    "expand_sidebar": "展开侧边栏"
-  },
+      "close_manager": "关闭会话管理器",
+      "collapse_sidebar": "收起侧边栏",
+      "expand_sidebar": "展开侧边栏"
+    },
     "footer": {
       "no_cortex": "暂无文件"
     }

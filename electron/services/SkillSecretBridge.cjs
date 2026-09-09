@@ -80,6 +80,9 @@ function prepareDeepResearchExecution({ args, reviewedBuiltin, apiKeys = {}, con
         ? executionArgs._runtime
         : {};
     const provider = String(runtime.provider || '').toLowerCase();
+    if (provider === 'codex') {
+        throw bridgeError('LLM_PROVIDER_UNSUPPORTED', 'Deep Research todavía no admite ChatGPT / Codex. Selecciona un proveedor compatible para esta habilidad.');
+    }
     if (!ALL_PROVIDERS.has(provider)) {
         throw bridgeError('LLM_PROVIDER_INVALID', 'Deep Research has no explicit provider for the active mode');
     }

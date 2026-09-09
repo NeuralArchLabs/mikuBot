@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import './SettingsPanel.css';
 import { neuralScheduler } from '../../services';
-import { AppConfig, ModelInfo, Provider } from '../../types';
+import { AppConfig, ModelInfo, Provider, ReasoningEffort } from '../../types';
 import { PROVIDERS } from '../../constants';
 import { Icon, ModernSelect, SelectOption } from '../common/Common';
 import { THEMES } from '../../constants/themes';
@@ -11,6 +11,8 @@ import { SchedulerTab } from './SchedulerTab';
 import { SkillsPanel } from './SkillsPanel';
 import { useUIStore } from '../../stores/useUIStore';
 import { isVisionModel } from '../../services/integrations/modelCapabilities';
+import { CodexAccountSettings } from './CodexAccountSettings';
+import { getModelReasoningEfforts } from '../../services/core/reasoning';
 
 interface SettingsPanelProps {
     config: AppConfig;
@@ -61,6 +63,79 @@ const createOllamaAdvancedDraft = (config: AppConfig): OllamaAdvancedDraft => ({
     temperature: config.temperature
 });
 
+const reasoningLabelKey: Record<string, string> = {
+    auto: 'reasoning_auto',
+    none: 'reasoning_none',
+    minimal: 'reasoning_minimal',
+    low: 'reasoning_low',
+    medium: 'reasoning_medium',
+    high: 'reasoning_high',
+    xhigh: 'reasoning_xhigh',
+    max: 'reasoning_max',
+    ultra: 'reasoning_ultra'
+};
+
+const ReasoningSelector = ({
+    provider,
+    model,
+    value,
+    onChange,
+    t
+}: {
+    provider: Provider;
+    model?: ModelInfo;
+    value?: ReasoningEffort;
+    onChange: (value: ReasoningEffort) => void;
+    t: (key: string, options?: any) => string;
+}) => {
+    const advertised = getModelReasoningEfforts(provider, model);
+    const options = [
+        { effort: 'auto' as ReasoningEffort },
+        ...(advertised.length > 0 ? advertised : [])
+    ];
+    const current = value || 'auto';
+    const selected = options.some(option => option.effort === current) ? current : 'auto';
+
+    // A refreshed provider catalog can remove a level that was persisted by
+    // an older build. Keep the visible Auto state and the actual request
+    // configuration in sync instead of sending a stale unsupported value.
+    useEffect(() => {
+        if (!model || current === 'auto') return;
+        if (advertised.length === 0 || !advertised.some(option => option.effort === current)) {
+            onChange('auto');
+        }
+    }, [advertised, current, model, onChange]);
+
+    return (
+        <div className="mt-4 rounded-xl border border-white/5 bg-black/20 px-3 py-2.5">
+            <div className="flex items-center justify-between gap-3 mb-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    {t('settings.orchestration.reasoning')}
+                </label>
+                <span className="text-[9px] text-slate-600 font-bold uppercase tracking-wider">
+                    {advertised.length > 0 ? `${advertised.length} ${t('settings.orchestration.reasoning_levels', { defaultValue: 'niveles' })}` : t('settings.orchestration.reasoning_model_default')}
+                </span>
+            </div>
+            <ModernSelect
+                value={selected}
+                onChange={(value) => onChange(value as ReasoningEffort)}
+                options={options.map(option => ({
+                    value: option.effort,
+                    label: reasoningLabelKey[option.effort]
+                        ? t(`settings.orchestration.${reasoningLabelKey[option.effort]}`, { defaultValue: option.effort })
+                        : option.description || option.effort
+                }))}
+                placeholder={t('settings.orchestration.reasoning_auto')}
+                title={t('settings.orchestration.reasoning_desc')}
+                className="reasoning-effort-select"
+            />
+            <p className="mt-1.5 text-[10px] leading-relaxed text-slate-600">
+                {t('settings.orchestration.reasoning_desc')}
+            </p>
+        </div>
+    );
+};
+
 export const SettingsPanel = ({
     config,
     updateConfig,
@@ -97,6 +172,32 @@ export const SettingsPanel = ({
     // Track which provider's key we are currently editing in the global section
     const [editingProvider, setEditingProvider] = useState<Provider>(config.provider);
     const [localApiKey, setLocalApiKey] = useState('');
+    const [codexConnected, setCodexConnected] = useState(false);
+
+    const selectProvider = (key: 'provider' | 'chatProvider' | 'agentProvider' | 'visionProvider', provider: Provider) => {
+        if (provider === 'codex' || provider === 'unsloth') setEditingProvider(provider);
+        if (config[key] === provider) return;
+        const modelKey = key === 'provider' ? 'model' : key.replace('Provider', 'Model') as 'chatModel' | 'agentModel' | 'visionModel';
+        const available = models[provider] || [];
+        const selected = config[modelKey];
+        const nextModel = available.some(model => model.id === selected) ? selected : key === 'visionProvider' ? '' : available[0]?.id || '';
+        const reasoningKey = key === 'chatProvider'
+            ? 'chatReasoningEffort'
+            : key === 'agentProvider'
+                ? 'agentReasoningEffort'
+                : key === 'provider'
+                    ? 'reasoningEffort'
+                    : undefined;
+        onUpdatePartialConfig({
+            [key]: provider,
+            [modelKey]: nextModel,
+            ...(reasoningKey ? { [reasoningKey]: 'auto' } : {})
+        });
+    };
+
+    const providerConnected = (provider: Provider) => provider === 'codex'
+        ? codexConnected
+        : (provider === 'ollama' || provider === 'unsloth') ? (models[provider] || []).length > 0 : !!config.apiKeys[provider];
 
     const scanGpus = useCallback(async () => {
         setIsScanningGpus(true);
@@ -804,17 +905,17 @@ export const SettingsPanel = ({
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <div
-                                                className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all shadow-md border premium-emphasis ${(config.chatProvider === 'ollama' ? (models['ollama'] || []).length > 0 : !!config.apiKeys[config.chatProvider || 'gemini'])
+                                                className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all shadow-md border premium-emphasis ${providerConnected(config.chatProvider || config.provider)
                                                     ? 'premium-emerald bg-emerald-500/10 text-emerald-400'
                                                     : 'bg-slate-800/80 text-slate-500 border-white/5'
                                                     }`}
                                                 title={
-                                                    (config.chatProvider === 'ollama' ? (models['ollama'] || []).length > 0 : !!config.apiKeys[config.chatProvider || 'gemini'])
+                                                    providerConnected(config.chatProvider || config.provider)
                                                         ? t('settings.orchestration.connection_active')
                                                         : t('settings.orchestration.config_pending')
                                                 }
                                             >
-                                                <Icon name={config.chatProvider === 'ollama' ? 'network-wired' : 'key'} />
+                                                <Icon name={config.chatProvider === 'codex' ? 'user' : config.chatProvider === 'ollama' ? 'network-wired' : 'key'} />
                                             </div>
                                             <button
                                                 onClick={onSyncModelArchitectures}
@@ -842,7 +943,7 @@ export const SettingsPanel = ({
                                                     return (
                                                         <button
                                                             key={pId}
-                                                            onClick={() => updateConfig('chatProvider', pId)}
+                                                            onClick={() => selectProvider('chatProvider', pId)}
                                                             className={`flex-1 py-3 rounded-xl transition-all flex flex-col items-center justify-center gap-1.5 ${isSelected
                                                                 ? `bg-blue-600/90 text-white shadow-lg shadow-blue-900/40 ring-1 ring-white/20`
                                                                 : 'hover:bg-white/5 text-slate-400'
@@ -856,6 +957,8 @@ export const SettingsPanel = ({
                                                                 <img src="./groqICON.png" alt="Groq" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'opacity-30 brightness-0 invert group-hover:opacity-70 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
                                                             ) : pId === 'zai' ? (
                                                                 <img src="./zai.png" alt="Z.AI" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,165,0,0.3)]' : 'opacity-30 brightness-0 invert group-hover:opacity-70 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
+                                                            ) : pId === 'codex' ? (
+                                                                <img src="./chatgptICON.png" alt="ChatGPT" className={`w-6 h-6 rounded-md object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]' : 'opacity-30 grayscale hover:opacity-80'}`} />
                                                             ) : (
                                                                 <Icon name={(PROVIDERS as any)[pId]?.icon || 'robot'} className="text-lg" />
                                                             )}
@@ -873,12 +976,19 @@ export const SettingsPanel = ({
                                             <div className="relative">
                                                 <ModernSelect
                                                     value={config.chatModel}
-                                                    onChange={(val) => updateConfig('chatModel', val)}
+                                                    onChange={(val) => onUpdatePartialConfig({ chatModel: val, chatReasoningEffort: 'auto' })}
                                                     placeholder={t('settings.orchestration.select_model')}
                                                     options={(models[config.chatProvider || 'groq'] || []).map(m => ({ value: m.id, label: m.name }))}
                                                     title={t('settings.orchestration.model')}
                                                 />
                                             </div>
+                                            <ReasoningSelector
+                                                provider={config.chatProvider || config.provider}
+                                                model={(models[config.chatProvider || config.provider] || []).find(m => m.id === config.chatModel)}
+                                                value={config.chatReasoningEffort ?? config.reasoningEffort}
+                                                onChange={(value) => onUpdatePartialConfig({ chatReasoningEffort: value })}
+                                                t={t}
+                                            />
                                         </div>
                                     </div>
                                 </div>
@@ -896,17 +1006,17 @@ export const SettingsPanel = ({
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <div
-                                                className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all shadow-md border premium-emphasis ${(config.agentProvider === 'ollama' ? (models['ollama'] || []).length > 0 : !!config.apiKeys[config.agentProvider || 'groq'])
+                                                className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all shadow-md border premium-emphasis ${providerConnected(config.agentProvider || config.provider)
                                                     ? 'premium-emerald bg-emerald-500/10 text-emerald-400'
                                                     : 'bg-slate-800/80 text-slate-500 border-white/5'
                                                     }`}
                                                 title={
-                                                    (config.agentProvider === 'ollama' ? (models['ollama'] || []).length > 0 : !!config.apiKeys[config.agentProvider || 'groq'])
+                                                    providerConnected(config.agentProvider || config.provider)
                                                         ? t('settings.orchestration.connection_active')
                                                         : t('settings.orchestration.config_pending')
                                                 }
                                             >
-                                                <Icon name={config.agentProvider === 'ollama' ? 'network-wired' : 'key'} />
+                                                <Icon name={config.agentProvider === 'codex' ? 'user' : config.agentProvider === 'ollama' ? 'network-wired' : 'key'} />
                                             </div>
                                             <button
                                                 onClick={() => onTestConnection(config.agentProvider)}
@@ -934,7 +1044,7 @@ export const SettingsPanel = ({
                                                     return (
                                                         <button
                                                             key={pId}
-                                                            onClick={() => updateConfig('agentProvider', pId)}
+                                                            onClick={() => selectProvider('agentProvider', pId)}
                                                             className={`flex-1 py-3 rounded-xl transition-all flex flex-col items-center justify-center gap-1.5 ${isSelected
                                                                 ? `bg-purple-600/90 text-white shadow-lg shadow-purple-900/40 ring-1 ring-white/20`
                                                                 : 'hover:bg-white/5 text-slate-400'
@@ -948,6 +1058,8 @@ export const SettingsPanel = ({
                                                                 <img src="./groqICON.png" alt="Groq" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'opacity-30 brightness-0 invert group-hover:opacity-70 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
                                                             ) : pId === 'zai' ? (
                                                                 <img src="./zai.png" alt="Z.AI" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,165,0,0.3)]' : 'opacity-30 brightness-0 invert group-hover:opacity-70 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
+                                                            ) : pId === 'codex' ? (
+                                                                <img src="./chatgptICON.png" alt="ChatGPT" className={`w-6 h-6 rounded-md object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]' : 'opacity-30 grayscale hover:opacity-80'}`} />
                                                             ) : (
                                                                 <Icon name={(PROVIDERS as any)[pId]?.icon || 'robot'} className="text-lg" />
                                                             )}
@@ -965,12 +1077,19 @@ export const SettingsPanel = ({
                                             <div className="relative">
                                                 <ModernSelect
                                                     value={config.agentModel}
-                                                    onChange={(val) => updateConfig('agentModel', val)}
+                                                    onChange={(val) => onUpdatePartialConfig({ agentModel: val, agentReasoningEffort: 'auto' })}
                                                     placeholder={t('settings.orchestration.select_model')}
                                                     options={(models[config.agentProvider || 'groq'] || []).map(m => ({ value: m.id, label: m.name }))}
                                                     title={t('settings.orchestration.model')}
                                                 />
                                             </div>
+                                            <ReasoningSelector
+                                                provider={config.agentProvider || config.provider}
+                                                model={(models[config.agentProvider || config.provider] || []).find(m => m.id === config.agentModel)}
+                                                value={config.agentReasoningEffort ?? config.reasoningEffort}
+                                                onChange={(value) => onUpdatePartialConfig({ agentReasoningEffort: value })}
+                                                t={t}
+                                            />
                                         </div>
                                     </div>
                                 </div>
@@ -1015,7 +1134,7 @@ export const SettingsPanel = ({
                                                     }`}
                                                 title={config.visionModel ? t('settings.orchestration.connection_active') : 'Default: Native Mode'}
                                             >
-                                                <Icon name={config.visionProvider === 'ollama' ? 'network-wired' : 'key'} />
+                                                <Icon name={config.visionProvider === 'codex' ? 'user' : config.visionProvider === 'ollama' ? 'network-wired' : 'key'} />
                                             </div>
 
                                             <button
@@ -1044,7 +1163,7 @@ export const SettingsPanel = ({
                                                     return (
                                                         <button
                                                             key={pId}
-                                                            onClick={() => updateConfig('visionProvider', pId)}
+                                                            onClick={() => selectProvider('visionProvider', pId)}
                                                             className={`flex-1 py-3 rounded-xl transition-all flex flex-col items-center justify-center gap-1.5 ${isSelected
                                                                 ? `bg-emerald-600/90 text-white shadow-lg shadow-emerald-900/40 ring-1 ring-white/20`
                                                                 : 'hover:bg-white/5 text-slate-400'
@@ -1058,6 +1177,8 @@ export const SettingsPanel = ({
                                                                 <img src="./groqICON.png" alt="Groq" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.2)]' : 'opacity-30 brightness-0 invert group-hover:opacity-70 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
                                                             ) : pId === 'zai' ? (
                                                                 <img src="./zai.png" alt="Z.AI" className={`w-6 h-6 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,165,0,0.3)]' : 'opacity-30 brightness-0 invert group-hover:opacity-70 group-hover:grayscale-0 transition-opacity transition-[filter]'}`} />
+                                                            ) : pId === 'codex' ? (
+                                                                <img src="./chatgptICON.png" alt="ChatGPT" className={`w-6 h-6 rounded-md object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]' : 'opacity-30 grayscale hover:opacity-80'}`} />
                                                             ) : (
                                                                 <Icon name={(PROVIDERS as any)[pId]?.icon || 'robot'} className="text-lg" />
                                                             )}
@@ -1472,7 +1593,7 @@ export const SettingsPanel = ({
                                                 <div className="relative">
                                                     <ModernSelect
                                                         value={config.provider}
-                                                        onChange={(val) => updateConfig('provider', val as Provider)}
+                                                        onChange={(val) => selectProvider('provider', val as Provider)}
                                                         placeholder={t('settings.security.provider_label')}
                                                         options={(Object.keys(PROVIDERS) as Provider[]).map(pId => ({
                                                             value: pId,
@@ -1484,12 +1605,19 @@ export const SettingsPanel = ({
                                                 <div className="relative">
                                                     <ModernSelect
                                                         value={config.model}
-                                                        onChange={(val) => updateConfig('model', val)}
+                                                        onChange={(val) => onUpdatePartialConfig({ model: val, reasoningEffort: 'auto' })}
                                                         placeholder={t('settings.security.model_label') + '...'}
                                                         options={(models[config.provider] || []).map(m => ({ value: m.id, label: m.name }))}
                                                         title={t('settings.security.model_label')}
                                                     />
                                                 </div>
+                                                <ReasoningSelector
+                                                    provider={config.provider}
+                                                    model={(models[config.provider] || []).find(m => m.id === config.model)}
+                                                    value={config.reasoningEffort}
+                                                    onChange={(value) => updateConfig('reasoningEffort', value)}
+                                                    t={t}
+                                                />
                                             </div>
                                         </div>
                                         <div className="mt-auto pt-4">
@@ -1515,12 +1643,28 @@ export const SettingsPanel = ({
                                                     className={`flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all ${editingProvider === pId ? 'bg-slate-700/80 text-white shadow-lg shadow-black/20 ring-1 ring-white/5' : 'text-slate-300/50 hover:text-slate-100 hover:bg-white/5'
                                                         }`}
                                                 >
-                                                    {PROVIDERS[pId].name.split(' ')[0]}
+                                                    {pId === 'codex' ? (
+                                                        <img src="./chatgptICON.png" alt="ChatGPT" className="mx-auto mb-1 h-5 w-5 rounded-md object-contain" />
+                                                    ) : <Icon name={(PROVIDERS as any)[pId]?.icon || 'robot'} className="mx-auto mb-1 text-sm" />}
+                                                    <span>{pId === 'codex' ? 'ChatGPT' : PROVIDERS[pId].name.split(' ')[0]}</span>
                                                 </button>
                                             ))}
                                         </div>
 
                                         <div className="flex-1 flex flex-col justify-center">
+                                            {editingProvider === 'codex' ? (
+                                                <CodexAccountSettings
+                                                    onAccountChange={setCodexConnected}
+                                                    onRefreshModels={() => onTestConnection('codex')}
+                                                />
+                                            ) : <>
+                                            {editingProvider === 'unsloth' && (
+                                                <div className="mb-4 space-y-2">
+                                                    <label className="block text-xs font-bold text-[var(--text-primary)]" htmlFor="unsloth-endpoint">{t('settings.unsloth.endpoint')}</label>
+                                                    <input id="unsloth-endpoint" type="url" value={config.unslothUrl || ''} onChange={event => updateConfig('unslothUrl', event.target.value)} placeholder="http://localhost:8888/v1" className="w-full premium-input rounded-xl px-4 py-3 text-xs font-mono" />
+                                                    <p className="text-xs text-[var(--text-secondary)] leading-relaxed">{t('settings.unsloth.key_hint')}</p>
+                                                </div>
+                                            )}
                                             <div className="relative flex items-center group">
                                                 <div className="absolute left-6 text-slate-500 group-hover:text-[var(--primary-color)] flex items-center justify-center z-10 transition-colors">
                                                     <Icon name={editingProvider === 'ollama' ? 'link' : 'key'} />
@@ -1603,9 +1747,7 @@ export const SettingsPanel = ({
                                                 </div>
                                             </div>
                                             )}
-
-
-                                            
+                                            </>}
                                         </div>
                                     </div>
                                 </div>

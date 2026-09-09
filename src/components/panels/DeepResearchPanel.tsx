@@ -5,6 +5,7 @@ import { useAgentStore } from '../../stores/useAgentStore';
 import { Icon, MarkdownRenderer } from '../common/Common';
 import { toHtml } from '../../utils';
 import { formatFinalResponse } from '../../services/formatters';
+import { sanitizeRichContent } from '../../utils/security/richContentPolicy';
 import i18n from '../../i18n';
 
 export type ResearchPlan = {
@@ -406,7 +407,10 @@ export const DeepResearchPanel: React.FC<{ config: AppConfig; mode: AgentMode; s
         tempDiv.style.left = '-9999px';
         tempDiv.style.top = '-9999px';
         tempDiv.style.width = '850px';
-        tempDiv.innerHTML = toHtml(formatFinalResponse(progress.final_report), false, 'full');
+        tempDiv.innerHTML = sanitizeRichContent(
+            toHtml(formatFinalResponse(progress.final_report), false, 'full'),
+            { source: 'agent' }
+        );
         document.body.appendChild(tempDiv);
 
         try {

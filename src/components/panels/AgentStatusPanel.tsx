@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { AgentStatus, AgentPhase } from '../../types';
 import { useTranslation } from 'react-i18next';
 import { Icon } from '../common/Common';
+import { sanitizeRichContent } from '../../utils/security/richContentPolicy';
 
 interface AgentStatusPanelProps {
     status: AgentStatus;
@@ -114,7 +115,10 @@ const StreamedMarkdown = ({ text, className }: { text: string; className?: strin
         <div 
             className={`text-slate-400 ${className || ''}`} 
             dangerouslySetInnerHTML={{ 
-                __html: html + '<span class="inline-block w-[3px] h-[10px] ml-1 bg-slate-500 animate-pulse translate-y-[1px]"></span>' 
+                __html: sanitizeRichContent(
+                    html + '<span class="inline-block w-[3px] h-[10px] ml-1 bg-slate-500 animate-pulse translate-y-[1px]"></span>',
+                    { source: 'agent' }
+                )
             }} 
         />
     );

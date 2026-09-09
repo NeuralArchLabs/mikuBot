@@ -116,7 +116,7 @@ export async function executeToolCall(
                     if (result.ok) {
                         let finalMsg = result.result;
                         if (finalMsg === 'No changes applied.' && cleanFilename.toLowerCase().includes('tasks.md')) {
-                            finalMsg = '✅ SINCRONIZADO: El archivo ya refleja los cambios (marcado automático detectado).';
+                            finalMsg = '✅ SYNCHRONIZED: The file already reflects the changes (automatic marker detected).';
                         }
                         return { success: true, data: { filename: cleanFilename, message: finalMsg, source: target } };
                     }
@@ -437,7 +437,6 @@ export async function executeToolCall(
                 // Prioritize Native Internal Search (SearXena Python bridge) if in Electron
                 if (typeof window !== 'undefined' && (window as any).electron?.runSearch) {
                     const maxRetries = 2;
-                    let lastError = '';
                     for (let attempt = 0; attempt < maxRetries; attempt++) {
                         try {
                             const response = await (window as any).electron.runSearch({
@@ -447,21 +446,19 @@ export async function executeToolCall(
                             if (response.ok) {
                                 return { success: true, data: response.data };
                             }
-                            lastError = response.error || 'Unknown error';
                             console.warn(`[Search] SearXena attempt ${attempt + 1} failed:`, response.error);
                             // Known fatal errors — don't retry, report immediately
                             if (response.error?.includes('Engine not installed')) {
-                                return { success: false, error: `SearXena: El motor no está instalado. Ejecuta la instalación desde Ajustes → SearXena.` };
+                                return { success: false, error: 'SearXena is not installed. Install it from Settings → SearXena.' };
                             }
                         } catch (e) {
-                            lastError = e instanceof Error ? e.message : String(e);
                             console.error(`[Search] SearXena attempt ${attempt + 1} error:`, e);
                         }
                     }
                     // SearXena exhausted retries — return its error, don't silently fall through
                     return {
                         success: false,
-                        error: `SearXena: ${lastError}. El motor no responde después de ${maxRetries} intentos. Verifica que esté arrancado y no esté saturado.`
+                        error: `SearXena search failed after ${maxRetries} attempts. Ensure the engine is running and not overloaded.`
                     };
                 }
 
@@ -482,7 +479,7 @@ export async function executeToolCall(
                         if (response.ok) return { success: true, data: response.data };
                         return { success: false, error: response.error || 'Unable to retrieve more search results.' };
                     } catch (e) {
-                        return { success: false, error: e instanceof Error ? e.message : String(e) };
+                        return { success: false, error: 'Unable to retrieve more search results.' };
                     }
                 }
                 return { success: false, error: 'No Search API available for web_search_more. Ensure SearXena is installed and running.' };

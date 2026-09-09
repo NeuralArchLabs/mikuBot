@@ -16,12 +16,37 @@ export interface ProviderConfig {
 }
 
 /** Model Information */
+/**
+ * Normalized reasoning effort values used by the UI. Providers may expose
+ * additional values; those are kept as strings when returned by a catalog.
+ */
+export type ReasoningEffort =
+    | 'auto'
+    | 'none'
+    | 'minimal'
+    | 'low'
+    | 'medium'
+    | 'high'
+    | 'xhigh'
+    | 'max'
+    | 'ultra'
+    | (string & {});
+
+export interface ReasoningEffortOption {
+    effort: ReasoningEffort;
+    description?: string;
+}
+
 export interface ModelInfo {
     id: string;
     name: string;
     provider: Provider;
     /** Provider-advertised capabilities (for example Ollama's `vision`). */
     capabilities?: string[];
+    contextLength?: number;
+    /** Reasoning levels advertised by the provider's model catalog. */
+    reasoningEfforts?: ReasoningEffortOption[];
+    defaultReasoningEffort?: ReasoningEffort;
 }
 
 /** Application Configuration */
@@ -44,12 +69,18 @@ export interface AppConfig {
     visionModel?: string;
     apiKeys: Record<Provider, string>;
     ollamaUrl: string;
+    unslothUrl?: string;
     ollamaNumGpu?: number;
     ollamaNumCtx?: number;
     ollamaMainGpu?: number;
     ollamaNumThread?: number;
     ollamaThink?: boolean;
     ollamaZeroOverhead?: boolean;
+    /** Master fallback reasoning preference. `auto` delegates to the model. */
+    reasoningEffort?: ReasoningEffort;
+    /** Optional per-runtime overrides; old configs continue using the master value. */
+    chatReasoningEffort?: ReasoningEffort;
+    agentReasoningEffort?: ReasoningEffort;
     temperature: number;
     telegramBotToken: string;
 

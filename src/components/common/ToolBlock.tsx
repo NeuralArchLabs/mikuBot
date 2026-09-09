@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MessageBlock } from '../../types';
 import { Icon as IconComp } from './Common';
+import { buildSandboxedArtifactDocument } from '../../utils/security/richContentPolicy';
 
 /** Core built-in tools — anything NOT in this set is a Neural Skill */
 export const CORE_TOOLS = new Set([
@@ -304,6 +305,7 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
     const imageUrls: string[] = Array.isArray(rawImageUrls)
         ? rawImageUrls.filter((url): url is string => typeof url === 'string' && url.length > 0)
         : [];
+    const iframeHtml = (result as any)?.iframe || resultData?.iframe;
 
     return (
         <div ref={containerRef} className={`relative mb-4 pl-6 transition-all duration-300 ${entranceClass} ${isExpanded ? 'w-full' : 'w-full max-w-3xl'}`}>
@@ -351,9 +353,9 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
                     </div>
                 </div>
 
-                {isSuccess && imageUrls.length > 0 && (
+                {isSuccess && (imageUrls.length > 0 || iframeHtml) && (
                     <div className="tool-visual-output px-3 py-3 border-t border-white/5 bg-slate-900/40">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {imageUrls.length > 0 ? <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {imageUrls.map((url, index) => (
                                 <figure key={url} className="group overflow-hidden rounded-lg border border-white/10 bg-slate-950/80 shadow-md transition-colors hover:border-cyan-500/50">
                                     <img
@@ -374,7 +376,16 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
                                     </figcaption>
                                 </figure>
                             ))}
-                        </div>
+                        </div> : (
+                            <iframe
+                                className="w-full overflow-hidden rounded-lg border border-white/10 shadow-lg"
+                                style={{ minHeight: '340px', background: '#090d16' }}
+                                srcDoc={buildSandboxedArtifactDocument(String(iframeHtml))}
+                                sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads allow-presentation"
+                                referrerPolicy="no-referrer"
+                                title={`${toolCall.function.name} interactive output`}
+                            />
+                        )}
                     </div>
                 )}
 

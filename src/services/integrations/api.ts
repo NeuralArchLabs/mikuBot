@@ -1,6 +1,7 @@
 import { Provider, AppConfig, ModelInfo, Attachment } from '../../types';
 import { safeFetch, streamViaProxy } from '../../utils';
 import { hasVisionCapability, inferOllamaCapabilities, inferProviderModelCapabilities } from './modelCapabilities';
+import { inferReasoningEfforts } from '../core/reasoning';
 
 const enrichOllamaModel = async (url: string, model: ModelInfo): Promise<ModelInfo> => {
     // Most recent Ollama versions already include this in /api/tags. Avoid a
@@ -24,6 +25,15 @@ const enrichOllamaModel = async (url: string, model: ModelInfo): Promise<ModelIn
 };
 
 export async function fetchModels(provider: Provider, config: AppConfig): Promise<ModelInfo[]> {
+    if (provider === 'unsloth') {
+        const bridge = (window as any).electron;
+        if (!bridge?.getUnslothModels) throw new Error('Reinicia la aplicación de escritorio para cargar la conexión de Unsloth.');
+        const models = await bridge.getUnslothModels({ url: config.unslothUrl || 'http://localhost:8888/v1' });
+        return (Array.isArray(models) ? models : []).map((model: any) => ({
+            ...model,
+            reasoningEfforts: inferReasoningEfforts('unsloth', model.id, model)
+        }));
+    }
     try {
         // Guard: Skip providers that require an API key when none is configured
         const keyMap: Partial<Record<Provider, string>> = {
@@ -37,6 +47,27 @@ export async function fetchModels(provider: Provider, config: AppConfig): Promis
         }
 
         switch (provider) {
+            case 'codex': {
+                const bridge = (window as any).electron;
+                if (!bridge?.codexGetStatus || !bridge?.codexGetModels) return [];
+                const status = await bridge.codexGetStatus();
+                if (!status.available || status.account?.type !== 'chatgpt') return [];
+                const models = await bridge.codexGetModels();
+                return (Array.isArray(models) ? models : [])
+                    .filter((model: any) => typeof model.model === 'string' && !model.hidden)
+                    .sort((a: any, b: any) => Number(!!b.isDefault) - Number(!!a.isDefault))
+                    .map((model: any) => ({
+                        id: model.model,
+                        name: model.displayName || model.model,
+                        provider: 'codex' as const,
+                        capabilities: model.inputModalities?.includes('image') ? ['text', 'vision'] : ['text'],
+                        reasoningEfforts: inferReasoningEfforts('codex', model.model, model),
+                        defaultReasoningEffort: model.defaultReasoningEffort
+                            || model.default_reasoning_effort
+                            || model.defaultReasoningLevel
+                            || model.default_reasoning_level
+                    }));
+            }
             case 'groq': {
                 const data = await safeFetch('https://api.groq.com/openai/v1/models', {
                     headers: { 'Authorization': `Bearer ${config.apiKeys.groq}` }
@@ -46,7 +77,9 @@ export async function fetchModels(provider: Provider, config: AppConfig): Promis
                         id: m.id,
                         name: m.id,
                         provider: 'groq',
-                        capabilities: inferProviderModelCapabilities('groq', m)
+                        capabilities: inferProviderModelCapabilities('groq', m),
+                        reasoningEfforts: inferReasoningEfforts('groq', m.id, m),
+                        defaultReasoningEffort: m.defaultReasoningEffort || m.default_reasoning_effort
                     }))
                     : [];
             }
@@ -60,7 +93,9 @@ export async function fetchModels(provider: Provider, config: AppConfig): Promis
                         id: m.name.replace('models/', ''),
                         name: m.displayName,
                         provider: 'gemini',
-                        capabilities: inferProviderModelCapabilities('gemini', m)
+                        capabilities: inferProviderModelCapabilities('gemini', m),
+                        reasoningEfforts: inferReasoningEfforts('gemini', m.name, m),
+                        defaultReasoningEffort: m.defaultReasoningEffort || m.default_reasoning_effort
                     }));
             }
             case 'ollama': {
@@ -71,7 +106,9 @@ export async function fetchModels(provider: Provider, config: AppConfig): Promis
                     id: m.name,
                     name: m.name,
                     provider: 'ollama',
-                    capabilities: Array.isArray(m.capabilities) ? m.capabilities : []
+                    capabilities: Array.isArray(m.capabilities) ? m.capabilities : [],
+                    reasoningEfforts: inferReasoningEfforts('ollama', m.name, m),
+                    defaultReasoningEffort: m.defaultReasoningEffort || m.default_reasoning_effort
                 }));
                 // /api/tags is intentionally kept as the fast list endpoint;
                 // /api/show fills the capability gap only for models that do
@@ -87,7 +124,9 @@ export async function fetchModels(provider: Provider, config: AppConfig): Promis
                     id: m.id,
                     name: m.id,
                     provider: 'zai',
-                    capabilities: inferProviderModelCapabilities('zai', m)
+                    capabilities: inferProviderModelCapabilities('zai', m),
+                    reasoningEfforts: inferReasoningEfforts('zai', m.id, m),
+                    defaultReasoningEffort: m.defaultReasoningEffort || m.default_reasoning_effort
                 }));
             }
             default:

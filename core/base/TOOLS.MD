@@ -141,13 +141,13 @@ Get real-time OS metrics (CPU, Memory, Uptime, Hostname).
 ## 🛰️ Research Hierarchy (Tiers 1-4)
 
 ### Tier 1: `web_search` [Base Tool]
-Searches the web, preserves the complete result set, enriches up to five candidate URLs with extracted content, and keeps snippets plus multimedia metadata for the remaining results.
+Searches the web, preserves the complete result set, gives up to five candidate URLs expanded previews of extracted content (about 6,000 characters maximum), and keeps snippets plus reduced typed media entries in `media` (`type` and `url`) for the remaining results. PDF URLs are processed with MarkItDown and YouTube URLs with `video_transcriber` when available. The accepted full extraction is cached; use `read_url` for the complete source without repeating extraction.
 - **Param:** `query`
 - **Param:** `category` (general, images, videos, news, maps, shopping)
 - **Param:** `search_depth` (basic, advanced)
 
 ### `web_search_more` [Base Tool]
-Continues a previous `web_search` result set by `search_id` and offset without repeating the query. It returns the next page and enriches up to five additional candidate URLs.
+Continues a previous `web_search` result set by `search_id` and offset without repeating the query. It returns the next page with expanded previews for up to five additional candidate URLs; use `read_url` for complete cached content.
 
 ### Tier 2: `read_url` [Base Tool]
 Directly read a URL to extract textual content and clean HTML.

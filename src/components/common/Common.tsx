@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { toHtml } from '../../utils';
 import { formatFinalResponse } from '../../services/formatters';
+import { sanitizeRichContent } from '../../utils/security/richContentPolicy';
+import { hyphenateChatHtml, copyWithoutSoftHyphens } from '../../utils/helpers/chatHyphenation';
 
 export const Icon = ({ name, className = "" }: { name: string; className?: string }) => {
     const isBrand = ['python', 'node-js', 'github', 'google', 'facebook', 'twitter', 'discord', 'telegram', 'npm', 'js'].includes(name.toLowerCase());
@@ -94,18 +96,31 @@ const globalAnimationQueue = new AnimationQueueManager();
 // ⚡ ABSOLUTE PROTECTION: CORE MARKDOWN RENDERER ENGINE
 // This component manages the final sanitization and HTML injection.
 // DO NOT ALTER recursion logic or sanitizer settings.
-const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content: string, isStreaming?: boolean, mode?: 'full' | 'minimal' | 'none' }) => {
+const MarkdownRendererBase = ({
+    content,
+    isStreaming,
+    mode = 'full',
+    trustedLocalMediaUrls
+}: {
+    content: string,
+    isStreaming?: boolean,
+    mode?: 'full' | 'minimal' | 'none',
+    trustedLocalMediaUrls?: readonly string[]
+}) => {
     const { i18n } = useTranslation();
     const containerRef = useRef<HTMLDivElement>(null);
     // Tracks how many characters of content have been committed to the DOM via append.
     // Existing DOM content is NEVER touched — only new paragraphs get appended.
     const committedLenRef = useRef(0);
-
     // Full HTML for non-streaming mode (final render + post-streaming animations)
     const html = useMemo(() => {
         if (isStreaming) return '';
-        return toHtml(formatFinalResponse(content), false, mode);
-    }, [content, isStreaming, mode]);
+        const sanitized = sanitizeRichContent(
+            toHtml(formatFinalResponse(content), false, mode),
+            { source: 'agent', trustedLocalMediaUrls }
+        );
+        return mode === 'none' ? sanitized : hyphenateChatHtml(sanitized, i18n.language);
+    }, [content, isStreaming, mode, trustedLocalMediaUrls, i18n.language]);
 
     // ⚡ APPEND-ONLY STREAMING: During streaming, detect new complete paragraphs and
     // append them to the DOM using insertAdjacentHTML. This is zero-flicker because
@@ -127,13 +142,17 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
         // Commit everything up to and including the paragraph break
         const commitUpTo = prevLen + paraBreak + 2;
         const newParagraphs = content.substring(prevLen, commitUpTo);
-        const newHtml = toHtml(formatFinalResponse(newParagraphs), true, mode);
+        const sanitized = sanitizeRichContent(
+            toHtml(formatFinalResponse(newParagraphs), true, mode),
+            { source: 'agent', trustedLocalMediaUrls }
+        );
+        const newHtml = mode === 'none' ? sanitized : hyphenateChatHtml(sanitized, i18n.language);
 
         containerRef.current.insertAdjacentHTML('beforeend',
             `<div class="stream-paragraph-enter">${newHtml}</div>`
         );
         committedLenRef.current = commitUpTo;
-    }, [content, isStreaming, mode]);
+    }, [content, isStreaming, mode, trustedLocalMediaUrls, i18n.language]);
 
     // ⚡ DEFER ANIMATIONS: Prevent intersection observer initialization during streaming
     // to avoid typewriter effects restarting on every incremental chunk.
@@ -141,6 +160,60 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
         if (!containerRef.current || isStreaming) return;
 
         const containerNode = containerRef.current;
+
+        const handleRendererClick = (event: Event) => {
+            const target = event.target as Element | null;
+            const actionTarget = target?.closest('[data-action="open-image"], [data-action="download-image"]') as HTMLElement | null;
+            if (actionTarget && containerNode.contains(actionTarget)) {
+                const image = actionTarget instanceof HTMLImageElement
+                    ? actionTarget
+                    : actionTarget.closest('.image-container, [class~="group/img"], .relative')?.querySelector('img');
+                if (image instanceof HTMLImageElement) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (actionTarget.dataset.action === 'download-image') window.downloadImage?.(image.src, image.alt || '');
+                    else window.openImageFullscreen?.(image.src, image.alt || '');
+                }
+                return;
+            }
+
+            const button = target?.closest('button[data-copy-code], button[data-action="toggle-mermaid-code"]') as HTMLButtonElement | null;
+            if (!button || !containerNode.contains(button)) return;
+            event.preventDefault();
+            event.stopPropagation();
+
+            if (button.hasAttribute('data-copy-code')) {
+                let code = '';
+                try {
+                    code = decodeURIComponent(button.getAttribute('data-copy-code') || '');
+                } catch {
+                    return;
+                }
+                const icon = button.querySelector('i');
+                navigator.clipboard?.writeText(code).then(() => {
+                    if (!icon) return;
+                    icon.className = 'fas fa-check text-emerald-400 inline-block transition-transform duration-200 transform-gpu';
+                    window.setTimeout(() => {
+                        if (icon.isConnected) icon.className = 'fas fa-clone text-[13px] inline-block transition-transform duration-200 transform-gpu';
+                    }, 2000);
+                }).catch(() => undefined);
+                return;
+            }
+
+            const block = button.closest('[class~="group/code"]') as HTMLElement | null;
+            const diagram = block?.querySelector('.mermaid') as HTMLElement | null;
+            const raw = block?.querySelector('.mermaid-raw-code') as HTMLElement | null;
+            if (!diagram || !raw) return;
+            const showingCode = !raw.classList.contains('hidden');
+            diagram.classList.toggle('hidden', !showingCode);
+            diagram.style.display = showingCode ? '' : 'none';
+            raw.classList.toggle('hidden', showingCode);
+            raw.style.display = showingCode ? '' : 'block';
+            button.setAttribute('aria-pressed', String(!showingCode));
+            button.classList.toggle('text-cyan-400', !showingCode);
+            button.classList.toggle('text-slate-500/50', showingCode);
+        };
+        containerNode.addEventListener('click', handleRendererClick);
 
         // --- PROCESS IMAGES (Markdown and HTML ones, inside any wrappers) ---
         const images = containerNode.querySelectorAll('img');
@@ -211,6 +284,10 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
             innerWrapper.appendChild(btnContainer);
             wrapper.appendChild(innerWrapper);
         });
+        const animatedElements = Array.from(
+            containerNode.querySelectorAll('.divider-container, blockquote, .mermaid, .code-block-anim, .signature-wrapper, details')
+        ) as HTMLElement[];
+
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach((entry) => {
@@ -238,6 +315,14 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
 
                         globalAnimationQueue.enqueue(el, () => {
                             return new Promise<void>((resolve) => {
+                                // The chat can be replaced while a previous session is
+                                // animating. Never let a detached node hold the global
+                                // queue and delay the active chat's animations.
+                                if (!el.isConnected) {
+                                    resolve();
+                                    return;
+                                }
+
                                 const rect = el.getBoundingClientRect();
                                 const isVisible = rect.top < window.innerHeight + 300 && rect.bottom > -300;
 
@@ -293,6 +378,12 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
 
                                         let lastTime = 0;
                                         const tickLoop = (now: number) => {
+                                            if (!el.isConnected) {
+                                                delete (el as any)._typeRaf;
+                                                resolve();
+                                                return;
+                                            }
+
                                             if (!lastTime) lastTime = now;
                                             if (now - lastTime < TICK_MS) {
                                                 (el as any)._typeRaf = requestAnimationFrame(tickLoop);
@@ -443,7 +534,6 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
             { threshold: 0.1, rootMargin: '100px' }
         );
 
-        const animatedElements = containerNode.querySelectorAll('.divider-container, blockquote, .mermaid, .code-block-anim, .signature-wrapper, details');
         animatedElements.forEach((el) => {
             if (el.tagName === 'BLOCKQUOTE' && !el.hasAttribute('data-original-html')) {
                 const htmlEl = el as HTMLElement;
@@ -453,9 +543,11 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
         });
 
         return () => {
+            containerNode.removeEventListener('click', handleRendererClick);
             observer.disconnect();
             animatedElements.forEach(el => {
                 if ((el as any)._typeInterval) clearInterval((el as any)._typeInterval);
+                globalAnimationQueue.dequeue(el);
             });
         };
     }, [html, isStreaming]);
@@ -468,6 +560,7 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
                 ref={containerRef}
                 className={`${mode !== 'none' ? 'markdown-body' : ''} font-mono px-1 is-streaming`}
                 lang={i18n.language || 'en'}
+                onCopy={copyWithoutSoftHyphens}
             />
         );
     }
@@ -477,6 +570,7 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
             ref={containerRef}
             className={`${mode !== 'none' ? 'markdown-body' : ''} font-mono px-1`}
             lang={i18n.language || 'en'}
+            onCopy={copyWithoutSoftHyphens}
             dangerouslySetInnerHTML={{ __html: html }}
         />
     );
@@ -484,7 +578,25 @@ const MarkdownRendererBase = ({ content, isStreaming, mode = 'full' }: { content
 
 
 
-export const MarkdownRenderer = React.memo(MarkdownRendererBase);
+const areMediaUrlsEqual = (
+    previous?: readonly string[],
+    next?: readonly string[]
+) => {
+    if (previous === next) return true;
+    if (!previous || !next || previous.length !== next.length) return false;
+    return previous.every((url, index) => url === next[index]);
+};
+
+// ChatArea derives the trusted media list while it renders a message. Its array
+// identity can change when unrelated session state updates, but that must not
+// cause React to reconcile the rich HTML again and risk resetting an iframe.
+export const MarkdownRenderer = React.memo(
+    MarkdownRendererBase,
+    (previous, next) => previous.content === next.content
+        && previous.isStreaming === next.isStreaming
+        && previous.mode === next.mode
+        && areMediaUrlsEqual(previous.trustedLocalMediaUrls, next.trustedLocalMediaUrls)
+);
 
 // Checkbox item component for interactive lists
 interface CheckboxItemProps {

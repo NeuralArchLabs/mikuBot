@@ -191,7 +191,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
         type: 'function',
         function: {
             name: 'web_search',
-            description: 'Search the web for real-time information. Returns the first page, enriched article content for up to five useful results, snippets for the remaining results, and a search_id for web_search_more.',
+            description: 'Search the web for real-time information. Returns the first page, expanded previews (up to about 6,000 characters) for up to five useful results, snippets and reduced typed media entries in media (type and url) for the remaining results, and a search_id for web_search_more. PDF URLs use MarkItDown and YouTube URLs use video_transcriber when available. Use read_url to read the cached source completely.',
             parameters: {
                 type: 'object',
                 properties: {
@@ -212,7 +212,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
         type: 'function',
         function: {
             name: 'web_search_more',
-            description: 'Retrieve the next page of results from a previous web_search without repeating the search. Use the search_id and next_offset returned by web_search. The page may enrich up to five additional URLs while preserving snippets and multimedia metadata for the rest.',
+            description: 'Retrieve the next page of results from a previous web_search without repeating the search. Use the search_id and next_offset returned by web_search. The page may enrich up to five additional URLs with expanded previews while preserving snippets and reduced typed media entries in media (type and url) for the rest.',
             parameters: {
                 type: 'object',
                 properties: {

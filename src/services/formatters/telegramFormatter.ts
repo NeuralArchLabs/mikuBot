@@ -23,7 +23,6 @@
  * ──────────────────────────────────────────────────────────────────────
  */
 
-import { IFormatter } from './IFormatter';
 import { formatFinalResponse } from './answerFormatter';
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -130,6 +129,15 @@ function escapeTelegramHtml(text: string): string {
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
+}
+function sanitizeTelegramHref(value: string): string | null {
+    const decoded = value.replace(/&amp;/gi, '&');
+    try {
+        const protocol = new URL(decoded).protocol.toLowerCase();
+        return ['http:', 'https:', 'tg:', 'mailto:', 'tel:'].includes(protocol) ? decoded : null;
+    } catch {
+        return null;
+    }
 }
 
 /**
@@ -355,8 +363,9 @@ function processRawHtmlTags(text: string): string {
             let keepTag = true;
             if (keepAttrs.includes('href')) {
                 const hrefMatch = attrs.match(/href=["']([^"']+)["']/i);
-                if (hrefMatch) {
-                    tgAttrs = ` href="${hrefMatch[1]}"`;
+                const safeHref = hrefMatch ? sanitizeTelegramHref(hrefMatch[1]) : null;
+                if (safeHref) {
+                    tgAttrs = ` href="${safeHref}"`;
                 } else {
                     // <a> without href — strip to text
                     keepTag = false;
@@ -570,10 +579,10 @@ function convertTelegramCallouts(text: string): string {
  * Converts task list items to checkbox emoji for Telegram.
  */
 function convertTelegramTaskLists(text: string): string {
-    // - [x] completed, - [ ] pending, - [/] partial
-    text = text.replace(/^(\s*)[*\-•·]\s+\[x\]\s+(.*)$/gim, '$1☑ $2');
-    text = text.replace(/^(\s*)[*\-•·]\s+\[ \]\s+(.*)$/gim, '$1☐ $2');
-    text = text.replace(/^(\s*)[*\-•·]\s+\[\/\]\s+(.*)$/gim, '$1▣ $2');
+    // -, *, or + [x], [ ], and [/] task markers
+    text = text.replace(/^(\s*)[*\-+•·]\s+\[x\]\s+(.*)$/gim, '$1☑ $2');
+    text = text.replace(/^(\s*)[*\-+•·]\s+\[ \]\s+(.*)$/gim, '$1☐ $2');
+    text = text.replace(/^(\s*)[*\-+•·]\s+\[\/\]\s+(.*)$/gim, '$1▣ $2');
     return text;
 }
 
@@ -629,7 +638,7 @@ function isSignatureExcludedSyntaxContext(source: string, offset: number): boole
 // MAIN FORMATTER CLASS
 // ═══════════════════════════════════════════════════════════════════════
 
-export class TelegramFormatter implements IFormatter {
+export class TelegramFormatter {
     format(rawText: any): string {
         if (!rawText) return '';
 
@@ -892,7 +901,7 @@ export class TelegramFormatter implements IFormatter {
         });
 
         // 4t. Bullet points (last)
-        text = text.replace(/^([ \t]*)[\*\-•·]\s+(.*)$/gm, '$1• $2');
+        text = text.replace(/^([ \t]*)[\*\-+•·]\s+(.*)$/gm, '$1• $2');
         text = text.replace(/^([ \t]*)(\d+)\.\s+(.*)$/gm, '$1$2. $3');
 
         // ── PHASE 5: HTML Escaping + Restore Telegram Tags ─────────
@@ -912,8 +921,9 @@ export class TelegramFormatter implements IFormatter {
                     if (slash) return `</a>`;
                     // <a> must have valid href attribute
                     const hrefMatch = attrs.match(/^\s*href=["']([^"']+)["']\s*$/i);
-                    if (hrefMatch) {
-                        return `<a href="${hrefMatch[1]}">`;
+                    const safeHref = hrefMatch ? sanitizeTelegramHref(hrefMatch[1]) : null;
+                    if (safeHref) {
+                        return `<a href="${escapeTelegramHtml(safeHref)}">`;
                     }
                     // Invalid <a> — strip it but keep inner text (handled by nesting logic)
                     return '';
@@ -1031,12 +1041,4 @@ export class TelegramFormatter implements IFormatter {
 
         return chunks;
     }
-}
-
-/**
- * Legacy function for backward compatibility.
- */
-export function formatTelegramResponse(rawText: string): string[] {
-    const formatter = new TelegramFormatter();
-    return formatter.formatAsChunks(rawText);
 }

@@ -19,6 +19,10 @@ if (dwIndex !== -1 && process.argv.length > dwIndex + 1) {
 }
 // ----------------------------------------------------
 
+require('./services/codexIpc.cjs').registerCodexIpc({
+    app, ipcMain, shell, getMainWindow: () => mainWin
+});
+
 // ── Local Production Server ──────────────────────────────────────────
 // In production, we serve the app via a local HTTP server to provide a
 // valid http:// origin. This is required because external services like
@@ -165,6 +169,14 @@ const deletedSessionIds = new Set(); // Guard against late-arriving saves resurr
 const searchSessions = new Map(); // Search pools retained for web_search_more pagination
 const SEARCH_PAGE_SIZE = 10;
 const SEARCH_ENRICH_COUNT = 5;
+const SEARCH_MEDIA_MAX_ITEMS = 3;
+// Keep the initial search response useful for small models without placing the
+// entire source in the prompt. The complete extraction remains in the session
+// cache and is returned by read_url without repeating the extraction request.
+const SEARCH_PREVIEW_MAX_CHARS = 6000;
+const SEARCH_PREVIEW_NOTICE = '[Content truncated. Use read_url to read the full source.]';
+const SEARCH_DOCUMENT_MAX_BYTES = 30 * 1024 * 1024;
+const SEARCH_SPECIAL_EXTRACTION_TIMEOUT_MS = 120000;
 const SEARCH_SESSION_TTL_MS = 15 * 60 * 1000;
 const SEARCH_SESSION_MAX = 24;
 
@@ -665,6 +677,24 @@ function ensureWorkspaceStructure(targetPath) {
 
 // Structural check moved to app.whenReady
 
+const { UNSLOTH_DEFAULT_URL, unslothEndpoint, unslothControlEndpoint, unslothHeaders, unslothHttpError, shouldLoadUnslothModel, unslothLoadPayload, unslothChatSettingsLoadSettings, fetchUnslothModels, fetchUnslothChatSettings, fetchUnslothRuntimeStatus, fetchUnslothLoadSpec, fetchUnslothLoadSettings } = require('./services/unsloth.cjs');
+
+function getConfiguredUnslothUrl() {
+    const configPath = getEffectivePaths().config;
+    if (!fs.existsSync(configPath)) return UNSLOTH_DEFAULT_URL;
+    const parsed = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    const config = parsed.config || parsed.settings?.config || parsed;
+    return config.unslothUrl || UNSLOTH_DEFAULT_URL;
+}
+
+ipcMain.handle('unsloth:models', async (event, request) => {
+    if (!mainWin || event.sender !== mainWin.webContents || event.senderFrame !== event.sender.mainFrame) throw new Error('Unsloth solo está disponible desde la ventana principal.');
+    return fetchUnslothModels({
+        configuredUrl: getConfiguredUnslothUrl(), requestedUrl: request?.url,
+        apiKey: getApiKeys().unsloth
+    });
+});
+
 function getApiKeys() {
     try {
         const configPath = getEffectivePaths().config;
@@ -839,10 +869,10 @@ ipcMain.handle('api-stream', async (event, { provider, model, body, ollamaUrl, o
     const keys = getApiKeys();
     // Use longer timeout for Ollama (30 minutes) as local models can take a while to load
     // Default 5 minutes for other providers
-    const timeoutMs = provider === 'ollama' ? 1800000 : 300000;
+    const timeoutMs = (provider === 'ollama' || provider === 'unsloth') ? 1800000 : 300000;
 
     try {
-        let url, headers;
+        let url, headers, unslothUrl;
 
         if (provider === 'gemini') {
             const geminiKey = keys.gemini;
@@ -865,6 +895,10 @@ ipcMain.handle('api-stream', async (event, { provider, model, body, ollamaUrl, o
                 'Authorization': `Bearer ${zaiKey}`,
                 'Content-Type': 'application/json',
             };
+        } else if (provider === 'unsloth') {
+            unslothUrl = getConfiguredUnslothUrl();
+            url = unslothEndpoint(unslothUrl, 'chat/completions');
+            headers = unslothHeaders(keys.unsloth);
         } else if (provider === 'ollama') {
             // Force IPv4 — on Windows, 'localhost' can resolve to ::1 (IPv6) first,
             // causing a 2-30s delay if Ollama only listens on 127.0.0.1.
@@ -925,17 +959,95 @@ ipcMain.handle('api-stream', async (event, { provider, model, body, ollamaUrl, o
         headers['Connection'] = 'keep-alive';
 
         try {
-            const response = await fetch(url, {
+            let response = await fetch(url, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify(body),
+                redirect: provider === 'unsloth' ? 'error' : undefined,
                 signal: controller.signal,
             });
 
             if (!response.ok) {
                 let errData = '';
                 try { errData = await response.text(); } catch { }
-                return { ok: false, error: `HTTP ${response.status}: ${errData}` };
+                if (provider === 'unsloth' && shouldLoadUnslothModel(response.status, errData)) {
+                    // A model can be installed but not resident. Ask Desktop's
+                    // control API to load the selected model, wait for the
+                    // response body (loading may take several minutes), then
+                    // retry the normal OpenAI-compatible request once.
+                    if (!sender.isDestroyed()) sender.send('api-stream-chunk', { streamId, modelLoading: true });
+                    // `/v1/models` exposes a public display id, while the control
+                    // endpoint expects the clean repository plus a separate GGUF
+                    // variant. Resolve both from Desktop before starting a costly
+                    // model load, including ids persisted by older app versions.
+                    const loadSpec = await fetchUnslothLoadSpec({
+                        configuredUrl: unslothUrl,
+                        requestedModel: model,
+                        apiKey: keys.unsloth,
+                    });
+                    // Apply Desktop's global runtime defaults first, then its
+                    // per-model override. An explicit model setting must win
+                    // over the global preference, while omitted values remain
+                    // under Desktop's automatic GGUF fitter.
+                    const isGguf = /\.gguf$/i.test(String(loadSpec.model_path || '')) || !!loadSpec.gguf_variant;
+                    const unslothChatSettings = await fetchUnslothChatSettings({
+                        configuredUrl: unslothUrl,
+                        apiKey: keys.unsloth,
+                    });
+                    const desktopLoadSettings = unslothChatSettingsLoadSettings(unslothChatSettings, isGguf);
+                    const rememberedLoadSettings = await fetchUnslothLoadSettings({
+                        configuredUrl: unslothUrl,
+                        loadSpec,
+                        requestedModel: model,
+                        apiKey: keys.unsloth,
+                        defaultSettings: desktopLoadSettings,
+                    });
+                    const loadPayload = unslothLoadPayload({ ...loadSpec, ...rememberedLoadSettings });
+                    console.log(`[Unsloth] Loading Desktop target ${loadPayload.model_path}${loadPayload.gguf_variant ? ` (${loadPayload.gguf_variant})` : ''} with ${loadPayload.gpu_ids?.length ? `saved GPU pool [${loadPayload.gpu_ids.join(', ')}]` : 'automatic GPU fitting'}`);
+                    const loadResponse = await fetch(unslothControlEndpoint(unslothUrl, 'api/inference/load'), {
+                        method: 'POST',
+                        headers: { ...unslothHeaders(keys.unsloth), Accept: 'application/json' },
+                        body: JSON.stringify(loadPayload),
+                        redirect: 'error',
+                        signal: controller.signal,
+                    });
+                    let loadDetail = '';
+                    try { loadDetail = await loadResponse.text(); } catch { }
+                    if (!loadResponse.ok) throw new Error(unslothHttpError(loadResponse.status, loadDetail, !!keys.unsloth));
+                    if (!loadDetail.trim()) throw new Error('Unsloth cerró la respuesta de carga antes de confirmar que el modelo terminó de cargar.');
+                    try {
+                        const loadResult = JSON.parse(loadDetail);
+                        const deferred = loadResult?._deferred_error;
+                        if (deferred) {
+                            throw new Error(unslothHttpError(Number(deferred.status_code) || 500, deferred.detail, !!keys.unsloth));
+                        }
+                        if (loadResult?.error || loadResult?.detail || loadResult?.status === 'error' || loadResult?.ok === false) {
+                            throw new Error(loadResult.error?.message || loadResult.error || loadResult.detail || 'Unsloth no pudo cargar el modelo.');
+                        }
+                    } catch (loadError) {
+                        if (loadError instanceof SyntaxError) {
+                            throw new Error('Unsloth devolvió una respuesta de carga inválida; no se reintentó la generación.');
+                        } else throw loadError;
+                    }
+                    const runtimeStatus = await fetchUnslothRuntimeStatus({
+                        configuredUrl: unslothUrl,
+                        apiKey: keys.unsloth,
+                    });
+                    if (runtimeStatus?.contextLength) {
+                        console.log(`[Unsloth] Contexto efectivo de Desktop: ${runtimeStatus.contextLength}${runtimeStatus.nativeContextLength ? ` (nativo: ${runtimeStatus.nativeContextLength})` : ''}.`);
+                    }
+                    response = await fetch(url, {
+                        method: 'POST', headers, body: JSON.stringify({ ...body, model: 'default' }),
+                        redirect: 'error', signal: controller.signal,
+                    });
+                    if (!response.ok) {
+                        let retryDetail = '';
+                        try { retryDetail = await response.text(); } catch { }
+                        return { ok: false, error: unslothHttpError(response.status, retryDetail, !!keys.unsloth) };
+                    }
+                } else {
+                    return { ok: false, error: provider === 'unsloth' ? unslothHttpError(response.status, errData, !!keys.unsloth) : `HTTP ${response.status}: ${errData}` };
+                }
             }
 
             // Stream chunks to renderer
@@ -2869,46 +2981,149 @@ function absoluteMediaUrl(value, baseUrl) {
     }
 }
 
-function extractMediaUrls(content, baseUrl) {
-    const urls = new Set();
-    const tagPattern = /<(?:img|video|audio|source|iframe|embed|object)[^>]+>/gi;
-    const attrPattern = /(?:src|data-src|poster|data-video-url)=["']([^"']+)["']/i;
-    for (const tag of String(content || '').match(tagPattern) || []) {
-        const match = tag.match(attrPattern);
-        const url = absoluteMediaUrl(match?.[1], baseUrl);
-        if (url) urls.add(url);
+function isOnlineVideoUrl(value) {
+    try {
+        const host = new URL(String(value || '')).hostname.toLowerCase();
+        return host === 'youtube.com' || host.endsWith('.youtube.com') || host === 'youtu.be' || host === 'vimeo.com' || host.endsWith('.vimeo.com');
+    } catch {
+        return false;
     }
-    return [...urls];
+}
+
+function inferSearchMediaType(value, fallback = 'image') {
+    const normalizedFallback = ['image', 'video', 'audio'].includes(String(fallback).toLowerCase())
+        ? String(fallback).toLowerCase()
+        : 'image';
+    try {
+        const parsed = new URL(String(value || ''));
+        if (isOnlineVideoUrl(value)) return 'video';
+        const path = parsed.pathname.toLowerCase();
+        if (/\.(?:mp4|webm|mov|m4v|avi|mkv)(?:$|\.)/.test(path)) return 'video';
+        if (/\.(?:mp3|wav|ogg|m4a|aac|flac|opus)(?:$|\.)/.test(path)) return 'audio';
+        if (/\.(?:jpe?g|png|gif|webp|svg|avif|bmp|ico)(?:$|\.)/.test(path)) return 'image';
+    } catch {
+        // Use the source field or HTML tag as the fallback when the URL is unusual.
+    }
+    return normalizedFallback;
+}
+
+function isSearchMediaProxy(value) {
+    try {
+        const parsed = new URL(String(value || ''));
+        return /(?:^|\/)prox(?:y|ify)(?:\/|$)/i.test(parsed.pathname)
+            || /(?:^|[?&_])(?:proxy|proxify)=/i.test(parsed.search);
+    } catch {
+        return false;
+    }
+}
+
+function isSearchMediaJunk(value) {
+    try {
+        const parsed = new URL(String(value || ''));
+        return /(?:^|\/)favicon(?:v\d+)?(?:[./?]|$)/i.test(parsed.pathname)
+            || /\.ico(?:$|[?#])/i.test(parsed.pathname);
+    } catch {
+        return false;
+    }
+}
+
+function makeSearchMediaCandidate(value, baseUrl, typeHint = 'image') {
+    const rawValue = value && typeof value === 'object' ? value.url : value;
+    const url = absoluteMediaUrl(rawValue, baseUrl);
+    if (!url || isSearchMediaJunk(url)) return null;
+    return {
+        type: inferSearchMediaType(url, value && typeof value === 'object' ? value.type : typeHint),
+        url,
+        proxy: isSearchMediaProxy(url)
+    };
+}
+
+function extractMediaItems(content, baseUrl) {
+    const items = [];
+    const tagPattern = /<(img|video|audio|source|iframe|embed|object)\b[^>]*>/gi;
+    const attrPattern = /\b(src|data-src|poster|data-video-url)=["']([^"']+)["']/i;
+    for (const tag of String(content || '').match(tagPattern) || []) {
+        const tagName = tag.match(/^<(img|video|audio|source|iframe|embed|object)\b/i)?.[1].toLowerCase();
+        const match = tag.match(attrPattern);
+        const typeHint = match?.[1].toLowerCase() === 'poster'
+            ? 'image'
+            : (tagName === 'audio' ? 'audio' : (tagName === 'video' || tagName === 'iframe' || tagName === 'embed' || tagName === 'object' ? 'video' : 'image'));
+        const item = makeSearchMediaCandidate(match?.[2], baseUrl, typeHint);
+        if (item) items.push(item);
+    }
+    return items;
+}
+
+function searchMediaKey(value) {
+    try {
+        const parsed = new URL(value);
+        parsed.hash = '';
+        return parsed.toString().replace(/\/$/, '').toLowerCase();
+    } catch {
+        return String(value || '').trim().toLowerCase();
+    }
 }
 
 function mergeSearchMedia(result, extraction) {
     const resultMetadata = result?.metadata || {};
     const metadata = extraction?.metadata || {};
-    const existingMedia = Array.isArray(result?.media_urls)
+    const rawCandidates = [];
+    const add = (value, typeHint = 'image') => {
+        if (value) rawCandidates.push({ value, typeHint });
+    };
+    const existingMedia = Array.isArray(result?.media) ? result.media : (result?.media ? [result.media] : []);
+    const legacyMedia = Array.isArray(result?.media_urls)
         ? result.media_urls
         : (typeof result?.media_urls === 'string' ? [result.media_urls] : []);
-    const candidates = [
-        ...existingMedia,
-        result.img_src,
-        result.thumbnail_src,
-        result.thumbnail,
-        result.image,
-        resultMetadata.image,
-        resultMetadata.hero_image,
-        metadata.image,
-        metadata.hero_image,
-        ...extractMediaUrls(extraction?.content, result.url)
-    ];
-    return [...new Set(candidates.map((value) => absoluteMediaUrl(value, result.url)).filter(Boolean))];
+    for (const item of [...existingMedia, ...legacyMedia]) add(item, item?.type || 'image');
+    if (isOnlineVideoUrl(result?.url)) add(result.url, 'video');
+    add(result.img_src);
+    add(result.thumbnail_src);
+    add(result.thumbnail);
+    add(result.image);
+    add(result.video, 'video');
+    add(result.video_url, 'video');
+    add(result.audio, 'audio');
+    add(result.audio_url, 'audio');
+    add(resultMetadata.image);
+    add(resultMetadata.hero_image);
+    add(resultMetadata.video, 'video');
+    add(resultMetadata.video_url, 'video');
+    add(resultMetadata.audio, 'audio');
+    add(resultMetadata.audio_url, 'audio');
+    add(metadata.image);
+    add(metadata.hero_image);
+    add(metadata.video, 'video');
+    add(metadata.video_url, 'video');
+    add(metadata.audio, 'audio');
+    add(metadata.audio_url, 'audio');
+    for (const item of extractMediaItems(extraction?.content, result.url)) add(item, item.type);
+
+    const unique = [];
+    const seen = new Set();
+    for (const candidate of rawCandidates) {
+        const item = makeSearchMediaCandidate(candidate.value, result.url, candidate.typeHint);
+        if (!item) continue;
+        const key = searchMediaKey(item.url);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        unique.push(item);
+    }
+    const direct = unique.filter((item) => !item.proxy);
+    return (direct.length ? direct : unique)
+        .slice(0, SEARCH_MEDIA_MAX_ITEMS)
+        .map(({ type, url }) => ({ type, url }));
 }
 
 function cleanSearchSnippet(value) {
     return htmlToSearchText(value).replace(/(?:^|\n)(?:las )?cookies?[^\n]*/gi, '').replace(/\s{2,}/g, ' ').trim();
 }
 
-function isUsefulSearchExtraction(text) {
+function isUsefulSearchExtraction(text, options = {}) {
     const normalized = String(text || '').trim();
-    if (normalized.length < 600 || normalized.split(/\s+/).length < 90) return false;
+    const minimumChars = Number(options.minimumChars) || 600;
+    const minimumWords = Number(options.minimumWords) || 90;
+    if (normalized.length < minimumChars || normalized.split(/\s+/).length < minimumWords) return false;
     const lower = normalized.toLowerCase();
     const boilerplateMarkers = [
         'enable javascript and cookies',
@@ -2917,6 +3132,59 @@ function isUsefulSearchExtraction(text) {
         'las cookies, los identificadores'
     ];
     return !boilerplateMarkers.some((marker) => lower.includes(marker));
+}
+
+function buildSearchPreview(value) {
+    const normalized = String(value || '').trim();
+    if (!normalized || normalized.length <= SEARCH_PREVIEW_MAX_CHARS) {
+        return { text: normalized, truncated: false };
+    }
+
+    const noticeLength = SEARCH_PREVIEW_NOTICE.length + 2;
+    const contentLimit = Math.max(400, SEARCH_PREVIEW_MAX_CHARS - noticeLength);
+    const candidate = normalized.slice(0, contentLimit);
+    const boundary = Math.max(
+        candidate.lastIndexOf('\n\n'),
+        candidate.lastIndexOf('. '),
+        candidate.lastIndexOf('。'),
+        candidate.lastIndexOf('! '),
+        candidate.lastIndexOf('? ')
+    );
+    const cutAt = boundary >= Math.floor(contentLimit * 0.65) ? boundary + 1 : contentLimit;
+    return {
+        text: `${normalized.slice(0, cutAt).trim()}\n\n${SEARCH_PREVIEW_NOTICE}`,
+        truncated: true
+    };
+}
+
+function normalizeSearchUrl(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    try {
+        const parsed = new URL(raw);
+        parsed.hash = '';
+        return parsed.toString().replace(/\/$/, '');
+    } catch {
+        return raw.replace(/#.*$/, '').replace(/\/$/, '');
+    }
+}
+
+function findCachedSearchResult(url) {
+    const target = normalizeSearchUrl(url);
+    if (!target) return null;
+
+    const sessions = [...searchSessions.values()]
+        .sort((left, right) => right.lastAccessedAt - left.lastAccessedAt);
+    for (const session of sessions) {
+        const result = session.results.find((item) => (
+            item.full_content && normalizeSearchUrl(item.url) === target
+        ));
+        if (result) {
+            session.lastAccessedAt = Date.now();
+            return result;
+        }
+    }
+    return null;
 }
 
 function initializeSearchSession(searchData, query, category) {
@@ -2929,8 +3197,9 @@ function initializeSearchSession(searchData, query, category) {
             snippet,
             content: snippet,
             content_source: 'snippet',
+            content_truncated: false,
             extraction_status: 'pending',
-            media_urls: mergeSearchMedia(item, { content: '' })
+            media: mergeSearchMedia(item, { content: '' })
         };
     });
     const session = {
@@ -2959,6 +3228,149 @@ function pruneSearchSessions() {
     }
 }
 
+function getSearchSpecialSource(result) {
+    const url = String(result?.url || '').trim();
+    if (!url) return null;
+
+    let parsed;
+    try {
+        parsed = new URL(url);
+    } catch {
+        parsed = null;
+    }
+
+    const haystack = [
+        parsed?.hostname,
+        parsed?.pathname,
+        parsed?.search,
+        result?.mime_type,
+        result?.content_type,
+        result?.filetype,
+        result?.template
+    ].filter(Boolean).join(' ').toLowerCase();
+
+    if (/youtube\.com|youtu\.be/.test(haystack)) return 'youtube';
+    if (/\.pdf(?:$|[?#])/.test(haystack)
+        || /application\/pdf/.test(haystack)
+        || /(?:^|[\s._/-])pdf(?:[\s]|$)/.test(haystack)
+        || /(?:^|[?&])format=pdf(?:&|$)/.test(haystack)) return 'pdf';
+    return null;
+}
+
+async function downloadSearchPdf(url) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), SEARCH_SPECIAL_EXTRACTION_TIMEOUT_MS);
+    const directory = path.join(app.getPath('temp'), 'mikuBot-search-documents');
+    const filePath = path.join(directory, `search-${randomUUID()}.pdf`);
+
+    try {
+        await fs.promises.mkdir(directory, { recursive: true });
+        const response = await fetch(url, {
+            redirect: 'follow',
+            signal: controller.signal,
+            headers: {
+                Accept: 'application/pdf,application/octet-stream;q=0.9,*/*;q=0.5',
+                'User-Agent': 'mikuBot web search document extractor'
+            }
+        });
+        if (!response.ok) throw new Error(`PDF download failed with HTTP ${response.status}`);
+
+        const declaredLength = Number(response.headers.get('content-length') || 0);
+        if (declaredLength > SEARCH_DOCUMENT_MAX_BYTES) {
+            throw new Error('PDF exceeds the configured download limit');
+        }
+
+        const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+        const buffer = Buffer.from(await response.arrayBuffer());
+        if (buffer.length > SEARCH_DOCUMENT_MAX_BYTES) {
+            throw new Error('PDF exceeds the configured download limit');
+        }
+        if (!contentType.includes('application/pdf') && buffer.subarray(0, 4).toString('ascii') !== '%PDF') {
+            throw new Error('The URL did not return a PDF document');
+        }
+        await fs.promises.writeFile(filePath, buffer);
+        return filePath;
+    } catch (error) {
+        await fs.promises.rm(filePath, { force: true }).catch(() => {});
+        throw error;
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
+function runSearchPythonScript(scriptPath, args, timeoutMs = SEARCH_SPECIAL_EXTRACTION_TIMEOUT_MS) {
+    const { execFile } = require('child_process');
+    return new Promise((resolve, reject) => {
+        execFile(ENGINE_PYTHON_EXE, [scriptPath, ...args], {
+            env: {
+                ...process.env,
+                MIKU_APP_ROOT: baseDir,
+                MIKU_WORKSPACE_ROOT: getCurrentWorkspacePath(),
+                MIKU_LANGUAGE: 'en',
+                MIKU_SEARXENA_ENDPOINT: 'http://127.0.0.1:8000'
+            },
+            timeout: timeoutMs,
+            maxBuffer: 16 * 1024 * 1024,
+            windowsHide: true
+        }, (error, stdout, stderr) => {
+            if (error) {
+                error.stderr = stderr || '';
+                reject(error);
+                return;
+            }
+            resolve(parseSkillOutput(stdout));
+        });
+    });
+}
+
+async function extractSearchPdf(url) {
+    const temporaryFile = await downloadSearchPdf(url);
+    try {
+        const script = path.join(baseDir, 'engine', 'extract.py');
+        const data = await runSearchPythonScript(script, [temporaryFile]);
+        const content = String(data?.content || '').trim();
+        if (!data?.success || !content) throw new Error(data?.error || 'MarkItDown returned no PDF content');
+        return {
+            ...data,
+            content,
+            extraction_method: 'markitdown'
+        };
+    } finally {
+        await fs.promises.rm(temporaryFile, { force: true }).catch(() => {});
+    }
+}
+
+async function extractSearchYoutube(url) {
+    const script = path.join(baseDir, 'core', 'base', 'skills', 'video_transcriber', 'main.py');
+    const data = await runSearchPythonScript(script, [JSON.stringify({ url, language: 'auto' })]);
+    const content = String(data?.transcription || data?.content || '').trim();
+    if (!data?.success || !content) throw new Error(data?.error || 'video_transcriber returned no transcript');
+    return {
+        ...data,
+        content,
+        extraction_method: 'video_transcriber'
+    };
+}
+
+async function extractSearchResult(result) {
+    const specialSource = getSearchSpecialSource(result);
+    if (specialSource === 'pdf') {
+        try {
+            return await extractSearchPdf(result.url);
+        } catch (error) {
+            result.special_extraction_error = error.message;
+        }
+    } else if (specialSource === 'youtube') {
+        try {
+            return await extractSearchYoutube(result.url);
+        } catch (error) {
+            result.special_extraction_error = error.message;
+        }
+    }
+
+    return requestSearXenaApi('/api/v1/extract', { url: result.url }, 30000);
+}
+
 async function enrichSearchSession(session, startOffset = 0, targetCount = SEARCH_ENRICH_COUNT) {
     let enriched = 0;
     for (let index = Math.max(0, startOffset); index < session.results.length && enriched < targetCount; index++) {
@@ -2974,14 +3386,20 @@ async function enrichSearchSession(session, startOffset = 0, targetCount = SEARC
         }
 
         try {
-            const extraction = await requestSearXenaApi('/api/v1/extract', { url: result.url }, 30000);
+            const extraction = await extractSearchResult(result);
             const text = htmlToSearchText(extraction?.content || extraction?.text || extraction?.extracted_text || '');
-            if (isUsefulSearchExtraction(text)) {
-                result.content = text;
+            const isSpecialSource = ['markitdown', 'video_transcriber'].includes(extraction?.extraction_method);
+            if (isUsefulSearchExtraction(text, isSpecialSource ? { minimumChars: 200, minimumWords: 30 } : undefined)) {
+                const preview = buildSearchPreview(text);
+                result.full_content = text;
+                result.content = preview.text;
                 result.content_source = 'extracted';
+                result.extraction_method = extraction.extraction_method || 'searxena';
+                result.content_truncated = preview.truncated;
+                result.full_content_available = true;
                 result.extraction_status = extraction.status || 'success';
                 result.word_count = extraction.word_count || text.split(/\s+/).length;
-                result.media_urls = mergeSearchMedia(result, extraction);
+                result.media = mergeSearchMedia(result, extraction);
                 enriched++;
                 continue;
             }
@@ -2998,7 +3416,8 @@ async function enrichSearchSession(session, startOffset = 0, targetCount = SEARC
 }
 
 function publicSearchResult(result) {
-    const { extraction_error, ...publicResult } = result;
+    const { extraction_error, special_extraction_error, full_content, snippet, media_urls, ...publicResult } = result;
+    if (result.content_source !== 'extracted' && snippet) publicResult.snippet = snippet;
     return publicResult;
 }
 
@@ -3007,6 +3426,7 @@ function buildSearchPage(session, offset = 0, requestedLimit = SEARCH_PAGE_SIZE)
     const limit = Math.max(1, Math.min(50, Number(requestedLimit) || SEARCH_PAGE_SIZE));
     const page = session.results.slice(start, start + limit).map(publicSearchResult);
     const nextOffset = start + page.length < session.results.length ? start + page.length : null;
+    const pageEnd = start + page.length;
     session.lastAccessedAt = Date.now();
     session.nextOffset = nextOffset;
     return {
@@ -3023,8 +3443,21 @@ function buildSearchPage(session, offset = 0, requestedLimit = SEARCH_PAGE_SIZE)
             next_offset: nextOffset,
             enriched: session.results.filter((item) => item.content_source === 'extracted').length,
             info: nextOffset !== null
-                ? `Mostrando ${start + 1}-${start + page.length} de ${session.results.length}. Usa web_search_more con search_id y offset ${nextOffset}.`
-                : `Mostrando ${start + 1}-${start + page.length} de ${session.results.length}.`
+                ? `Results ${start + 1}-${pageEnd} of ${session.results.length}. Use these results first. If they are insufficient, call web_search_more with guidance.web_search_more. Use read_url with guidance.read_url when a complete source is needed.`
+                : `Results ${start + 1}-${pageEnd} of ${session.results.length}. This is the final page. Use these results first. Use read_url with guidance.read_url when a complete source is needed.`,
+            guidance: {
+                instruction: 'Use the current results first. Call web_search_more only if they are insufficient. Call read_url only when content_truncated is true or the complete source is required. For captions from a YouTube result, call video_transcriber using that result URL.',
+                web_search_more: nextOffset !== null
+                    ? {
+                        search_id: session.id,
+                        offset: nextOffset,
+                        limit: SEARCH_PAGE_SIZE
+                    }
+                    : null,
+                read_url: {
+                    url: '<copy the selected result.url here>'
+                }
+            }
         }
     };
 }
@@ -3044,7 +3477,7 @@ ipcMain.handle('run-search', async (event, { query, category, language }) => {
         return { ok: true, data: buildSearchPage(session, 0, SEARCH_PAGE_SIZE) };
     } catch (error) {
         console.error('[Main Process] Search API Error:', error);
-        return { ok: false, error: 'El motor searXena no responde o devolvió una respuesta inválida.' };
+        return { ok: false, error: 'The SearXena engine is unavailable or returned an invalid response.' };
     }
 });
 
@@ -3052,25 +3485,46 @@ ipcMain.handle('run-web-search-more', async (event, { searchId, offset, limit } 
     pruneSearchSessions();
     const session = searchSessions.get(searchId);
     if (!session) {
-        return { ok: false, error: 'La sesión de búsqueda expiró. Ejecuta web_search nuevamente.' };
+        return { ok: false, error: 'The search session expired. Run web_search again.' };
     }
 
-    const requestedOffset = offset === undefined || offset === null || offset === ''
-        ? session.nextOffset
-        : Number(offset);
-    const start = Math.max(0, Number.isFinite(requestedOffset) ? requestedOffset : SEARCH_PAGE_SIZE);
-    await enrichSearchSession(session, start, SEARCH_ENRICH_COUNT);
-    return { ok: true, data: buildSearchPage(session, start, limit || SEARCH_PAGE_SIZE) };
+    try {
+        const requestedOffset = offset === undefined || offset === null || offset === ''
+            ? session.nextOffset
+            : Number(offset);
+        const start = Math.max(0, Number.isFinite(requestedOffset) ? requestedOffset : SEARCH_PAGE_SIZE);
+        await enrichSearchSession(session, start, SEARCH_ENRICH_COUNT);
+        return { ok: true, data: buildSearchPage(session, start, limit || SEARCH_PAGE_SIZE) };
+    } catch (error) {
+        console.error('[Main Process] More Search API Error:', error);
+        return { ok: false, error: 'Unable to retrieve more search results.', code: 'SEARCH_MORE_FAILED' };
+    }
 });
 
 ipcMain.handle('run-extract', async (event, { url }) => {
     try {
+        pruneSearchSessions();
+        const cached = findCachedSearchResult(url);
+        if (cached) {
+            return {
+                ok: true,
+                data: {
+                    url: cached.url || url,
+                    content: cached.full_content,
+                    text: cached.full_content,
+                    extracted_text: cached.full_content,
+                    status: 'cached',
+                    word_count: cached.word_count || cached.full_content.split(/\s+/).length,
+                    media: cached.media || []
+                }
+            };
+        }
         console.log(`[Main Process] Native Extract (API): "${url}"`);
         const data = await requestSearXenaApi('/api/v1/extract', { url }, 30000);
         return { ok: true, data };
     } catch (error) {
         console.error('[Main Process] Extraction API Error:', error);
-        return { ok: false, error: 'El motor de extracción no responde. Asegúrate de que searXena esté al día.' };
+        return { ok: false, error: 'The extraction engine is unavailable. Make sure SearXena is up to date.' };
     }
 });
 
@@ -4243,7 +4697,7 @@ async function installSearXenaEnv() {
         const venvPython = getSearXenaVenvPython();
 
         if (!fs.existsSync(requirementsFile)) {
-            return finalize({ ok: false, error: 'No se encontró el archivo requirements.txt' });
+            return finalize({ ok: false, error: 'The SearXena requirements file was not found.' });
         }
 
         console.log('[Main Process] Initializing SearXena Environment Setup...');
@@ -4547,15 +5001,40 @@ function createWindow() {
     });
 
     const isDev = !app.isPackaged;
-    if (isDev) {
-        mainWin.loadURL('http://localhost:3001');
-    } else if (localServerPort) {
-        // Use local HTTP server in production via localhost authority
-        mainWin.loadURL(`http://localhost:${localServerPort}`);
-    } else {
-        // Fallback: load from file directly (embeds may not work)
-        mainWin.loadFile(path.join(__dirname, '../dist/index.html'));
-    }
+    const builtRendererPath = path.join(__dirname, '../dist/index.html');
+    let builtRendererFallbackStarted = false;
+
+    // A direct `electron .` launch does not start Vite. Keep the window usable
+    // in that case by falling back to the last production build instead of
+    // leaving a hidden BrowserWindow with only its background color visible.
+    const loadBuiltRenderer = async () => {
+        if (builtRendererFallbackStarted || !mainWin || mainWin.isDestroyed()) return;
+        builtRendererFallbackStarted = true;
+        try {
+            await mainWin.loadFile(builtRendererPath);
+            console.log('[Main Process] Loaded built renderer fallback.');
+        } catch (error) {
+            console.error('[Main Process] Built renderer fallback failed:', error?.message || error);
+        }
+    };
+
+    const loadRenderer = async () => {
+        if (!mainWin || mainWin.isDestroyed()) return;
+        try {
+            if (isDev) {
+                await mainWin.loadURL('http://localhost:3001');
+            } else if (localServerPort) {
+                // Use local HTTP server in production via localhost authority
+                await mainWin.loadURL(`http://localhost:${localServerPort}`);
+            } else {
+                // Fallback: load from file directly (embeds may not work)
+                await mainWin.loadFile(builtRendererPath);
+            }
+        } catch (error) {
+            console.error('[Main Process] Renderer load failed:', error?.message || error);
+            if (isDev || localServerPort) await loadBuiltRenderer();
+        }
+    };
 
     setupAppMenu(mainWin);
 
@@ -4637,7 +5116,20 @@ function createWindow() {
 
     mainWin.webContents.on('did-fail-load', (e, code, desc) => {
         console.error('Failed to load:', desc);
+        if ((isDev && code === -102) || (!isDev && localServerPort && code < 0)) {
+            void loadBuiltRenderer();
+        }
     });
+
+    mainWin.webContents.on('did-finish-load', () => {
+        // `ready-to-show` can be missed when the first navigation fails and a
+        // fallback navigation replaces it. Ensure the recovered window opens.
+        if (!deferWindowShow && mainWin && !mainWin.isDestroyed() && !mainWin.isVisible()) {
+            mainWin.show();
+        }
+    });
+
+    void loadRenderer();
 }
 
 const gotTheLock = app.requestSingleInstanceLock();

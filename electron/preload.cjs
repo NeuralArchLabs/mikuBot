@@ -58,6 +58,21 @@ contextBridge.exposeInMainWorld('electron', {
     apiStream: (data) => ipcRenderer.invoke('api-stream', data),
     abortApiStream: (streamId) => ipcRenderer.send('api-stream-abort', streamId),
 
+    // ChatGPT subscription access through the official local Codex app server.
+    getUnslothModels: (request) => ipcRenderer.invoke('unsloth:models', request),
+    codexGetStatus: () => ipcRenderer.invoke('codex:status'),
+    codexLogin: () => ipcRenderer.invoke('codex:login'),
+    codexCancelLogin: () => ipcRenderer.invoke('codex:login-cancel'),
+    codexLogout: () => ipcRenderer.invoke('codex:logout'),
+    codexGetModels: () => ipcRenderer.invoke('codex:models'),
+    codexStream: (request) => ipcRenderer.invoke('codex:stream', request),
+    codexAbortStream: (streamId) => ipcRenderer.send('codex:stream-abort', streamId),
+    onCodexStreamEvent: (callback) => {
+        const listener = (_event, data) => callback(data);
+        ipcRenderer.on('codex:stream-event', listener);
+        return () => ipcRenderer.removeListener('codex:stream-event', listener);
+    },
+
     // Skills
     listSkills: (data) => ipcRenderer.invoke('list-skills', data),
     listBlueprints: (data) => ipcRenderer.invoke('list-blueprints', data),

@@ -5,6 +5,7 @@ import { Icon, ModernSelect } from '../common/Common';
 import { DEFAULT_CONFIG, PROVIDERS, APP_VERSION } from '../../constants';
 import { runHealthCheck, type HealthCheckResult } from '../../services/core/HealthCheck';
 import { hydrateAllTemplates, extractTemplatesFromFolderContent, type PromptVariables } from '../../services/core/BlueprintHydrator';
+import { CodexAccountSettings } from '../panels/CodexAccountSettings';
 
 interface OnboardingProps {
     onComplete: (config: AppConfig, handles: any) => Promise<void>;
@@ -25,6 +26,27 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
     const [existingData, setExistingData] = useState<{ exists: boolean; found: string[] }>({ exists: false, found: [] });
     const [cleanInstall, setCleanInstall] = useState(false);
     const [showingWarning, setShowingWarning] = useState(false);
+    const [codexConnected, setCodexConnected] = useState(false);
+    const usesCodex = [config.provider, config.chatProvider, config.agentProvider, config.visionProvider].includes('codex');
+
+    useEffect(() => {
+        const available = models.codex || [];
+        if (!available.length) return;
+        setConfig(previous => {
+            const next = { ...previous };
+            let changed = false;
+            for (const [providerKey, modelKey] of [
+                ['provider', 'model'], ['chatProvider', 'chatModel'], ['agentProvider', 'agentModel'], ['visionProvider', 'visionModel']
+            ] as const) {
+                if (previous[providerKey] === 'codex' && (modelKey !== 'visionModel' || previous.visionModel)
+                    && !available.some(model => model.id === previous[modelKey])) {
+                    next[modelKey] = available[0].id;
+                    changed = true;
+                }
+            }
+            return changed ? next : previous;
+        });
+    }, [models.codex]);
 
     // Personalization Variables
     const [userName, setUserName] = useState('');
@@ -142,11 +164,11 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
     // Refresh models when entering Neural Engines configuration
     useEffect(() => {
         if (step === 9) {
-            ['gemini', 'groq', 'ollama', 'zai'].forEach(p => {
+            ['gemini', 'groq', 'ollama', 'zai', ...(codexConnected ? ['codex'] : [])].forEach(p => {
                 onTestConnection(p as Provider);
             });
         }
-    }, [step, onTestConnection]);
+    }, [step, onTestConnection, codexConnected]);
 
     const selectedPath = pathMode === 'default' ? defaultPath : customPath;
 
@@ -270,7 +292,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                 </div>
 
                 {/* Content Body */}
-                <div className={`flex-1 ${step === 9 ? 'overflow-visible z-[1000]' : 'overflow-hidden z-10'} px-8 py-2 md:px-14 flex flex-col items-center justify-start relative pt-4 md:pt-8`}>
+                <div className={`flex-1 min-h-0 ${[7, 9].includes(step) ? 'overflow-y-auto custom-scrollbar z-10' : 'overflow-hidden z-10'} px-8 py-2 md:px-14 flex flex-col items-center justify-start relative pt-4 md:pt-8`}>
                     
                     {step === 1 && (
                         <div className="w-full max-w-5xl grid grid-cols-2 gap-8 lg:gap-16 items-center animate-premium py-6 relative">
@@ -652,13 +674,14 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                     )}
 
                     {step === 7 && (
-                        <div className="w-full max-w-6xl space-y-6 animate-premium h-full flex flex-col justify-center py-4 text-white">
+                        <div className="w-full max-w-6xl space-y-6 animate-premium min-h-full flex flex-col py-4 text-white">
                             <div className="text-center space-y-2">
                                 <h1 className="text-2xl font-black uppercase tracking-widest leading-none">{t('onboarding.providers.title')}</h1>
                                 <p className="text-slate-500 text-[9px] font-black uppercase tracking-[0.4em] opacity-60 text-center">{t('onboarding.providers.subtitle')}</p>
                                 <p className="text-blue-400 text-[8px] font-bold uppercase tracking-[0.2em] max-w-xl mx-auto border border-transparent hover:border-blue-500/30 transition-all bg-blue-500/10 px-6 py-2 rounded-2xl shadow-inner text-center">{t('onboarding.providers.hint')}</p>
                             </div>
-                            <div className="grid grid-cols-4 gap-4">
+                            <CodexAccountSettings onAccountChange={setCodexConnected} onRefreshModels={() => onTestConnection('codex')} />
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                                 {[
                                     { id: 'gemini', t: 'Google AI', m: 'Gemini', i: './geminiICON.png', url: 'https://aistudio.google.com/', inv: false, hc: 'hover:border-blue-500/40 hover:bg-blue-900/10 hover:shadow-[0_0_40px_-10px_rgba(59,130,246,0.3)]', c: 'blue', desc: t('onboarding.providers.gemini_desc') },
                                     { id: 'groq', t: 'Groq Cloud', m: 'LPU', i: './groqICON.png', url: 'https://console.groq.com/keys', inv: true, hc: 'hover:border-orange-500/40 hover:bg-orange-900/10 hover:shadow-[0_0_40px_-10px_rgba(249,115,22,0.3)]', c: 'orange', desc: t('onboarding.providers.groq_desc') },
@@ -757,7 +780,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                         </div>
                     )}
                     {step === 9 && (
-                        <div className="w-full max-w-5xl space-y-6 animate-premium h-full flex flex-col justify-center py-4">
+                        <div className="w-full max-w-5xl space-y-6 animate-premium min-h-full flex flex-col py-4">
                             <div className="text-center">
                                 <h1 className="text-2xl font-black text-white uppercase tracking-widest leading-none">{t('onboarding.engines.title')}</h1>
                                 <p className="text-slate-500 text-[9px] font-black uppercase tracking-[0.4em] opacity-60 text-center">{t('onboarding.engines.subtitle')}</p>
@@ -773,7 +796,8 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                                         { id: 'gemini', i: './geminiICON.png', c: 'blue' },
                                         { id: 'groq', i: './groqICON.png', c: 'orange' },
                                         { id: 'zai', i: './zai.png', c: 'violet' },
-                                        { id: 'ollama', i: './ollamaICON.webp', c: 'emerald' }
+                                        { id: 'ollama', i: './ollamaICON.webp', c: 'emerald' },
+                                         { id: 'codex', i: './chatgptICON.png', c: 'emerald' }
                                     ];
                                     const engineProviderColor = PROVIDER_LIST.find(p => p.id === engine.p)?.c || 'blue';
                                     
@@ -787,7 +811,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                                             <div className="space-y-5 relative z-10">
                                                 <div>
                                                     <label className="text-[9px] font-black text-slate-500 uppercase ml-1 tracking-[0.2em] mb-2 block opacity-40">{t('onboarding.engines.routing_provider')}</label>
-                                                    <div className="grid grid-cols-4 gap-2 !bg-black/20 p-1.5 rounded-2xl border border-white/5 overflow-visible relative z-10">
+                                                    <div className="grid grid-cols-3 gap-2 !bg-black/20 p-1.5 rounded-2xl border border-white/5 overflow-visible relative z-10">
                                                         {PROVIDER_LIST.map(p => {
                                                             const isSelected = engine.p === p.id;
                                                             const HEX_COLORS: Record<string, string> = {
@@ -801,8 +825,18 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                                                             return (
                                                                 <button 
                                                                     key={p.id} 
-                                                                    title={p.id}
-                                                                    onClick={() => setConfig({ ...config, [engine.pf]: p.id as any })}
+                                                                    title={PROVIDERS[p.id as Provider].name}
+                                                                    onClick={() => {
+                                                                        if (engine.p === p.id) return;
+                                                                        const available = models[p.id as Provider] || [];
+                                                                        setConfig(previous => ({
+                                                                            ...previous,
+                                                                            [engine.pf]: p.id,
+                                                                            [engine.mf]: engine.id === 'vision' ? '' : available[0]?.id || ''
+                                                                        }));
+                                                                        setActiveMenu(null);
+                                                                        if (p.id === 'codex' && codexConnected) onTestConnection('codex');
+                                                                    }}
                                                                     className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all ${isSelected 
                                                                         ? `text-white shadow-lg ring-1 ring-white/20 scale-105` 
                                                                         : 'hover:bg-white/5 text-slate-400 opacity-60'}`}
@@ -811,7 +845,9 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                                                                         boxShadow: `0 10px 15px -3px ${activeColor}66`
                                                                     } : {}}
                                                                 >
-                                                                    {p.id === 'gemini' ? (
+                                                                     {p.id === 'codex' ? (
+                                                                         <img src={p.i} alt="ChatGPT" className={`w-5 h-5 rounded-md object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'opacity-40 grayscale'}`} />
+                                                                    ) : p.id === 'gemini' ? (
                                                                         <img src={p.i} alt="" className={`w-5 h-5 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]' : 'opacity-40 grayscale'}`} style={isSelected ? { filter: 'none' } : {}} />
                                                                     ) : (
                                                                         <img src={p.i} alt="" className={`w-5 h-5 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.3)]' : 'brightness-0 invert opacity-40'}`} style={isSelected ? { filter: 'none' } : {}} />
@@ -885,6 +921,9 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                                     );
                                 })}
                             </div>
+                            {usesCodex && (
+                                <CodexAccountSettings onAccountChange={setCodexConnected} onRefreshModels={() => onTestConnection('codex')} />
+                            )}
                         </div>
                     )}
 
@@ -955,14 +994,14 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                         <button
                             onClick={() => {
                                 if (step === 8) {
-                                    ['gemini', 'groq', 'ollama', 'zai'].forEach(p => {
+                                    ['gemini', 'groq', 'ollama', 'zai', ...(codexConnected ? ['codex'] : [])].forEach(p => {
                                         onTestConnection(p as Provider);
                                     });
                                 }
                                 if (step < 10) setStep(step + 1);
                                 else finish();
                             }}
-                            disabled={loading || (step === 3 && !userName)}
+                            disabled={loading || (step === 3 && !userName) || (step === 9 && usesCodex && (!codexConnected || loadingModels.codex || !(models.codex || []).length))}
                             className="bg-blue-600 hover:bg-blue-500 text-white px-6 md:px-10 py-2 md:py-2.5 rounded-xl md:rounded-2xl font-black text-[9px] md:text-[11px] uppercase tracking-[0.2em] md:tracking-[0.3em] shadow-2xl active:scale-95 transition-all disabled:opacity-20 flex items-center gap-2 md:gap-3 group/btn whitespace-nowrap shrink-0"
                         >
                             {loading ? <Icon name="spinner" className="animate-spin text-xs" /> : (

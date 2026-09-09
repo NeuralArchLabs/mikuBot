@@ -24,6 +24,20 @@ export const PROVIDERS: Record<Provider, ProviderConfig> = {
         apiKeyRequired: false,
         baseUrl: 'http://localhost:11434'
     },
+    unsloth: {
+        name: 'Unsloth Desktop',
+        icon: 'leaf',
+        color: 'from-lime-500 to-emerald-500',
+        apiKeyRequired: false,
+        baseUrl: 'http://localhost:8888/v1'
+    },
+    codex: {
+        name: 'ChatGPT (Codex)',
+        icon: 'comments',
+        color: 'from-emerald-500 to-teal-500',
+        apiKeyRequired: false,
+        baseUrl: ''
+    },
     zai: {
         name: 'Z.AI (BigModel)',
         icon: 'bolt',
@@ -43,8 +57,12 @@ export const DEFAULT_CONFIG: AppConfig = {
     chatModel: '',
     agentProvider: 'groq',
     agentModel: '',
-    apiKeys: { groq: '', gemini: '', ollama: '', zai: '' },
+    apiKeys: { groq: '', gemini: '', ollama: '', zai: '', codex: '', unsloth: '' },
     ollamaUrl: 'http://localhost:11434',
+    unslothUrl: 'http://localhost:8888/v1',
+    reasoningEffort: 'auto',
+    chatReasoningEffort: 'auto',
+    agentReasoningEffort: 'auto',
     temperature: 0.7,
     telegramBotToken: '',
 
@@ -244,7 +262,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
         type: 'function',
         function: {
             name: 'web_search',
-            description: 'Search the web for real-time information. Returns the first page, enriched article content for up to five useful results, snippets for the remaining results, and a search_id for web_search_more.',
+            description: 'Search the web for real-time information. Returns the first page, expanded previews (up to about 6,000 characters) for up to five useful results, snippets and reduced typed media entries in media (type and url) for the remaining results, and a search_id for web_search_more. PDF URLs use MarkItDown and YouTube URLs use video_transcriber when available. Use read_url to read the cached source completely.',
             parameters: {
                 type: 'object',
                 properties: {

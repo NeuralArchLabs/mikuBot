@@ -4,7 +4,7 @@
  */
 
 /** AI Model Provider */
-export type Provider = 'groq' | 'gemini' | 'ollama' | 'zai';
+export type Provider = 'groq' | 'gemini' | 'ollama' | 'zai' | 'codex' | 'unsloth';
 
 /** Operational Mode */
 export type AgentMode = 'chat' | 'agent';

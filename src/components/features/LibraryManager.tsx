@@ -7,6 +7,7 @@ import { hydrateTemplate, extractVariablesFromConfig } from '../../services/core
 import { useUIStore } from '../../stores/useUIStore';
 import { toHtml } from '../../utils';
 import { formatFinalResponse } from '../../services/formatters';
+import { sanitizeRichContent } from '../../utils/security/richContentPolicy';
 
 interface Blueprint {
     id: string;
@@ -225,7 +226,10 @@ export const LibraryManager = ({
         tempDiv.style.left = '-9999px';
         tempDiv.style.top = '-9999px';
         tempDiv.style.width = '850px'; // fixed standard width for correct diagram layout
-        tempDiv.innerHTML = toHtml(formatFinalResponse(markdown), false, 'full');
+        tempDiv.innerHTML = sanitizeRichContent(
+            toHtml(formatFinalResponse(markdown), false, 'full'),
+            { source: 'agent' }
+        );
         document.body.appendChild(tempDiv);
 
         try {
