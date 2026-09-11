@@ -16,7 +16,9 @@ export const DEFAULT_CONFIG: AppConfig = {
     chatModel: '',
     agentProvider: 'groq',
     agentModel: '',
-    visionProvider: 'gemini',
+    // Native Vision is the default. A provider is stored only when the user
+    // explicitly configures a separate Vortex runtime.
+    visionProvider: undefined,
     visionModel: '',
     apiKeys: { groq: '', gemini: '', ollama: '', zai: '', codex: '', unsloth: '' },
     ollamaUrl: 'http://localhost:11434',

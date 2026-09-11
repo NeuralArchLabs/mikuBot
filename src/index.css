@@ -235,6 +235,89 @@ body, html {
   -ms-hyphens: auto;
 }
 
+/* Keep emphasized text on the same typographic rail as its surrounding copy.
+   Explicit metrics prevent the bold face from creating a different inline
+   line box while the post-stream typewriter reveals the final markup. */
+.markdown-body :is(strong, b) {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1.55;
+  vertical-align: baseline;
+}
+
+/* The collapsed preview is a single line with a small vertical breathing
+   band. The extra 0.25rem keeps inline code/highlight pills from touching the
+   clipping edge while the surrounding text keeps its 1.25rem rhythm. */
+.thought-preview,
+.thought-preview > span,
+.thought-preview :is(strong, b) {
+  line-height: 1.5rem;
+}
+
+.thought-preview :is(strong, b) {
+  font-family: inherit;
+  font-size: inherit;
+  vertical-align: baseline;
+}
+
+/* Inline code/highlight tokens carry vertical padding in the normal Markdown
+   surface. In a one-line preview that padding is taller than the shell, so
+   flatten only their vertical box while retaining the pill styling. */
+.thought-preview :is(code, mark) {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: 1.25rem;
+  padding-block: 0 !important;
+  line-height: 1.25rem;
+  vertical-align: middle;
+}
+
+.thought-preview-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.75rem;
+  margin-right: 0.2rem;
+  color: currentColor;
+  font-family: var(--chat-font);
+  font-size: 0.75rem;
+  line-height: 1.5rem;
+  vertical-align: middle;
+}
+
+/* Thought text uses the same line grid for every emphasis transition. The
+   fixed unitless value scales with the selected chat font without changing
+   the position of any later line when a `<strong>` node appears. */
+.thought-content,
+.thought-content .markdown-body,
+.thought-content .markdown-body :is(strong, b) {
+  line-height: 1.55;
+}
+
+/* The Markdown renderer inserts this caret inside the last visible item. It
+   stays in the same inline formatting context as the revealed text, including
+   the final item of a list, without creating a trailing line. */
+.markdown-typing-cursor {
+  display: inline;
+  position: relative;
+  pointer-events: none;
+}
+
+/* Paint the caret without reserving width or height. It cannot wrap onto a
+   line of its own or enlarge a list item, even at the right text boundary. */
+.markdown-typing-cursor::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  bottom: -0.1em;
+  width: 2px;
+  height: 1.1em;
+  background-color: rgba(59, 130, 246, 0.55);
+  border-radius: 1px;
+  animation: blink 1.06s step-end infinite;
+}
+
 .markdown-body ul,
 .markdown-body ol {
   margin-left: 1.5rem;
@@ -1113,6 +1196,16 @@ pre code .hl-directive { color: #fb7185 !important; font-weight: 700; }
 
 .tool-block-header:hover {
   background-color: rgb(51 65 85 / 0.5);
+}
+
+/* Keep the one-line tool result on the same baseline as its icon and label.
+   The expanded summary has its own rhythm; this scoped rule only covers the
+   clipped header preview. */
+.tool-block-header-summary {
+  display: block;
+  min-height: 1.25rem;
+  line-height: 1.25rem;
+  vertical-align: baseline;
 }
 
 .tool-block-content {

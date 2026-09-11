@@ -19,9 +19,11 @@ if (dwIndex !== -1 && process.argv.length > dwIndex + 1) {
 }
 // ----------------------------------------------------
 
-require('./services/codexIpc.cjs').registerCodexIpc({
+const codexRuntime = require('./services/codexIpc.cjs').registerCodexIpc({
     app, ipcMain, shell, getMainWindow: () => mainWin
 });
+const { createCodexResearchBridge } = require('./services/codexResearchBridge.cjs');
+const { createUnslothResearchBridge } = require('./services/unslothResearchBridge.cjs');
 
 // ── Local Production Server ──────────────────────────────────────────
 // In production, we serve the app via a local HTTP server to provide a
@@ -4227,6 +4229,8 @@ ipcMain.handle('execute-skill', async (event, { toolsPath, skillName, args, lang
             let executionArgs = args && typeof args === 'object' ? args : {};
             let executionEntryFile = physicalEntryFile;
             let skillEnvironment = {};
+            let codexResearchBridge = null;
+            let unslothResearchBridge = null;
 
             if (skillName === 'deep_research') {
                 const trustedSkillsRoot = path.join(resourcesPath, 'core', 'base', 'skills');
@@ -4242,21 +4246,47 @@ ipcMain.handle('execute-skill', async (event, { toolsPath, skillName, args, lang
                     return { ok: false, error: 'Deep Research must run from the bundled reviewed skill.' };
                 }
                 try {
+                    const runtimeProvider = String(executionArgs?._runtime?.provider || '').trim().toLowerCase();
+                    let codexBridge;
+                    let unslothBridge;
+                    if (runtimeProvider === 'codex') {
+                        codexResearchBridge = createCodexResearchBridge({ service: codexRuntime.getService() });
+                        codexBridge = await codexResearchBridge.start();
+                    } else if (runtimeProvider === 'unsloth') {
+                        unslothResearchBridge = createUnslothResearchBridge({
+                            configuredUrl: getConfiguredUnslothUrl(),
+                            apiKey: getApiKeys().unsloth,
+                        });
+                        unslothBridge = await unslothResearchBridge.start();
+                    }
                     const prepared = prepareDeepResearchExecution({
                         args: executionArgs,
                         reviewedBuiltin: true,
                         apiKeys: getApiKeys(),
-                        configuredOllamaUrl: 'http://127.0.0.1:11434'
+                        configuredOllamaUrl: 'http://127.0.0.1:11434',
+                        unslothBridge,
+                        codexBridge
                     });
                     executionArgs = prepared.args;
                     skillEnvironment = prepared.env;
                     executionEntryFile = reviewedEntryFile;
                 } catch (error) {
+                    await codexResearchBridge?.close().catch(() => {});
+                    await unslothResearchBridge?.close().catch(() => {});
                     return { ok: false, error: error.message, code: error.code || 'SKILL_SECRET_ERROR' };
                 }
             }
 
             return new Promise((resolve) => {
+                const finish = async result => {
+                    try {
+                        await codexResearchBridge?.close();
+                        await unslothResearchBridge?.close();
+                    } catch (error) {
+                        console.warn('[Main Process] Could not close the Codex Deep Research bridge:', error?.message || error);
+                    }
+                    resolve(result);
+                };
                 const env = {
                     ...process.env,
                     MIKU_WORKSPACE_ROOT: getCurrentWorkspacePath(),
@@ -4275,10 +4305,10 @@ ipcMain.handle('execute-skill', async (event, { toolsPath, skillName, args, lang
                     if (error) {
                         console.error(`[Main Process] Skill execution error (${skillName}):`, error.message);
                         if (skillName === 'deep_research') markDeepResearchInterrupted(getCurrentWorkspacePath(), executionArgs, error);
-                        return resolve({ ok: false, error: error.message, stderr: stderr || '' });
+                        return void finish({ ok: false, error: error.message, stderr: stderr || '' });
                     }
                     const parsedOutput = parseSkillOutput(stdout);
-                    return resolve({
+                    return void finish({
                         ok: true,
                         data: prepareSkillMediaResult(skillName, parsedOutput, getCurrentWorkspacePath())
                     });

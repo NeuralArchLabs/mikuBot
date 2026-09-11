@@ -135,6 +135,7 @@ test('provider-specific reasoning levels stay tied to each native contract', () 
 
 test('streams only matching events and preserves transcript, images, native tool calls and usage', async t => {
     const mock = setup(t);
+    mock.options.config.reasoningEffort = 'max';
     const messages = [{ role: 'user', content: 'Inspect this', attachments: [{ type: 'image/png', data: 'data:image/png;base64,AA==' }] }];
     const provider = ProviderFactory.create('codex', mock.options);
     const promise = provider.streamRequest(messages);
@@ -144,13 +145,15 @@ test('streams only matching events and preserves transcript, images, native tool
     assert.equal(request.tools, mock.options.tools);
     assert.equal(request.model, 'codex-test-model');
     assert.equal(request.useTools, true);
-    assert.equal(request.summary, 'detailed');
+    assert.equal(request.effort, 'max');
+    assert.equal(request.summary, 'auto');
     assert.equal(request.apiKeys, undefined);
     mock.emit(null);
     mock.emit({ streamId: 'unrelated', type: 'content', delta: 'ignored' });
     mock.emit({ streamId: request.streamId, type: 'content', delta: 7 });
     mock.emit({ streamId: request.streamId, type: 'content', delta: 'Answer ' });
-    mock.emit({ streamId: request.streamId, type: 'reasoning', delta: 'Summary' });
+    mock.emit({ streamId: request.streamId, type: 'summary', delta: '**Summary one**' });
+    mock.emit({ streamId: request.streamId, type: 'summary', delta: '**Summary two**' });
     mock.emit({ streamId: request.streamId, type: 'content', delta: 'text' });
     const result = {
         content: 'Answer text',
@@ -159,27 +162,49 @@ test('streams only matching events and preserves transcript, images, native tool
         finishReason: 'tool_calls'
     };
     request.resolve(result);
-    assert.deepEqual(await promise, { ...result, reasoning: 'Summary', reasoningFollowsContent: true });
+    assert.deepEqual(await promise, { ...result, reasoningSummary: '**Summary one** **Summary two**' });
     assert.deepEqual(mock.chunks, ['Answer ', 'text']);
     assert.deepEqual(mock.statuses.at(-1), {
-        phase: 'streaming', streamedText: 'Answer text', streamedReasoning: 'Summary', streamedReasoningFollowsText: true
+        phase: 'streaming', streamedText: 'Answer text', streamedReasoningSummary: '**Summary one** **Summary two**'
     });
     mock.assertClean();
     mock.controller.abort();
     assert.deepEqual(mock.aborts, []);
 });
 
-test('listener is registered before IPC starts and reasoning-first order is preserved', async t => {
+test('listener is registered before IPC starts and public summary-first order is preserved', async t => {
     const mock = setup(t);
     mock.bridge.codexStream = request => {
-        mock.emit({ streamId: request.streamId, type: 'reasoning', delta: 'Summary' });
+        mock.emit({ streamId: request.streamId, type: 'summary', delta: 'Summary' });
         mock.emit({ streamId: request.streamId, type: 'content', delta: 'Answer' });
         return Promise.resolve({ content: 'Answer', toolCalls: [] });
     };
     const result = await streamViaCodex([], mock.options);
-    assert.equal(result.reasoning, 'Summary');
-    assert.equal(result.reasoningFollowsContent, false);
+    assert.equal(result.reasoningSummary, 'Summary');
     assert.deepEqual(mock.chunks, ['Answer']);
+    mock.assertClean();
+});
+
+test('separates adjacent bold phrases inside a Codex summary', async t => {
+    const mock = setup(t);
+    mock.bridge.codexStream = request => {
+        mock.emit({
+            streamId: request.streamId,
+            type: 'summary',
+            delta: '**Preparing Spanish invitation for idea sharing****Drafting structured Spanish idea prompt**'
+        });
+        return Promise.resolve({ content: 'Answer', toolCalls: [] });
+    };
+
+    const result = await streamViaCodex([], mock.options);
+    assert.equal(
+        result.reasoningSummary,
+        '**Preparing Spanish invitation for idea sharing** **Drafting structured Spanish idea prompt**'
+    );
+    assert.equal(
+        mock.statuses.at(-1).streamedReasoningSummary,
+        '**Preparing Spanish invitation for idea sharing** **Drafting structured Spanish idea prompt**'
+    );
     mock.assertClean();
 });
 
@@ -214,13 +239,13 @@ test('concurrent calls on one provider keep separate IDs, text and completion', 
     const [one, two] = mock.requests;
     assert.notEqual(one.streamId, two.streamId);
     mock.emit({ streamId: one.streamId, type: 'content', delta: 'One' });
-    mock.emit({ streamId: two.streamId, type: 'reasoning', delta: 'Second summary' });
+    mock.emit({ streamId: two.streamId, type: 'summary', delta: 'Second summary' });
     mock.emit({ streamId: two.streamId, type: 'content', delta: 'Two' });
     two.resolve({ content: 'Two', toolCalls: [] });
-    assert.equal((await second).reasoning, 'Second summary');
+    assert.equal((await second).reasoningSummary, 'Second summary');
     assert.equal(mock.listeners.size, 1);
     one.resolve({ content: 'One', toolCalls: [] });
-    assert.deepEqual(await first, { content: 'One', toolCalls: [], reasoning: '', reasoningFollowsContent: false });
+    assert.deepEqual(await first, { content: 'One', toolCalls: [], reasoningSummary: '' });
     mock.assertClean();
 });
 
@@ -243,10 +268,10 @@ test('final-only text reaches chunk/status callbacks and tool-disabled requests 
     const mock = setup(t);
     const promise = streamViaCodex([], { ...mock.options, useTools: false });
     assert.equal(mock.requests[0].useTools, false);
-    mock.requests[0].resolve({ content: 'Final', reasoning: 'Summary', reasoningFollowsContent: true, toolCalls: [] });
+    mock.requests[0].resolve({ content: 'Final', reasoning: 'private raw chain', toolCalls: [] });
     assert.equal((await promise).content, 'Final');
     assert.deepEqual(mock.chunks, ['Final']);
-    assert.equal(mock.statuses.at(-1).streamedReasoningFollowsText, true);
+    assert.equal(mock.statuses.at(-1).streamedReasoningSummary, undefined);
     mock.assertClean();
 });
 

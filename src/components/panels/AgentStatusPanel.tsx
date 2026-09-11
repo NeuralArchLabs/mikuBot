@@ -3,6 +3,7 @@ import { AgentStatus, AgentPhase } from '../../types';
 import { useTranslation } from 'react-i18next';
 import { Icon } from '../common/Common';
 import { sanitizeRichContent } from '../../utils/security/richContentPolicy';
+import { cleanProviderReasoningSummary } from '../../services/core/agent/chat';
 
 interface AgentStatusPanelProps {
     status: AgentStatus;
@@ -33,6 +34,37 @@ function formatElapsed(ms: number): string {
 
 // Lightweight basic markdown formatter for streaming text.
 // Designed to be very fast and not heavy while avoiding raw tags like ** or `
+const appendStreamTypingCursor = (markup: string): string => {
+    const clean = markup.replace(/\s+$/u, '');
+    if (!clean) return '<span class="markdown-typing-cursor" aria-hidden="true"></span>';
+
+    // A trailing newline is represented by StreamedMarkdown as a small empty
+    // spacer. Do not attach the caret to that spacer: it would visually move
+    // the caret to a new row even though no new character is being revealed.
+    const withoutTrailingSpacers = clean.replace(
+        /(?:<div class="h-2"><\/div>\s*)+$/iu,
+        ''
+    );
+    if (!withoutTrailingSpacers) return '<span class="markdown-typing-cursor" aria-hidden="true"></span>';
+
+    // StreamedMarkdown renders each visible line in a div. Keep the caret in
+    // that final line instead of appending it after the line container, which
+    // would make the status panel grow by one extra row.
+    const blockEnd = withoutTrailingSpacers.match(/<\/(?:div|p|li)>$/iu);
+    if (blockEnd && blockEnd.index !== undefined) {
+        // List rows use a final text span inside a flex container. Attach the
+        // caret to that span so it remains in the text's flex item and never
+        // becomes a new item on a second line.
+        const inlineTail = withoutTrailingSpacers.slice(0, blockEnd.index).match(
+            /<\/(?:span|strong|b|em|i|code|mark|a|del|sup|sub)>$/iu
+        );
+        const insertionIndex = inlineTail?.index ?? blockEnd.index;
+        return `${withoutTrailingSpacers.slice(0, insertionIndex)}<span class="markdown-typing-cursor" aria-hidden="true"></span>${withoutTrailingSpacers.slice(insertionIndex)}`;
+    }
+
+    return `${withoutTrailingSpacers}<span class="markdown-typing-cursor" aria-hidden="true"></span>`;
+};
+
 const StreamedMarkdown = ({ text, className }: { text: string; className?: string }) => {
     const html = React.useMemo(() => {
         let escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -116,7 +148,7 @@ const StreamedMarkdown = ({ text, className }: { text: string; className?: strin
             className={`text-slate-400 ${className || ''}`} 
             dangerouslySetInnerHTML={{ 
                 __html: sanitizeRichContent(
-                    html + '<span class="inline-block w-[3px] h-[10px] ml-1 bg-slate-500 animate-pulse translate-y-[1px]"></span>',
+                    appendStreamTypingCursor(html),
                     { source: 'agent' }
                 )
             }} 
@@ -145,7 +177,7 @@ export const AgentStatusPanel = React.memo(({
         if (streamContainerRef.current) {
             streamContainerRef.current.scrollTop = streamContainerRef.current.scrollHeight;
         }
-    }, [status.streamedText, status.streamedReasoning]);
+    }, [status.streamedText, status.streamedReasoning, status.streamedReasoningSummary]);
 
     // Live timer — ticks every second while agent is active
     const [liveElapsed, setLiveElapsed] = useState(typeof status.elapsedMs === 'number' ? status.elapsedMs : 0);
@@ -307,6 +339,7 @@ export const AgentStatusPanel = React.memo(({
 
             {(() => {
                 let displayReasoning = status.streamedReasoning || '';
+                const displaySummary = cleanProviderReasoningSummary(status.streamedReasoningSummary);
                 let displayText = status.streamedText || '';
 
                 if (displayText && !displayReasoning) {
@@ -319,11 +352,16 @@ export const AgentStatusPanel = React.memo(({
                     }
                 }
 
-                if (!displayText && !displayReasoning) return null;
+                if (!displayText && !displayReasoning && !displaySummary) return null;
 
                 return (
                     <div className="border-t border-slate-700/50">
                         <div ref={streamContainerRef} className="max-h-24 overflow-y-auto custom-scrollbar p-2 bg-slate-900/20 text-slate-400 italic">
+                            {displaySummary && (
+                                <div className="mb-1 text-amber-400/90 border-l-2 border-amber-400/30 pl-2 text-[10px] animate-in fade-in slide-in-from-left-2 duration-500">
+                                    [{t('chat.labels.thought_summary')}] <StreamedMarkdown text={displaySummary} className="inline text-amber-200" />
+                                </div>
+                            )}
                             {displayReasoning && (
                                 <div className="mb-1 text-cyan-500/80 border-l-2 border-cyan-500/20 pl-2 text-[10px] animate-in fade-in slide-in-from-left-2 duration-500">
                                     [{t('status.phases.thinking')}] <StreamedMarkdown text={displayReasoning} className="inline" />

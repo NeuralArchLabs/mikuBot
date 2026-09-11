@@ -15,7 +15,7 @@ export {
 
 interface CodexStreamEvent {
     streamId: string;
-    type: 'content' | 'reasoning';
+    type: 'content' | 'summary';
     delta: string;
 }
 
@@ -37,6 +37,15 @@ interface CodexBridge {
 
 let streamSequence = 0;
 
+function normalizeSummarySpacing(value: string): string {
+    return value.replace(/(\*\*[^*\r\n]+?\*\*)(?=\*\*[^*\r\n]+?\*\*)/g, '$1 ');
+}
+
+function appendSummaryDelta(current: string, delta: string): string {
+    const separator = current.endsWith('**') && delta.startsWith('**') ? ' ' : '';
+    return normalizeSummarySpacing(`${current}${separator}${delta}`);
+}
+
 /** Uses only the managed desktop Codex session; it never opens an API endpoint. */
 export async function streamViaCodex(messages: any[], options: ProviderOptions): Promise<ProviderResponse> {
     const { abortSignal } = options;
@@ -55,13 +64,7 @@ export async function streamViaCodex(messages: any[], options: ProviderOptions):
 
     // State belongs to this request, including when a provider instance is reused.
     let content = '';
-    let reasoning = '';
-    let sequence = 0;
-    let firstContentSequence: number | undefined;
-    let firstReasoningSequence: number | undefined;
-    const reasoningFollowsContent = () => firstContentSequence !== undefined
-        && firstReasoningSequence !== undefined
-        && firstReasoningSequence > firstContentSequence;
+    let summaryText = '';
 
     return new Promise<ProviderResponse>((resolve, reject) => {
         let settled = false;
@@ -85,10 +88,9 @@ export async function streamViaCodex(messages: any[], options: ProviderOptions):
         };
 
         const onAbort = () => fail(new DOMException('Aborted', 'AbortError'), true);
-        const publishStatus = (followsContent = reasoningFollowsContent()) => options.onStatus({
+        const publishStatus = () => options.onStatus({
             streamedText: content,
-            streamedReasoning: reasoning || undefined,
-            streamedReasoningFollowsText: followsContent,
+            streamedReasoningSummary: summaryText || undefined,
             phase: 'streaming'
         });
 
@@ -99,12 +101,10 @@ export async function streamViaCodex(messages: any[], options: ProviderOptions):
                     || typeof event.delta !== 'string' || !event.delta) return;
                 try {
                     if (event.type === 'content') {
-                        if (firstContentSequence === undefined) firstContentSequence = ++sequence;
                         content += event.delta;
                         options.onChunk?.(event.delta);
-                    } else if (event.type === 'reasoning') {
-                        if (firstReasoningSequence === undefined) firstReasoningSequence = ++sequence;
-                        reasoning += event.delta;
+                    } else if (event.type === 'summary') {
+                        summaryText = appendSummaryDelta(summaryText, event.delta);
                     } else {
                         return;
                     }
@@ -123,11 +123,11 @@ export async function streamViaCodex(messages: any[], options: ProviderOptions):
             const effort = getConfiguredReasoningEffort(options.config);
             // `effort` selects how much reasoning the model may use. The
             // separate `summary` override asks the app-server to expose a
-            // readable reasoning summary in the stream. Without it, Codex
-            // may keep the summary mode at its server default (`none`).
+            // readable public summary in the stream. `auto` lets Codex choose
+            // the supported summary detail for the selected model.
             // `none` remains explicit so disabling reasoning also hides its
             // summary channel.
-            const summary: CodexReasoningSummary = effort === 'none' ? 'none' : 'detailed';
+            const summary: CodexReasoningSummary = effort === 'none' ? 'none' : 'auto';
             Promise.resolve(electron.codexStream({
                 streamId,
                 model: options.config.model,
@@ -141,20 +141,19 @@ export async function streamViaCodex(messages: any[], options: ProviderOptions):
                 if (!result || typeof result.content !== 'string' || !Array.isArray(result.toolCalls)) {
                     throw new Error('Codex devolvió una respuesta inválida.');
                 }
-                const finalReasoning = result.reasoning ?? reasoning;
-                const finalOrder = result.reasoningFollowsContent ?? reasoningFollowsContent();
-                if (result.content !== content || finalReasoning !== reasoning) {
+                const finalSummary = normalizeSummarySpacing(result.reasoningSummary ?? summaryText);
+                if (result.content !== content || finalSummary !== summaryText) {
                     // A final item can contain text that was not delivered as deltas.
                     const tail = result.content.startsWith(content) ? result.content.slice(content.length) : '';
                     content = result.content;
-                    reasoning = finalReasoning;
+                    summaryText = finalSummary;
                     if (tail) options.onChunk?.(tail);
-                    if (!settled) publishStatus(finalOrder);
+                    if (!settled) publishStatus();
                 }
                 if (settled) return;
                 settled = true;
                 cleanup();
-                resolve({ ...result, reasoning: finalReasoning, reasoningFollowsContent: finalOrder });
+                resolve({ ...result, reasoningSummary: finalSummary });
             }).catch(error => fail(error, true));
         } catch (error) {
             fail(error, true);

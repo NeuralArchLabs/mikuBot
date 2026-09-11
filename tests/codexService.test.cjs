@@ -97,7 +97,7 @@ test('dynamic Miku tools stay available through Codex code-mode host routing', a
     tools: [tool],
     useTools: true,
     effort: 'high',
-    summary: 'detailed'
+    summary: 'auto'
   });
   const threadStart = fake.requests.find(request => request.method === 'thread/start');
   const turnStart = fake.requests.find(request => request.method === 'turn/start');
@@ -107,7 +107,7 @@ test('dynamic Miku tools stay available through Codex code-mode host routing', a
   }]);
   assert.equal(threadStart.params.config['features.code_mode_host'], true);
   assert.equal(turnStart.params.effort, 'high');
-  assert.equal(turnStart.params.summary, 'detailed');
+  assert.equal(turnStart.params.summary, 'auto');
   assert.deepEqual(result.toolCalls, [{
     id: 'call-tools', type: 'function', function: { name: 'web_search', arguments: '{"query":"Codex tools"}' }
   }]);
@@ -123,6 +123,9 @@ test('surfaces the public reasoning summary when only the completed item arrives
       } else if (message.method === 'turn/start') {
         send({ id: message.id, result: { turn: { id: 'turn-reasoning' } } });
         send({ method: 'turn/started', params: { threadId: 'thread-reasoning', turn: { id: 'turn-reasoning' } } });
+        send({ method: 'item/reasoning/textDelta', params: {
+          threadId: 'thread-reasoning', turnId: 'turn-reasoning', itemId: 'reasoning-1', delta: 'private raw chain'
+        } });
         send({ method: 'item/completed', params: {
           threadId: 'thread-reasoning', turnId: 'turn-reasoning', item: {
             id: 'reasoning-1', type: 'reasoning', summary: ['Plan', 'Check'], content: ['private raw chain']
@@ -145,8 +148,8 @@ test('surfaces the public reasoning summary when only the completed item arrives
     model: 'gpt-6-astra', messages: [{ role: 'user', content: 'Explain.' }], useTools: false
   }, event => events.push(event));
   assert.equal(result.content, 'Done');
-  assert.equal(result.reasoning, 'Plan\n\nCheck');
-  assert.deepEqual(events.filter(event => event.type === 'reasoning').map(event => event.delta), ['Plan\n\nCheck']);
+  assert.equal(result.reasoningSummary, 'Plan\n\nCheck');
+  assert.deepEqual(events.filter(event => event.type === 'summary').map(event => event.delta), ['Plan\n\nCheck']);
   service.dispose();
 });
 
@@ -164,11 +167,12 @@ test('conversation preparation keeps system instructions separate and labels ima
   const result = prepareConversation([
     { role: 'system', content: 'Use concise answers.' },
     { role: 'user', content: [{ type: 'text', text: 'What is this?' }, { type: 'image_url', image_url: { url: 'data:image/png;base64,AA==' } }] },
-    { role: 'assistant', content: 'A picture.' }
+    { role: 'assistant', content: 'A picture.', reasoning_summary: 'Reviewed the image first.' }
   ]);
   assert.equal(result.developerInstructions, 'Use concise answers.');
   assert.match(result.input[0].text, /Attached image 1/);
   assert.deepEqual(result.input[1], { type: 'image', url: 'data:image/png;base64,AA==' });
+  assert.match(result.input[0].text, /"reasoning_summary":"Reviewed the image first\."/);
 });
 
 test('conversation preparation forwards VisionService attachments as safe data URLs', () => {

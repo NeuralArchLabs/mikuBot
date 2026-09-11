@@ -127,34 +127,36 @@ export const CodexAccountSettings = ({ onAccountChange, onRefreshModels }: Codex
         if (minutes % 60 === 0) return t('settings.codex.window_hours', { count: minutes / 60 });
         return t('settings.codex.window_minutes', { count: minutes });
     };
-    const buttonClass = 'rounded-xl px-4 py-2.5 text-xs font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
+    const buttonClass = 'inline-flex w-full sm:w-auto max-w-full items-center justify-center rounded-xl px-4 py-2.5 text-xs font-bold text-center whitespace-normal transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
 
     return (
-        <section id="codex-account-settings" className="premium-card premium-emerald rounded-3xl p-5 md:p-6 space-y-4 scroll-mt-4" aria-labelledby="codex-account-title">
-            <div className="flex flex-wrap items-start justify-between gap-3">
+        <section id="codex-account-settings" className="premium-card premium-emerald rounded-3xl p-4 sm:p-5 md:p-6 space-y-4 scroll-mt-4" aria-labelledby="codex-account-title">
+            <div className="flex min-w-0 items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                    <h3 id="codex-account-title" className="font-black text-base text-[var(--text-primary)] flex items-center gap-2">
-                        <img src="./chatgptICON.png" alt="ChatGPT" className="h-7 w-7 rounded-lg object-contain" /> {t('settings.codex.title')}
+                    <h3 id="codex-account-title" className="font-black text-base text-[var(--text-primary)]">
+                        <span className="shrink-0">{t('settings.codex.title')}</span>
                     </h3>
-                    <p className="text-xs text-[var(--text-secondary)] leading-relaxed mt-2">{t('settings.codex.description')}</p>
-                    <p className="text-xs text-[var(--text-secondary)] leading-relaxed mt-1">{t('settings.codex.deep_research_note')}</p>
+                    {connected && (
+                        <div className="mt-1 flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 text-sm text-[var(--text-primary)] break-words">
+                            <span className="font-semibold break-all">{status?.account?.email || t('settings.codex.title')}</span>
+                            {status?.account?.planType && <span className="text-xs text-[var(--text-secondary)]">{status.account.planType}</span>}
+                        </div>
+                    )}
+                    {!connected && (
+                        <>
+                            <p className="text-xs text-[var(--text-secondary)] leading-relaxed mt-2">{t('settings.codex.description')}</p>
+                            <p className="text-xs text-[var(--text-secondary)] leading-relaxed mt-1">{t('settings.codex.deep_research_note')}</p>
+                        </>
+                    )}
                 </div>
-                <span className={`text-xs font-bold rounded-lg px-3 py-1.5 ${connected ? 'bg-emerald-500/10 text-emerald-400' : 'bg-[var(--surface-color)] text-[var(--text-secondary)]'}`} role="status">
-                    {busy === 'loading' ? t('common.loading') : status?.loginPending ? t('settings.codex.pending') : connected ? t('settings.codex.connected') : t('settings.codex.disconnected')}
-                </span>
+                <img src="./chatgptICON.png" alt="ChatGPT" className="h-10 w-10 sm:h-12 sm:w-12 shrink-0 rounded-xl object-contain" />
             </div>
 
-            {connected && (
-                <div className="text-sm text-[var(--text-primary)] break-words">
-                    <span className="font-semibold">{status?.account?.email || t('settings.codex.title')}</span>
-                    {status?.account?.planType && <span className="ml-2 text-xs text-[var(--text-secondary)]">{status.account.planType}</span>}
-                </div>
-            )}
             {status?.loginPending && <p className="text-xs text-[var(--text-secondary)]" role="status">{t('settings.codex.browser_pending')}</p>}
             {status && !status.available && <p className="text-xs text-amber-500">{t('settings.codex.unavailable')}</p>}
             {error && <p role="alert" className="text-xs text-red-400 whitespace-pre-wrap break-words">{error}</p>}
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
                 {status?.loginPending ? (
                     <button type="button" onClick={() => void runAction('cancel')} disabled={!!busy} className={`${buttonClass} bg-[var(--surface-color)] text-[var(--text-primary)] hover:bg-[var(--hover-color)]`}>
                         {busy === 'cancel' ? t('common.processing') : t('settings.codex.cancel_login')}

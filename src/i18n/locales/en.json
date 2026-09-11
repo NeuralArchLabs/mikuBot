@@ -365,7 +365,7 @@
     "codex": {
       "title": "ChatGPT · Codex",
       "description": "Sign in with ChatGPT to use your account's Codex models and limits. No API key is needed.",
-      "deep_research_note": "Deep Research needs another compatible provider; it does not support Codex sign-in yet.",
+      "deep_research_note": "Deep Research can use the Codex session or Unsloth; otherwise select another compatible provider.",
       "login": "Sign in with ChatGPT",
       "logout": "Sign out",
       "cancel_login": "Cancel sign-in",
@@ -453,7 +453,7 @@
       "reasoning_levels": "levels"
     },
     "security": {
-      "title": "Security & Main Engine Settings",
+      "title": "Security & Backup Inference Settings",
       "vault_title": "Secure Credential Vault",
       "vault_desc": "Manage provider accounts and encrypted API keys",
       "fallback_title": "Master Fallback Routing",
@@ -744,7 +744,7 @@
       "parallel_mode_desc": "Parallel execution: compatible tools run at the same time for faster responses, with higher resource use",
       "enable_debug": "Enable Debug Mode",
       "disable_debug": "Disable Debug Mode",
-      "debug": "DEBUG",
+      "debug": "RAW LOG",
       "remove_attachment": "Remove attachment",
       "select_files": "Select files",
       "resume_task": "Resume Task",
@@ -788,6 +788,8 @@
       "role_tool": "Tool",
       "reasoning": "Reasoning",
       "active_reasoning": "Active Reasoning",
+      "thought_summary": "Thought",
+      "provider_reasoning_summary": "Thought",
       "agent_busy": "AGENT BUSY",
       "processing_branch": "Processing Branch:",
       "another_branch": "another branch",

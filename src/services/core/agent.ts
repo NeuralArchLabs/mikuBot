@@ -48,6 +48,7 @@ import { executeToolCall } from './agent/tools';
 import { 
     segmentThoughtsAndNarrative, 
     cleanNativeReasoningForDisplay,
+    cleanProviderReasoningSummary,
     extractToolSnippet, 
     autoExtractSources, 
     applyBatchTaskTicking,
@@ -104,7 +105,7 @@ export async function sendAgentMessage(
         messages: any[],
         requestTools: boolean,
         customOnStatus?: (status: Partial<AgentStatus>) => void
-    ): Promise<{ content: string; toolCalls: any[]; reasoning?: string; reasoningFollowsContent?: boolean; finishReason?: string }> {
+    ): Promise<{ content: string; toolCalls: any[]; reasoning?: string; reasoningSummary?: string; reasoningFollowsContent?: boolean; finishReason?: string }> {
         const provider = config.provider;
         const isElectronProxy = !!(window as any).electron?.apiStream;
         const requestTransport: ToolTransport = requestTools ? toolTransport : 'none';
@@ -216,13 +217,37 @@ export async function sendAgentMessage(
 
     let lastStreamUpdate = 0;
     const bridgedOnStatus = (status: Partial<AgentStatus>) => {
-        localOnStatus(status);
-        if (status.phase === 'streaming' && (status.streamedText !== undefined || status.streamedReasoning !== undefined)) {
+        const streamedReasoning = cleanNativeReasoningForDisplay(status.streamedReasoning);
+        const streamedSummary = cleanProviderReasoningSummary(status.streamedReasoningSummary);
+        const isStreamingUpdate = status.phase === 'streaming'
+            && (status.streamedText !== undefined || status.streamedReasoning !== undefined || status.streamedReasoningSummary !== undefined);
+
+        // Keep the live assistant response inside the same raw-message sequence
+        // used by the debugging viewer. This preserves the real position of
+        // public provider summaries beside the response that emitted them.
+        if (isStreamingUpdate) {
+            const liveAssistant = {
+                role: 'assistant',
+                content: status.streamedText || null,
+                reasoning: streamedReasoning || undefined,
+                reasoning_summary: streamedSummary || undefined,
+            };
+            localOnStatus({
+                ...status,
+                rawMessages: [...agentMessages.map(message => ({ ...message })), liveAssistant]
+            });
+        } else {
+            localOnStatus(status);
+        }
+
+        if (isStreamingUpdate) {
             const now = Date.now();
             if (now - lastStreamUpdate > 80) {
                 lastStreamUpdate = now;
                 const tempIterationBlocks: MessageBlock[] = [];
-                const streamedReasoning = cleanNativeReasoningForDisplay(status.streamedReasoning);
+                if (streamedSummary) {
+                    tempIterationBlocks.push({ type: 'thought', thoughtType: 'summary', content: streamedSummary });
+                }
                 if (status.streamedText) {
                     const segmented = segmentThoughtsAndNarrative(status.streamedText);
                     if (status.streamedReasoningFollowsText) {
@@ -254,10 +279,13 @@ export async function sendAgentMessage(
                     .filter(part => part && part.trim())
                     .join('\n\n');
 
-                // Never make raw provider transport the canonical message text.
-                // The renderer still receives thought blocks, but tool payloads
-                // remain quarantined until they are normalized and validated.
-                onChunk(visibleText || ' ', true, [...allBlocks, ...tempIterationBlocks.filter(b => b.content.trim() !== '')]);
+                // Never make provider summaries or raw transport the canonical
+                // message text. Native reasoning remains a temporary thought
+                // block; Codex's public summary gets its own presentation in
+                // the chat while remaining separate from native reasoning.
+                if (tempIterationBlocks.length > 0) {
+                    onChunk(visibleText || ' ', true, [...allBlocks, ...tempIterationBlocks.filter(b => b.content.trim() !== '')]);
+                }
             }
         }
     };
@@ -407,12 +435,14 @@ export async function sendAgentMessage(
                 maxRetries: MAX_RETRIES,
                 elapsedMs: Date.now() - startTime,
                 rawMessages: JSON.parse(JSON.stringify(agentMessages)),
-                currentSystemPrompt: agentMessages[0].content
+                currentSystemPrompt: agentMessages[0].content,
+                streamedReasoningSummary: ''
             });
 
             let content: string;
             let nativeToolCalls: any[];
             let nativeReasoning: string | undefined;
+            let providerReasoningSummary: string | undefined;
             let nativeReasoningFollowsContent = false;
             let nativeThoughtSignature: string | undefined = undefined;
             try {
@@ -433,6 +463,7 @@ export async function sendAgentMessage(
                 content = res.content;
                 nativeToolCalls = res.toolCalls;
                 nativeReasoning = res.reasoning;
+                providerReasoningSummary = res.reasoningSummary;
                 nativeReasoningFollowsContent = res.reasoningFollowsContent === true;
                 nativeThoughtSignature = (res as any).thought_signature || (res as any).thoughtSignature;
 
@@ -508,6 +539,10 @@ export async function sendAgentMessage(
 
             const iterationBlocks: MessageBlock[] = [];
             const displayNativeReasoning = cleanNativeReasoningForDisplay(nativeReasoning);
+            const displayProviderSummary = cleanProviderReasoningSummary(providerReasoningSummary);
+            if (displayProviderSummary) {
+                iterationBlocks.push({ type: 'thought', thoughtType: 'summary', content: displayProviderSummary });
+            }
             if (displayNativeReasoning && !nativeReasoningFollowsContent) {
                 iterationBlocks.push({
                     type: 'thought',
@@ -551,7 +586,11 @@ export async function sendAgentMessage(
             const mergedBlocks: MessageBlock[] = [];
             iterationBlocks.forEach(block => {
                 const last = mergedBlocks[mergedBlocks.length - 1];
-                if (last && last.type === 'thought' && block.type === 'thought') last.content += `\n\n${block.content}`;
+                const lastThoughtType = last?.thoughtType || 'native';
+                const blockThoughtType = block.thoughtType || 'native';
+                if (last && last.type === 'thought' && block.type === 'thought' && lastThoughtType === blockThoughtType) {
+                    last.content += `\n\n${block.content}`;
+                }
                 else if (block.content?.trim()) mergedBlocks.push(block);
             });
             
@@ -584,6 +623,7 @@ export async function sendAgentMessage(
                 role: 'assistant',
                 content: cleanTurnNarrative || null,
                 reasoning: cleanedReasoning || undefined,
+                reasoning_summary: cleanProviderReasoningSummary(providerReasoningSummary) || undefined,
                 thought_signature: nativeThoughtSignature || undefined,
             };
             if (uniqueToolCalls.length > 0) {

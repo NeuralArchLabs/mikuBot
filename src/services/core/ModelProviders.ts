@@ -17,6 +17,8 @@ export interface ProviderResponse {
     content: string;
     toolCalls: any[];
     reasoning?: string;
+    /** Public provider summary (for example Codex summaryText), not private chain of thought. */
+    reasoningSummary?: string;
     /** Preserves the first observed channel order for providers that interleave them. */
     reasoningFollowsContent?: boolean;
     thought_signature?: string;
@@ -44,6 +46,25 @@ function extractLegacyThinkingBlock(content: string): { thinking: string; rest: 
         return { thinking: match[1].trim(), rest: content.slice(match[0].length).trim() };
     }
     return { thinking: '', rest: content };
+}
+
+/**
+ * Provider responses expose a public reasoning summary as a separate channel.
+ * When that response becomes historical context, APIs without a native summary
+ * field need a regular text representation so the model can still use every
+ * completed turn without receiving an unknown message property.
+ */
+function getPublicReasoningSummary(message: any): string {
+    const summary = message?.reasoning_summary ?? message?.reasoningSummary ?? message?.summary;
+    return typeof summary === 'string' ? summary.trim() : '';
+}
+
+function appendPublicReasoningSummary(content: unknown, message: any): string {
+    const text = typeof content === 'string' ? content : '';
+    const summary = getPublicReasoningSummary(message);
+    if (!summary) return text;
+    const marker = `[PENSAMIENTO]\n${summary}`;
+    return text ? `${text}\n\n${marker}` : marker;
 }
 
 /** Some OpenAI-compatible servers send a structured error as an SSE event
@@ -334,7 +355,7 @@ export class OpenAICompatibleProvider extends ModelProvider {
 
             const imageAttachments = m.attachments?.filter((a: any) => a.type?.startsWith('image/') && a.data && !a.extractedContent) || [];
             if (imageAttachments.length > 0) {
-                const contentBlocks: any[] = [{ type: 'text', text: m.content || '' }];
+                const contentBlocks: any[] = [{ type: 'text', text: appendPublicReasoningSummary(m.content, m) }];
                 imageAttachments.forEach((img: any) => {
                     contentBlocks.push({
                         type: 'image_url',
@@ -343,7 +364,7 @@ export class OpenAICompatibleProvider extends ModelProvider {
                 });
                 res.content = contentBlocks;
             } else {
-                res.content = m.content || '';
+                res.content = appendPublicReasoningSummary(m.content, m);
             }
             return res;
         });
@@ -463,11 +484,11 @@ export class ZAIProvider extends ModelProvider {
             }
             const imageAttachments = m.attachments?.filter((a: any) => a.type?.startsWith('image/') && a.data && !a.extractedContent) || [];
             if (imageAttachments.length > 0) {
-                const contentBlocks: any[] = [{ type: 'text', text: m.content || '' }];
+                const contentBlocks: any[] = [{ type: 'text', text: appendPublicReasoningSummary(m.content, m) }];
                 imageAttachments.forEach((img: any) => contentBlocks.push({ type: 'image_url', image_url: { url: img.data } }));
                 res.content = contentBlocks;
             } else {
-                res.content = m.content || '';
+                res.content = appendPublicReasoningSummary(m.content, m);
             }
             return res;
         });
@@ -569,7 +590,7 @@ export class OllamaProvider extends ModelProvider {
     }
 
     protected serializeMessages(messages: any[]): any[] {
-        return messages.filter(m => m.content || (m.tool_calls && m.tool_calls.length > 0)).map(m => {
+        return messages.filter(m => m.content || getPublicReasoningSummary(m) || (m.tool_calls && m.tool_calls.length > 0)).map(m => {
             // Only send images if the attachment has raw data and was NOT already processed
             // by the Vision Vortex (extractedContent means Vortex ran and data was stripped upstream).
             // Sending images to non-vision Ollama models causes them to crash.
@@ -578,7 +599,7 @@ export class OllamaProvider extends ModelProvider {
             ) || [];
             const serialized: any = {
                 role: m.role,
-                content: m.content,
+                content: appendPublicReasoningSummary(m.content, m),
                 tool_calls: m.tool_calls,
                 images: imageAttachments.length > 0 ? imageAttachments.map((img: any) => img.data.split(',')[1]) : undefined
             };
@@ -801,6 +822,14 @@ export class GeminiProvider extends ModelProvider {
                         inlineData: { mimeType: img.type, data: img.data.split(',')[1] }
                     });
                 });
+            }
+
+            // Gemini has no portable historical summary field. Preserve the
+            // public summary as an ordinary text part at the assistant's exact
+            // position instead of dropping it between turns.
+            const publicSummary = getPublicReasoningSummary(m);
+            if (m.role === 'assistant' && publicSummary) {
+                parts.unshift({ text: `[PENSAMIENTO]\n${publicSummary}` });
             }
 
             if (consolidatedHistory.length > 0 && consolidatedHistory[consolidatedHistory.length - 1].role === role) {

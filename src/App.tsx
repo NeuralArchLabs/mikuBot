@@ -129,6 +129,11 @@ const normalizeLoadedMessages = (messages: Message[], sessionId: string): Messag
     return changed ? normalized : messages;
 };
 
+const normalizeVisionConfig = (config: AppConfig): AppConfig => {
+    if (config.visionModel) return config;
+    return { ...config, visionProvider: undefined, visionModel: '' };
+};
+
 export const App = () => {
     const { i18n, t } = useTranslation();
     const [state, setState] = useState<AppState>({
@@ -485,11 +490,11 @@ export const App = () => {
         setLoadingSettings(true);
         const saved = await persistence.loadSettings();
         if (saved) {
-            const mergedConfig = {
+            const mergedConfig = normalizeVisionConfig({
                 ...DEFAULT_CONFIG,
                 ...saved.config,
                 theme: normalizeTheme(saved.config?.theme)
-            };
+            });
             setState(prev => ({
                 ...prev,
                 config: mergedConfig,
@@ -1158,11 +1163,11 @@ export const App = () => {
     const onLoadConfig = useCallback(async () => {
         const loaded = await persistence.loadFromFile();
         if (loaded) {
-            const mergedConfig = {
+            const mergedConfig = normalizeVisionConfig({
                 ...DEFAULT_CONFIG,
                 ...loaded.config,
                 theme: normalizeTheme(loaded.config?.theme)
-            };
+            });
             const newState = {
                 config: mergedConfig,
                 agentMode: loaded.agentMode as AgentMode,

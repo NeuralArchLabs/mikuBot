@@ -65,3 +65,16 @@ test('non-search tool output remains lossless in historical reconstruction', () 
 
     assert.deepEqual(JSON.parse(toolMessage.content), data);
 });
+
+test('provider summaries remain in historical context as separate reasoning metadata', () => {
+    const messages = blocksToAgentMessages([
+        { type: 'thought', thoughtType: 'summary', content: '**Planning**\n\n**Checking**' },
+        { type: 'answer', content: 'Completed answer.' }
+    ]);
+
+    assert.deepEqual(messages, [{
+        role: 'assistant',
+        content: 'Completed answer.',
+        reasoning_summary: '**Planning**\n\n**Checking**'
+    }]);
+});

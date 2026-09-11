@@ -77,7 +77,7 @@
     "test:tool-transport": "node --test tests/toolTransport.test.mjs",
     "test:formatting": "node --test tests/formattingPipeline.test.mjs",
     "test:conversation": "node --test tests/conversationSerializer.test.mjs",
-    "test:codex": "node --test tests/codexService.test.cjs tests/codexProvider.test.mjs tests/codexIpc.test.cjs",
+    "test:codex": "node --test tests/codexService.test.cjs tests/codexProvider.test.mjs tests/codexIpc.test.cjs tests/codexResearchBridge.test.cjs",
     "verify": "npm run test:tts-chunks && npm run test:tool-transport && npm run test:formatting && npm run test:conversation && npm run test:codex && npm run test:unsloth && npm run typecheck && npm run build",
     "preview": "vite preview",
     "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3001 && electron .\"",

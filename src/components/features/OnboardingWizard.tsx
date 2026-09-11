@@ -793,11 +793,11 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                                     { id: 'fallback', t: t('onboarding.engines.fallback_title'), d: t('onboarding.engines.fallback_desc'), c: 'rose', p: config.provider || 'gemini', m: config.model || '', pf: 'provider', mf: 'model' },
                                 ].map(engine => {
                                     const PROVIDER_LIST = [
-                                        { id: 'gemini', i: './geminiICON.png', c: 'blue' },
-                                        { id: 'groq', i: './groqICON.png', c: 'orange' },
-                                        { id: 'zai', i: './zai.png', c: 'violet' },
-                                        { id: 'ollama', i: './ollamaICON.webp', c: 'emerald' },
-                                         { id: 'codex', i: './chatgptICON.png', c: 'emerald' }
+                                        { id: 'gemini', c: 'blue' },
+                                        { id: 'groq', c: 'orange' },
+                                        { id: 'zai', c: 'violet' },
+                                        { id: 'ollama', c: 'emerald' },
+                                        { id: 'codex', c: 'emerald' }
                                     ];
                                     const engineProviderColor = PROVIDER_LIST.find(p => p.id === engine.p)?.c || 'blue';
                                     
@@ -813,7 +813,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                                                     <label className="text-[9px] font-black text-slate-500 uppercase ml-1 tracking-[0.2em] mb-2 block opacity-40">{t('onboarding.engines.routing_provider')}</label>
                                                     <div className="grid grid-cols-3 gap-2 !bg-black/20 p-1.5 rounded-2xl border border-white/5 overflow-visible relative z-10">
                                                         {PROVIDER_LIST.map(p => {
-                                                            const isSelected = engine.p === p.id;
+                                                            const isSelected = engine.p === p.id && (engine.id !== 'vision' || Boolean(engine.m));
                                                             const HEX_COLORS: Record<string, string> = {
                                                                 blue: '#2563eb',
                                                                 orange: '#ea580c',
@@ -837,7 +837,7 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                                                                         setActiveMenu(null);
                                                                         if (p.id === 'codex' && codexConnected) onTestConnection('codex');
                                                                     }}
-                                                                    className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all ${isSelected 
+                                                                    className={`py-3 rounded-xl flex items-center justify-center transition-all ${isSelected
                                                                         ? `text-white shadow-lg ring-1 ring-white/20 scale-105` 
                                                                         : 'hover:bg-white/5 text-slate-400 opacity-60'}`}
                                                                     style={isSelected ? { 
@@ -845,13 +845,6 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                                                                         boxShadow: `0 10px 15px -3px ${activeColor}66`
                                                                     } : {}}
                                                                 >
-                                                                     {p.id === 'codex' ? (
-                                                                         <img src={p.i} alt="ChatGPT" className={`w-5 h-5 rounded-md object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'opacity-40 grayscale'}`} />
-                                                                    ) : p.id === 'gemini' ? (
-                                                                        <img src={p.i} alt="" className={`w-5 h-5 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]' : 'opacity-40 grayscale'}`} style={isSelected ? { filter: 'none' } : {}} />
-                                                                    ) : (
-                                                                        <img src={p.i} alt="" className={`w-5 h-5 object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_2px_4px_rgba(255,255,255,0.3)]' : 'brightness-0 invert opacity-40'}`} style={isSelected ? { filter: 'none' } : {}} />
-                                                                    )}
                                                                     <span className={`text-[7px] font-black uppercase tracking-wider ${isSelected ? 'text-white' : 'text-slate-600'}`}>
                                                                         {PROVIDERS[p.id as Provider]?.name.split(' ')[0] || p.id}
                                                                     </span>
@@ -866,7 +859,11 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                                                     <div className="relative group/sel">
                                                         <input 
                                                             value={engine.m} 
-                                                            onChange={(e) => setConfig({ ...config, [engine.mf]: e.target.value })}
+                                                            onChange={(e) => setConfig(previous => ({
+                                                                ...previous,
+                                                                ...(engine.id === 'vision' ? { visionProvider: e.target.value ? engine.p as Provider : undefined } : {}),
+                                                                [engine.mf]: e.target.value
+                                                            }))}
                                                             placeholder={t('onboarding.engines.typing_placeholder')}
                                                             className={`w-full bg-black/30 border-2 border-transparent hover:border-${engineProviderColor}-500/20 rounded-xl px-4 pr-10 py-3.5 text-xs text-white font-mono outline-none shadow-inner transition-all focus:border-${engineProviderColor}-500/40 focus:bg-black/50`} 
                                                         />
@@ -895,7 +892,14 @@ export const OnboardingWizard: React.FC<OnboardingProps> = ({ onComplete, models
                                                                                 {(models[engine.p as Provider] || []).map(m => (
                                                                                     <div 
                                                                                         key={m.id} 
-                                                                                        onClick={() => { setConfig({ ...config, [engine.mf]: m.id }); setActiveMenu(null); }} 
+                                                                                        onClick={() => {
+                                                                                            setConfig(previous => ({
+                                                                                                ...previous,
+                                                                                                ...(engine.id === 'vision' ? { visionProvider: engine.p as Provider } : {}),
+                                                                                                [engine.mf]: m.id
+                                                                                            }));
+                                                                                            setActiveMenu(null);
+                                                                                        }}
                                                                                         className={`px-5 py-2.5 text-xs font-black text-slate-400 hover:bg-${engineProviderColor}-500/10 hover:text-${engineProviderColor}-400 cursor-pointer transition-all truncate flex items-center gap-3 border-l-2 border-transparent hover:border-${engineProviderColor}-500`}
                                                                                     >
                                                                                         <div className={`w-1.5 h-1.5 rounded-full bg-${engineProviderColor}-500 shadow-[0_0_5px_rgba(0,0,0,0.5)]`} />

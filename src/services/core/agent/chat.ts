@@ -27,6 +27,21 @@ export function cleanNativeReasoningForDisplay(text?: string): string {
 }
 
 /**
+ * Codex exposes a public summary rather than private chain-of-thought. Keep
+ * adjacent Markdown emphasis spans separated so streamed summary updates do
+ * not render as one visually glued phrase (for example `**Plan****Check**`).
+ */
+export function cleanProviderReasoningSummary(text?: string): string {
+    const value = String(text || '').trim();
+    if (!value) return '';
+
+    // Insert a real separator before the Markdown renderer strips the markers
+    // from the visible block. This keeps the summary faithful while fixing
+    // the provider's `**Plan****Check**` output.
+    return value.replace(/(\*\*[^*\r\n]+?\*\*)(?=\*\*[^*\r\n]+?\*\*)/g, '$1 ');
+}
+
+/**
  * Segments a text into thought and narrative blocks, preserving <think> content.
  */
 export function segmentThoughtsAndNarrative(text: string): MessageBlock[] {

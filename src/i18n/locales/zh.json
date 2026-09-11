@@ -346,7 +346,7 @@
     "codex": {
       "title": "ChatGPT · Codex",
       "description": "使用 ChatGPT 登录，即可使用你账户的 Codex 模型和额度，无需 API 密钥。",
-      "deep_research_note": "Deep Research 需要其他兼容的服务提供商，目前尚不支持 Codex 登录。",
+      "deep_research_note": "Deep Research 可以使用 Codex 会话或 Unsloth；否则请选择其他兼容的服务提供商。",
       "login": "使用 ChatGPT 登录",
       "logout": "退出登录",
       "cancel_login": "取消登录",
@@ -434,7 +434,7 @@
       "reasoning_levels": "级别"
     },
     "security": {
-      "title": "安全与主引擎设置",
+      "title": "安全与备用推理设置",
       "vault_title": "安全凭据库",
       "vault_desc": "管理供应商账户和加密的 API 密钥",
       "fallback_title": "主回退路由",
@@ -718,7 +718,7 @@
       "parallel_mode_desc": "并行执行：兼容的工具同时运行，响应更快但资源消耗更高",
       "enable_debug": "启用调试模式",
       "disable_debug": "禁用调试模式",
-      "debug": "调试",
+      "debug": "RAW LOG",
       "remove_attachment": "移除附件",
       "select_files": "选择文件",
       "resume_task": "继续任务",
@@ -761,6 +761,8 @@
       "role_tool": "工具",
       "reasoning": "推理",
       "active_reasoning": "活跃推理",
+      "thought_summary": "思考",
+      "provider_reasoning_summary": "思考",
       "agent_busy": "智能体忙碌",
       "processing_branch": "正在处理分支:",
       "another_branch": "另一个分支",

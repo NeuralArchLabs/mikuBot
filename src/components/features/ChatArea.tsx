@@ -14,6 +14,7 @@ import { useAgentStore, selectInput, selectMessages, selectAgentStatus, selectIs
 import { persistence, VisionService } from '../../services';
 import { PROVIDERS } from '../../constants/providers';
 import { splitTextIntoExactPartitionChunks } from '../../utils/helpers/ttsHelper';
+import { cleanProviderReasoningSummary } from '../../services/core/agent/chat';
 
 interface ChatAreaProps {
     sessionId: string;
@@ -61,6 +62,22 @@ interface TtsPlaybackCheckpoint {
     currentTime: number;
     audio: HTMLAudioElement | null;
 }
+
+/**
+ * Returns the public provider summary stored in a completed assistant message.
+ * It is kept in message blocks so the debug viewer can still show it after the
+ * live agent status has been reset or the user switches sessions.
+ */
+const getPersistedThoughtSummary = (message?: Message | null): string => {
+    if (!message?.blocks?.length) return '';
+    return cleanProviderReasoningSummary(
+        message.blocks
+            .filter(block => block.type === 'thought' && block.thoughtType === 'summary')
+            .map(block => block.content)
+            .filter(Boolean)
+            .join('\n\n')
+    );
+};
 
 const ChatInputControls = React.memo(({
     isRecording, partialText, agentMode, isLoading, isViewing, executingSessionId, currentSessionId, agentIteration, agentPhase, agentIsInstructionMode, attachments, t,
@@ -918,6 +935,9 @@ export const ChatArea = ({
     const shouldFadeChatScrollbar = isDeepResearchPanelTransitioning && deepResearchChatSessionId === sessionId;
 
     const isExecutingThisSession = !executingSessionId || executingSessionId === sessionId;
+    const persistedThoughtMessage = [...messages].reverse().find(message => getPersistedThoughtSummary(message));
+    const liveThoughtSummary = cleanProviderReasoningSummary(agentStatus.streamedReasoningSummary);
+    const debugThoughtSummary = liveThoughtSummary || getPersistedThoughtSummary(persistedThoughtMessage);
 
     // Listen to local voice read-text commands/events (e.g. from slash commands)
     useEffect(() => {
@@ -1511,15 +1531,27 @@ export const ChatArea = ({
     const handleCopyAllLogs = () => {
         const lastHistoryMsg = [...messages].reverse().find(m => m.rawHistory);
         const displayHistory = (isLoading || !lastHistoryMsg) ? agentStatus.rawMessages : lastHistoryMsg.rawHistory;
+        const thoughtSummary = debugThoughtSummary;
 
-        if (!displayHistory) return;
+        if (!displayHistory && !thoughtSummary) return;
 
-        const text = displayHistory.map((m: any) => {
+        const lastAssistantHistoryIndex = displayHistory?.reduce((lastIndex: number, entry: any, index: number) => (
+            entry.role === 'assistant' ? index : lastIndex
+        ), -1) ?? -1;
+        const historyText = displayHistory?.map((m: any, entryIndex: number) => {
             let content = `[${t(`chat.labels.role_${m.role}`).toUpperCase()}]\n${m.content || ''}`;
+            const entrySummary = m.reasoning_summary || m.reasoningSummary || m.summary || (
+                m.role === 'assistant' && entryIndex === lastAssistantHistoryIndex ? thoughtSummary : ''
+            );
+            const entryReasoning = m.thought || m.reasoning_content || m.reasoning || '';
+            if (entrySummary) content += `\n[${t('chat.labels.thought_summary').toUpperCase()}]\n${entrySummary}`;
+            if (entryReasoning) content += `\n[${t('chat.labels.active_reasoning').toUpperCase()}]\n${entryReasoning}`;
             if (m.tool_calls) content += `\n[${t('chat.labels.tool_calls').toUpperCase()}]\n${JSON.stringify(m.tool_calls, null, 2)}`;
             if (m.tool_call_id) content += `\n[${t('chat.labels.tool_call_id').toUpperCase()}]: ${m.tool_call_id}`;
             return content;
         }).join('\n\n' + '='.repeat(60) + '\n\n');
+
+        const text = historyText || `[${t('chat.labels.thought_summary').toUpperCase()}]\n${thoughtSummary}`;
 
         navigator.clipboard.writeText(text);
         askAlert(t('chat.alerts.logs_copied'), 'right');
@@ -1799,10 +1831,21 @@ export const ChatArea = ({
                             // Find the last assistant message that has history, or use current status if animating
                             const lastHistoryMsg = [...messages].reverse().find(m => m.rawHistory);
                             const displayHistory = (isLoading || !lastHistoryMsg) ? agentStatus.rawMessages : lastHistoryMsg.rawHistory;
+                            const lastAssistantHistoryIndex = displayHistory?.reduce((lastIndex: number, entry: any, index: number) => (
+                                entry.role === 'assistant' ? index : lastIndex
+                            ), -1) ?? -1;
 
                             return displayHistory?.map((m: any, i: number) => {
+                                let displaySummary = m.reasoning_summary || m.reasoningSummary || m.summary || '';
                                 let displayThought = m.thought || m.reasoning_content || m.reasoning || '';
                                 let displayContent = m.content;
+
+                                // Older persisted messages predate the raw-history
+                                // field. Recover their summary from the canonical
+                                // message blocks while keeping it in assistant order.
+                                if (!displaySummary && m.role === 'assistant' && i === lastAssistantHistoryIndex) {
+                                    displaySummary = getPersistedThoughtSummary(lastHistoryMsg);
+                                }
 
                                 if (m.role === 'assistant' && typeof m.content === 'string') {
                                     const thinkingRegex = /<(?:thinking|thought|reflection|think)>([\s\S]*?)<\/(?:thinking|thought|reflection|think)>/gi;
@@ -1834,6 +1877,15 @@ export const ChatArea = ({
                                         </div>
                                         <div className={`text-slate-400 leading-relaxed font-mono border-l-2 border-white/10 pl-4 overflow-hidden ${m.role === 'tool' ? 'bg-black/30 rounded-r-lg py-2' : ''}`}>
                                             <div className="max-h-[450px] overflow-y-auto custom-scrollbar pr-2 whitespace-pre-wrap break-all text-[10px]">
+                                                {displaySummary && (
+                                                    <div className="mb-3 p-3 bg-amber-500/5 rounded border border-amber-400/20 text-amber-200/90 italic text-[9px]">
+                                                        <div className="flex items-center gap-2 mb-1 text-amber-300/90">
+                                                            <Icon name="lightbulb" />
+                                                            <strong>[{t('chat.labels.thought_summary')?.toUpperCase() || 'THOUGHT'}]</strong>
+                                                        </div>
+                                                        {displaySummary}
+                                                    </div>
+                                                )}
                                                 {displayThought && (
                                                     <div className="mb-3 p-3 bg-fuchsia-500/5 rounded border border-fuchsia-500/20 text-fuchsia-300/80 italic text-[9px]">
                                                         <div className="flex items-center gap-2 mb-1 opacity-60">
@@ -1919,6 +1971,7 @@ export const ChatArea = ({
                             : null;
                         const isOld = index < messages.length - 3;
                         const hasToolCall = msg.blocks?.some(b => b.type === 'tool_call');
+                        const hasThoughtBlock = msg.role === 'assistant' && msg.blocks?.some(b => b.type === 'thought');
                         const isAgentResponse = msg.role === 'assistant' && (agentMode === 'agent' || msg.text === '');
 
                         // [FIX] Detect success flag in blocks to avoid coloring failures as green
@@ -1949,7 +2002,7 @@ export const ChatArea = ({
                                             if (node) ttsBubbleRefs.current.set(ttsMessageKey, node);
                                             else ttsBubbleRefs.current.delete(ttsMessageKey);
                                         } : undefined}
-                                        className={`message-bubble-wrapper relative w-auto max-w-[95%] lg:max-w-[90%] break-words ${msg.isStreaming ? 'message-pop-in' : ''} rounded-[32px] ${
+                                        className={`message-bubble-wrapper relative ${hasThoughtBlock ? 'w-full' : 'w-auto'} max-w-[95%] lg:max-w-[90%] break-words ${msg.isStreaming ? 'message-pop-in' : ''} rounded-[32px] ${
                                         msg.role === 'user' ? 'message-bubble-user' : 'message-bubble-assistant'} ${
                                         msg.role === 'user' ? 'rounded-br-none' : 'rounded-bl-none lg:ml-6'
                                     }`}
@@ -2182,8 +2235,9 @@ export const ChatArea = ({
                                                                             {block.type === 'answer' ? (
                                                                                 <MarkdownRenderer content={block.content} isStreaming={msg.isStreaming} />
                                                                             ) : (block.type === 'thought' || block.type === 'text') ? (() => {
+                                                                                const isThoughtSummary = block.type === 'thought' && block.thoughtType === 'summary';
                                                                                 const forceCollapse = isOld || block.type === 'thought';
-                                                                                return <CollapsibleTextBlock content={block.content} forceCollapse={forceCollapse} isThought={block.type === 'thought'} isStreaming={msg.isStreaming} mode={block.type === 'thought' ? 'minimal' : 'full'} hasCustomBg={!!config.chatBackgroundImage} />;
+                                                                                return <CollapsibleTextBlock content={block.content} forceCollapse={forceCollapse} isThought={block.type === 'thought' && !isThoughtSummary} isThoughtSummary={isThoughtSummary} isStreaming={msg.isStreaming} mode={block.type === 'thought' ? 'minimal' : 'full'} hasCustomBg={!!config.chatBackgroundImage} />;
                                                                             })() : null}
                                                                         </div>
                                                                     );
@@ -2267,8 +2321,9 @@ export const ChatArea = ({
                                                                                         <MarkdownRenderer content={block.content} isStreaming={msg.isStreaming} trustedLocalMediaUrls={trustedLocalMediaUrls} />
                                                                                     </div>
                                                                                 ) : block.type === 'thought' ? (() => {
+                                                                                    const isThoughtSummary = block.thoughtType === 'summary';
                                                                                     const forceCollapse = isOld || (hasAnyTool && !debugMode) || true;
-                                                                                    return <CollapsibleTextBlock content={block.content} forceCollapse={forceCollapse} isThought={true} isStreaming={msg.isStreaming} mode="minimal" hasCustomBg={!!config.chatBackgroundImage} />;
+                                                                                    return <CollapsibleTextBlock content={block.content} forceCollapse={forceCollapse} isThought={!isThoughtSummary} isThoughtSummary={isThoughtSummary} isStreaming={msg.isStreaming} mode="minimal" hasCustomBg={!!config.chatBackgroundImage} />;
                                                                                 })() : null}
                                                                             </div>
                                                                         );
@@ -2307,8 +2362,9 @@ export const ChatArea = ({
                                                                             {block.type === 'answer' ? (
                                                                                 <MarkdownRenderer content={block.content} isStreaming={msg.isStreaming} trustedLocalMediaUrls={trustedLocalMediaUrls} />
                                                                             ) : (block.type === 'thought' || block.type === 'text') ? (() => {
+                                                                                const isThoughtSummary = block.type === 'thought' && block.thoughtType === 'summary';
                                                                                 const forceCollapse = isOld || (hasAnyTool && !debugMode) || block.type === 'thought';
-                                                                                return <CollapsibleTextBlock content={block.content} forceCollapse={forceCollapse} isThought={block.type === 'thought'} isStreaming={msg.isStreaming} mode={block.type === 'thought' ? 'minimal' : 'full'} hasCustomBg={!!config.chatBackgroundImage} />;
+                                                                                return <CollapsibleTextBlock content={block.content} forceCollapse={forceCollapse} isThought={block.type === 'thought' && !isThoughtSummary} isThoughtSummary={isThoughtSummary} isStreaming={msg.isStreaming} mode={block.type === 'thought' ? 'minimal' : 'full'} hasCustomBg={!!config.chatBackgroundImage} />;
                                                                             })() : null}
                                                                         </div>
                                                                     );
@@ -2557,25 +2613,34 @@ export const ChatArea = ({
                             title={t('chat.actions.mode_selector')}
                         >
                             <span className="truncate">{agentMode === 'chat' ? t('chat.modes.chat') : t('chat.modes.agent')}</span>
-                            <div className={`absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none transition-all duration-300 scale-75 ${
+                            <span className={`absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none flex h-3 w-3 shrink-0 items-center justify-center transition-all duration-300 scale-75 ${
                                 isCloudWithoutBackground ? 'text-slate-600 group-hover/mode:text-slate-800' : 'text-slate-400 group-hover/mode:text-slate-200'
-                            } ${isCloudWithoutBackground ? 'opacity-80' : 'opacity-40'} group-hover/mode:opacity-100 ${isModeSelectorOpen ? 'rotate-180' : ''}`}>
-                                <Icon name="chevron-down" />
-                            </div>
+                            } ${isCloudWithoutBackground ? 'opacity-80' : 'opacity-40'} group-hover/mode:opacity-100`}>
+                                <Icon
+                                    name="chevron-down"
+                                    className={`absolute text-[10px] transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+                                        isModeSelectorOpen ? 'rotate-180 scale-50 opacity-0' : 'rotate-0 scale-100 opacity-100'
+                                    }`}
+                                />
+                                <Icon
+                                    name="minus"
+                                    className={`absolute text-[10px] transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+                                        isModeSelectorOpen ? 'rotate-0 scale-100 opacity-100' : 'rotate-[-90deg] scale-50 opacity-0'
+                                    }`}
+                                />
+                            </span>
                         </button>
 
                         {isModeSelectorOpen && (
-                            <div className="absolute top-full left-0 mt-2 w-32 bg-slate-950/90 backdrop-blur-xl border border-slate-800 rounded-lg shadow-2xl overflow-hidden z-[100] animate-in fade-in slide-in-from-top-2 duration-200">
+                            <div className="absolute bottom-full left-0 mb-2 w-32 origin-bottom-left bg-slate-950/90 backdrop-blur-xl border border-slate-800 rounded-lg shadow-[0_18px_40px_-10px_rgba(0,0,0,0.9),0_0_24px_rgba(0,0,0,0.45)] overflow-hidden z-[100] animate-in fade-in slide-in-from-bottom-2 duration-200">
                                 <button
                                     onClick={() => {
                                         onAgentModeChange('chat');
                                         setIsModeSelectorOpen(false);
                                     }}
-                                    className="w-full flex items-center gap-2.5 px-3 py-2 text-[10px] transition-all hover:bg-slate-800/50 group"
-                                    style={{ 
-                                        color: agentMode === 'chat' ? 'var(--accent-color)' : 'var(--text-secondary)',
-                                        backgroundColor: agentMode === 'chat' ? 'var(--hover-color)' : 'transparent'
-                                    }}
+                                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-[10px] transition-all duration-200 hover:bg-[var(--primary-color)]/30 hover:text-white hover:shadow-[0_0_14px_rgba(0,0,0,0.25)] group ${
+                                        agentMode === 'chat' ? 'text-[var(--accent-color)] bg-[var(--hover-color)]' : 'text-[var(--text-secondary)]'
+                                    }`}
                                 >
                                     <Icon name="comment-alt" className="text-[10px]" />
                                     <span className="font-mono">{t('chat.modes.chat')}</span>
@@ -2586,11 +2651,9 @@ export const ChatArea = ({
                                         onAgentModeChange('agent');
                                         setIsModeSelectorOpen(false);
                                     }}
-                                    className="w-full flex items-center gap-2.5 px-3 py-2 text-[10px] transition-all hover:bg-slate-800/50 group"
-                                    style={{ 
-                                        color: agentMode === 'agent' ? 'var(--accent-color)' : 'var(--text-secondary)',
-                                        backgroundColor: agentMode === 'agent' ? 'var(--hover-color)' : 'transparent'
-                                    }}
+                                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-[10px] transition-all duration-200 hover:bg-[var(--primary-color)]/30 hover:text-white hover:shadow-[0_0_14px_rgba(0,0,0,0.25)] group ${
+                                        agentMode === 'agent' ? 'text-[var(--accent-color)] bg-[var(--hover-color)]' : 'text-[var(--text-secondary)]'
+                                    }`}
                                 >
                                     <Icon name="robot" className="text-[10px]" />
                                     <span className="font-mono">{t('chat.modes.agent')}</span>
@@ -2679,12 +2742,25 @@ export const ChatArea = ({
                             >
                                 <Icon name="microchip" className={`text-[10px] ${isModelSelectorOpen ? 'text-white' : 'opacity-70'}`} />
                                 <span className="truncate max-w-[100px]">{activeModelName}</span>
-                                <Icon name="chevron-down" className={`text-[8px] transition-transform duration-300 ${isModelSelectorOpen ? 'rotate-180' : ''}`} />
+                                <span className="relative flex h-2.5 w-2.5 shrink-0 items-center justify-center">
+                                    <Icon
+                                        name="chevron-down"
+                                        className={`absolute text-[8px] transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+                                            isModelSelectorOpen ? 'rotate-180 scale-50 opacity-0' : 'rotate-0 scale-100 opacity-100'
+                                        }`}
+                                    />
+                                    <Icon
+                                        name="minus"
+                                        className={`absolute text-[8px] transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+                                            isModelSelectorOpen ? 'rotate-0 scale-100 opacity-100' : 'rotate-[-90deg] scale-50 opacity-0'
+                                        }`}
+                                    />
+                                </span>
                             </button>
 
                             {isModelSelectorOpen && (
                                 <div className="absolute bottom-full right-0 mb-2 w-48 z-[100] animate-in fade-in slide-in-from-bottom-2 duration-200">
-                                    <div className="bg-slate-950/90 backdrop-blur-xl border border-slate-800 rounded-lg shadow-2xl overflow-hidden">
+                                    <div className="bg-slate-950/90 backdrop-blur-xl border border-slate-800 rounded-lg shadow-[0_18px_40px_-10px_rgba(0,0,0,0.9),0_0_24px_rgba(0,0,0,0.45)] overflow-hidden">
                                         <div className="border-b border-slate-800/50 bg-slate-900/40">
                                             <button
                                                 type="button"
@@ -2739,7 +2815,7 @@ export const ChatArea = ({
                                         </div>
                                     </div>
                                     <div
-                                        className={`absolute right-full top-0 mr-2 w-44 max-h-[220px] overflow-y-auto chat-input-scrollbar bg-slate-950/95 backdrop-blur-xl border border-slate-800 rounded-lg shadow-2xl overflow-x-hidden origin-right transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                                        className={`absolute right-full top-0 mr-2 w-44 max-h-[220px] overflow-y-auto chat-input-scrollbar bg-slate-950/95 backdrop-blur-xl border border-slate-800 rounded-lg shadow-[0_18px_40px_-10px_rgba(0,0,0,0.9),0_0_24px_rgba(0,0,0,0.45)] overflow-x-hidden origin-right transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                                             isProviderSelectorOpen
                                                 ? 'translate-x-0 scale-100 opacity-100 pointer-events-auto'
                                                 : 'translate-x-2 scale-95 opacity-0 pointer-events-none'

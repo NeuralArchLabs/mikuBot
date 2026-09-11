@@ -8,6 +8,9 @@ export interface ConversationBlock {
     toolCall?: any;
     result?: any;
     status?: string;
+    thoughtType?: 'native' | 'summary';
+    /** Public provider summary retained in the next model turn's history. */
+    reasoning_summary?: string;
     thought_signature?: string;
     thoughtSignature?: string;
 }
@@ -121,6 +124,15 @@ export function blocksToAgentMessages(blocks?: ConversationBlock[] | null): any[
         if (block.type === 'thought') {
             if (queuedToolResponses.length) finalizeAssistant();
             currentAssistant ||= { role: 'assistant', content: '' };
+            if (block.thoughtType === 'summary') {
+                const summary = block.content.trim();
+                if (summary) {
+                    currentAssistant.reasoning_summary = currentAssistant.reasoning_summary
+                        ? `${currentAssistant.reasoning_summary}\n\n${summary}`
+                        : summary;
+                }
+                continue;
+            }
             const signature = block.thought_signature || block.thoughtSignature ||
                 block.toolCall?.thought_signature || block.toolCall?.thoughtSignature;
             if (signature) currentAssistant.thought_signature = signature;

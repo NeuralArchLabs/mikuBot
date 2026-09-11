@@ -17,6 +17,7 @@ export function useAgentStatus() {
         log: [],
         streamedText: '',
         streamedReasoning: '',
+        streamedReasoningSummary: '',
         errorCount: 0,
     });
 
@@ -46,6 +47,7 @@ export function useAgentStatus() {
             log: [],
             streamedText: '',
             streamedReasoning: '',
+            streamedReasoningSummary: '',
             errorCount: 0,
         });
     }, []);

@@ -134,8 +134,10 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
     const wasVisibleDuringLiveRef = useRef(false);
     const [isVisible, setIsVisible] = useState(false);
     
-    // 🎭 ENTRANCE GUARD: Track if this tool block was born during an active stream
-    const isNewRef = useRef(!result);
+    // 🎭 ENTRANCE GUARD: Track if this tool block was born during an active stream.
+    // A tool can arrive already completed in the same streamed update, so use
+    // the stream state rather than the presence of its result as the signal.
+    const isNewRef = useRef(!!isStreaming);
 
     // 🎯 VISIBILITY SENSOR: Tracks presence for live witnessed executions and final replays
     useEffect(() => {
@@ -342,7 +344,7 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
                     {!isExpanded && (
                         <>
                             <div className="w-px h-3 bg-white/10 flex-shrink-0" />
-                            <span className={`tool-block-summary text-[11px] truncate flex-1 font-mono tracking-tight ${isPlaceholder ? (isNeuralSkill ? 'text-blue-400 italic animate-pulse' : 'text-slate-400 italic animate-pulse') : (isAborted || isDenied) ? 'text-orange-400 italic' : (isSuccess ? (isNeuralSkill ? 'text-cyan-400' : 'text-emerald-400') : hasError ? 'text-rose-400 font-bold' : 'text-slate-400 italic')}`}>
+                            <span className={`tool-block-summary tool-block-header-summary text-[11px] leading-4 truncate flex-1 font-mono tracking-tight ${isPlaceholder ? (isNeuralSkill ? 'text-blue-400 italic animate-pulse' : 'text-slate-400 italic animate-pulse') : (isAborted || isDenied) ? 'text-orange-400 italic' : (isSuccess ? (isNeuralSkill ? 'text-cyan-400' : 'text-emerald-400') : hasError ? 'text-rose-400 font-bold' : 'text-slate-400 italic')}`}>
                                 {truncatedText}
                             </span>
                         </>

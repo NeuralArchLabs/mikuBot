@@ -726,7 +726,7 @@ def _extract_native_tool_call(provider, response_payload, tool_name):
                 break
         if not returned_name and parts:
             content_preview = str(parts[0].get("text", ""))[:2500]
-    elif provider in ("groq", "zai", "ollama"):
+    elif provider in ("groq", "zai", "ollama", "unsloth", "codex"):
         choices = response_payload.get("choices", []) if isinstance(response_payload, dict) else []
         if choices:
             message = choices[0].get("message", {})
@@ -787,7 +787,7 @@ def call_deep_research_tool(
 ):
     """Expose exactly one private native tool for one Deep Research phase."""
     provider, model, credential = _deep_research_provider(config)
-    if provider not in ("gemini", "groq", "zai", "ollama"):
+    if provider not in ("gemini", "groq", "zai", "ollama", "unsloth", "codex"):
         raise LLMProviderError("LLM_PROVIDER_INVALID", f"Proveedor LLM no soportado: {provider}", provider=provider)
     log_subagent(
         f"--- TOOL CALL DEEP RESEARCH ---\nProvider: {provider}\nModel: {model}\nTool: {tool_name}\nPrompt: {prompt[:300]}..."
@@ -865,7 +865,45 @@ def call_deep_research_tool(
                         break
                     if provider != "zai" or candidate.status_code not in (400, 404, 405, 422):
                         break
-            else:
+            elif provider == "unsloth":
+                bridge_url = os.environ.get("MIKU_UNSLOTH_BRIDGE_URL")
+                bridge_token = os.environ.get("MIKU_UNSLOTH_BRIDGE_TOKEN")
+                if not bridge_url or not bridge_token:
+                    raise LLMProviderError(
+                        "LLM_BRIDGE_UNAVAILABLE",
+                        "No se pudo conectar con el puente local de Deep Research para Unsloth",
+                        provider=provider,
+                    )
+                messages = [
+                    {"role": "system", "content": effective_system_prompt},
+                    {"role": "user", "content": attempt_prompt},
+                ]
+                payload = {
+                    "model": model,
+                    "messages": messages,
+                    "stream": False,
+                    "tools": [{"type": "function", "function": {
+                        "name": tool_name,
+                        "description": description,
+                        "parameters": parameters,
+                    }}],
+                    "tool_choice": {"type": "function", "function": {"name": tool_name}},
+                    "temperature": 0.0,
+                    **({"max_tokens": max_tokens} if max_tokens else {}),
+                }
+                headers = {
+                    "Authorization": f"Bearer {bridge_token}",
+                    "Content-Type": "application/json",
+                }
+                response = _post_llm_with_heartbeat(
+                    provider,
+                    tool_name,
+                    bridge_url,
+                    request_timeout,
+                    json=payload,
+                    headers=headers,
+                )
+            elif provider == "ollama":
                 ollama_url = os.environ.get("MIKU_LLM_OLLAMA_URL") or config.get("ollamaUrl", "http://localhost:11434")
                 ollama_base_url = ollama_url.rstrip("/")
                 url = (
@@ -892,6 +930,43 @@ def call_deep_research_tool(
                 }
                 response = _post_llm_with_heartbeat(
                     provider, tool_name, url, request_timeout, json=payload
+                )
+            else:
+                bridge_url = os.environ.get("MIKU_CODEX_BRIDGE_URL")
+                bridge_token = os.environ.get("MIKU_CODEX_BRIDGE_TOKEN")
+                if not bridge_url or not bridge_token:
+                    raise LLMProviderError(
+                        "LLM_BRIDGE_UNAVAILABLE",
+                        "No se pudo conectar con el puente local de Deep Research para Codex",
+                        provider=provider,
+                    )
+                messages = [
+                    {"role": "system", "content": effective_system_prompt},
+                    {"role": "user", "content": attempt_prompt},
+                ]
+                payload = {
+                    "model": model,
+                    "messages": messages,
+                    "stream": False,
+                    "tools": [{"type": "function", "function": {
+                        "name": tool_name,
+                        "description": description,
+                        "parameters": parameters,
+                    }}],
+                    "tool_choice": {"type": "function", "function": {"name": tool_name}},
+                    "temperature": 0.0,
+                    **({"max_tokens": max_tokens} if max_tokens else {}),
+                }
+                response = _post_llm_with_heartbeat(
+                    provider,
+                    tool_name,
+                    bridge_url,
+                    request_timeout,
+                    json=payload,
+                    headers={
+                        "Authorization": f"Bearer {bridge_token}",
+                        "Content-Type": "application/json",
+                    },
                 )
 
             log_subagent(f"{provider} tool call {tool_name}: HTTP {response.status_code} ({attempt}/{max_retries})")

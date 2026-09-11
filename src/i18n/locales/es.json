@@ -348,7 +348,7 @@
     "codex": {
       "title": "ChatGPT · Codex",
       "description": "Inicia sesión con ChatGPT para usar los modelos y límites de Codex de tu cuenta. No necesitas una clave API.",
-      "deep_research_note": "Deep Research necesita otro proveedor compatible; por ahora no admite la sesión de Codex.",
+      "deep_research_note": "Deep Research puede usar la sesión de Codex o Unsloth; si no, selecciona otro proveedor compatible.",
       "login": "Iniciar sesión con ChatGPT",
       "logout": "Cerrar sesión",
       "cancel_login": "Cancelar inicio de sesión",
@@ -439,7 +439,7 @@
       "config_pending": "Configuración Pendiente"
     },
     "security": {
-      "title": "Seguridad y motor principal",
+      "title": "Seguridad e inferencia de respaldo",
       "vault_title": "Bóveda de Credenciales",
       "vault_desc": "Cuentas y llaves cifradas para tus proveedores",
       "fallback_title": "Enrutamiento Maestro de Respaldo",
@@ -739,7 +739,7 @@
       "parallel_mode_desc": "Ejecución paralela: las herramientas compatibles se ejecutan al mismo tiempo para responder más rápido; puede consumir más recursos",
       "enable_debug": "Activar Modo Depuración",
       "disable_debug": "Desactivar Modo Depuración",
-      "debug": "DEPURAR",
+      "debug": "RAW LOG",
       "remove_attachment": "Eliminar adjunto",
       "select_files": "Seleccionar archivos",
       "resume_task": "Reanudar Tarea",
@@ -783,6 +783,8 @@
       "role_tool": "Herramienta",
       "reasoning": "Razonamiento",
       "active_reasoning": "Razonamiento Activo",
+      "thought_summary": "Pensamiento",
+      "provider_reasoning_summary": "Pensamiento",
       "agent_busy": "AGENTE OCUPADO",
       "processing_branch": "Procesando Rama:",
       "another_branch": "otra rama",

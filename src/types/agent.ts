@@ -28,6 +28,8 @@ export interface AgentStatus {
     log: AgentLogEntry[];
     streamedText: string;
     streamedReasoning?: string;
+    /** Public provider summary shown only while a request is active; never private chain of thought. */
+    streamedReasoningSummary?: string;
     /** True when the provider started emitting native reasoning after visible content. */
     streamedReasoningFollowsText?: boolean;
     errorCount: number;

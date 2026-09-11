@@ -5,6 +5,7 @@ import { toHtml } from '../../utils';
 import { formatFinalResponse } from '../../services/formatters';
 import { sanitizeRichContent } from '../../utils/security/richContentPolicy';
 import { hyphenateChatHtml, copyWithoutSoftHyphens } from '../../utils/helpers/chatHyphenation';
+import { appendMarkdownTypingCursor } from '../../utils/helpers/typingCursor';
 
 export const Icon = ({ name, className = "" }: { name: string; className?: string }) => {
     const isBrand = ['python', 'node-js', 'github', 'google', 'facebook', 'twitter', 'discord', 'telegram', 'npm', 'js'].includes(name.toLowerCase());
@@ -100,12 +101,14 @@ const MarkdownRendererBase = ({
     content,
     isStreaming,
     mode = 'full',
-    trustedLocalMediaUrls
+    trustedLocalMediaUrls,
+    showTypingCursor = false
 }: {
     content: string,
     isStreaming?: boolean,
     mode?: 'full' | 'minimal' | 'none',
-    trustedLocalMediaUrls?: readonly string[]
+    trustedLocalMediaUrls?: readonly string[],
+    showTypingCursor?: boolean
 }) => {
     const { i18n } = useTranslation();
     const containerRef = useRef<HTMLDivElement>(null);
@@ -119,14 +122,28 @@ const MarkdownRendererBase = ({
             toHtml(formatFinalResponse(content), false, mode),
             { source: 'agent', trustedLocalMediaUrls }
         );
-        return mode === 'none' ? sanitized : hyphenateChatHtml(sanitized, i18n.language);
-    }, [content, isStreaming, mode, trustedLocalMediaUrls, i18n.language]);
+        const rendered = mode === 'none' ? sanitized : hyphenateChatHtml(sanitized, i18n.language);
+        return showTypingCursor ? appendMarkdownTypingCursor(rendered) : rendered;
+    }, [content, isStreaming, mode, trustedLocalMediaUrls, i18n.language, showTypingCursor]);
+
+    // The chat typewriter supplies a visible prefix. Render that prefix in
+    // minimal mode both while receiving tokens and while replaying a saved
+    // block. Cursor placement uses the same text-node traversal in both paths.
+    const liveStreamingHtml = useMemo(() => {
+        if (!isStreaming || mode !== 'minimal') return '';
+        const sanitized = sanitizeRichContent(
+            toHtml(formatFinalResponse(content), true, mode),
+            { source: 'agent', trustedLocalMediaUrls }
+        );
+        const rendered = hyphenateChatHtml(sanitized, i18n.language);
+        return showTypingCursor ? appendMarkdownTypingCursor(rendered) : rendered;
+    }, [content, isStreaming, mode, trustedLocalMediaUrls, i18n.language, showTypingCursor]);
 
     // ⚡ APPEND-ONLY STREAMING: During streaming, detect new complete paragraphs and
     // append them to the DOM using insertAdjacentHTML. This is zero-flicker because
     // existing DOM nodes are never removed or replaced — only new ones are added.
     useLayoutEffect(() => {
-        if (!isStreaming || !containerRef.current) {
+        if (!isStreaming || !containerRef.current || mode === 'minimal') {
             committedLenRef.current = 0;
             return;
         }
@@ -148,11 +165,15 @@ const MarkdownRendererBase = ({
         );
         const newHtml = mode === 'none' ? sanitized : hyphenateChatHtml(sanitized, i18n.language);
 
+        // Keep a single caret attached to the newest streamed paragraph. The
+        // previous one is removed before appending the next chunk.
+        containerRef.current.querySelectorAll('.markdown-typing-cursor').forEach(cursor => cursor.remove());
+        const streamedHtml = showTypingCursor ? appendMarkdownTypingCursor(newHtml) : newHtml;
         containerRef.current.insertAdjacentHTML('beforeend',
-            `<div class="stream-paragraph-enter">${newHtml}</div>`
+            `<div class="stream-paragraph-enter">${streamedHtml}</div>`
         );
         committedLenRef.current = commitUpTo;
-    }, [content, isStreaming, mode, trustedLocalMediaUrls, i18n.language]);
+    }, [content, isStreaming, mode, trustedLocalMediaUrls, i18n.language, showTypingCursor]);
 
     // ⚡ DEFER ANIMATIONS: Prevent intersection observer initialization during streaming
     // to avoid typewriter effects restarting on every incremental chunk.
@@ -553,6 +574,18 @@ const MarkdownRendererBase = ({
     }, [html, isStreaming]);
 
     if (isStreaming) {
+        if (mode === 'minimal') {
+            return (
+                <div
+                    ref={containerRef}
+                    className="markdown-body font-mono px-1 is-streaming"
+                    lang={i18n.language || 'en'}
+                    onCopy={copyWithoutSoftHyphens}
+                    dangerouslySetInnerHTML={{ __html: liveStreamingHtml }}
+                />
+            );
+        }
+
         // During streaming: container is empty initially. Paragraphs are appended
         // by the useLayoutEffect above as they complete. No React re-rendering of content.
         return (
@@ -595,6 +628,7 @@ export const MarkdownRenderer = React.memo(
     (previous, next) => previous.content === next.content
         && previous.isStreaming === next.isStreaming
         && previous.mode === next.mode
+        && previous.showTypingCursor === next.showTypingCursor
         && areMediaUrlsEqual(previous.trustedLocalMediaUrls, next.trustedLocalMediaUrls)
 );
 

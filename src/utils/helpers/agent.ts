@@ -19,6 +19,7 @@ export function createDefaultAgentStatus(): AgentStatus {
         log: [],
         streamedText: '',
         streamedReasoning: '',
+        streamedReasoningSummary: '',
         errorCount: 0,
     };
 }

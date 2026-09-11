@@ -48,6 +48,12 @@ const THEME_LABELS: Record<string, string> = {
     synthwave: 'Synthwave'
 };
 
+const PROVIDER_ICON_ASSETS: Partial<Record<Provider, string>> = {
+    groq: './groqICON.png',
+    gemini: './geminiICON.png',
+    zai: './zai.png'
+};
+
 type OllamaAdvancedDraft = Pick<
     AppConfig,
     'ollamaNumGpu' | 'ollamaNumCtx' | 'ollamaMainGpu' | 'ollamaNumThread' | 'ollamaThink' | 'ollamaZeroOverhead' | 'temperature'
@@ -180,7 +186,9 @@ export const SettingsPanel = ({
         const modelKey = key === 'provider' ? 'model' : key.replace('Provider', 'Model') as 'chatModel' | 'agentModel' | 'visionModel';
         const available = models[provider] || [];
         const selected = config[modelKey];
-        const nextModel = available.some(model => model.id === selected) ? selected : key === 'visionProvider' ? '' : available[0]?.id || '';
+        const nextModel = key === 'visionProvider'
+            ? ''
+            : available.some(model => model.id === selected) ? selected : available[0]?.id || '';
         const reasoningKey = key === 'chatProvider'
             ? 'chatReasoningEffort'
             : key === 'agentProvider'
@@ -198,6 +206,7 @@ export const SettingsPanel = ({
     const providerConnected = (provider: Provider) => provider === 'codex'
         ? codexConnected
         : (provider === 'ollama' || provider === 'unsloth') ? (models[provider] || []).length > 0 : !!config.apiKeys[provider];
+    const visionCatalogProvider = config.visionProvider || config.chatProvider || config.provider || 'gemini';
 
     const scanGpus = useCallback(async () => {
         setIsScanningGpus(true);
@@ -960,7 +969,9 @@ export const SettingsPanel = ({
                                                             ) : pId === 'codex' ? (
                                                                 <img src="./chatgptICON.png" alt="ChatGPT" className={`w-6 h-6 rounded-md object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]' : 'opacity-30 grayscale hover:opacity-80'}`} />
                                                             ) : (
-                                                                <Icon name={(PROVIDERS as any)[pId]?.icon || 'robot'} className="text-lg" />
+                                                                <span className="flex h-6 w-6 items-center justify-center">
+                                                                    <Icon name={(PROVIDERS as any)[pId]?.icon || 'robot'} className="text-lg" />
+                                                                </span>
                                                             )}
                                                             <span className={`text-[9px] font-black uppercase tracking-wider ${isSelected ? 'text-blue-100' : 'text-slate-400'}`}>
                                                                 {PROVIDERS[pId].name.split(' ')[0]}
@@ -1061,7 +1072,9 @@ export const SettingsPanel = ({
                                                             ) : pId === 'codex' ? (
                                                                 <img src="./chatgptICON.png" alt="ChatGPT" className={`w-6 h-6 rounded-md object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]' : 'opacity-30 grayscale hover:opacity-80'}`} />
                                                             ) : (
-                                                                <Icon name={(PROVIDERS as any)[pId]?.icon || 'robot'} className="text-lg" />
+                                                                <span className="flex h-6 w-6 items-center justify-center">
+                                                                    <Icon name={(PROVIDERS as any)[pId]?.icon || 'robot'} className="text-lg" />
+                                                                </span>
                                                             )}
                                                             <span className={`text-[9px] font-black uppercase tracking-wider ${isSelected ? 'text-purple-100' : 'text-slate-400'}`}>
                                                                 {PROVIDERS[pId].name.split(' ')[0]}
@@ -1134,7 +1147,7 @@ export const SettingsPanel = ({
                                                     }`}
                                                 title={config.visionModel ? t('settings.orchestration.connection_active') : 'Default: Native Mode'}
                                             >
-                                                <Icon name={config.visionProvider === 'codex' ? 'user' : config.visionProvider === 'ollama' ? 'network-wired' : 'key'} />
+                                                <Icon name={!config.visionModel ? 'eye' : config.visionProvider === 'codex' ? 'user' : config.visionProvider === 'ollama' ? 'network-wired' : 'key'} />
                                             </div>
 
                                             <button
@@ -1159,7 +1172,7 @@ export const SettingsPanel = ({
                                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block ml-1">{t('settings.orchestration.provider')}</label>
                                             <div className="flex gap-2 premium-card !bg-black/20 p-1.5 rounded-2xl">
                                                 {(Object.keys(PROVIDERS) as Provider[]).map(pId => {
-                                                    const isSelected = config.visionProvider === pId;
+                                                    const isSelected = Boolean(config.visionModel) && config.visionProvider === pId;
                                                     return (
                                                         <button
                                                             key={pId}
@@ -1180,7 +1193,9 @@ export const SettingsPanel = ({
                                                             ) : pId === 'codex' ? (
                                                                 <img src="./chatgptICON.png" alt="ChatGPT" className={`w-6 h-6 rounded-md object-contain transition-all duration-300 ${isSelected ? 'opacity-100 scale-110 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]' : 'opacity-30 grayscale hover:opacity-80'}`} />
                                                             ) : (
-                                                                <Icon name={(PROVIDERS as any)[pId]?.icon || 'robot'} className="text-lg" />
+                                                                <span className="flex h-6 w-6 items-center justify-center">
+                                                                    <Icon name={(PROVIDERS as any)[pId]?.icon || 'robot'} className="text-lg" />
+                                                                </span>
                                                             )}
                                                             <span className={`text-[9px] font-black uppercase tracking-wider ${isSelected ? 'text-white' : 'text-slate-400'}`}>
                                                                 {PROVIDERS[pId].name.split(' ')[0]}
@@ -1199,11 +1214,14 @@ export const SettingsPanel = ({
                                             <div className="relative">
                                                 <ModernSelect
                                                     value={config.visionModel}
-                                                    onChange={(val) => updateConfig('visionModel', val)}
+                                                    onChange={(val) => onUpdatePartialConfig(val
+                                                        ? { visionProvider: visionCatalogProvider, visionModel: val }
+                                                        : { visionProvider: undefined, visionModel: '' }
+                                                    )}
                                                     placeholder="-- MODO NATIVO SELECCIONADO --"
                                                     options={[
                                                         { value: '', label: 'NATIVE VISION (Using Chat/Agent model)' },
-                                                        ...(models[config.visionProvider || 'gemini'] || []).map(m => {
+                                                        ...(models[visionCatalogProvider] || []).map(m => {
                                                             const isVision = isVisionModel(m);
 
                                                             return {
@@ -1227,11 +1245,18 @@ export const SettingsPanel = ({
 
                         {/* Secure Credential Vault Section - Balanced Spacing */}
                         <div className="space-y-4 pt-4 md:pt-6">
-                            <label className="text-sm font-black text-[var(--text-primary)] uppercase tracking-[0.2em] flex items-center gap-2">
-                                <Icon name="shield-alt" className="text-amber-500" /> {t('settings.security.title')}
-                            </label>
+                            <div className="flex flex-col md:flex-row md:items-start justify-between gap-3 relative z-10">
+                                <div className="flex min-w-0 items-start gap-2">
+                                    <Icon name="lock" className="mt-0.5 shrink-0 text-sm text-amber-500" />
+                                    <div className="min-w-0 flex-1 flex flex-col md:flex-row md:items-center gap-1.5 md:gap-4">
+                                        <h3 className="min-w-0 text-sm font-black text-[var(--text-primary)] uppercase tracking-[0.2em] break-words">{t('settings.security.vault_title')}</h3>
+                                        <div className="hidden md:block w-px h-4 bg-amber-500/20" />
+                                        <p className="min-w-0 text-[10px] sm:text-xs text-amber-500/60 font-medium uppercase tracking-wider leading-relaxed break-words">{t('settings.security.vault_desc')}</p>
+                                    </div>
+                                </div>
+                            </div>
 
-                            <div className={`premium-panel p-6 relative miku-composite-isolate border transition-all duration-500 ${
+                            <div className={`premium-panel min-w-0 p-4 sm:p-6 relative miku-composite-isolate border transition-all duration-500 ${
                                 showOllamaAdvanced 
                                     ? '!bg-emerald-500/[0.02] border-emerald-500/20 shadow-[0_0_40px_rgba(16,185,129,0.05)]' 
                                     : '!bg-amber-500/[0.03] hover:!bg-amber-500/[0.06] border-amber-500/10 hover:border-amber-500/30 shadow-[0_0_40px_rgba(251,191,36,0.05)]'
@@ -1475,7 +1500,7 @@ export const SettingsPanel = ({
                                             <div className="h-px bg-slate-800/50" />
 
                                             {/* Advanced Manual Tuning */}
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-2">
+                                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 pt-2">
                                                 <div className="space-y-4">
                                                     <div className="flex justify-between items-center">
                                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
@@ -1521,9 +1546,9 @@ export const SettingsPanel = ({
                                                 </div>
                                                 
                                                 {/* Zero Overhead Toggle */}
-                                                <div className="md:col-span-2 space-y-4 pt-4 border-t border-slate-800/50 mt-4">
-                                                    <div className="flex justify-between items-start gap-4">
-                                                        <div className="flex-1">
+                                                <div className="lg:col-span-2 space-y-4 pt-4 border-t border-slate-800/50 mt-4">
+                                                    <div className="flex flex-wrap justify-between items-start gap-4">
+                                                        <div className="min-w-0 flex-1">
                                                             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-1">
                                                                 <Icon name="rocket" className="text-amber-500" /> {t('settings.security.ollama_zero_overhead_title')}
                                                             </h3>
@@ -1564,29 +1589,9 @@ export const SettingsPanel = ({
                                     </div>
                                 ) : (
                                     <>
-                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-amber-500/10 pb-4 relative z-10">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-2xl premium-icon-box bg-amber-500/20 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-900/20 transition-all">
-                                            <Icon name="lock" className="text-xl" />
-                                        </div>
-                                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                                            <h3 className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-orange-400 tracking-tight whitespace-nowrap">{t('settings.security.vault_title')}</h3>
-                                            <div className="hidden sm:block w-px h-4 bg-amber-500/20" />
-                                            <p className="text-[10px] sm:text-xs text-amber-500/60 font-medium uppercase tracking-wider">{t('settings.security.vault_desc')}</p>
-                                        </div>
-                                    </div>
-                                    {/* Obsolete static save button - replaced by floating one */}
-                                    {/* <button
-                                        onClick={onSaveGlobal}
-                                        className="hidden md:flex h-10 px-4 bg-gradient-to-br from-blue-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white rounded-xl text-[10px] xl:text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-blue-900/30 transition-all items-center justify-center gap-2 border border-blue-500/30 whitespace-nowrap"
-                                    >
-                                        <Icon name="save" className="text-sm flex-shrink-0" /> Save Global
-                                    </button> */}
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-12 gap-6 relative z-10">
+                                <div className="grid min-w-0 grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 relative z-10">
                                     {/* Fallback Config */}
-                                    <div className="md:col-span-5 bg-black/40 rounded-2xl p-5 border border-white/5 flex flex-col h-full">
+                                    <div className="min-w-0 lg:col-span-5 bg-black/40 rounded-2xl p-4 sm:p-5 border border-white/5 flex flex-col h-full">
                                         <div>
                                             <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">{t('settings.security.fallback_title')}</h4>
                                             <div className="space-y-4">
@@ -1632,32 +1637,41 @@ export const SettingsPanel = ({
                                     </div>
 
                                     {/* Keys */}
-                                    <div className="md:col-span-7 premium-card p-5 transition-all duration-700 flex flex-col miku-composite-isolate">
+                                    <div className="min-w-0 lg:self-start lg:col-span-7 premium-card p-4 sm:p-5 transition-all duration-700 flex flex-col miku-composite-isolate">
                                         <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">{t('settings.security.key_mgmt')}</h4>
 
-                                        <div className="flex gap-2 premium-card !bg-slate-900/60 p-1.5 rounded-2xl mb-4">
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1.5 premium-card !bg-slate-900/60 p-1.5 rounded-2xl mb-4">
                                             {(Object.keys(PROVIDERS) as Provider[]).map(pId => (
                                                 <button
                                                     key={pId}
                                                     onClick={() => setEditingProvider(pId)}
-                                                    className={`flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all ${editingProvider === pId ? 'bg-slate-700/80 text-white shadow-lg shadow-black/20 ring-1 ring-white/5' : 'text-slate-300/50 hover:text-slate-100 hover:bg-white/5'
+                                                    className={`min-w-0 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider leading-tight transition-all ${editingProvider === pId ? 'bg-slate-700/80 text-white shadow-lg shadow-black/20 ring-1 ring-white/5' : 'text-slate-300/50 hover:text-slate-100 hover:bg-white/5'
                                                         }`}
                                                 >
-                                                    {pId === 'codex' ? (
-                                                        <img src="./chatgptICON.png" alt="ChatGPT" className="mx-auto mb-1 h-5 w-5 rounded-md object-contain" />
-                                                    ) : <Icon name={(PROVIDERS as any)[pId]?.icon || 'robot'} className="mx-auto mb-1 text-sm" />}
-                                                    <span>{pId === 'codex' ? 'ChatGPT' : PROVIDERS[pId].name.split(' ')[0]}</span>
+                                                    <span className="block break-words text-center">{pId === 'codex' ? 'ChatGPT' : PROVIDERS[pId].name.split(' ')[0]}</span>
                                                 </button>
                                             ))}
                                         </div>
 
-                                        <div className="flex-1 flex flex-col justify-center">
+                                        <div className="min-w-0 flex-1 flex flex-col justify-center lg:justify-start">
                                             {editingProvider === 'codex' ? (
                                                 <CodexAccountSettings
                                                     onAccountChange={setCodexConnected}
                                                     onRefreshModels={() => onTestConnection('codex')}
                                                 />
                                             ) : <>
+                                            {PROVIDER_ICON_ASSETS[editingProvider] && (
+                                                <div className="mx-3 sm:mx-4 mb-4 flex min-w-0 items-center justify-between gap-3 lg:min-h-[4.5rem]">
+                                                    <h3 className="min-w-0 break-words font-black text-base text-[var(--text-primary)]">
+                                                        {PROVIDERS[editingProvider].name.split(' ')[0]}
+                                                    </h3>
+                                                    <img
+                                                        src={PROVIDER_ICON_ASSETS[editingProvider]}
+                                                        alt={PROVIDERS[editingProvider].name}
+                                                        className="h-7 w-7 shrink-0 rounded-lg object-contain"
+                                                    />
+                                                </div>
+                                            )}
                                             {editingProvider === 'unsloth' && (
                                                 <div className="mb-4 space-y-2">
                                                     <label className="block text-xs font-bold text-[var(--text-primary)]" htmlFor="unsloth-endpoint">{t('settings.unsloth.endpoint')}</label>
@@ -1686,7 +1700,7 @@ export const SettingsPanel = ({
                                                         }
                                                     }}
                                                     placeholder={editingProvider === 'ollama' ? "http://localhost:11434" : t('settings.security.key_placeholder', { provider: PROVIDERS[editingProvider].name })}
-                                                    className="w-full premium-input rounded-xl pl-14 pr-16 py-3.5 text-[var(--primary-color)] font-mono text-xs text-center focus:outline-none transition-all placeholder:text-slate-600 placeholder:tracking-wider placeholder:text-center"
+                                                    className="w-full min-w-0 premium-input rounded-xl pl-12 pr-14 sm:pl-14 sm:pr-16 py-3.5 text-[var(--primary-color)] font-mono text-xs text-center focus:outline-none transition-all placeholder:text-slate-600 placeholder:tracking-wider placeholder:text-center"
                                                 />
                                                 <div className="absolute right-4 flex items-center gap-1">
                                                     {editingProvider !== 'ollama' && (
@@ -1709,13 +1723,13 @@ export const SettingsPanel = ({
                                                         onClick={openOllamaAdvanced}
                                                         className="w-full py-4 px-6 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 hover:border-emerald-500/40 rounded-2xl transition-all duration-300 flex items-center justify-between group"
                                                     >
-                                                        <div className="flex items-center gap-4">
+                                                        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
                                                             <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
-                                                                <Icon name="microchip" />
+                                                                <img src="./ollamaICON.webp" alt="Ollama" className="h-6 w-6 object-contain" />
                                                             </div>
-                                                            <div className="text-left">
-                                                                <div className="text-sm font-black text-emerald-500 tracking-tight">{t('settings.security.ollama_advanced')}</div>
-                                                                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{t('settings.security.ollama_advanced_desc', 'Hardware & Performance Tuning')}</div>
+                                                            <div className="min-w-0 text-left">
+                                                                <div className="text-sm font-black text-emerald-500 tracking-tight break-words">{t('settings.security.ollama_advanced')}</div>
+                                                                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-relaxed break-words">{t('settings.security.ollama_advanced_desc', 'Hardware & Performance Tuning')}</div>
                                                             </div>
                                                         </div>
                                                         <Icon name="chevron-right" className="text-emerald-500/40 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all" />
@@ -1723,7 +1737,7 @@ export const SettingsPanel = ({
                                                 </div>
                                             ) : (
                                                 <div className="mt-6 flex flex-col gap-3 p-4 premium-card !bg-slate-900/30">
-                                                <div className="flex justify-between items-center">
+                                                <div className="flex flex-wrap justify-between items-center gap-2">
                                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                                                         <Icon name="thermometer-half" /> {t('settings.security.temp_label')}
                                                     </label>
@@ -1753,15 +1767,15 @@ export const SettingsPanel = ({
                                 </div>
 
                                 {/* Telegram Protocol */}
-                                <div className="grid grid-cols-1 md:grid-cols-12 gap-6 relative z-10 pt-2">
-                                    <div className="md:col-span-12 premium-card premium-blue p-5 flex flex-col md:flex-row gap-6">
-                                        <div className="md:w-1/3">
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 relative z-10 pt-2">
+                                    <div className="lg:col-span-12 premium-card premium-blue p-4 sm:p-5 flex flex-col lg:flex-row gap-5 lg:gap-6">
+                                        <div className="min-w-0 lg:w-1/3">
                                             <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-2 flex items-center gap-2">
                                                 <Icon name="paper-plane" /> {t('settings.security.telegram_title')}
                                             </h4>
                                             <p className="text-[10px] text-slate-500 font-medium leading-relaxed">{t('settings.security.telegram_desc')}</p>
                                         </div>
-                                        <div className="md:w-2/3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="min-w-0 lg:w-2/3 grid grid-cols-1 lg:grid-cols-2 gap-4">
                                             <div>
                                                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block ml-1">{t('settings.security.bot_token')}</label>
                                                 <div className="relative group">

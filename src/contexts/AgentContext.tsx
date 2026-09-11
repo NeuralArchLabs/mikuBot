@@ -30,6 +30,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
             currentTool: null,
             log: [],
             streamedText: '',
+            streamedReasoningSummary: '',
             errorCount: 0,
         },
         setAgentStatus: () => {},

@@ -17,6 +17,8 @@ export interface MessageBlock {
     result?: ToolResult;
     status?: 'success' | 'error' | 'pending' | 'denied';
     isFromNarrative?: boolean;
+    /** Distinguishes a public provider summary from native/private reasoning. */
+    thoughtType?: 'native' | 'summary';
     isFromFinalTool?: boolean;
     loopDurationMs?: number;
     startTime?: number;

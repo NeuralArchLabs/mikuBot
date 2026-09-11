@@ -35,6 +35,15 @@ function abortError() {
   return error;
 }
 
+function normalizeSummarySpacing(value) {
+  return String(value || '').replace(/(\*\*[^*\r\n]+?\*\*)(?=\*\*[^*\r\n]+?\*\*)/g, '$1 ');
+}
+
+function appendSummaryDelta(current, delta) {
+  const separator = String(current).endsWith('**') && String(delta).startsWith('**') ? ' ' : '';
+  return normalizeSummarySpacing(`${current}${separator}${delta}`);
+}
+
 function resolveCodexExecutable(env = process.env) {
   if (env.MIKU_CODEX_PATH) {
     const override = path.resolve(env.MIKU_CODEX_PATH);
@@ -100,6 +109,10 @@ function prepareConversation(messages) {
     const entry = { role: message.role, content };
     if (message.tool_calls) entry.tool_calls = message.tool_calls;
     if (message.tool_call_id) entry.tool_call_id = message.tool_call_id;
+    const reasoningSummary = message.reasoning_summary || message.reasoningSummary || message.summary;
+    if (typeof reasoningSummary === 'string' && reasoningSummary.trim()) {
+      entry.reasoning_summary = reasoningSummary.trim();
+    }
     if (message.name) entry.name = message.name;
     const addImage = value => {
       const url = typeof value === 'string' ? value : value?.url || value?.data;
@@ -242,14 +255,18 @@ function createCodexService({ homePath, workPath, openExternal, spawnProcess = s
       state.content += delta;
       state.itemText.set(params.itemId, (state.itemText.get(params.itemId) || '') + delta);
       state.emit({ type: 'content', delta });
-    } else if (message.method === 'item/reasoning/summaryTextDelta' || message.method === 'item/reasoning/textDelta') {
+    } else if (message.method === 'item/reasoning/summaryTextDelta') {
       const delta = params.delta || '';
-      state.reasoning += delta;
-      state.reasoningText.set(params.itemId, (state.reasoningText.get(params.itemId) || '') + delta);
-      state.emit({ type: 'reasoning', delta });
+      state.reasoningSummary = appendSummaryDelta(state.reasoningSummary, delta);
+      state.summaryText.set(params.itemId, appendSummaryDelta(state.summaryText.get(params.itemId) || '', delta));
+      state.emit({ type: 'summary', delta });
+    } else if (message.method === 'item/reasoning/textDelta') {
+      // Codex's raw reasoning channel is provider-private. The supported public
+      // surface is summaryTextDelta, which is handled above and labeled as a
+      // summary in the renderer.
     } else if (message.method === 'item/completed') {
       if (params.item?.type === 'agentMessage') appendCompletedItem(state, params.item);
-      else if (params.item?.type === 'reasoning') appendCompletedReasoningItem(state, params.item);
+      else if (params.item?.type === 'reasoning') appendCompletedReasoningSummary(state, params.item);
     } else if (message.method === 'thread/tokenUsage/updated') {
       const usage = params.tokenUsage?.last || params.tokenUsage?.total;
       if (usage) state.usage = { prompt_tokens: usage.inputTokens || 0, completion_tokens: usage.outputTokens || 0, total_tokens: usage.totalTokens || 0 };
@@ -258,7 +275,7 @@ function createCodexService({ homePath, workPath, openExternal, spawnProcess = s
     } else if (message.method === 'turn/completed') {
       for (const item of params.turn?.items || []) {
         if (item.type === 'agentMessage') appendCompletedItem(state, item);
-        else if (item.type === 'reasoning') appendCompletedReasoningItem(state, item);
+        else if (item.type === 'reasoning') appendCompletedReasoningSummary(state, item);
       }
       const error = params.turn?.error;
       if (state.aborted) state.finish(abortError());
@@ -279,23 +296,23 @@ function createCodexService({ homePath, workPath, openExternal, spawnProcess = s
     state.itemText.set(item.id, text);
   }
 
-  function appendCompletedReasoningItem(state, item) {
+  function appendCompletedReasoningSummary(state, item) {
     // The app-server normally streams summaryTextDelta events, but a client
     // can receive only the final reasoning item after a reconnect or a very
     // short turn. Surface its public summary while deliberately ignoring the
     // raw `content` field.
-    const summary = Array.isArray(item.summary)
+    const summary = normalizeSummarySpacing(Array.isArray(item.summary)
       ? item.summary.map(part => typeof part === 'string' ? part : part?.text || '').filter(Boolean).join('\n\n')
       : typeof item.summary === 'string' ? item.summary
-        : typeof item.text === 'string' ? item.text : '';
+        : typeof item.text === 'string' ? item.text : '');
     if (!summary) return;
-    const previous = state.reasoningText.get(item.id) || '';
+    const previous = state.summaryText.get(item.id) || '';
     if (summary.startsWith(previous) && summary.length > previous.length) {
       const delta = summary.slice(previous.length);
-      state.reasoning += delta;
-      state.emit({ type: 'reasoning', delta });
+      state.reasoningSummary = appendSummaryDelta(state.reasoningSummary, delta);
+      state.emit({ type: 'summary', delta });
     }
-    state.reasoningText.set(item.id, summary);
+    state.summaryText.set(item.id, summary);
   }
 
   async function ensureReady() {
@@ -495,8 +512,8 @@ function createCodexService({ homePath, workPath, openExternal, spawnProcess = s
     // A server error can arrive before turn/start responds.
     completion.catch(() => {});
     const state = {
-      threadId, turnId: null, done: false, aborted: false, content: '', reasoning: '',
-      toolCalls: [], toolRequests: [], toolNames: new Set(dynamicTools.map(tool => tool.name)), itemText: new Map(), reasoningText: new Map(),
+      threadId, turnId: null, done: false, aborted: false, content: '', reasoningSummary: '',
+      toolCalls: [], toolRequests: [], toolNames: new Set(dynamicTools.map(tool => tool.name)), itemText: new Map(), summaryText: new Map(),
       emit(event) { if (!state.done) { try { onEvent(event); } catch { /* Closing renderer. */ } } },
       finish(error) {
         if (state.done) return;
@@ -505,7 +522,7 @@ function createCodexService({ homePath, workPath, openExternal, spawnProcess = s
         clearTimeout(state.interruptTimer);
         settleToolRequests(state);
         if (error) rejectCompletion(error);
-        else resolveCompletion({ content: state.content, toolCalls: state.toolCalls, reasoning: state.reasoning || undefined, usage: state.usage, finishReason: state.toolCalls.length ? 'tool_calls' : 'stop' });
+        else resolveCompletion({ content: state.content, toolCalls: state.toolCalls, reasoningSummary: state.reasoningSummary || undefined, usage: state.usage, finishReason: state.toolCalls.length ? 'tool_calls' : 'stop' });
       },
     };
     streams.set(threadId, state);
@@ -517,7 +534,7 @@ function createCodexService({ homePath, workPath, openExternal, spawnProcess = s
       if (!state.done) {
         const resolvedSummary = typeof summary === 'string' && summary.trim()
           ? summary.trim()
-          : effort === 'none' ? 'none' : 'detailed';
+          : effort === 'none' ? 'none' : 'auto';
         const started = await request('turn/start', {
           threadId,
           input: conversation.input,

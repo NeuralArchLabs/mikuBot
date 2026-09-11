@@ -73,6 +73,11 @@ function registerCodexIpc({ app, ipcMain, shell, getMainWindow, serviceFactory =
         streams.clear();
         service?.dispose();
     });
+
+    // The main process uses the same service for the short-lived Deep Research
+    // bridge. Keeping the accessor here prevents a second app-server process
+    // from opening the same Codex credential store.
+    return { getService };
 }
 
 module.exports = { registerCodexIpc };

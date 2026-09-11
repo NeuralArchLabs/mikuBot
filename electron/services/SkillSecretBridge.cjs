@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const CLOUD_PROVIDERS = new Set(['gemini', 'groq', 'zai']);
-const ALL_PROVIDERS = new Set([...CLOUD_PROVIDERS, 'ollama']);
+const ALL_PROVIDERS = new Set([...CLOUD_PROVIDERS, 'ollama', 'unsloth', 'codex']);
 const SECRET_MARKERS = new Set(['••••••••', 'true', 'false']);
 
 function bridgeError(code, message) {
@@ -63,7 +63,7 @@ function configuredCredential(value) {
     return typeof value === 'string' && value.length > 0 && !SECRET_MARKERS.has(value);
 }
 
-function prepareDeepResearchExecution({ args, reviewedBuiltin, apiKeys = {}, configuredOllamaUrl = 'http://127.0.0.1:11434' }) {
+function prepareDeepResearchExecution({ args, reviewedBuiltin, apiKeys = {}, configuredOllamaUrl = 'http://127.0.0.1:11434', unslothBridge, codexBridge }) {
     if (!reviewedBuiltin) {
         throw bridgeError('SKILL_SECRET_DENIED', 'Deep Research credentials are available only to the reviewed builtin skill');
     }
@@ -80,9 +80,6 @@ function prepareDeepResearchExecution({ args, reviewedBuiltin, apiKeys = {}, con
         ? executionArgs._runtime
         : {};
     const provider = String(runtime.provider || '').toLowerCase();
-    if (provider === 'codex') {
-        throw bridgeError('LLM_PROVIDER_UNSUPPORTED', 'Deep Research todavía no admite ChatGPT / Codex. Selecciona un proveedor compatible para esta habilidad.');
-    }
     if (!ALL_PROVIDERS.has(provider)) {
         throw bridgeError('LLM_PROVIDER_INVALID', 'Deep Research has no explicit provider for the active mode');
     }
@@ -100,7 +97,23 @@ function prepareDeepResearchExecution({ args, reviewedBuiltin, apiKeys = {}, con
         MIKU_LLM_PROVIDER: provider,
         MIKU_LLM_MODEL: model,
     };
-    if (CLOUD_PROVIDERS.has(provider)) {
+    if (provider === 'unsloth') {
+        const bridgeUrl = typeof unslothBridge?.url === 'string' ? unslothBridge.url.trim() : '';
+        const bridgeToken = typeof unslothBridge?.token === 'string' ? unslothBridge.token.trim() : '';
+        if (!/^http:\/\/127\.0\.0\.1:\d{1,5}\/v1\/chat\/completions$/.test(bridgeUrl) || !/^[a-f0-9]{64}$/.test(bridgeToken)) {
+            throw bridgeError('LLM_BRIDGE_UNAVAILABLE', 'No se pudo iniciar el puente local de Deep Research para Unsloth');
+        }
+        env.MIKU_UNSLOTH_BRIDGE_URL = bridgeUrl;
+        env.MIKU_UNSLOTH_BRIDGE_TOKEN = bridgeToken;
+    } else if (provider === 'codex') {
+        const bridgeUrl = typeof codexBridge?.url === 'string' ? codexBridge.url.trim() : '';
+        const bridgeToken = typeof codexBridge?.token === 'string' ? codexBridge.token.trim() : '';
+        if (!/^http:\/\/127\.0\.0\.1:\d{1,5}\/v1\/chat\/completions$/.test(bridgeUrl) || !/^[a-f0-9]{64}$/.test(bridgeToken)) {
+            throw bridgeError('LLM_BRIDGE_UNAVAILABLE', 'No se pudo iniciar el puente local de Deep Research para Codex');
+        }
+        env.MIKU_CODEX_BRIDGE_URL = bridgeUrl;
+        env.MIKU_CODEX_BRIDGE_TOKEN = bridgeToken;
+    } else if (CLOUD_PROVIDERS.has(provider)) {
         const credential = apiKeys[provider];
         if (!configuredCredential(credential)) {
             throw bridgeError('LLM_CREDENTIAL_UNAVAILABLE', `No usable ${provider} credential is stored in the secure main-process vault`);
