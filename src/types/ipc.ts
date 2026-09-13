@@ -17,12 +17,16 @@ export type IpcChannel =
     | 'save-settings' | 'load-settings' | 'set-auto-launch'
     // Sessions
     | 'get-sessions' | 'load-session' | 'save-session' | 'delete-session'
+    // Projects
+    | 'get-projects' | 'create-project' | 'open-project' | 'remove-project'
     // Neural Scheduler
     | 'save-scheduler-tasks' | 'load-scheduler-tasks' | 'save-scheduler-logs' | 'load-scheduler-logs'
+    | 'scheduler-power-state'
     // Native FS
     | 'fs-select-folder' | 'fs-open-folder' | 'fs-read-folder' | 'fs-write-file' | 'fs-delete-file' | 'get-default-path' | 'setup-onboarding' | 'fs-check-existing' | 'export-backup' | 'import-backup'
     // Console & Python engine
     | 'run-console' | 'run-search' | 'run-web-search-more' | 'run-extract'
+    | 'run-console-status' | 'run-console-terminate' | 'manage-task' | 'project-status' | 'poll-console-notifications'
     // Network proxy
     | 'fetch-proxy' | 'api-stream'
     // Skills

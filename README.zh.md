@@ -102,7 +102,7 @@ mikuBot 使用一个强大的工具生态系统，分为两个主要类别，以
 **1. 核心工具 (系统工具):**
 - **文件管理:** `read_file`, `update_file`, `patch_file` (具有智能修补引擎), `delete_file` 以及用于批量操作的 `batch_operation`。
 - **主动探索:** `list_files`, `search_files` (高性能原生搜索) 以及用于代码映射的 `get_file_outline`。
-- **执行与控制:** `run_console` (代理模式下为异步开放控制台 / 聊天模式下受限), `get_console_status` (后台任务跟踪), `undo_patch`, `get_system_metrics` 和 `add_scheduled_task` (自主任务调度)。
+- **执行与控制:** `run_console` 在会话关联的项目目录中执行命令；未关联项目的会话使用配置的默认工作区，并返回实际目录、退出码和进程结果。`manage_task` 支持查询、等待、列出和终止任务；`get_console_status` 保留为状态查询别名。`project_status` 只读检查路径、目录结构和脚本，不执行命令。此外还提供 `undo_patch`、`get_system_metrics` 和 `add_scheduled_task`（自主任务调度）。
  
 **2. 神经技能 (高级技能):** 动态且可扩展的模块，旨在增强代理的推理能力。用户可以创建自己的自定义技能并轻松将其集成到生态系统中。
 - **语义记忆 (`recall`):** 长期记忆技能，允许助手记住偏好、事实并演进其用户模型。

@@ -1,3 +1,4 @@
+import { CONSOLE_TOOLS } from './consoleTools';
 /**
  * Tools Constants
  * Agent tools definitions and limits
@@ -89,12 +90,13 @@ export const AGENT_TOOLS: ToolDefinition[] = [
         type: 'function',
         function: {
             name: 'list_files',
-            description: 'List all files in a folder. Use this ONLY if you are genuinely lost or need to discover a file name you don\'t already know.',
+            description: 'List files and directories in a folder, recursively by default. Use this ONLY if you are genuinely lost or need to discover a file name you don\'t already know.',
             parameters: {
                 type: 'object',
                 properties: {
                     source: { type: 'string', description: 'Which mount point to list. Defaults to "workSpace".', enum: ['workSpace', 'core', 'library', 'extra', 'tools', 'root'] },
-                    directory: { type: 'string', description: 'Optional sub-folder to list (e.g. "src/components").' }
+                    directory: { type: 'string', description: 'Optional sub-folder to list (e.g. "src/components").' },
+                    recursive: { type: 'boolean', description: 'Include nested files and directories. Defaults to true.' }
                 },
                 required: []
             }
@@ -238,38 +240,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
             }
         }
     },
-    {
-        type: 'function',
-        function: {
-            name: 'run_console',
-            description: 'Execute console commands. In Chat mode, restrictions apply. In Agent/Instruction mode, any command is allowed. High-risk commands always require manual approval.',
-            parameters: {
-                type: 'object',
-                properties: {
-                    command: { type: 'string', description: 'The command binary (e.g. "git", "npm", "rm").' },
-                    args: { type: 'string', description: 'Arguments string (e.g. "status", "-rf dist").' },
-                    cwd: { type: 'string', description: 'Optional working directory.' },
-                    WaitMsBeforeAsync: { type: 'number', description: 'Optional. Number of milliseconds to wait before returning a background task ID if the command is still running.' },
-                    commandId: { type: 'string', description: 'Optional. Unique ID for tracking. If not provided, one will be generated.' }
-                },
-                required: ['command']
-            }
-        }
-    },
-    {
-        type: 'function',
-        function: {
-            name: 'get_console_status',
-            description: 'Check the status and logs of a background console task.',
-            parameters: {
-                type: 'object',
-                properties: {
-                    commandId: { type: 'string', description: 'The unique ID of the background task.' }
-                },
-                required: ['commandId']
-            }
-        }
-    },
+    ...CONSOLE_TOOLS,
     {
         type: 'function',
         function: {

@@ -2,6 +2,7 @@ import { Provider, AppConfig, ModelInfo, Attachment } from '../../types';
 import { safeFetch, streamViaProxy } from '../../utils';
 import { hasVisionCapability, inferOllamaCapabilities, inferProviderModelCapabilities } from './modelCapabilities';
 import { inferReasoningEfforts } from '../core/reasoning';
+import { ProviderFactory } from '../core/ModelProviders';
 
 const enrichOllamaModel = async (url: string, model: ModelInfo): Promise<ModelInfo> => {
     // Most recent Ollama versions already include this in /api/tags. Avoid a
@@ -165,7 +166,7 @@ export async function sendStreamingMessage(
         })
     ];
 
-    const providerInstance = (await import('../core/ModelProviders')).ProviderFactory.create(providerType, {
+    const providerInstance = ProviderFactory.create(providerType, {
         config,
         onStatus: () => {}, // No-op for simple chat status
         onChunk,

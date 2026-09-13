@@ -1,7 +1,8 @@
-import { AppConfig, Session, SessionMetadata } from '../../types';
+import { AppConfig, ProjectMetadata, Session, SessionMetadata } from '../../types';
 
 const electron = (window as any).electron;
 const STORAGE_KEY = 'mikucentral_settings';
+const sessionProjectContexts = new Map<string, string | undefined>();
 
 /**
  * Persistence layer with two backends:
@@ -137,25 +138,77 @@ export const persistence = {
     async getSessions(): Promise<SessionMetadata[]> {
         if (!electron) return [];
         const result = await electron.getSessions();
-        return result.ok ? result.sessions : [];
+        const sessions = result.ok ? result.sessions : [];
+        sessions.forEach((session: SessionMetadata) => sessionProjectContexts.set(session.id, session.projectId));
+        return sessions;
     },
 
-    async loadSession(id: string): Promise<Session | null> {
+    async loadSession(id: string, projectId?: string): Promise<Session | null> {
         if (!electron) return null;
-        const result = await electron.loadSession(id);
-        return result.ok ? result.session : null;
+        const result = await electron.loadSession(id, projectId);
+        if (!result.ok || !result.session) return null;
+        sessionProjectContexts.set(id, result.session.projectId);
+        return result.session;
     },
 
     async saveSession(session: Session): Promise<boolean> {
         if (!electron) return false;
-        const result = await electron.saveSession(session);
+        const projectId = session.projectId !== undefined
+            ? session.projectId
+            : sessionProjectContexts.get(session.id);
+        const payload = projectId ? { ...session, projectId } : session;
+        sessionProjectContexts.set(session.id, projectId);
+        const result = await electron.saveSession(payload);
         return result.ok;
     },
 
     async deleteSession(id: string): Promise<boolean> {
         if (!electron) return false;
-        const result = await electron.deleteSession(id);
+        const result = await electron.deleteSession(id, sessionProjectContexts.get(id));
+        sessionProjectContexts.delete(id);
         return result.ok;
+    },
+
+    setSessionContext(id: string, projectId?: string): void {
+        sessionProjectContexts.set(id, projectId);
+    },
+
+    getSessionContext(id: string): { known: boolean; projectId: string | null } {
+        return { known: sessionProjectContexts.has(id), projectId: sessionProjectContexts.get(id) || null };
+    },
+
+    async getProjects(): Promise<ProjectMetadata[]> {
+        if (!electron?.getProjects) return [];
+        const result = await electron.getProjects();
+        return result.ok ? result.projects : [];
+    },
+
+    async createProject(options: {
+        name: string;
+        location?: 'workspace' | 'existing';
+        existingPath?: string;
+        sessionMode?: 'isolated' | 'linked';
+    }): Promise<ProjectMetadata | null> {
+        if (!electron?.createProject) return null;
+        const result = await electron.createProject(options);
+        return result.ok ? result.project : null;
+    },
+
+    async openProject(path: string): Promise<boolean> {
+        if (!electron?.openProject) return false;
+        const result = await electron.openProject(path);
+        return Boolean(result.ok);
+    },
+
+    async removeProject(projectId: string, deleteFolder: boolean): Promise<boolean> {
+        if (!electron?.removeProject) return false;
+        try {
+            const result = await electron.removeProject(projectId, deleteFolder);
+            return Boolean(result.ok);
+        } catch (error) {
+            console.error('[Projects] Could not remove project:', error);
+            throw error;
+        }
     },
 
     /**

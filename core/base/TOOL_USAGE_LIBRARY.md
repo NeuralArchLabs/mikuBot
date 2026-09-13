@@ -7,7 +7,7 @@ This file contains valid JSON code snippets, contextual use cases, and parameter
 
 ### Your Core Capabilities & Environment
 - **Environment:** You execute natively inside **mikuBot/mikuCentral Dashboard**, a Windows 10/11 Desktop application (Electron, React 19).
-- **Autonomy:** You support persistent background execution across multiple sessions.
+- **Autonomy:** You support background execution scoped to the originating session while the application is running. Console task tracking is in memory and does not survive an application restart.
 - **Anti-Black Box & Neural Flow:** Your `thought` blocks are visible to the user. You stream thoughts and actions visually.
 - **Studio Elite Renderer:** You can natively render LaTeX ($$, $), Mermaid diagrams (flowcharts, erDiagrams), and Obsidian-style Callouts (`> [!NOTE]`).
 - **searXena Native Search:** You use a private, local Python metacrawler without rate limits.
@@ -146,7 +146,9 @@ If the user asks where to find features, use this layout:
 
 ### Parameters
 - **`directory`**: The subfolder to explore (e.g., `"src/components"`). Leave empty for root.
-- **`recursive`**: Set to `true` to get all files in all nested folders.
+- **`recursive`**: Defaults to `true`; set to `false` for only the requested directory's immediate children.
+
+Native results use relative `path`/`name` values and include `isDirectory`; ignored dependency and build folders are omitted. The response is bounded to protect the UI, so use `search_files` when you need a targeted lookup in a large project.
 
 ### Example
 ```json
@@ -351,51 +353,151 @@ Can be: `general`, `images`, `videos`, `news`, `maps`, `shopping`.
 ```
 
 ## [run_console]
-**Purpose:** Execute commands in the system terminal (PowerShell/CMD).
+**Purpose:** Execute a shell command or a direct executable in the current session's workspace, with bounded waiting and tracked background execution.
 **Security:** Behavior depends on the current Mode. In Chat Mode, "LAX" restrictions apply (whitelisted commands). In Agent/Instruction Mode, execution is liberated (any command, all shell operators). **High-risk commands** always require manual approval with a red warning.
 **When to use:** Use this for build tasks, git operations, environment checks, or any system-level command.
 
+### Workspace Resolution
+File tools and console tools resolve `@WORKSPACE` from the same session context. A project session uses that project's directory; a session without a project retains the configured default workspace. Selecting a project does not mutate global mount points or other sessions. The result includes effective `cwd`, `workspacePath`, `projectId`, and `sessionId`; inspect these before declaring a build successful or failed. Use `project_status` for read-only workspace evidence before choosing a build command.
+
+The renderer supplies its expected workspace to the backend, which checks it against the registered project or configured default before execution. A stale workspace mismatch or an unknown owning session fails instead of silently selecting another directory. Saving workspace settings refreshes the configured roots; project selection still remains local to each session.
+
 ### Parameters
-- **`command`**: The binary to execute (e.g., `"npm"`, `"git"`, `"ls"`).
-- **`args`**: Arguments for the command (e.g., `"install"`, `"status"`, `"-rf dist && echo done"`).
-- **`WaitMsBeforeAsync`**: (Optional) ms to wait before backgrounding the task.
-- **`commandId`**: (Optional) Unique ID for tracking.
+- **`command`**: Shell command text, or an executable path/name for `shell: false`.
+- **`args`**: Legacy argument text for shell execution (e.g., `"run build"`). Quoting and shell syntax are not rewritten.
+- **`shell`**: Optional boolean, defaults to `true`. The default shell is CMD on Windows and `/bin/sh` on POSIX. Use `false` for direct execution.
+- **`argv`**: Array of individual arguments for `shell: false`. Use it instead of `args` for direct execution; spaces remain inside their argument and shell operators are literal text. The renderer forwards this array to the process backend.
+- **Argument mode rule**: use `args` with `shell: true` (the default), or use `argv` with `shell: false`. Combining them is rejected with an actionable error; it is not a request to merge or quote the two formats.
+- **`cwd`**: Optional working directory. Absolute paths within configured authorized roots, session aliases such as `@WORKSPACE`, and paths relative to the session's workspace are supported. The directory must exist and remain within its authorized root after resolving symlinks or junctions; a bad project path must not silently fall back to the generic workspace.
+- **`wait_ms`**: Optional observation window before returning, default 1,000 ms, maximum 30,000 ms. The tool call remains pending during this window; if the child finishes, its terminal result is returned to the agent. Otherwise it returns `running` and the process continues in the background. `WaitMsBeforeAsync` and `waitMs` remain accepted aliases for older callers. `0` returns immediately.
+- **`timeout_ms`**: Optional execution deadline, default 30,000 ms, maximum 600,000 ms. It remains active after backgrounding. Set it explicitly for builds or development servers expected to run longer than 30 seconds.
+- **`commandId`**: Optional unique tracking ID. Use the returned ID for subsequent `manage_task` calls.
 
-### Example 1: Sync Execution
+### Results and Exit Codes
+The tool's outer `success` reports whether the execution/retrieval request was handled. It is not a build verdict. The process result in `data` uses the same fields for the initial result, subsequent status, and completion notification:
+- **`commandId`** identifies the task. **`eventId`** identifies its terminal event for deduplication when available.
+- **`status`** is `running`, `completed`, `failed`, `timed_out`, `cancelled`, or `spawn_error`.
+- **`success`** is `null` while running, `true` only for a normal exit with code zero, and `false` for other terminal outcomes.
+- **`exitCode`** is the observed child exit code, or `null` when unavailable. A spawn error or signal must not be diagnosed by inventing a code.
+- **`spawnError`** reports a failure to start the process separately from its `stderr`.
+- **`stdout`** and **`stderr`** are separate, bounded streams. `stderr` may contain warnings or ordinary diagnostics even when `exitCode` is zero.
+- **`durationMs`** reports elapsed execution time, including for a running task.
+- **`cwd`** and **`workspacePath`** identify the effective location using session aliases such as `@WORKSPACE` and `@CORE`; host filesystem paths are not returned in these metadata fields. **`projectId`** and **`sessionId`** identify where and for which session the command ran. Command output itself remains verbatim process data.
+
+No PowerShell error preference or `chcp` command is injected. Direct execution preserves the executable's exit code; shell execution returns the shell's exit code. Explicit PowerShell scripts retain PowerShell semantics: with `$ErrorActionPreference = 'Stop'`, `Write-Error` can end the script before a subsequent `exit 17`, yielding a different code. When a PowerShell script must propagate a native program's result, write `exit $LASTEXITCODE` immediately after that program yourself.
+
+### Example 1: Build in the Session Workspace
 ```json
 {
   "name": "run_console",
   "arguments": {
     "command": "npm",
-    "args": "test"
+    "args": "run build",
+    "cwd": "@WORKSPACE",
+    "timeout_ms": 600000
   }
 }
 ```
+If this returns `running`, monitor the returned `commandId` with `manage_task`. Confirm the returned `cwd` matches the intended project before interpreting the final exit code.
 
-### Example 2: Async/Background Execution
+### Example 2: Direct Execution with an Explicit Exit Code
 ```json
 {
   "name": "run_console",
   "arguments": {
-    "command": "npm",
-    "args": "run dev",
-    "WaitMsBeforeAsync": 500,
-    "commandId": "dev_server_1"
+    "command": "node",
+    "shell": false,
+    "argv": ["-e", "console.error('diagnostic'); process.exit(23)"],
+    "wait_ms": 0
   }
 }
 ```
+This task should eventually report `exitCode: 23` and process `success: false`. A script that writes the same diagnostic but exits zero succeeds; the diagnostic stream alone is not the verdict.
+
+## [manage_task]
+**Purpose:** Monitor, wait for, list, or terminate console processes belonging to the current session.
+**When to use:** Use this after `run_console` returns a running task. Continue monitoring the same `commandId`; do not rerun the command just to collect its output.
+
+### Parameters
+- **`action`**: `status` (default), `wait`, `list`, or `terminate`.
+- **`commandId`**: Required except for `list`; use the ID returned by `run_console`.
+- **`wait_ms`**: For `wait` or `terminate`, pause the tool response for up to the requested time (default 1,000 ms, maximum 30,000 ms). The wait is event-driven: a process `close` returns the terminal snapshot immediately; the timer is only a maximum. Output received while the process is still running is partial data, so it does not authorize the agent to continue as if the task had finished. If `wait_ms` is supplied without `action`, the backend treats it as `wait`; `waitMs` is the camelCase compatibility alias. This does not change its execution deadline.
+- **`stdoutCursor` / `stderrCursor`**: Omit to read the latest chunk from each stream. Supply a stream's preceding cursor to page forward, or `0` to request its earliest output still retained.
+- **`maxOutputChars`**: Limit characters returned per output stream. Each stream retains at most 512 Ki characters; older output may no longer be available.
+
+### Incremental Output
+`stdoutCursor` and `stderrCursor` in the result are the next cursors to send. The corresponding `output.stdout` and `output.stderr` metadata contain `fromCursor`, `nextCursor`, `totalChars`, `bufferStart`, `droppedChars`, `truncated`, and `hasMore`. If `hasMore` is true, another read from `nextCursor` retrieves the next retained chunk. `bufferStart` identifies the oldest retained position; a cursor before it advances to that position and reports lost characters in `droppedChars`. A latest-chunk response is a bounded view, not a complete transcript.
+
+### Example 1: Wait for a Known Task
+```json
+{
+  "name": "manage_task",
+  "arguments": {
+    "action": "wait",
+    "commandId": "<commandId returned by run_console>",
+    "wait_ms": 1000,
+    "maxOutputChars": 12000
+  }
+}
+```
+
+### Example 2: List Session Tasks
+```json
+{
+  "name": "manage_task",
+  "arguments": { "action": "list" }
+}
+```
+`list` returns compact metadata summaries in `tasks`, without output logs. It does not acknowledge completion notifications. Retrieve a specific task with `status` or `wait` to inspect its logs.
+
+### Example 3: Terminate a Task
+```json
+{
+  "name": "manage_task",
+  "arguments": {
+    "action": "terminate",
+    "commandId": "<commandId returned by run_console>"
+  }
+}
+```
+
+### Completion and Notifications
+The task result separates the outer request `success` from the process `data.success`; inspect process `status`, `exitCode`, and `spawnError` as described under `run_console`. An initial `running` response and a later completion describe different points in the same task. An unobserved background completion is delivered once to its originating session. A terminal result returned by `run_console`, or by `status`, `wait`, or `terminate` for a specific task, acknowledges it and prevents a later duplicate completion notification. Listing task summaries does not acknowledge completions. Correlate by `commandId` and deduplicate terminal events by `eventId`.
+
+Task tracking, retained logs, and completion notifications are in memory. The desktop UI receives a live completion signal so a running console indicator can settle even after the model stream ends. These process records are not available after an application restart.
+
+On system resume, overdue scheduled tasks are retained and dispatched through the same serialized queue as manual runs. Dispatch waits for native power state, application/session readiness and, in development, a successful JavaScript response from the Vite provider-module endpoint. Unavailable infrastructure postpones dispatch until a resume/reconnect event or the next 30-second tick without incrementing execution counters or disabling a one-shot task. Provider code is imported at startup; the readiness probe does not import it again or reload the conversation.
+
+Failures and cancellations after inference starts are recorded as errors and are not automatically replayed. Codex cancellation serialized over Electron IPC is recognized as cancellation and bypasses provider fallback. When diagnosing wake errors, compare the persisted message timestamp with the latest scheduler execution log; an old error visible in a restored conversation is not evidence of a new failure.
 
 ## [get_console_status]
-**Purpose:** Check the status and output of a background task.
-**When to use:** Use this to poll for results of a long-running task that was backgrounded via `run_console`.
+**Purpose:** Compatibility alias for `manage_task` with `action: "status"`.
+**When to use:** Existing callers can keep using this name to obtain current state and output. Prefer `manage_task` for new workflows, particularly waiting, listing, and termination. The same status/result semantics and stream cursor parameters apply.
 
 ### Example
 ```json
 {
   "name": "get_console_status",
   "arguments": {
-    "commandId": "dev_server_1"
+    "commandId": "<commandId returned by run_console>"
   }
+}
+```
+
+## [project_status]
+**Purpose:** Inspect the current session's effective workspace without executing commands or changing files.
+**When to use:** Use this to establish which project or standalone workspace the file tools and console are targeting before choosing a build command.
+
+The result reports aliased workspace paths and project association, top-level structure, `package.json` information and scripts when available, and evidence of dependency directories. Directory presence does not establish dependency health, and this inspection is not a successful build or a substitute for executing the relevant script in the verified `cwd`. Sessions without a project retain their configured generic workspace.
+
+### Parameters
+- **`cwd`**: Optional directory to inspect. Defaults to the session's workspace and uses the same resolution and validation as `run_console`.
+
+### Example
+```json
+{
+  "name": "project_status",
+  "arguments": {}
 }
 ```
 

@@ -1,5 +1,5 @@
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
-const { app, BrowserWindow, ipcMain, dialog, Menu, shell, Tray, nativeImage, safeStorage, nativeTheme } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu, shell, Tray, nativeImage, safeStorage, nativeTheme, powerMonitor } = require('electron');
 const { spawn, exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
@@ -593,6 +593,12 @@ function reinitSafePathResolver(workspacePath) {
     const paths = getCustomPaths(workspacePath);
 
     SafePathResolver.init(paths);
+
+    // Project authorizations belong to the registry in this configured workspace.
+    for (const key of Object.keys(SafePathResolver.roots)) {
+        if (key.startsWith('@PROJECT_')) delete SafePathResolver.roots[key];
+    }
+    registerProjectRoots();
 
     console.log('[Main Process] SafePathResolver re-initialized with paths:', paths);
 }
@@ -1366,12 +1372,14 @@ ipcMain.handle('save-settings', async (event, settings) => {
         // Vault Protection: Encrypt sensitive fields before writing
         const protectedSettings = JSON.parse(JSON.stringify(settings));
         if (protectedSettings.config) {
+            delete protectedSettings.config.executionContext;
             processVault(protectedSettings.config, 'encrypt');
         }
 
 
         const result = safeWriteJSON(configPath, protectedSettings);
         if (!result.ok) throw new Error(result.error);
+        reinitSafePathResolver(getCurrentWorkspacePath());
 
         // React to system settings immediately
 
@@ -1444,37 +1452,296 @@ ipcMain.handle('load-settings', async () => {
     }
 });
 
-// Sessions Handlers
+// ── Projects & Sessions Handlers ─────────────────────────────────────
+// Project metadata lives in the configured @WORKSPACE so it travels with the
+// user's workspace. Standalone sessions keep their existing location and file
+// format; isolated project sessions live under <project>/.miku/sessions.
+const PROJECT_REGISTRY_FILENAME = '.miku-projects.json';
+
+function getProjectRegistryPath() {
+    const workspaceRoot = SafePathResolver.roots['@WORKSPACE'] || path.join(getCurrentWorkspacePath(), 'workspace');
+    return path.join(workspaceRoot, PROJECT_REGISTRY_FILENAME);
+}
+
+function readProjectRegistry() {
+    try {
+        const registryPath = getProjectRegistryPath();
+        if (!fs.existsSync(registryPath)) return [];
+        const parsed = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
+        return Array.isArray(parsed) ? parsed.filter(project => (
+            project && typeof project.id === 'string' && typeof project.name === 'string' && typeof project.path === 'string'
+        )) : [];
+    } catch (error) {
+        console.warn('[Projects] Could not read project registry:', error.message);
+        return [];
+    }
+}
+
+function writeProjectRegistry(projects) {
+    const registryPath = getProjectRegistryPath();
+    const registryDir = path.dirname(registryPath);
+    if (!fs.existsSync(registryDir)) fs.mkdirSync(registryDir, { recursive: true });
+    return safeWriteJSON(registryPath, projects);
+}
+
+function projectRootKey(projectId) {
+    return `@PROJECT_${String(projectId).replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+}
+
+function registerProjectRoots(projects = readProjectRegistry()) {
+    for (const project of projects) {
+        if (!project?.id || !project?.path) continue;
+        // SafePathResolver uses its roots when validating absolute paths. A
+        // project picked outside @WORKSPACE must become an explicit authorized
+        // root before agent tools can access it.
+        SafePathResolver.roots[projectRootKey(project.id)] = path.normalize(project.path);
+    }
+    return projects;
+}
+
+function getRegisteredProject(projectId) {
+    const project = readProjectRegistry().find(item => item.id === projectId);
+    if (project) registerProjectRoots([project]);
+    return project || null;
+}
+
+function getProjectSessionsDir(project) {
+    return path.join(project.path, '.miku', 'sessions');
+}
+
+function getProjectStoragePath(session, project) {
+    const isIsolated = project && project.sessionMode === 'isolated';
+    const sessionsDir = isIsolated ? getProjectSessionsDir(project) : getEffectivePaths().sessions;
+    return path.join(sessionsDir, `${session.id}.json`);
+}
+
+function sessionMetadataFromFile(filePath, projectId) {
+    try {
+        const content = fs.readFileSync(filePath, 'utf8');
+        const session = JSON.parse(content);
+        const stat = fs.statSync(filePath);
+        return {
+            id: session.id,
+            title: session.title,
+            lastModified: stat.mtimeMs,
+            createdAt: session.timestamp || stat.birthtimeMs,
+            messageCount: session.messages?.length || 0,
+            ...(session.projectId || projectId ? { projectId: session.projectId || projectId } : {})
+        };
+    } catch (error) {
+        console.warn(`[Main Process] Clearing corrupted session: ${path.basename(filePath)}`, error.message);
+        try { fs.unlinkSync(filePath); } catch { }
+        return null;
+    }
+}
+
+function listSessionsFromDirectory(sessionsDir, projectId) {
+    if (!fs.existsSync(sessionsDir)) return [];
+    return fs.readdirSync(sessionsDir)
+        .filter(file => file.endsWith('.json'))
+        .map(file => sessionMetadataFromFile(path.join(sessionsDir, file), projectId))
+        .filter(Boolean);
+}
+
+function projectSessionCount(project) {
+    if (project.sessionMode === 'linked') {
+        return listSessionsFromDirectory(getEffectivePaths().sessions)
+            .filter(session => session.projectId === project.id).length;
+    }
+    return listSessionsFromDirectory(getProjectSessionsDir(project), project.id).length;
+}
+
+function projectMetadata(project) {
+    const normalizedPath = path.normalize(project.path);
+    let lastModified = project.createdAt || Date.now();
+    try { lastModified = fs.statSync(normalizedPath).mtimeMs; } catch { }
+    return {
+        id: project.id,
+        name: project.name,
+        path: normalizedPath,
+        createdAt: project.createdAt || lastModified,
+        lastModified,
+        sessionCount: projectSessionCount(project),
+        sessionMode: project.sessionMode === 'linked' ? 'linked' : 'isolated',
+        isExternal: project.isExternal === true
+    };
+}
+
+ipcMain.handle('get-projects', async () => {
+    try {
+        const projects = registerProjectRoots(readProjectRegistry())
+            .filter(project => fs.existsSync(project.path) && fs.statSync(project.path).isDirectory())
+            .map(projectMetadata)
+            .sort((a, b) => b.lastModified - a.lastModified);
+        return { ok: true, projects };
+    } catch (error) {
+        console.error('[Projects] get-projects failed:', error);
+        return { ok: false, error: error.message };
+    }
+});
+
+ipcMain.handle('create-project', async (event, options = {}) => {
+    try {
+        const name = String(options.name || '').trim();
+        if (!name) return { ok: false, error: 'Project name is required.' };
+
+        const projects = readProjectRegistry();
+        const sessionMode = options.sessionMode === 'linked' ? 'linked' : 'isolated';
+        const location = options.location === 'existing' ? 'existing' : 'workspace';
+        let projectPath = '';
+        let isExternal = false;
+
+        if (location === 'existing') {
+            projectPath = path.normalize(String(options.existingPath || ''));
+            if (!projectPath || !fs.existsSync(projectPath) || !fs.statSync(projectPath).isDirectory()) {
+                return { ok: false, error: 'The selected folder does not exist.' };
+            }
+            isExternal = true;
+        } else {
+            const workspaceRoot = SafePathResolver.roots['@WORKSPACE'] || path.join(getCurrentWorkspacePath(), 'workspace');
+            if (!fs.existsSync(workspaceRoot)) fs.mkdirSync(workspaceRoot, { recursive: true });
+            const safeName = name.replace(/[<>:"/\\|?*\x00-\x1F]/g, '-').replace(/[. ]+$/g, '').trim() || `project-${Date.now()}`;
+            projectPath = path.join(workspaceRoot, safeName);
+            let suffix = 2;
+            while (fs.existsSync(projectPath)) projectPath = path.join(workspaceRoot, `${safeName}-${suffix++}`);
+            fs.mkdirSync(projectPath, { recursive: true });
+        }
+
+        const project = {
+            id: `project_${Date.now()}_${randomUUID().slice(0, 8)}`,
+            name,
+            path: projectPath,
+            createdAt: Date.now(),
+            sessionMode,
+            isExternal
+        };
+
+        // Register before creating the metadata folder so all subsequent file
+        // operations pass through the same path authorization layer.
+        registerProjectRoots([project]);
+        fs.mkdirSync(path.join(projectPath, '.miku'), { recursive: true });
+        if (sessionMode === 'isolated') fs.mkdirSync(getProjectSessionsDir(project), { recursive: true });
+        safeWriteJSON(path.join(projectPath, '.miku', 'project.json'), project);
+        projects.push(project);
+        writeProjectRegistry(projects);
+        return { ok: true, project: projectMetadata(project) };
+    } catch (error) {
+        console.error('[Projects] create-project failed:', error);
+        return { ok: false, error: error.message };
+    }
+});
+
+ipcMain.handle('open-project', async (event, folderPath) => {
+    try {
+        const target = path.normalize(String(folderPath || ''));
+        const project = readProjectRegistry().find(item => path.normalize(item.path).toLowerCase() === target.toLowerCase());
+        if (!project || !fs.existsSync(target)) return { ok: false, error: 'Project folder is not registered.' };
+        await shell.openPath(target);
+        return { ok: true };
+    } catch (error) {
+        return { ok: false, error: error.message };
+    }
+});
+
+function isPathWithin(parentPath, childPath) {
+    const relative = path.relative(path.resolve(parentPath), path.resolve(childPath));
+    return relative === '' || (
+        relative !== '..'
+        && !relative.startsWith(`..${path.sep}`)
+        && !path.isAbsolute(relative)
+    );
+}
+
+function isProtectedProjectPath(projectPath) {
+    const normalizedProjectPath = path.resolve(projectPath);
+    const protectedPaths = [
+        getCurrentWorkspacePath(),
+        SafePathResolver.roots['@WORKSPACE'],
+        SafePathResolver.roots['@ROOT'],
+        resourcesPath
+    ].filter(Boolean);
+
+    // A project may legitimately live inside one of these roots. Block only
+    // the root itself or a parent folder that would contain protected data.
+    return protectedPaths.some(protectedPath => isPathWithin(normalizedProjectPath, protectedPath));
+}
+
+function cancelProjectSessionSaves(projectId) {
+    for (const [sessionId, entry] of sessionSaveTimers.entries()) {
+        if (entry.data?.projectId === projectId) {
+            clearTimeout(entry.timer);
+            sessionSaveTimers.delete(sessionId);
+        }
+    }
+}
+
+function detachLinkedProjectSessions(projectId) {
+    for (const entry of sessionSaveTimers.values()) {
+        if (entry.data?.projectId === projectId) delete entry.data.projectId;
+    }
+
+    const sessionsDir = getEffectivePaths().sessions;
+    if (!fs.existsSync(sessionsDir)) return;
+
+    for (const file of fs.readdirSync(sessionsDir).filter(item => item.endsWith('.json'))) {
+        const filePath = path.join(sessionsDir, file);
+        try {
+            const session = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+            if (session?.projectId !== projectId) continue;
+            delete session.projectId;
+            safeWriteJSON(filePath, session);
+        } catch (error) {
+            console.warn(`[Projects] Could not detach linked session ${file}:`, error.message);
+        }
+    }
+}
+
+ipcMain.handle('remove-project', async (event, payload = {}) => {
+    try {
+        const projectId = String(payload.projectId || '').trim();
+        const deleteFolder = payload.deleteFolder === true;
+        if (!projectId) return { ok: false, error: 'Project id is required.' };
+
+        const projects = readProjectRegistry();
+        const project = projects.find(item => item.id === projectId);
+        if (!project) return { ok: false, error: 'Project is not registered.' };
+
+        const projectPath = path.normalize(project.path);
+        if (deleteFolder) {
+            if (isProtectedProjectPath(projectPath)) {
+                return { ok: false, error: 'This folder is protected and cannot be deleted.' };
+            }
+            if (project.sessionMode === 'isolated') cancelProjectSessionSaves(projectId);
+            await fs.promises.rm(projectPath, { recursive: true, force: true });
+        }
+
+        const registryResult = writeProjectRegistry(projects.filter(item => item.id !== projectId));
+        if (!registryResult.ok) return registryResult;
+
+        delete SafePathResolver.roots[projectRootKey(projectId)];
+        // Linked conversations are independent of the project folder. Keep them
+        // in the global history, but remove the stale project association.
+        if (project.sessionMode === 'linked') detachLinkedProjectSessions(projectId);
+
+        return { ok: true };
+    } catch (error) {
+        console.error('[Projects] remove-project failed:', error);
+        return { ok: false, error: error.message };
+    }
+});
+
 ipcMain.handle('get-sessions', async () => {
     try {
-        const sessionsDir = getEffectivePaths().sessions;
-        if (!fs.existsSync(sessionsDir)) return { ok: true, sessions: [] };
-
-        const files = fs.readdirSync(sessionsDir);
-        const sessions = files
-            .filter(f => f.endsWith('.json'))
-            .map(f => {
-                try {
-                    const filePath = path.join(sessionsDir, f);
-                    const content = fs.readFileSync(filePath, 'utf8');
-                    const session = JSON.parse(content);
-                    return {
-                        id: session.id,
-                        title: session.title,
-                        lastModified: fs.statSync(filePath).mtimeMs,
-                        createdAt: session.timestamp || fs.statSync(filePath).birthtimeMs,
-                        messageCount: session.messages?.length || 0
-                    };
-                } catch (e) {
-                    // Proactive cleanup: If file is 0 bytes or unreadable, remove it to prevent UI clutter
-                    console.warn(`[Main Process] Clearing corrupted session: ${f}`, e.message);
-                    try { fs.unlinkSync(path.join(sessionsDir, f)); } catch { }
-                    return null;
-                }
-            })
-            .filter(s => s !== null)
-            .sort((a, b) => b.lastModified - a.lastModified);
-            
+        const sessions = listSessionsFromDirectory(getEffectivePaths().sessions);
+        // The global Sessions view remains chronological, but now also includes
+        // isolated project sessions so no conversation becomes hidden by the
+        // view toggle.
+        for (const project of registerProjectRoots(readProjectRegistry())) {
+            if (project.sessionMode === 'isolated') {
+                sessions.push(...listSessionsFromDirectory(getProjectSessionsDir(project), project.id));
+            }
+        }
+        sessions.sort((a, b) => b.lastModified - a.lastModified);
         return { ok: true, sessions };
     } catch (error) {
         console.error('[Main Process] get-sessions fatal error:', error);
@@ -1482,7 +1749,27 @@ ipcMain.handle('get-sessions', async () => {
     }
 });
 
-ipcMain.handle('load-session', async (event, id) => {
+function findSessionFile(id, projectId) {
+    const projects = registerProjectRoots(readProjectRegistry());
+    if (projectId) {
+        const project = projects.find(item => item.id === projectId);
+        if (project) {
+            const candidate = getProjectStoragePath({ id }, project);
+            if (fs.existsSync(candidate)) return candidate;
+        }
+    }
+
+    const globalCandidate = path.join(getEffectivePaths().sessions, `${id}.json`);
+    if (fs.existsSync(globalCandidate)) return globalCandidate;
+    for (const project of projects) {
+        const candidate = path.join(getProjectSessionsDir(project), `${id}.json`);
+        if (fs.existsSync(candidate)) return candidate;
+    }
+    return null;
+}
+
+ipcMain.handle('load-session', async (event, payload) => {
+    const { id, projectId } = typeof payload === 'object' ? payload : { id: payload };
     try {
         // ⚡ FLUSH PENDING DEBOUNCED DATA: If this session has a pending save in the
         // debounce queue, that data is MORE RECENT than what's on disk. Flush it
@@ -1494,10 +1781,11 @@ ipcMain.handle('load-session', async (event, id) => {
             clearTimeout(pending.timer);
             sessionSaveTimers.delete(id);
             try {
-                const sessionsDir = getEffectivePaths().sessions;
+                const pendingProject = pending.data?.projectId ? getRegisteredProject(pending.data.projectId) : null;
+                const pendingFilePath = getProjectStoragePath(pending.data, pendingProject);
+                const sessionsDir = path.dirname(pendingFilePath);
                 if (!fs.existsSync(sessionsDir)) fs.mkdirSync(sessionsDir, { recursive: true });
-                const filePath = path.join(sessionsDir, `${id}.json`);
-                safeWriteJSON(filePath, pending.data);
+                safeWriteJSON(pendingFilePath, pending.data);
                 console.log(`[Main Process] load-session: Flushed pending data for ${id} before loading.`);
             } catch (flushErr) {
                 console.error(`[Main Process] load-session flush error:`, flushErr.message);
@@ -1505,10 +1793,18 @@ ipcMain.handle('load-session', async (event, id) => {
             return { ok: true, session: pending.data };
         }
 
-        const filePath = path.join(getEffectivePaths().sessions, `${id}.json`);
-        if (fs.existsSync(filePath)) {
+        const filePath = findSessionFile(id, projectId);
+        if (filePath) {
             const data = fs.readFileSync(filePath, 'utf8');
-            return { ok: true, session: JSON.parse(data) };
+            const session = JSON.parse(data);
+            if (!session.projectId) {
+                const project = registerProjectRoots(readProjectRegistry()).find(item => (
+                    item.sessionMode === 'isolated'
+                    && path.normalize(getProjectSessionsDir(item)).toLowerCase() === path.dirname(filePath).toLowerCase()
+                ));
+                if (project) session.projectId = project.id;
+            }
+            return { ok: true, session };
         }
         return { ok: false, error: 'Session not found' };
     } catch (error) {
@@ -1535,9 +1831,10 @@ ipcMain.handle('save-session', async (event, session) => {
     entry.timer = setTimeout(() => {
         sessionSaveTimers.delete(session.id);
         try {
-            const sessionsDir = getEffectivePaths().sessions;
+            const project = session.projectId ? getRegisteredProject(session.projectId) : null;
+            const filePath = getProjectStoragePath(session, project);
+            const sessionsDir = path.dirname(filePath);
             if (!fs.existsSync(sessionsDir)) fs.mkdirSync(sessionsDir, { recursive: true });
-            const filePath = path.join(sessionsDir, `${session.id}.json`);
             safeWriteJSON(filePath, session);
             console.log(`[Main Process] Debounced save for session ${session.id} completed.`);
         } catch (error) {
@@ -1551,7 +1848,8 @@ ipcMain.handle('save-session', async (event, session) => {
     return { ok: true, queued: true };
 });
 
-ipcMain.handle('delete-session', async (event, id) => {
+ipcMain.handle('delete-session', async (event, payload) => {
+    const { id, projectId } = typeof payload === 'object' ? payload : { id: payload };
     try {
         // Cancel any pending debounced save for this session
         if (sessionSaveTimers.has(id)) {
@@ -1563,8 +1861,8 @@ ipcMain.handle('delete-session', async (event, id) => {
         deletedSessionIds.add(id);
         setTimeout(() => deletedSessionIds.delete(id), 10000);
 
-        const filePath = path.join(getEffectivePaths().sessions, `${id}.json`);
-        if (fs.existsSync(filePath)) {
+        const filePath = findSessionFile(id, projectId);
+        if (filePath) {
             fs.unlinkSync(filePath);
         }
         return { ok: true };
@@ -2723,190 +3021,15 @@ ipcMain.handle('import-backup', async () => {
     });
 });
 
-// --- Background Process Manager ---
-const backgroundProcesses = new Map();
-const completedBackgroundProcesses = [];
-
-ipcMain.handle('run-console', async (event, input) => {
-    const { command, args, cwd, timeout_ms: topTimeout, WaitMsBeforeAsync } = input;
-    const { spawn, exec } = require('child_process');
-    
-    // Note: Security validation (blockedOperators) is now handled in the renderer (tools.ts) 
-    // to allow mode-aware flexibility (Chat vs Agent mode).
-    
-    const commandId = input.commandId || `cmd_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-    const commandStr = command || '';
-    const argsStr = typeof args === 'string' ? args : (Array.isArray(args) ? args.join(' ') : JSON.stringify(args || ''));
-
-    console.log(`[Main Process] Shell: ${commandStr} ${argsStr} (ID: ${commandId}) in ${cwd || 'root'}`);
-
-    // Extraer timeout_ms
-    const requestedTimeout = topTimeout || (args && args.timeout_ms) || 30000;
-    const timeout_ms = Math.min(requestedTimeout, 600000); // Increased max to 10 mins
-    
-    const isWindows = process.platform === 'win32';
-    const fullCommand = `${commandStr} ${argsStr}`.trim();
-    const finalCommand = isWindows ? `chcp 65001 > nul && ${fullCommand}` : fullCommand;
-
-    const proc = spawn(finalCommand, [], { 
-        cwd: cwd ? SafePathResolver.resolvePath(cwd) : SafePathResolver.roots['@WORKSPACE'],
-        shell: true,
-        windowsHide: true,
-        timeout: timeout_ms,
-        env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1' }
-    });
-
-    const processEntry = {
-        id: commandId,
-        command: `${commandStr} ${argsStr}`.trim(),
-        stdout: '',
-        stderr: '',
-        status: 'running',
-        exitCode: null,
-        startTime: Date.now(),
-        process: proc
-    };
-
-    backgroundProcesses.set(commandId, processEntry);
-
-    proc.stdout.on('data', (data) => {
-        processEntry.stdout += data.toString();
-        // Limit buffer size to prevent memory leaks (max 1MB)
-        if (processEntry.stdout.length > 1024 * 1024) {
-            processEntry.stdout = '...[truncated]...' + processEntry.stdout.slice(-1024 * 1024);
-        }
-    });
-
-    proc.stderr.on('data', (data) => {
-        processEntry.stderr += data.toString();
-        if (processEntry.stderr.length > 1024 * 1024) {
-            processEntry.stderr = '...[truncated]...' + processEntry.stderr.slice(-1024 * 1024);
-        }
-    });
-
-    return new Promise((resolve) => {
-        let resolved = false;
-
-        const finalize = (code, error = null) => {
-            processEntry.status = error ? 'error' : 'completed';
-            processEntry.exitCode = code ?? (error ? 1 : 0); // Normalize exit code
-            processEntry.endTime = Date.now();
-            processEntry.durationMs = processEntry.endTime - processEntry.startTime;
-            
-            // Move to completed list for notification
-            completedBackgroundProcesses.push({
-                id: commandId,
-                command: processEntry.command,
-                stdout: processEntry.stdout,
-                stderr: processEntry.stderr,
-                exitCode: processEntry.exitCode,
-                error: error,
-                startTime: processEntry.startTime,
-                endTime: processEntry.endTime,
-                durationMs: processEntry.durationMs
-            });
-
-            if (resolved) return;
-            resolved = true;
-            
-            resolve({
-                code: processEntry.exitCode,
-                stdout: processEntry.stdout,
-                stderr: processEntry.stderr,
-                error: error,
-                commandId: commandId,
-                startTime: processEntry.startTime,
-                endTime: processEntry.endTime,
-                durationMs: processEntry.durationMs
-            });
-        };
-
-        const timer = setTimeout(() => {
-            if (resolved) return;
-            try {
-                if (isWindows) {
-                    exec(`taskkill /F /T /PID ${proc.pid}`, () => {});
-                } else {
-                    proc.kill();
-                }
-            } catch(e) {}
-            finalize(1, 'Process Timed Out');
-        }, timeout_ms);
-
-        proc.on('close', (code) => {
-            clearTimeout(timer);
-            finalize(code);
-        });
-
-        proc.on('error', (err) => {
-            clearTimeout(timer);
-            finalize(1, err.message);
-        });
-
-        // Async Support: If WaitMsBeforeAsync is provided, we might return early
-        if (WaitMsBeforeAsync && WaitMsBeforeAsync > 0) {
-            setTimeout(() => {
-                if (!resolved) {
-                    resolved = true;
-                    resolve({
-                        status: 'running',
-                        message: `Command is running in background (ID: ${commandId})`,
-                        commandId: commandId,
-                        stdout: processEntry.stdout,
-                        stderr: processEntry.stderr,
-                        startTime: processEntry.startTime
-                    });
-                }
-            }, WaitMsBeforeAsync);
-        }
-    });
+// Per-session process ownership and path resolution. The global @WORKSPACE
+// still locates the project registry and serves sessions without a project.
+require('./services/consoleIpc.cjs').registerConsoleIpc({
+    app,
+    ipcMain,
+    getMainWindow: () => mainWin,
+    getRoots: () => SafePathResolver.roots,
+    getProject: getRegisteredProject
 });
-
-
-ipcMain.handle('run-console-status', async (event, { commandId }) => {
-    const proc = backgroundProcesses.get(commandId);
-    if (!proc) return { success: false, error: 'Process not found' };
-    
-    return {
-        success: true,
-        id: proc.id,
-        command: proc.command,
-        status: proc.status,
-        stdout: proc.stdout,
-        stderr: proc.stderr,
-        exitCode: proc.exitCode ?? (proc.status !== 'running' ? 0 : null),
-        startTime: proc.startTime,
-        endTime: proc.endTime,
-        durationMs: proc.durationMs || (proc.endTime ? proc.endTime - proc.startTime : null)
-    };
-});
-
-ipcMain.handle('run-console-terminate', async (event, { commandId }) => {
-    const entry = backgroundProcesses.get(commandId);
-    if (!entry) return { success: false, error: 'Process not found' };
-    
-    if (entry.status === 'running' && entry.process) {
-        try {
-            if (process.platform === 'win32') {
-                const { exec } = require('child_process');
-                exec(`taskkill /F /T /PID ${entry.process.pid}`, () => {});
-            } else {
-                entry.process.kill();
-            }
-            return { success: true, message: 'Process termination requested' };
-        } catch (e) {
-            return { success: false, error: e.message };
-        }
-    }
-    return { success: false, error: 'Process is not running' };
-});
-
-ipcMain.handle('poll-console-notifications', async (event) => {
-    const notifications = [...completedBackgroundProcesses];
-    completedBackgroundProcesses.length = 0; // Clear the list
-    return notifications;
-});
-
 function requestSearXenaApi(apiPath, payload, timeoutMs = 30000) {
     return new Promise((resolve, reject) => {
         const body = JSON.stringify(payload || {});
@@ -5178,6 +5301,10 @@ if (!gotTheLock) {
     });
 
     app.whenReady().then(async () => {
+        const powerLifecycle = require('./services/powerLifecycle.cjs').registerPowerLifecycle({
+            powerMonitor, ipcMain, getMainWindow: () => mainWin,
+        });
+        app.once('will-quit', () => powerLifecycle.dispose());
         // Register local file protocol for custom user assets (like backgrounds)
         // Optimized for Windows paths and high-performance direct disk access
         require('electron').protocol.registerFileProtocol('local', (request, callback) => {
@@ -5280,9 +5407,10 @@ if (!gotTheLock) {
         for (const [sessionId, entry] of sessionSaveTimers.entries()) {
             clearTimeout(entry.timer);
             try {
-                const sessionsDir = getEffectivePaths().sessions;
+                const project = entry.data?.projectId ? getRegisteredProject(entry.data.projectId) : null;
+                const filePath = getProjectStoragePath(entry.data, project);
+                const sessionsDir = path.dirname(filePath);
                 if (!fs.existsSync(sessionsDir)) fs.mkdirSync(sessionsDir, { recursive: true });
-                const filePath = path.join(sessionsDir, `${entry.data.id}.json`);
                 safeWriteJSON(filePath, entry.data);
                 console.log(`[Main Process] Flushed session ${sessionId} on quit.`);
             } catch (e) {

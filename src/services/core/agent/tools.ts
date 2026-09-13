@@ -1,3 +1,4 @@
+import { executeConsoleTool } from './consoleTools';
 /**
  * Agent Tool Execution
  * Path: src/services/core/agent/tools.ts
@@ -13,7 +14,7 @@ import {
 } from '../../../constants';
 import { validateToolArgs, safeFetch, obfuscatePaths } from '../../../utils';
 import { TelegramFormatter } from '../../formatters/telegramFormatter';
-import { resolvePathAndSource, resolveSource, getFileStore, getRelativePath } from './utils';
+import { resolvePathAndSource, resolveDirectoryPathAndSource, resolveSource, getFileStore, getRelativePath } from './utils';
 
 export async function executeToolCall(
     toolCall: ToolCall,
@@ -208,36 +209,22 @@ export async function executeToolCall(
             }
 
             case 'list_files': {
-                let target = resolveSource(args.source);
-                let subDir = args.directory || args.path || "";
-
-                // Smart naked prefix remap (if source not specified)
-                if (!args.source && subDir) {
-                    const normalizedSub = subDir.replace(/\\/g, '/').toLowerCase();
-                    if (normalizedSub === 'library' || normalizedSub.startsWith('library/')) {
-                        target = 'extra';
-                        subDir = subDir.substring(7).replace(/^[/\\]+/, '');
-                    } else if (normalizedSub === 'core' || normalizedSub.startsWith('core/')) {
-                        target = 'core';
-                        subDir = subDir.substring(4).replace(/^[/\\]+/, '');
-                    } else if (normalizedSub === 'commands' || normalizedSub.startsWith('commands/')) {
-                        target = 'tools';
-                        subDir = subDir.substring(8).replace(/^[/\\]+/, '');
-                    } else if (normalizedSub === 'workspace' || normalizedSub.startsWith('workspace/')) {
-                        target = 'workSpace';
-                        subDir = subDir.substring(9).replace(/^[/\\]+/, '');
-                    }
-                }
+                const { target, cleanFilename: subDir } = resolveDirectoryPathAndSource(args.directory || args.path || '', args.source, config);
 
                 // Native Branch (Electron)
                 const isElectron = !!(window as any).electron;
                 const staticPath = config.folderPaths?.[target];
 
                 if (isElectron && staticPath && (window as any).electron?.listFilesNative) {
-                    const result = await (window as any).electron.listFilesNative({ rootPath: staticPath, directory: subDir, recursive: !!args.recursive });
+                    const result = await (window as any).electron.listFilesNative({
+                        rootPath: staticPath,
+                        directory: subDir,
+                        recursive: args.recursive !== false
+                    });
                     if (result.ok) {
                         return { success: true, data: { files: result.results, count: result.results.length, source: target, filtered_by: subDir || 'all' } };
                     }
+                    return { success: false, error: result.error || 'Native file listing failed; refresh the session workspace and retry.' };
                 }
 
                 // Memory Fallback
@@ -246,6 +233,7 @@ export async function executeToolCall(
                     name: f,
                     size: (store[f] || '').length
                 }));
+                const recursive = args.recursive !== false;
 
                 if (subDir) {
                     // Fix: strip '.' or './' prefixes which prevent matching workspace files stored as simple relative paths
@@ -259,6 +247,15 @@ export async function executeToolCall(
                     }
                 }
 
+                if (!recursive) {
+                    const base = subDir.replace(/\\/g, '/').replace(/^\.[/\\]*/, '').replace(/^\/+|\/+$/g, '');
+                    fileList = fileList.filter(file => {
+                        const normalizedName = file.name.replace(/\\/g, '/').replace(/^\/+/, '');
+                        const relative = base ? normalizedName.slice(base.length).replace(/^\/+/, '') : normalizedName;
+                        return !relative.includes('/');
+                    });
+                }
+
                 return { success: true, data: { files: fileList, count: fileList.length, source: target, filtered_by: subDir || 'all' } };
             }
 
@@ -266,27 +263,10 @@ export async function executeToolCall(
             case 'search_pattern': {
                 const isPatternSearch = name === 'search_pattern';
                 const searchValue = isPatternSearch ? args.pattern : args.query;
-                let searchPath = isPatternSearch ? (args.path || '') : (args.searchPath || args.path || '');
+                const requestedSearchPath = isPatternSearch ? (args.path || '') : (args.searchPath || args.path || '');
                 const filePattern = isPatternSearch ? (args.glob || '') : (args.filePattern || args.glob || '');
                 const caseSensitive = isPatternSearch ? args.case_sensitive : args.caseSensitive;
-                let target = resolveSource(args.source);
-
-                if (!args.source && searchPath) {
-                    const normalizedSub = searchPath.replace(/\\/g, '/').toLowerCase();
-                    if (normalizedSub === 'library' || normalizedSub.startsWith('library/')) {
-                        target = 'extra';
-                        searchPath = searchPath.substring(7).replace(/^[/\\]+/, '');
-                    } else if (normalizedSub === 'core' || normalizedSub.startsWith('core/')) {
-                        target = 'core';
-                        searchPath = searchPath.substring(4).replace(/^[/\\]+/, '');
-                    } else if (normalizedSub === 'commands' || normalizedSub.startsWith('commands/')) {
-                        target = 'tools';
-                        searchPath = searchPath.substring(8).replace(/^[/\\]+/, '');
-                    } else if (normalizedSub === 'workspace' || normalizedSub.startsWith('workspace/')) {
-                        target = 'workSpace';
-                        searchPath = searchPath.substring(9).replace(/^[/\\]+/, '');
-                    }
-                }
+                const { target, cleanFilename: searchPath } = resolveDirectoryPathAndSource(requestedSearchPath, args.source, config);
 
                 const isElectron = !!(window as any).electron;
                 const staticPath = config.folderPaths?.[target];
@@ -561,102 +541,11 @@ export async function executeToolCall(
                 }
             }
 
-            case 'run_console': {
-                const rawCmd = (args.command || '').trim();
-                const cmdTokens = rawCmd.split(/\s+/);
-                const cmd = cmdTokens[0] || '';
-                const extraArgs = rawCmd.substring(cmd.length).trim();
-                const cmdArgs = (extraArgs + ' ' + (args.args || '').trim()).trim();
-                
-                // Security Layer: In Chat Mode, we allow any command as long as it has been manually approved 
-                // by the user in the UI (enforced by Agent.ts isAuto logic).
-                // We only perform basic path obfuscation and platform fixes here.
-
-                // Security Layer 3: This runs in the browser, so we delegate to Electron
-                const isElectron = !!(window as any).electron?.runConsole;
-                if (!isElectron) {
-                    return {
-                        success: false,
-                        error: 'Console execution requires the Electron desktop app. Not available in browser mode.'
-                    };
-                }
-
-                try {
-                    let finalArgs = cmdArgs;
-                    const isWindows = navigator.userAgent.includes('Windows') || (window as any).electron?.platform === 'win32';
-
-                    // Specialized fix for mkdir on Windows
-                    if (cmd === 'mkdir' && isWindows) {
-                        finalArgs = finalArgs.replace(/\//g, '\\');
-                        finalArgs = finalArgs.replace(/\B-p\b/g, '').replace(/\B--parents\b/g, '').replace(/\s+/g, ' ').trim();
-                    }
-
-                    const result = await (window as any).electron.runConsole({
-                        command: cmd,
-                        args: finalArgs,
-                        cwd: args.cwd || '',
-                        WaitMsBeforeAsync: args.WaitMsBeforeAsync || 0,
-                        commandId: args.commandId,
-                        timeout_ms: args.timeout_ms
-                    });
-
-
-                    const root = config.folderPaths?.root;
-
-                    if (result.status === 'running') {
-                        return {
-                            success: true,
-                            data: {
-                                status: 'running',
-                                message: `Command started in background. Use get_console_status with ID: ${result.commandId} to check progress.`,
-                                commandId: result.commandId,
-                                stdout: obfuscatePaths(result.stdout, root),
-                                stderr: obfuscatePaths(result.stderr, root)
-                            }
-                        };
-                    }
-
-                    // Logic change: The tool ALWAYS succeeds if it executed without throwing an Electron IPC error.
-                    // Even if the command returns code 1 or 127, the terminal tool successfully executed the process.
-                    // The LLM will read the `exitCode`, `stdout`, and `stderr` to determine what happened.
-                    
-                    return {
-                        success: true,
-                        data: {
-                            stdout: obfuscatePaths((result.stdout || '').slice(-15000)),
-                            stderr: obfuscatePaths((result.stderr || '').slice(-5000)),
-                            exitCode: result.code,
-                            command: `${cmd} ${cmdArgs}`.trim(),
-                            commandId: result.commandId
-                        }
-                    };
-                } catch (e) {
-                    return { success: false, error: `Console Error: ${e instanceof Error ? e.message : String(e)}` };
-                }
-            }
-
-            case 'get_console_status': {
-                if (!(window as any).electron?.runConsoleStatus) {
-                    return { success: false, error: 'Console status not available.' };
-                }
-                const result = await (window as any).electron.runConsoleStatus({ commandId: args.commandId });
-                if (!result.success) return { success: false, error: result.error };
-
-                const root = config.folderPaths?.root;
-
-                return {
-                    success: true,
-                    data: {
-                        id: result.id,
-                        status: result.status,
-                        stdout: obfuscatePaths(result.stdout.slice(-5000), root),
-                        stderr: obfuscatePaths(result.stderr.slice(-2000), root),
-                        exitCode: result.exitCode,
-                        command: result.command
-                    }
-                };
-            }
-
+            case 'run_console':
+            case 'manage_task':
+            case 'get_console_status':
+            case 'project_status':
+                return executeConsoleTool(name, args, config, sessionId, (window as any).electron);
             case 'delete_file': {
                 if (!args.filename) {
                     return { success: false, error: 'Missing required parameter: filename.' };

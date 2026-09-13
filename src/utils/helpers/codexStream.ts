@@ -46,6 +46,16 @@ function appendSummaryDelta(current: string, delta: string): string {
     return normalizeSummarySpacing(`${current}${separator}${delta}`);
 }
 
+function normalizeCodexIpcError(error: unknown): unknown {
+    // Electron serializes main-process exceptions into ordinary Errors. Restore
+    // only the cancellation from this IPC channel so the renderer does not
+    // mistake an interrupted turn for a provider failure and try a fallback.
+    const match = error instanceof Error
+        ? /^Error invoking remote method 'codex:stream': AbortError: ([\s\S]*)$/.exec(error.message)
+        : null;
+    return match ? new DOMException(match[1], 'AbortError') : error;
+}
+
 /** Uses only the managed desktop Codex session; it never opens an API endpoint. */
 export async function streamViaCodex(messages: any[], options: ProviderOptions): Promise<ProviderResponse> {
     const { abortSignal } = options;
@@ -154,7 +164,8 @@ export async function streamViaCodex(messages: any[], options: ProviderOptions):
                 settled = true;
                 cleanup();
                 resolve({ ...result, reasoningSummary: finalSummary });
-            }).catch(error => fail(error, true));
+            }, error => fail(normalizeCodexIpcError(error), true))
+                .catch(error => fail(error, true));
         } catch (error) {
             fail(error, true);
         }

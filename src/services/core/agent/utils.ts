@@ -3,7 +3,7 @@
  * Path: src/services/core/agent/utils.ts
  * REWIRED: Literal copy from original agent.ts
  */
-import { FileTarget, AppConfig } from '../../../types';
+import type { FileTarget, AppConfig } from '../../../types';
 
 /**
  * Resolves the source and filename from a tool call.
@@ -11,7 +11,7 @@ import { FileTarget, AppConfig } from '../../../types';
  * Also handles absolute system paths by mapping them to configured folder paths.
  */
 export function resolvePathAndSource(filename: string | undefined, sourceArg?: string, config?: AppConfig): { target: FileTarget, cleanFilename: string } {
-    let f = (filename || '').trim();
+    let f = (filename || '').trim().replace(/\\/g, '/');
     let target: FileTarget = 'workSpace';
 
     const normalizedF = f.replace(/\\/g, '/').toLowerCase();
@@ -98,6 +98,24 @@ export function resolvePathAndSource(filename: string | undefined, sourceArg?: s
     }
 
     return { target, cleanFilename: f };
+}
+
+/** Directory selectors share file aliases while preserving legacy naked directory shortcuts. */
+export function resolveDirectoryPathAndSource(directory: string | undefined, sourceArg?: string, config?: AppConfig): { target: FileTarget, cleanFilename: string } {
+    const requested = (directory || '').trim().replace(/\\/g, '/');
+    if (requested.startsWith('@') || /^[a-zA-Z]:\//.test(requested) || requested.startsWith('/')) {
+        return resolvePathAndSource(requested, sourceArg, config);
+    }
+    if (!sourceArg) {
+        const shortcuts: Record<string, FileTarget> = { library: 'extra', core: 'core', commands: 'tools', workspace: 'workSpace' };
+        const lower = requested.toLowerCase();
+        for (const [prefix, target] of Object.entries(shortcuts)) {
+            if (lower === prefix || lower.startsWith(`${prefix}/`)) {
+                return { target, cleanFilename: requested.slice(prefix.length).replace(/^\/+/, '') };
+            }
+        }
+    }
+    return { target: resolveSource(sourceArg), cleanFilename: requested };
 }
 
 export function resolveSource(source?: string): FileTarget {

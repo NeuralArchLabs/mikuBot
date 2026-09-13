@@ -100,7 +100,7 @@ mikuBot utilizes a robust ecosystem of tools divided into two main categories to
 **1. Core Tools (System Tools):**
 - **File Management:** `read_file`, `update_file`, `patch_file` (with smart patching engine), `delete_file`, and `batch_operation` for bulk actions.
 - **Proactive Exploration:** `list_files`, `search_files` (high-performance native search), and `get_file_outline` for code mapping.
-- **Execution & Control:** `run_console` (asynchronous console liberated in Agent Mode / restricted in Chat Mode), `get_console_status` (background task tracking), `undo_patch`, `get_system_metrics`, and `add_scheduled_task` (autonomous task scheduling).
+- **Execution & Control:** `run_console` executes in the session's project, or the configured workspace for sessions without a project, and reports the effective directory, exit code, and process outcome. `manage_task` queries, waits for, lists, and terminates tasks; `get_console_status` remains a status-query alias. `project_status` inspects paths, structure, and scripts without executing commands. Also available: `undo_patch`, `get_system_metrics`, and `add_scheduled_task` (autonomous task scheduling).
 
 **2. Neural Skills (Advanced Skills):** Dynamic and extensible modules that empower the agent's reasoning. Users can create their own custom skills and easily integrate them into the ecosystem.
 - **Semantic Memory (`recall`):** Long-term memory skill that allows the assistant to remember preferences, facts, and evolve its user model.

@@ -231,6 +231,42 @@ test('aborting pending IPC rejects promptly, cancels its stream and ignores late
     assert.deepEqual(mock.chunks, []);
 });
 
+test('serialized Codex IPC cancellation remains an AbortError without a local abort', async t => {
+    const mock = setup(t);
+    const provider = ProviderFactory.create('codex', mock.options);
+    const promise = provider.streamRequest([]);
+    const request = mock.requests[0];
+    request.reject(new Error("Error invoking remote method 'codex:stream': AbortError: La solicitud de Codex fue cancelada."));
+
+    await assert.rejects(promise, error => {
+        assert.ok(error instanceof DOMException);
+        assert.equal(error.name, 'AbortError');
+        assert.equal(error.message, 'La solicitud de Codex fue cancelada.');
+        return true;
+    });
+    assert.equal(mock.controller.signal.aborted, false);
+    assert.equal(mock.requests.length, 1);
+    assert.deepEqual(mock.aborts, [request.streamId]);
+    mock.assertClean();
+});
+
+test('other bridge failures preserve their original identity and message', async t => {
+    const mock = setup(t);
+    const failures = [
+        new Error("Error invoking remote method 'codex:stream': Error: authentication required"),
+        new Error("Error invoking remote method 'codex:stream': Error: upstream mentioned AbortError: retry denied"),
+        new Error("Error invoking remote method 'other:stream': AbortError: cancelled"),
+        new TypeError('Failed to fetch dynamically imported module'),
+        new DOMException('Already typed cancellation', 'AbortError')
+    ];
+    for (const failure of failures) {
+        const promise = streamViaCodex([], mock.options);
+        mock.requests.at(-1).reject(failure);
+        await assert.rejects(promise, error => error === failure);
+        mock.assertClean();
+    }
+});
+
 test('concurrent calls on one provider keep separate IDs, text and completion', async t => {
     const mock = setup(t);
     const provider = new CodexProvider(mock.options);

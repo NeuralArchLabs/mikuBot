@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { InteractionContext } from './services/core/InteractionContext';
-import { AppState, AgentStatus, Message, PendingToolApproval, AgentMode, ModelInfo, FileSystemDirectoryHandle, FileSystemFileHandle, FileTarget, Session, ApprovalMode, SessionMetadata, PermissionStatus, Provider, AppConfig, Attachment, ToolCall, MessageBlock } from './types';
+import { AppState, AgentStatus, Message, PendingToolApproval, AgentMode, ModelInfo, FileSystemDirectoryHandle, FileSystemFileHandle, FileTarget, Session, ApprovalMode, SessionMetadata, ProjectMetadata, PermissionStatus, Provider, AppConfig, Attachment, ToolCall, MessageBlock } from './types';
 import { DEFAULT_CONFIG, DEFAULT_FILES, AGENT_TOOLS, PROVIDERS } from './constants';
 import { normalizeTheme } from './constants/themes';
 import { createDefaultAgentStatus } from './utils';
@@ -22,6 +22,7 @@ import {
     Icon,
     ThemeManager
 } from './components';
+import type { ProjectCreateOptions } from './components/features/ProjectList';
 import {
     fetchModels,
     sendStreamingMessage,
@@ -30,12 +31,15 @@ import {
     persistence,
     telegramService,
     neuralScheduler,
+    SchedulerDeferredError,
     executeCommand,
     TelegramFormatter
 } from './services';
 import { cleanTtsText, splitTextIntoExactPartitionChunks } from './utils/helpers/ttsHelper';
 import { DeepResearchPanel } from './components/panels/DeepResearchPanel';
 import { blocksToAgentMessages } from './services/core/conversationSerializer';
+import { consoleToolResult } from './services/core/agent/consoleTools';
+import { isScheduledNetworkReady } from './services/core/schedulerRuntime';
 
 const electron = (window as any).electron;
 const SIDEBAR_COLLAPSE_BREAKPOINT = 1024;
@@ -134,6 +138,39 @@ const normalizeVisionConfig = (config: AppConfig): AppConfig => {
     return { ...config, visionProvider: undefined, visionModel: '' };
 };
 
+/**
+ * Replace the optimistic `running` result of a background console call when
+ * the main process reports its terminal event. This is kept outside the agent
+ * loop so the visible tool block also settles after the model stream ends.
+ */
+const applyConsoleCompletion = (messages: Message[], note: any): { messages: Message[]; changed: boolean } => {
+    const commandId = note?.commandId || note?.id;
+    if (typeof commandId !== 'string' || !commandId || note?.status === 'running') {
+        return { messages, changed: false };
+    }
+    const result = consoleToolResult(note);
+    const blockStatus: MessageBlock['status'] = note?.success === false ? 'error' : 'success';
+    let changed = false;
+    const updated = messages.map(message => {
+        if (!message.blocks?.length) return message;
+        let messageChanged = false;
+        const blocks = message.blocks.map(block => {
+            if (block.type !== 'tool_call') return block;
+            const blockCommandId = block.result?.data?.commandId
+                || block.result?.data?.id
+                || block.toolCall?.function.arguments?.commandId;
+            if (blockCommandId !== commandId) return block;
+            // Avoid causing a render/persistence write for duplicate IPC events.
+            if (block.result?.data?.eventId === note.eventId && block.status === blockStatus) return block;
+            messageChanged = true;
+            changed = true;
+            return { ...block, result, status: blockStatus };
+        });
+        return messageChanged ? { ...message, blocks } : message;
+    });
+    return { messages: changed ? updated : messages, changed };
+};
+
 export const App = () => {
     const { i18n, t } = useTranslation();
     const [state, setState] = useState<AppState>({
@@ -151,6 +188,8 @@ export const App = () => {
         unsavedChanges: {},
         agentMode: 'chat' as AgentMode,
         sessionId: null,
+        sessionViewMode: 'sessions',
+        activeProjectId: null,
         safeMode: true,
         approvalMode: 'auto' as ApprovalMode,
         debugMode: false,
@@ -201,6 +240,8 @@ export const App = () => {
     });
     const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'connected' | 'error'>('idle');
     const [sessions, setSessions] = useState<SessionMetadata[]>([]);
+    const [projects, setProjects] = useState<ProjectMetadata[]>([]);
+    const [loadingProjects, setLoadingProjects] = useState(true);
     const [loadingSessions, setLoadingSessions] = useState(true);
     const [loadingSettings, setLoadingSettings] = useState(true);
     const [lastNeuralTrigger, setLastNeuralTrigger] = useState<number>(0);
@@ -237,6 +278,8 @@ export const App = () => {
     const scrollRef = useRef<HTMLDivElement>(null);
     const stateRef = useRef(state);
     const modelsRef = useRef(models);
+    const projectsRef = useRef<ProjectMetadata[]>(projects);
+    const sessionsRef = useRef<SessionMetadata[]>(sessions);
     const modelFetchInFlightRef = useRef<Partial<Record<Provider, boolean>>>({});
     const modelConnectionSignaturesRef = useRef<Partial<Record<Provider, string>>>({});
     const lastProcessedUpdateIdRef = useRef<number>(0);
@@ -245,7 +288,9 @@ export const App = () => {
     const namedSessionsTurnsRef = useRef<Map<string, number>>(new Map());
     const skillsCacheRef = useRef<any[]>([]);
     const lastSkillsFetchRef = useRef<number>(0);
-    const processMessageRef = useRef<(text: string, force: boolean, remote: boolean) => Promise<void>>(async () => { });
+    const processMessageRef = useRef<(text: string, force?: boolean, remote?: boolean, scheduled?: boolean, attachments?: Attachment[]) => Promise<string | undefined>>(async () => undefined);
+    const schedulerReadyRef = useRef(false);
+    schedulerReadyRef.current = !loadingSettings && !loadingSessions && !loadingProjects && Boolean(state.sessionId);
     const sendToTelegramRef = useRef<(text: string) => void>(() => { });
     const pendingToolApprovalRef = useRef<((approved: boolean) => void) | null>(null);
     const isVoiceRequestRef = useRef<boolean>(false);
@@ -275,6 +320,52 @@ export const App = () => {
     useEffect(() => {
         stateRef.current = state;
     }, [state]);
+
+    useEffect(() => {
+        projectsRef.current = projects;
+    }, [projects]);
+
+    useEffect(() => {
+        sessionsRef.current = sessions;
+    }, [sessions]);
+
+    // Console completion events are delivered independently from the agent
+    // polling loop. This closes a running tool block even when the model is
+    // still streaming or has already returned its final answer.
+    useEffect(() => {
+        const subscribe = electron?.onConsoleProcessComplete;
+        if (typeof subscribe !== 'function') return;
+
+        const unsubscribe = subscribe((note: any) => {
+            if (!note || note.status === 'running') return;
+            const sessionId = typeof note.sessionId === 'string' ? note.sessionId : null;
+            const activeSessionId = stateRef.current.sessionId;
+            if (sessionId && sessionId === activeSessionId) {
+                const current = useAgentStore.getState().messages;
+                const applied = applyConsoleCompletion(current, note);
+                if (applied.changed) setMessagesStore(applied.messages);
+            }
+
+            // Persist the settled result for background sessions too. Loading
+            // by project id preserves the same project-scoped storage route.
+            if (sessionId) {
+                void (async () => {
+                    try {
+                        const metadata = sessionsRef.current.find(item => item.id === sessionId);
+                        const stored = await persistence.loadSession(sessionId, metadata?.projectId);
+                        if (!stored) return;
+                        const applied = applyConsoleCompletion(stored.messages || [], note);
+                        if (!applied.changed) return;
+                        await persistence.saveSession({ ...stored, messages: applied.messages });
+                    } catch (error) {
+                        console.warn('[Console] Could not persist completion event:', error);
+                    }
+                })();
+            }
+        });
+
+        return typeof unsubscribe === 'function' ? unsubscribe : undefined;
+    }, [setMessagesStore]);
 
     // Deep Research completion is a local system event: it enriches the
     // assistant message that contains the tool call and persists it, but it
@@ -563,7 +654,59 @@ export const App = () => {
         }
     }, []);
 
-    const onNewSession = useCallback(async () => {
+    const loadProjects = useCallback(async () => {
+        setLoadingProjects(true);
+        try {
+            setProjects(await persistence.getProjects());
+        } finally {
+            setLoadingProjects(false);
+        }
+    }, []);
+
+    const onCreateProject = useCallback(async (options: ProjectCreateOptions): Promise<ProjectMetadata | null> => {
+        const project = await persistence.createProject(options);
+        if (project) {
+            setProjects(previous => [project, ...previous.filter(item => item.id !== project.id)]);
+            // Refresh metadata/session counts after the first project is created.
+            void loadProjects();
+        }
+        return project;
+    }, [loadProjects]);
+
+    const onRemoveProject = useCallback(async (projectId: string, deleteFolder: boolean): Promise<boolean> => {
+        const removed = await persistence.removeProject(projectId, deleteFolder);
+        if (!removed) return false;
+
+        const activeSession = sessions.find(session => session.id === stateRef.current.sessionId);
+        if (activeSession?.projectId === projectId && activeSession.id) {
+            // The project context no longer exists. Keep the open conversation
+            // usable, but prevent future saves from targeting the removed root.
+            persistence.setSessionContext(activeSession.id, undefined);
+        }
+
+        setProjects(previous => previous.filter(project => project.id !== projectId));
+        setState(previous => ({
+            ...previous,
+            activeProjectId: previous.activeProjectId === projectId ? null : previous.activeProjectId,
+            sessionViewMode: previous.activeProjectId === projectId ? 'projects' : previous.sessionViewMode
+        }));
+        await Promise.all([loadProjects(), loadSessions()]);
+        return true;
+    }, [loadProjects, loadSessions, sessions]);
+
+    const onSelectProject = useCallback((id: string | null) => {
+        setState(previous => ({
+            ...previous,
+            activeProjectId: id,
+            sessionViewMode: id ? 'projects' : previous.sessionViewMode
+        }));
+    }, []);
+
+    const onOpenProject = useCallback((folderPath: string) => {
+        void persistence.openProject(folderPath);
+    }, []);
+
+    const onNewSession = useCallback(async (projectId?: string | null) => {
         const id = `session_${Date.now()}`;
         const newSession: Session = {
             id,
@@ -574,7 +717,8 @@ export const App = () => {
             safeMode: true,
             approvalMode: 'auto',
             debugMode: false,
-            draft: ''
+            draft: '',
+            ...(projectId ? { projectId } : {})
         };
 
         // Optimistic UI update
@@ -583,9 +727,17 @@ export const App = () => {
             title: newSession.title,
             lastModified: newSession.timestamp,
             createdAt: newSession.timestamp,
-            messageCount: 0
+            messageCount: 0,
+            ...(projectId ? { projectId } : {})
         };
         setSessions(prev => [meta, ...prev]);
+        persistence.setSessionContext(id, projectId || undefined);
+        if (projectId) {
+            setProjects(previous => previous.map(project => project.id === projectId
+                ? { ...project, sessionCount: project.sessionCount + 1, lastModified: Date.now() }
+                : project
+            ));
+        }
         clearMessages();
         setInputStore('');
         resetAgentStatus();
@@ -593,6 +745,7 @@ export const App = () => {
         setState(prev => ({
             ...prev,
             sessionId: id,
+            activeProjectId: projectId || null,
             activeTab: 'chat',
             agentMode: 'chat',
             safeMode: true,
@@ -648,7 +801,8 @@ export const App = () => {
             }
         }
 
-        const session = await persistence.loadSession(id);
+        const selectedMetadata = sessions.find(session => session.id === id);
+        const session = await persistence.loadSession(id, selectedMetadata?.projectId);
         if (session) {
             // ── ATOMIC UPDATE: Set sessionId FIRST so React state matches Zustand ──
             // This ensures ChatArea receives the correct sessionId prop before or
@@ -658,6 +812,7 @@ export const App = () => {
             setState(prev => ({
                 ...prev,
                 sessionId: id,
+                activeProjectId: session.projectId || selectedMetadata?.projectId || null,
                 activeTab: 'chat',
                 agentMode: session.agentMode || 'chat',
                 safeMode: isChatMode ? true : (session.safeMode !== undefined ? session.safeMode : true),
@@ -671,6 +826,7 @@ export const App = () => {
             setState(prev => ({
                 ...prev,
                 sessionId: id,
+                activeProjectId: selectedMetadata?.projectId || null,
                 activeTab: 'chat',
                 agentMode: 'chat',
                 safeMode: true,
@@ -687,21 +843,29 @@ export const App = () => {
         queueMicrotask(() => {
             sessionLoadingRef.current = false;
         });
-    }, [clearMessages, resetAgentStatus, setPendingToolApprovalStore, setInputStore, setMessagesStore]);
+    }, [clearMessages, resetAgentStatus, setPendingToolApprovalStore, setInputStore, setMessagesStore, sessions]);
 
     const onDeleteSession = useCallback(async (id: string) => {
+        const deletedSession = sessions.find(session => session.id === id);
         const remainingSessions = sessions.filter(s => s.id !== id);
         setSessions(remainingSessions);
+
+        if (deletedSession?.projectId) {
+            setProjects(previous => previous.map(project => project.id === deletedSession.projectId
+                ? { ...project, sessionCount: Math.max(0, project.sessionCount - 1), lastModified: Date.now() }
+                : project
+            ));
+        }
 
         await persistence.deleteSession(id);
         if (state.sessionId === id) {
             if (remainingSessions.length > 0) {
                 onSelectSession(remainingSessions[0].id);
             } else {
-                onNewSession();
+                onNewSession(deletedSession?.projectId || null);
             }
         }
-    }, [state.sessionId, sessions, onSelectSession, onNewSession]);
+    }, [state.sessionId, state.activeProjectId, sessions, onSelectSession, onNewSession]);
 
     const onExportSession = useCallback(async (id: string) => {
         const session = await persistence.loadSession(id);
@@ -751,7 +915,8 @@ export const App = () => {
     useEffect(() => {
         loadGlobalSettings();
         loadSessions();
-    }, [loadGlobalSettings, loadSessions]);
+        loadProjects();
+    }, [loadGlobalSettings, loadSessions, loadProjects]);
 
     useEffect(() => {
         if (state.config?.isConfigured && state.config.language && i18n.language !== state.config.language) {
@@ -1636,10 +1801,17 @@ export const App = () => {
         ctx: InteractionContext, 
         overrideState?: { core?: Record<string, string>, additional?: Record<string, string>, workSpace?: Record<string, string>, tools?: Record<string, string> }, 
         dynamicSkills: any[] = [],
-        attachments: Attachment[] = []
+        attachments: Attachment[] = [],
+        executionProject?: ProjectMetadata | null
     ) => {
         const currentState = stateRef.current;
         const isAgentOrInstruction = ctx.getEffectiveMode(currentState.agentMode) === 'agent';
+        const activeSessionProjectId = currentState.sessionId
+            ? sessions.find(session => session.id === currentState.sessionId)?.projectId
+            : undefined;
+        const activeProject = executionProject !== undefined ? executionProject : activeSessionProjectId
+            ? projectsRef.current.find(project => project.id === activeSessionProjectId)
+            : undefined;
 
         // --- ATTACHMENT INJECTION ENGINE ---
         // DEPRECATED: Files are now injected at the message level for better contextual history mapping.
@@ -1764,7 +1936,17 @@ To see all your additional enabled skills and their full technical parameters, y
         }
 
         const skillsBlock = isAgentOrInstruction ? buildSkillsBlock() : "";
-        let finalResult = (systemBase + skillsBlock + buildSkillsConfigBlock()).replace(/{{CURRENT_TIME}}/g, timeStr);
+        const projectBlock = activeProject ? `
+
+[ACTIVE PROJECT CONTEXT]
+You are currently working inside the project "${activeProject.name}".
+Project route: ${activeProject.path}
+Project ID: ${activeProject.id}
+Project alias: @WORKSPACE (the project root itself; do not append the project name)
+Session scope: ${activeProject.sessionMode === 'isolated' ? 'isolated project sessions' : 'linked to the global session history'}
+Files and run_console share this session's @WORKSPACE. Relative console cwd paths start here. Verify project_status and returned cwd before evaluating a build. Monitor console processes with manage_task. Keep project work inside this folder unless the user explicitly asks otherwise.
+[/ACTIVE PROJECT CONTEXT]` : '';
+        let finalResult = (systemBase + projectBlock + skillsBlock + buildSkillsConfigBlock()).replace(/{{CURRENT_TIME}}/g, timeStr);
 
         return {
             systemInstruction: `[SYSTEM TIME]\n${timeStr}\n\n${finalResult}`,
@@ -1890,18 +2072,25 @@ To see all your additional enabled skills and their full technical parameters, y
     const processMessage = useCallback(async (text: string, forceToolMode: boolean = false, isRemote: boolean = false, isScheduled: boolean = false, userAttachments: Attachment[] = []): Promise<string | undefined> => {
         const currentState = stateRef.current;
         const ctxSessionId = currentState.sessionId || 'empty';
+        const ctxSession = sessions.find(session => session.id === ctxSessionId);
+        const cachedSessionContext = persistence.getSessionContext(ctxSessionId);
+        // Navigator selection cannot reassign an existing conversation. The
+        // persistence cache also covers the gap before session metadata renders.
+        const ctxProjectId = ctxSession ? (ctxSession.projectId || null)
+            : currentState.sessionId ? cachedSessionContext.projectId : currentState.activeProjectId;
+        const ctxProject = ctxProjectId ? projectsRef.current.find(project => project.id === ctxProjectId) : undefined;
         const ctx = new InteractionContext({ forceToolMode, isRemote, isScheduled });
 
-        // Allow scheduled background tasks to bypass the isLoading guard
-        if ((!text.trim() && userAttachments.length === 0) || (useAgentStore.getState().isLoading && !ctx.isScheduled)) return;
+        if (useAgentStore.getState().isLoading) {
+            if (ctx.isScheduled) throw new SchedulerDeferredError('The conversation is busy.');
+            return;
+        }
+        if (!text.trim() && userAttachments.length === 0) return;
 
         // Warm up the local TTS Engine in the background to minimize latency for the first chunk
         if ((window as any).electron?.warmupTts) {
             (window as any).electron.warmupTts().catch((err) => console.warn('[TTS Warmup] failed:', err));
         }
-
-        // Register this session as the executing one
-        setExecutingSessionId(ctxSessionId);
 
         // [COMMAND INTERCEPTOR]
         const uiTtsCmd = ['/voz', '/voice', '/leer', '/read', '/aloud'].find(c => text.trim().toLowerCase().startsWith(c));
@@ -2057,6 +2246,7 @@ To see all your additional enabled skills and their full technical parameters, y
             : (hasChatOverride ? currentState.config.chatModel : currentState.config.model);
 
         if (!resolvedModel) {
+            if (ctx.isScheduled) throw new SchedulerDeferredError('Waiting for model configuration.');
             await askAlert(t('dialogs.voice_model_select'));
             return;
         }
@@ -2123,6 +2313,13 @@ To see all your additional enabled skills and their full technical parameters, y
         // Optimization: Removed redundant [Attached files: ...] label from visible text
         // as we already have dedicated UI blocks for attachments.
 
+        // Folder restoration above can await IPC. Recheck before creating the
+        // scheduled turn in case a user message started during that interval.
+        if (ctx.isScheduled && useAgentStore.getState().isLoading) {
+            throw new SchedulerDeferredError('The conversation became busy.');
+        }
+        // A deferred task has not started a turn and must not take this lock.
+        setExecutingSessionId(ctxSessionId);
         const userMsgId = generateMsgId();
         const userMsg: Message = {
             id: userMsgId,
@@ -2268,7 +2465,11 @@ To see all your additional enabled skills and their full technical parameters, y
                 return a;
             });
 
-            const instructionData = constructSystemInstruction(ctx, freshState, dynamicSkills, processedAttachments);
+            if (currentState.sessionId && !ctxSession && !cachedSessionContext.known) {
+                throw new Error('Session workspace is unavailable. Reopen the session before running tools.');
+            }
+            if (ctxProjectId && !ctxProject) throw new Error(`Project ${ctxProjectId} is unavailable. Reopen or detach the project before running tools.`);
+            const instructionData = constructSystemInstruction(ctx, freshState, dynamicSkills, processedAttachments, ctxProject || null);
             let systemInstruction = instructionData.systemInstruction;
             
             let combinedReinforcement = [];
@@ -2314,7 +2515,7 @@ To see all your additional enabled skills and their full technical parameters, y
             chatHistoryLocal.push({ role: 'user', content: finalUserText, timestamp: Date.now(), attachments: processedAttachments });
 
             if (ctx.isRemote) {
-                const wsPath = currentState.config.folderPaths?.workSpace || 'No configurado';
+                const wsPath = ctxProject?.path || currentState.config.folderPaths?.workSpace || 'No configurado';
                 systemInstruction += `\n\n[SISTEMA: MODO TELEGRAM]
 El usuario te ha contactado vía Telegram. Debes responder con tu identidad normal (SOUL/IDENTITY) pero sabiendo que tu salida es remota. 
 - ENTORNO ACTUAL: Windows.
@@ -2331,7 +2532,7 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                         'read_file', 'list_files', 'search_files', 'search_pattern', 'web_search', 'web_search_more', 'read_url',
                         'update_file', 'patch_file', 'delete_file', 'add_scheduled_task',
                         'get_file_outline', 'get_system_metrics', 'send_telegram_message',
-                        'request_agent_mode', 'run_console', 'get_console_status'
+                        'request_agent_mode', 'run_console', 'manage_task', 'get_console_status', 'project_status'
                     ].includes(t.function.name)),
                     ...dynamicSkills
                 ]
@@ -2340,6 +2541,15 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
             // Dynamic Model/Provider Selection (Safe pairing)
             const effectiveConfig = {
                 ...currentState.config,
+                executionContext: { projectId: ctxProjectId, sessionId: ctxSessionId },
+                ...(ctxProject ? {
+                    folderPaths: {
+                        ...currentState.config.folderPaths,
+                        // Project files become the default @WORKSPACE for this
+                        // turn, without changing the user's global folders.
+                        workSpace: ctxProject.path
+                    }
+                } : {}),
                 provider: effectiveProvider as Provider,
                 model: effectiveModel,
                 // Each runtime may select its own reasoning intensity while
@@ -2353,6 +2563,22 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                 // silently reroute Deep Research to another quota/model.
                 activeModeProvider: useAgentEngine ? currentState.config.agentProvider : currentState.config.chatProvider,
                 activeModeModel: useAgentEngine ? currentState.config.agentModel : currentState.config.chatModel
+            };
+
+            const saveFileForContext = async (name: string, content: string, target: FileTarget): Promise<boolean> => {
+                if (ctxProject && target === 'workSpace' && (window as any).electron?.writeFile) {
+                    const result = await (window as any).electron.writeFile({ folderPath: ctxProject.path, filename: name, content });
+                    return Boolean(result.ok);
+                }
+                return saveFile(name, content, target);
+            };
+
+            const deleteFileForContext = async (name: string, target: FileTarget): Promise<boolean> => {
+                if (ctxProject && target === 'workSpace' && (window as any).electron?.deleteFile) {
+                    const result = await (window as any).electron.deleteFile({ folderPath: ctxProject.path, filename: name });
+                    return Boolean(result.ok);
+                }
+                return deleteFile(name, target);
             };
 
             // --- Master Fallback Logic ---
@@ -2385,7 +2611,7 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                     
                     // Re-construct the system instruction with the latest mode
                     // We use the same freshState/dynamicSkills/processedAttachments captured at start of message
-                    const refreshData = constructSystemInstruction(latestCtx, freshState, dynamicSkills, processedAttachments);
+                    const refreshData = constructSystemInstruction(latestCtx, freshState, dynamicSkills, processedAttachments, ctxProject || null);
                     
                     const toolsForMode = (latestMode === 'chat')
                         ? [
@@ -2393,7 +2619,7 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                                 'read_file', 'list_files', 'search_files', 'search_pattern', 'web_search', 'web_search_more', 'read_url',
                                 'update_file', 'patch_file', 'delete_file', 'add_scheduled_task',
                                 'get_file_outline', 'get_system_metrics', 'send_telegram_message',
-                                'request_agent_mode', 'run_console', 'get_console_status'
+                                'request_agent_mode', 'run_console', 'manage_task', 'get_console_status', 'project_status'
                             ].includes(t.function.name)),
                             ...dynamicSkills
                         ]
@@ -2412,8 +2638,8 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                 await sendAgentMessage(
                     inferenceConfig, systemInstruction, chatHistoryLocal, toolsForSession,
                     { ...freshState.core }, { ...freshState.additional }, { ...freshState.workSpace }, { ...freshState.tools }, { ...freshState.root },
-                    saveFile,
-                    deleteFile,
+                    saveFileForContext,
+                    deleteFileForContext,
                     (chunk, replace, blocks) => {
                         const isOriginalSession = stateRef.current.sessionId === ctxSessionId;
                         finalAssistantText = replace ? chunk : finalAssistantText + chunk;
@@ -2558,7 +2784,7 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
                 if (!wasSentByTool) sendToTelegramDirectly(finalAssistantText);
             }
         } catch (error) {
-            if (error instanceof DOMException && error.name === 'AbortError') return undefined;
+            if (error instanceof DOMException && error.name === 'AbortError' && !ctx.isScheduled) return undefined;
             // ⚡ SESSION ISOLATION: Only update global store if still on original session
             if (stateRef.current.sessionId === ctxSessionId) {
                 setMessagesStore(prev => prev.map(m => m.id === modelMsgId ? { ...m, text: `⚠️ Error: ${error instanceof Error ? error.message : 'Unknown'}` } : m));
@@ -2566,6 +2792,7 @@ El usuario te ha contactado vía Telegram. Debes responder con tu identidad norm
             // Always save error state to the executing session's persistence
             localMessages = localMessages.map(m => m.id === modelMsgId ? { ...m, text: `⚠️ Error: ${error instanceof Error ? error.message : 'Unknown'}` } : m);
             persistence.saveSession({ id: ctxSessionId, title: sessions.find(s => s.id === ctxSessionId)?.title || t('common.new_neural_branch'), messages: localMessages, timestamp: Date.now() });
+            if (ctx.isScheduled) throw error;
         } finally {
             setIsLoadingStore(false);
 
@@ -2699,8 +2926,10 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
             // Task complete - release execution lock
             setExecutingSessionId(null);
 
-            return finalAssistantText;
         }
+        // Returning inside finally suppresses errors and made the scheduler
+        // record failed/cancelled executions as successful.
+        return finalAssistantText;
     }, [sessions, sendToTelegramDirectly, constructSystemInstruction, saveFile, requestFolderPermission, coreHandle, extraHandle, workSpaceHandle, toolsHandle, syncFiles, t]);
 
     // Keep the ref valid
@@ -2711,6 +2940,12 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
     // ── Neural Scheduler Initialization ──────────────────────────────
     useEffect(() => {
         const executor = async (prompt: string, mode: 'chat' | 'agent', isScheduled: boolean): Promise<string> => {
+            if (!schedulerReadyRef.current || useAgentStore.getState().isLoading) {
+                throw new SchedulerDeferredError('Waiting for the conversation and settings to be ready.');
+            }
+            if (!isScheduledNetworkReady(stateRef.current.config, mode, navigator.onLine !== false)) {
+                throw new SchedulerDeferredError('Waiting for the network connection to recover.');
+            }
             // Use processMessage via ref to always get the latest closure
             if (isScheduled) setLastNeuralTrigger(Date.now());
             const forceToolMode = mode === 'agent';
@@ -2776,6 +3011,10 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
         // Only init once on mount; executor always reads latest via refs
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    useEffect(() => {
+        if (schedulerReadyRef.current) neuralScheduler.wake();
+    }, [loadingSettings, loadingSessions, loadingProjects, state.sessionId]);
 
     // Feed user-activity lock to scheduler without triggering App re-renders
     useEffect(() => {
@@ -2909,9 +3148,11 @@ Genera un TÍTULO corto (máximo 6 palabras) para esta conversación.
             <div className={`miku-sidebar-shell flex flex-col h-full z-30 ${sidebarCollapsed ? 'w-16' : 'w-68'} flex-shrink-0 relative miku-sidebar-isolate border-r border-white/5 ${state.activeTab === 'chat' ? 'sidebar-shadow-chat' : 'sidebar-shadow-default'}`} style={{ backgroundColor: 'var(--sidebar-bg)', width: sidebarCollapsed ? '4rem' : '17rem', flexBasis: sidebarCollapsed ? '4rem' : '17rem' }}>
                 <div className="flex-1 overflow-hidden">
                     <Sidebar
-                        state={{ ...state, askConfirm, onSelectSession, onDeleteSession, onNewSession, onExportSession, onImportSession, onDeleteFile: (n: string, t: FileTarget) => deleteFile(n, t), onAddFile: (n: string, t: FileTarget) => createFile(n, t) } as any}
+                        state={{ ...state, askConfirm, onSelectSession, onDeleteSession, onNewSession, onSelectProject, onCreateProject, onRemoveProject, onOpenProject, onExportSession, onImportSession, onDeleteFile: (n: string, t: FileTarget) => deleteFile(n, t), onAddFile: (n: string, t: FileTarget) => createFile(n, t) } as any}
                         sessions={sessions}
+                        projects={projects}
                         loadingSessions={loadingSessions}
+                        loadingProjects={loadingProjects}
                         setState={setState}
                         onClear={handleClear}
                         triggerNeuralEgg={lastNeuralTrigger}

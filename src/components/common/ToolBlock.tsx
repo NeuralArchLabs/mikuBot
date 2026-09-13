@@ -9,7 +9,7 @@ export const CORE_TOOLS = new Set([
     'read_file', 'update_file', 'patch_file', 'delete_file',
     'list_files', 'search_files', 'search_pattern', 'get_system_metrics',
     'web_search', 'web_search_more',
-    'run_console', 'get_console_status', 'read_url', 'add_scheduled_task',
+    'run_console', 'manage_task', 'get_console_status', 'project_status', 'read_url', 'add_scheduled_task',
     'send_telegram_message', 'batch_operation', 'get_file_outline',
     'request_agent_mode'
 ]);
@@ -190,17 +190,20 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
     // 🧠 Neural Skill Detection — dynamic tools not in the core set
     const isNeuralSkill = !CORE_TOOLS.has(toolCall.function.name);
 
-    const isSuccess = result?.success && result?.data?.success !== false;
+    const isSuccess = result?.success && result?.data?.success !== false && result?.data?.status !== 'running';
     
-    // We only show the RED error block if the tool itself actually failed to run 
-    // or explicitly returned a hard error. A non-zero exitCode from a console command 
-    // is a valid terminal output, NOT a tool failure.
+    // Transport failures and unsuccessful child processes are distinct in the
+    // payload, but both need a visible error indicator. stderr alone is neutral.
     const hasError = !!(result?.error || result?.data?.success === false);
     const isDenied = block.status === 'denied';
-    const isPending = !result && isStreaming && !isDenied;
+    // Background console tasks already have a result envelope, but they are
+    // still executing. Keep the same loader visible until a terminal status
+    // arrives instead of falling through to the yellow cog fallback.
+    const isProcessRunning = result?.data?.status === 'running';
+    const isPending = !isDenied && (isProcessRunning || (!result && isStreaming));
     const isAborted = !result && !isStreaming && !isOld && !isDenied;
     
-    // 🚧 PLACEHOLDER LOGIC: Gear ONLY shows while the tool is pending (execution in progress)
+    // 🚧 EXECUTION INDICATOR: Keep the default loader visible until the tool/process reaches a terminal state.
     const isPlaceholder = isPending;
     
     // ✨ SHOW RESULT LANDING: True when we have a result and we want to show the 'transformation'
@@ -267,7 +270,7 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
             case 'search_pattern':
                 return t('tools.search_pattern_summary', { pattern: args.pattern });
             case 'run_console':
-                return t('tools.run_console_summary', { command: `${args.command}${args.args ? ' ' + args.args : ''}` });
+                return `[${(data.status || 'unknown').toUpperCase()}] ${data.command || args.command}${data.exitCode != null ? ` (Exit: ${data.exitCode})` : ''}`;
             case 'read_url':
                 return t('tools.read_url_summary', { url: args.url });
             case 'delete_file':
@@ -281,9 +284,12 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
             case 'get_file_outline':
                 return t('tools.outline_summary', { filename: args.filename });
             case 'get_console_status':
-                return data.status === 'running' 
-                    ? `[RUNNING] ${data.command || args.commandId}`
-                    : `[FINISHED] ${data.command || args.commandId} (Exit: ${data.exitCode})`;
+            case 'manage_task':
+                return Array.isArray(data.tasks)
+                    ? `manage_task: ${data.tasks.length}`
+                    : `[${(data.status || 'unknown').toUpperCase()}] ${data.command || args.commandId}${data.exitCode != null ? ` (Exit: ${data.exitCode})` : ''}`;
+            case 'project_status':
+                return `@WORKSPACE: ${data.workspacePath || data.cwd || ''}`;
             default:
                 return typeof result.data === 'string' ? result.data : result.data?.message || t('tools.default_summary', { name });
         }
@@ -409,7 +415,9 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
                             <div className="tool-block-id text-[10px] text-[var(--text-secondary)] font-mono leading-relaxed bg-black/50 p-2 rounded-lg border border-white/5">
                                 <span className="opacity-60">{t('common.status')}:</span> <span className={isSuccess ? (isNeuralSkill ? 'text-cyan-400' : 'text-emerald-400') : hasError ? 'text-rose-400' : ''}>{isSuccess ? t('common.status_success') : hasError ? t('common.status_error') : t('common.status_pending')}</span><br />
                                 <span className="opacity-60">{t('common.executed')}:</span> {endTime || startTime}<br />
-                                <span className="opacity-60">ID:</span> {toolCall.id}
+                                <span className="opacity-60">ID:</span> {result?.data?.commandId || toolCall.id}
+                                {result?.data?.cwd && <><br /><span className="opacity-60">PWD:</span> {result.data.cwd}</>}
+                                {typeof result?.data?.durationMs === 'number' && <><br /><span className="opacity-60">ms:</span> {result.data.durationMs}</>}
                             </div>
                         </div>
 
@@ -424,9 +432,9 @@ export const ToolBlock: React.FC<ToolBlockProps & { isStreaming?: boolean }> = (
 
                         {result && (
                             <div className="space-y-2">
-                                <div className={`text-[9px] uppercase tracking-widest font-bold flex items-center justify-between gap-1 ${isSuccess ? (isNeuralSkill ? 'text-cyan-600' : 'text-emerald-600') : 'text-rose-600'}`}>
+                                <div className={`text-[9px] uppercase tracking-widest font-bold flex items-center justify-between gap-1 ${isSuccess ? (isNeuralSkill ? 'text-cyan-600' : 'text-emerald-600') : hasError ? 'text-rose-600' : 'text-slate-500'}`}>
                                     <div className="flex items-center gap-1">
-                                        <IconComp name={isSuccess ? 'check-double' : 'exclamation-triangle'} /> {t('common.detailed_response')}
+                                        <IconComp name={isSuccess ? 'check-double' : hasError ? 'exclamation-triangle' : 'clock'} /> {t('common.detailed_response')}
                                     </div>
                                     {isSuccess && result.data?.engine === 'searXena' && (
                                         <div className="text-[8px] font-black text-slate-600 bg-slate-800/20 px-2 py-0.5 rounded border border-slate-800 tracking-[0.2em] animate-in fade-in slide-in-from-right-2 duration-700">

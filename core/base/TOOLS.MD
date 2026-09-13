@@ -12,7 +12,7 @@ The system uses the following internal aliases to refer to configured folders:
 - **@CORE:** Identity and memory folder (SOUL.md, ACTIVE_CONTEXT.md).
 - **@DEV:** Development projects folder.
 - **@MAP:** Reference library and documentation.
-- **@WORKSPACE:** Default working directory for tests and temporary outputs.
+- **@WORKSPACE:** The current session's project directory, or the configured default workspace for sessions without a project. File tools and console tools use the same session context.
 - **@ROOT:** Project Root directory (where `config.json` lives).
 
 Actual paths are injected dynamically according to Armando's configuration. Do not assume fixed absolute paths unless required for a specific system command.
@@ -21,11 +21,11 @@ Actual paths are injected dynamically according to Armando's configuration. Do n
 
 When mikuBot suggests terminal commands, it must adhere to the following:
 
-1.  **Navigation:** Use paths relative to the current mount point or request confirmation if you need to move between drives.
+1.  **Navigation:** Use paths relative to the current mount point. An explicit `cwd` can select a directory in another configured, authorized root.
 2.  **Windows Syntax:**
     * Use double quotes `""` for paths with spaces.
-    * Commands are executed over PowerShell / CMD depending on availability.
-3.  **Context:** The agent starts by default in the @WORKSPACE directory.
+    * Shell commands use CMD on Windows and `/bin/sh` on POSIX. Invoke PowerShell explicitly when its syntax is needed.
+3.  **Context:** Commands start in the session's @WORKSPACE directory unless `cwd` is supplied. A session's project does not change the global workspace configuration or another session's paths.
 
 ## 🛠️ Stack & Environment
 - **Operating System:** Windows 11.
@@ -33,20 +33,20 @@ When mikuBot suggests terminal commands, it must adhere to the following:
 - **Package Manager:** npm / pip / maven (according to project).
 - **Git:** Installed and configured globally.
 
-## 🖥️ Console Access (`run_console`, `get_console_status`)
+## 🖥️ Console Access (`run_console`, `manage_task`, `get_console_status`, `project_status`)
 
 The `run_console` tool provides workspace console access. Behavior depends on the current **Mode**:
 
 ### 🛡️ Chat Mode (Restricted)
 Designed for safe, casual use.
 - **Allowed Commands:** `git`, `node`, `npm`, `npx`, `ls`, `dir`, `cat`, `type`, `echo`, `mkdir`, `cd`, `pwd`, `grep`, `find`, `head`, `tail`, `wc`, `tree`, `tsc`, `python`, `pip`, `curl`, `wget`, `gh`, `sqlite3`, `awk`, `sed`, `perl`, `jq`, `ping`, `tasklist`, `taskkill`, `systeminfo`, `whoami`, `netstat`, `ipconfig`, `ssh`, `scp`, `rsync`, `findstr`, `powershell`, `cmd`, `vite`, `next`, `react-native`, `expo`, `flutter`, `dart`, `go`, `rustc`, `cargo`, `java`, `javac`, `mvn`, `gradle`, `docker`, `kubectl`.
-- **Blocked Patterns:** `rm -rf`, `del /`, `../` (path traversal).
-- **Suggestion:** If a command is blocked, you can request **Agent Mode** to execute it without restrictions.
+- **Approval:** Commands outside the automatic-approval rules require user approval. High-risk commands also require manual approval.
+- **Working Directory:** `cwd` must remain within an authorized root, including after resolving symlinks or junctions. Changing modes does not bypass directory validation.
 
 ### 🔓 Agent / Instruction Mode (Unrestricted)
 Completely liberated console.
 - **NO Command Whitelist:** Any installed binary can be executed.
-- **NO Pattern Blocking:** All shell operators (`&&`, `||`, `|`, `;`, `>`, etc.) and path traversals are allowed.
+- **Shell Syntax:** Shell operators (`&&`, `||`, `|`, `;`, `>`, etc.) follow the selected shell's syntax. Working-directory validation still applies.
 - **Auto-Approval:** Commands are automatically approved UNLESS they are detected as **HIGH RISK**.
 
 ### 🔴 HIGH RISK Commands
@@ -54,11 +54,31 @@ The following commands **ALWAYS** require manual user approval with a specific r
 `rm`, `del`, `rd`, `format`, `mkfs`, `fdisk`, `dd`, `chmod`, `chown`, `mv`, `ren`, `wget`, `curl`, `ssh`, `taskkill`, `kill`, `shutdown`, `reboot`.
 
 ### ⏳ Asynchronous Execution
-For long-running tasks, use `WaitMsBeforeAsync` to avoid blocking.
-- **Param:** `WaitMsBeforeAsync` (ms to wait before returning a background ID).
-- **Return:** If the task is still running, you receive a `commandId`.
-- **Polling:** Use `get_console_status` with the `commandId` to check logs and status.
-- **Notification:** When a background task finishes, you will be notified at the start of your next turn.
+`run_console` returns a tracked process result with `commandId`, effective `cwd`, `workspacePath`, `projectId`, and `sessionId`. Verify these paths before interpreting a project build.
+- **`cwd`:** Optional directory, absolute or relative to the session's workspace; aliases such as `@WORKSPACE` use that same session context. The directory must exist within an authorized root. The backend checks the session's expected workspace against the registered project or configured default; stale or missing session/project context fails instead of silently running elsewhere. Saving workspace settings refreshes the configured roots.
+- **`wait_ms`:** Deliberately pause this tool response for up to the requested time (default 1,000 ms, maximum 30,000 ms). If the child finishes during that window, return its terminal result; otherwise return `running` and keep the process alive. This does not change `timeout_ms`. `WaitMsBeforeAsync` and `waitMs` are accepted legacy aliases.
+- **`timeout_ms`:** Execution deadline, default 30,000 ms, maximum 600,000 ms. The deadline remains active after the tool returns a background task.
+- **Monitoring:** Use `manage_task` to query, wait, list, or terminate session tasks. `get_console_status` remains a compatibility alias for status queries.
+- **Notifications:** An unobserved background completion is reported to its originating session once. The desktop UI also receives a live completion signal so a running console indicator can settle after the model stream ends. Use `commandId` to correlate the task and `eventId` to deduplicate its completion; an initial running response is not a second completion. A terminal result returned by `run_console` or a specific `status`, `wait`, or `terminate` query acknowledges it and prevents a later duplicate notification. `list` does not acknowledge completions.
+- **Lifetime:** Task tracking and logs are held in memory; they are not a history that survives an application restart.
+
+### Process Results
+The tool's outer `success` means that execution or retrieval was handled. The process result in `data` reports its own `success`: `null` while running, `true` only for a normal exit with `exitCode: 0`, and `false` for other terminal outcomes.
+- **`status`:** `running`, `completed`, `failed`, `timed_out`, `cancelled`, or `spawn_error`.
+- **`exitCode`:** The child's exit code, or `null` when no exit code is available. Do not fabricate an exit code for a signal or a failure to start.
+- **`spawnError`:** Failure to start the child, separate from its output.
+- **`stdout` / `stderr`:** Separate output streams. A nonempty `stderr` can contain warnings or normal diagnostics; it does not by itself mean failure.
+- **`durationMs`:** Elapsed time, including while the task is running.
+
+### Scheduled Tasks and System Resume
+The scheduler retains overdue occurrences across suspension and application startup, including pending one-shot tasks. Native resume events wake the same queue used by automatic and manual runs; each task runs at most once concurrently. Before dispatch, the app checks native power state and whether settings, the session and conversation are ready. In development it also probes Vite's provider-module endpoint; if unavailable, tasks remain pending and retry on reconnect/resume or the next 30-second tick without recording an execution.
+
+When the operating system reports offline, remote-model tasks remain pending; local Ollama/Unsloth tasks can still run. This connectivity signal is not a guarantee that a provider is healthy. Provider implementations are imported at application startup. Actual inference failures and cancellations are recorded as task errors, never successes; a cancelled Codex IPC request does not trigger provider fallback. Already-started tasks are not automatically replayed because they may have executed tools. Compare the timestamp of a saved conversation error with the scheduler log before attributing it to the latest wake. React DevTools and fallback-font notices do not establish a provider failure.
+
+### Shell and Exit Codes
+`shell: true` is the default and accepts a shell command with legacy `args` text. Commands are passed without rewriting their quoting or adding `chcp` or PowerShell error preferences. For a direct executable invocation, use `shell: false` and `argv`, an array of individual arguments; shell operators are then literal arguments.
+
+Direct execution preserves the child's exit code. A shell reports its own exit code, so its script must propagate a nested command's result when needed. For example, an explicitly invoked PowerShell script can use `exit $LASTEXITCODE` immediately after a native command. With `$ErrorActionPreference = 'Stop'`, a terminating `Write-Error` can stop the script before a later `exit 17` runs; the tool does not change this PowerShell behavior.
 
 ### Usage Format
 ```json
@@ -67,14 +87,28 @@ For long-running tasks, use `WaitMsBeforeAsync` to avoid blocking.
   "arguments": {
     "command": "npm",
     "args": "run dev",
-    "WaitMsBeforeAsync": 500
+    "cwd": "@WORKSPACE",
+    "wait_ms": 500,
+    "timeout_ms": 600000
   }
 }
 ```
 
+### `manage_task`
+Manage processes started by `run_console` in the current session.
+- **`action`:** `status` (default), `wait`, `list`, or `terminate`.
+- **`commandId`:** Required except for `list`.
+- **`list`:** Returns compact metadata summaries of retained session tasks, without logs. Use a specific task query to retrieve output.
+- **`wait_ms`:** Deliberately pause the tool response for up to the requested time (default 1,000 ms, maximum 30,000 ms) when `action` is `wait` or `terminate`. The wait is event-driven: a process `close` wakes it immediately and returns the terminal snapshot; the timer is only a maximum. Output received while the process is still running remains partial data and does not authorize the agent to continue as if it had finished. If `wait_ms` is supplied without `action`, the backend treats it as `wait`; `waitMs` is a supported camelCase alias. This does not change the execution deadline.
+- **`stdoutCursor` / `stderrCursor`:** Omit to read the latest output chunk. Supply the preceding result's stream cursor to page forward through new output; use `0` to request the earliest output still retained.
+- **`maxOutputChars`:** Limit characters per stream in a retrieval. Each stream retains at most 512 Ki characters. `output.stdout` and `output.stderr` report `fromCursor`, `nextCursor`, `totalChars`, `bufferStart`, `droppedChars`, `truncated`, and `hasMore`. Continue from `nextCursor` while `hasMore` is true; do not assume truncated history can be recovered.
+
 ### `get_console_status`
-Check the status and current output of a background process.
-- **Param:** `commandId` (The ID returned by run_console).
+Compatibility alias for `manage_task` with `action: "status"`. Existing callers can continue supplying `commandId`; prefer `manage_task` for new workflows.
+
+### `project_status`
+Read-only evidence about the current session's workspace: effective paths, project association, directory structure, `package.json` and scripts when present, and dependency-directory presence. Use it before selecting a project build command. It does not install dependencies, validate their health, or establish that a build succeeded. Sessions without a project inspect their configured default workspace.
+- **`cwd`:** Optional directory to inspect, with the same resolution and validation as `run_console`.
 
 ## 📂 File Management (`read_file`, `update_file`, `patch_file`)
 
@@ -106,8 +140,10 @@ Delete a file or clear @CORE/tasks.md once completed.
 ## 🔍 Discovery & Search (`list_files`, `search_files`, `search_pattern`)
 
 ### `list_files`
-List all files in a mount point. Use ONLY when lost.
+List files and directories in a mount point. The native listing is recursive by default and returns paths relative to the effective mount root; ignored dependency/build folders remain excluded.
 - **Param:** `source`
+- **Param:** `directory` (optional subfolder)
+- **Param:** `recursive` (optional boolean, defaults to `true`)
 
 ### `search_files`
 Finds file names and relative paths. It does **not** search file contents.

@@ -1,3 +1,4 @@
+import { CONSOLE_TOOLS } from './consoleTools';
 import { Provider, ProviderConfig, AppConfig, ToolDefinition } from '../types';
 
 export const PROVIDERS: Record<Provider, ProviderConfig> = {
@@ -304,38 +305,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
             }
         }
     },
-    {
-        type: 'function',
-        function: {
-            name: 'run_console',
-            description: 'Execute console commands. In Chat mode, restrictions apply. In Agent/Instruction mode, any command is allowed. High-risk commands always require manual approval.',
-            parameters: {
-                type: 'object',
-                properties: {
-                    command: { type: 'string', description: 'The command binary (e.g. "git", "npm", "rm").' },
-                    args: { type: 'string', description: 'Arguments string (e.g. "status", "-rf dist").' },
-                    cwd: { type: 'string', description: 'Optional working directory.' },
-                    WaitMsBeforeAsync: { type: 'number', description: 'Optional. Number of milliseconds to wait before returning a background task ID if the command is still running.' },
-                    commandId: { type: 'string', description: 'Optional. Unique ID for tracking. If not provided, one will be generated.' }
-                },
-                required: ['command']
-            }
-        }
-    },
-    {
-        type: 'function',
-        function: {
-            name: 'get_console_status',
-            description: 'Check the status and logs of a background console task.',
-            parameters: {
-                type: 'object',
-                properties: {
-                    commandId: { type: 'string', description: 'The unique ID of the background task.' }
-                },
-                required: ['commandId']
-            }
-        }
-    },
+    ...CONSOLE_TOOLS,
     {
         type: 'function',
         function: {

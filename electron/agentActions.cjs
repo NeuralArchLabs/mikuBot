@@ -177,49 +177,72 @@ async function applyBatchOp(op, src, dest) {
 
 /**
  * Lists files and directories in a path.
+ *
+ * `directory` is relative to the effective root unless it is an authorized
+ * alias/absolute path. The previous implementation called the recursive
+ * branch with `recursive: false`, so only the first directory level was ever
+ * returned. Keep the response bounded, but walk every requested level and
+ * return paths relative to the effective root so nested entries remain
+ * unambiguous.
  */
-async function handleListFiles(root, { directory, recursive = false }) {
-    // RESOLVE STRICTOR: No logic fallbacks allowed. Use Resolver or fail.
-    const targetDir = directory ? SafePathResolver.resolvePath(directory) : root;
-    console.log(`[agentActions] handleListFiles listing: "${targetDir}" (requested: "${directory}", root: "${root}")`);
-    
-    const stats = await fs.stat(targetDir);
-    if (!stats.isDirectory()) {
-        throw new Error('Path is not a directory.');
+async function handleListFiles(root, { directory, recursive = true, maxEntries = 2000 } = {}) {
+    const normalizedRoot = path.resolve(root);
+    const requestedDirectory = typeof directory === 'string' ? directory.trim() : '';
+    let targetDir = normalizedRoot;
+
+    if (requestedDirectory) {
+        const isAliasOrAbsolute = requestedDirectory.startsWith('@') || path.isAbsolute(requestedDirectory);
+        const candidate = isAliasOrAbsolute
+            ? SafePathResolver.resolvePath(requestedDirectory)
+            : path.resolve(normalizedRoot, requestedDirectory.replace(/[\\/]/g, path.sep));
+        const relative = path.relative(normalizedRoot, candidate);
+        if (path.isAbsolute(relative) || relative === '..' || relative.startsWith(`..${path.sep}`)) {
+            throw new Error('Directory must remain inside the effective workspace root.');
+        }
+        // Revalidate the final path through the sandbox, including symlink/junction roots.
+        targetDir = SafePathResolver.resolvePath(candidate);
     }
 
+    const stats = await fs.stat(targetDir);
+    if (!stats.isDirectory()) throw new Error('Path is not a directory.');
+
+    const limit = Number.isInteger(maxEntries) ? Math.min(Math.max(maxEntries, 1), 5000) : 2000;
     const results = [];
-    const files = await fs.readdir(targetDir);
-    console.log(`[agentActions] Found ${files.length} files in "${targetDir}"`);
+    const queue = [{ directory: targetDir, depth: 0 }];
+    const ignoredNames = new Set(['node_modules', '.git', 'dist', 'build', '.next', '.gemini']);
+    const maxDepth = 20;
 
-    // Get normalized normalizedRoot for relative mapping
-    // We use the root passed from main (which is the autorized prefix)
-    const normalizedRoot = path.normalize(targetDir);
-
-    for (const file of files) {
-        const fullPath = path.join(targetDir, file);
+    while (queue.length > 0 && results.length < limit) {
+        const current = queue.shift();
+        let entries;
         try {
-            const stats = await fs.stat(fullPath);
-            const isDir = stats.isDirectory();
-            
-            // Skip common ignore patterns
-            if (['node_modules', '.git', 'dist', 'build', '.next', '.gemini'].includes(file)) continue;
+            entries = await fs.readdir(current.directory, { withFileTypes: true });
+        } catch {
+            continue;
+        }
+        entries.sort((left, right) => left.name.localeCompare(right.name));
 
-            results.push({
-                name: file, // Return only the basename for security and clarity
-                size: isDir ? 0 : stats.size,
-                isDirectory: isDir,
-                path: path.relative(root, fullPath).replace(/\\/g, '/') // Relative to the effective root
-            });
-
-            if (recursive && isDir) {
-                // Limit depth and ensure recursive calls also respect the sandbox
-                if (results.length < 500) { // Safety cap
-                   const subFiles = await handleListFiles(root, { directory: fullPath, recursive: false });
-                   results.push(...subFiles);
+        for (const entry of entries) {
+            if (results.length >= limit) break;
+            if (ignoredNames.has(entry.name)) continue;
+            const fullPath = path.join(current.directory, entry.name);
+            try {
+                const entryStats = await fs.lstat(fullPath);
+                const isDir = entryStats.isDirectory();
+                const relativePath = path.relative(normalizedRoot, fullPath).replace(/\\/g, '/');
+                results.push({
+                    name: relativePath,
+                    size: isDir ? 0 : entryStats.size,
+                    isDirectory: isDir,
+                    path: relativePath
+                });
+                if (recursive && isDir && current.depth < maxDepth) {
+                    queue.push({ directory: fullPath, depth: current.depth + 1 });
                 }
+            } catch {
+                // A file may disappear or become inaccessible while walking.
             }
-        } catch (e) {}
+        }
     }
 
     return results;

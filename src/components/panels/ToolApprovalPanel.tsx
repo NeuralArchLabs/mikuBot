@@ -161,7 +161,7 @@ export const ToolApprovalPanel = React.memo(({
                 <div className="px-5 py-2 bg-black/40 border-b border-red-500/10">
                     <div className="text-[10px] text-red-400/70 uppercase tracking-wide mb-1">{t('chat.approval.cmd_preview')}</div>
                     <code className="text-xs text-red-300 font-mono">
-                        $ {toolArgs.command} {toolArgs.args || ''}
+                        $ {toolArgs.command} {Array.isArray(toolArgs.argv) ? toolArgs.argv.map(arg => JSON.stringify(arg)).join(' ') : toolArgs.args || ''}
                     </code>
                 </div>
             )}

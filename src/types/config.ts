@@ -51,6 +51,8 @@ export interface ModelInfo {
 
 /** Application Configuration */
 export interface AppConfig {
+    /** Per-turn execution identity; never persisted or derived from tool arguments. */
+    executionContext?: { projectId: string | null; sessionId: string | null };
     isConfigured?: boolean;
     provider: Provider;
     model: string;
@@ -132,6 +134,10 @@ export interface AppState {
     unsavedChanges: Record<string, string>;
     agentMode: AgentMode;
     sessionId: string | null;
+    /** Current navigator mode for the sessions/projects area. */
+    sessionViewMode: 'sessions' | 'projects';
+    /** Project selected in the project navigator, if any. */
+    activeProjectId: string | null;
     /** Legacy persisted key: when true, tools execute sequentially with render between each. */
     safeMode: boolean;
     /** 'auto' = smart auto-approval (reads auto, dangerous needs OK). 'manual' = EVERY tool needs user OK. */

@@ -179,16 +179,25 @@ export const SettingsPanel = ({
     const [editingProvider, setEditingProvider] = useState<Provider>(config.provider);
     const [localApiKey, setLocalApiKey] = useState('');
     const [codexConnected, setCodexConnected] = useState(false);
+    const [visionProviderPreview, setVisionProviderPreview] = useState<Provider | undefined>(undefined);
+    const visionProviderPreviewRef = useRef<Provider | undefined>(undefined);
+    const [isVisionRuntimeHovered, setIsVisionRuntimeHovered] = useState(false);
 
     const selectProvider = (key: 'provider' | 'chatProvider' | 'agentProvider' | 'visionProvider', provider: Provider) => {
-        if (provider === 'codex' || provider === 'unsloth') setEditingProvider(provider);
+        if (key === 'visionProvider') {
+            // Keep provider clicks as an in-card preview until a concrete
+            // vision model is chosen. This preserves Native Vortex and avoids
+            // the global model sync auto-selecting a Codex model.
+            visionProviderPreviewRef.current = provider;
+            setVisionProviderPreview(provider);
+            return;
+        }
+        if (key === 'provider' && (provider === 'codex' || provider === 'unsloth')) setEditingProvider(provider);
         if (config[key] === provider) return;
         const modelKey = key === 'provider' ? 'model' : key.replace('Provider', 'Model') as 'chatModel' | 'agentModel' | 'visionModel';
         const available = models[provider] || [];
         const selected = config[modelKey];
-        const nextModel = key === 'visionProvider'
-            ? ''
-            : available.some(model => model.id === selected) ? selected : available[0]?.id || '';
+        const nextModel = available.some(model => model.id === selected) ? selected : available[0]?.id || '';
         const reasoningKey = key === 'chatProvider'
             ? 'chatReasoningEffort'
             : key === 'agentProvider'
@@ -206,7 +215,23 @@ export const SettingsPanel = ({
     const providerConnected = (provider: Provider) => provider === 'codex'
         ? codexConnected
         : (provider === 'ollama' || provider === 'unsloth') ? (models[provider] || []).length > 0 : !!config.apiKeys[provider];
-    const visionCatalogProvider = config.visionProvider || config.chatProvider || config.provider || 'gemini';
+    const isVisionRuntimeActive = isVisionRuntimeHovered;
+    const visionCatalogProvider = visionProviderPreviewRef.current
+        || config.visionProvider
+        || config.chatProvider
+        || config.provider
+        || 'gemini';
+    // Native Vortex has no provider of its own. Highlight a provider only
+    // while an explicit vision model is selected, so the cards stay neutral
+    // when the model selector is empty/native.
+    const hasManualVisionModel = Boolean(config.visionModel?.trim());
+    const selectedVisionProvider = isVisionRuntimeActive && visionProviderPreview
+        ? visionProviderPreview
+        : hasManualVisionModel ? config.visionProvider : undefined;
+
+    useEffect(() => {
+        if (!hasManualVisionModel && !isVisionRuntimeActive) setVisionProviderPreview(undefined);
+    }, [hasManualVisionModel, isVisionRuntimeActive]);
 
     const scanGpus = useCallback(async () => {
         setIsScanningGpus(true);
@@ -1108,7 +1133,18 @@ export const SettingsPanel = ({
                                 </div>
 
                                 {/* Vision Runtime (Vortex Visual) - Full Width Banner */}
-                                <div className="md:col-span-2 premium-card premium-emerald rounded-[2rem] p-6 shadow-2xl relative overflow-hidden transform-gpu group">
+                                <div
+                                    className="md:col-span-2 premium-card premium-emerald rounded-[2rem] p-6 shadow-2xl relative overflow-hidden transform-gpu group"
+                                    onMouseEnter={() => {
+                                        visionProviderPreviewRef.current = undefined;
+                                        setVisionProviderPreview(undefined);
+                                        setIsVisionRuntimeHovered(true);
+                                    }}
+                                    onMouseLeave={() => {
+                                        setIsVisionRuntimeHovered(false);
+                                        setVisionProviderPreview(undefined);
+                                    }}
+                                >
                                     <div className="absolute top-0 right-0 w-full h-1 bg-gradient-to-r from-emerald-600 to-cyan-400 opacity-0 group-hover:opacity-50 transition-all duration-700" />
                                     <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-emerald-500/5 blur-3xl rounded-full pointer-events-none transform-gpu" />
 
@@ -1172,14 +1208,15 @@ export const SettingsPanel = ({
                                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block ml-1">{t('settings.orchestration.provider')}</label>
                                             <div className="flex gap-2 premium-card !bg-black/20 p-1.5 rounded-2xl">
                                                 {(Object.keys(PROVIDERS) as Provider[]).map(pId => {
-                                                    const isSelected = Boolean(config.visionModel) && config.visionProvider === pId;
+                                                    const isSelected = selectedVisionProvider === pId;
                                                     return (
                                                         <button
                                                             key={pId}
                                                             onClick={() => selectProvider('visionProvider', pId)}
-                                                            className={`flex-1 py-3 rounded-xl transition-all flex flex-col items-center justify-center gap-1.5 ${isSelected
-                                                                ? `bg-emerald-600/90 text-white shadow-lg shadow-emerald-900/40 ring-1 ring-white/20`
-                                                                : 'hover:bg-white/5 text-slate-400'
+                                                            aria-pressed={isSelected}
+                                                            className={`group flex-1 py-3 rounded-xl transition-all flex flex-col items-center justify-center gap-1.5 ${isSelected
+                                                                ? `!bg-emerald-600/90 text-white shadow-lg shadow-emerald-900/40 ring-1 ring-white/20`
+                                                                : 'text-slate-400 hover:bg-white/5 hover:text-slate-100'
                                                                 }`}
                                                         >
                                                             {pId === 'gemini' ? (
@@ -1214,10 +1251,15 @@ export const SettingsPanel = ({
                                             <div className="relative">
                                                 <ModernSelect
                                                     value={config.visionModel}
-                                                    onChange={(val) => onUpdatePartialConfig(val
-                                                        ? { visionProvider: visionCatalogProvider, visionModel: val }
-                                                        : { visionProvider: undefined, visionModel: '' }
-                                                    )}
+                                                    onChange={(val) => {
+                                                        const providerForModel = visionProviderPreviewRef.current || visionCatalogProvider;
+                                                        visionProviderPreviewRef.current = undefined;
+                                                        setVisionProviderPreview(undefined);
+                                                        onUpdatePartialConfig(val
+                                                            ? { visionProvider: providerForModel, visionModel: val }
+                                                            : { visionProvider: undefined, visionModel: '' }
+                                                        );
+                                                    }}
                                                     placeholder="-- MODO NATIVO SELECCIONADO --"
                                                     options={[
                                                         { value: '', label: 'NATIVE VISION (Using Chat/Agent model)' },
@@ -1661,10 +1703,7 @@ export const SettingsPanel = ({
                                                 />
                                             ) : <>
                                             {PROVIDER_ICON_ASSETS[editingProvider] && (
-                                                <div className="mx-3 sm:mx-4 mb-4 flex min-w-0 items-center justify-between gap-3 lg:min-h-[4.5rem]">
-                                                    <h3 className="min-w-0 break-words font-black text-base text-[var(--text-primary)]">
-                                                        {PROVIDERS[editingProvider].name.split(' ')[0]}
-                                                    </h3>
+                                                <div className="mx-3 sm:mx-4 mb-4 flex min-w-0 items-center justify-center lg:min-h-[4.5rem]">
                                                     <img
                                                         src={PROVIDER_ICON_ASSETS[editingProvider]}
                                                         alt={PROVIDERS[editingProvider].name}

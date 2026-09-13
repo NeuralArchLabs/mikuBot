@@ -5,6 +5,8 @@ export * from './features/FileEditor';
 export * from './features/EditorWorkspace';
 export * from './features/LibraryManager';
 export * from './features/OnboardingWizard';
+export * from './features/SessionList';
+export * from './features/ProjectList';
 export * from './panels/SettingsPanel';
 export * from './panels/AgentStatusPanel';
 export * from './panels/ToolApprovalPanel';

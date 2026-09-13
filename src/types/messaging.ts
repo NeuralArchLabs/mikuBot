@@ -70,6 +70,21 @@ export interface SessionMetadata {
     lastModified: number;
     messageCount: number;
     createdAt?: number;
+    /** Project owning this session. Omitted for standalone sessions. */
+    projectId?: string;
+}
+
+/** A filesystem-backed project shown in the project navigator. */
+export interface ProjectMetadata {
+    id: string;
+    name: string;
+    path: string;
+    createdAt: number;
+    lastModified: number;
+    sessionCount: number;
+    /** Linked sessions remain in the global history and are tagged with this project. */
+    sessionMode: 'isolated' | 'linked';
+    isExternal?: boolean;
 }
 
 /** Session */
@@ -84,4 +99,6 @@ export interface Session {
     approvalMode?: 'auto' | 'manual';
     debugMode?: boolean;
     draft?: string;
+    /** When set, this session belongs to a project. */
+    projectId?: string;
 }

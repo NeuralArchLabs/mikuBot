@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { AppState, SessionMetadata } from '../../types';
+import { AppState, ProjectMetadata, SessionMetadata } from '../../types';
 import { Icon } from '../common/Common';
 import { SessionList } from '../features/SessionList';
+import { ProjectCreateOptions } from '../features/ProjectList';
 import { getRandomSignature } from '../../utils/easterEgg';
 import { APP_VERSION } from '../../constants/config';
 
@@ -12,7 +13,11 @@ import { useUIStore } from '../../stores/useUIStore';
 interface SidebarProps {
     state: AppState & {
         onDeleteSession: (id: string) => void;
-        onNewSession: () => void;
+        onNewSession: (projectId?: string | null) => void;
+        onSelectProject: (id: string | null) => void;
+        onCreateProject: (options: ProjectCreateOptions) => Promise<ProjectMetadata | null>;
+        onOpenProject: (path: string) => void;
+        onRemoveProject: (id: string, deleteFolder: boolean) => Promise<boolean>;
         onExportSession: (id: string) => void;
         onImportSession: () => void;
         onDeleteFile: (name: string, target: 'core' | 'extra' | 'workSpace' | 'tools') => Promise<boolean>;
@@ -20,7 +25,9 @@ interface SidebarProps {
         askConfirm: (msg: string, position?: 'left' | 'right' | 'center') => Promise<boolean>;
     };
     sessions: SessionMetadata[];
+    projects: ProjectMetadata[];
     loadingSessions: boolean;
+    loadingProjects: boolean;
     setState: React.Dispatch<React.SetStateAction<AppState>>;
     onClear: () => void;
     triggerNeuralEgg?: number;
@@ -29,7 +36,7 @@ interface SidebarProps {
     isCollapsed: boolean;
     onToggleCollapse: () => void;
 }
-export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState, onClear, triggerNeuralEgg, isAutoCollapsed = false, isCollapsed, onToggleCollapse }: SidebarProps) => {
+export const Sidebar = React.memo(({ state, sessions, projects, loadingSessions, loadingProjects, setState, onClear, triggerNeuralEgg, isAutoCollapsed = false, isCollapsed, onToggleCollapse }: SidebarProps) => {
      const { t } = useTranslation();
      const [sessionModalOpen, setSessionModalOpen] = useState(false);
     const [isClosing, setIsClosing] = useState(false);
@@ -290,12 +297,27 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                     {/* Mobile Contents Toggle (Bottom Fixed on Mobile) */}
                     <div className={`${isCollapsed ? 'flex translate-y-0 opacity-100' : 'lg:hidden -translate-y-2 opacity-0'} mt-auto ${isCompactMode || isCollapsed ? 'pt-2 pb-4' : 'pt-6 pb-8'} space-y-3 flex-col transition-[opacity,transform] duration-300 ease-out`}>
                          <div className="h-px bg-[var(--border-color)] mb-6 opacity-30" />
-                         <button
-                            onClick={() => setSessionModalOpen(true)}
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setState(previous => ({ ...previous, sessionViewMode: 'sessions', activeProjectId: null }));
+                                setSessionModalOpen(true);
+                            }}
                             className="w-10 h-10 mx-auto flex items-center justify-center rounded-xl bg-[var(--surface-color)] border border-[var(--border-color)] text-[var(--text-secondary)] hover:text-blue-400 hover:bg-blue-400/10 hover:border-blue-500/20 transition-all active:scale-90"
                             title={t('sidebar.tooltips.sessions')}
                         >
                             <Icon name="history" />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setState(previous => ({ ...previous, sessionViewMode: 'projects', activeProjectId: null }));
+                                setSessionModalOpen(true);
+                            }}
+                            className="w-10 h-10 mx-auto flex items-center justify-center rounded-xl bg-[var(--surface-color)] border border-[var(--border-color)] text-[var(--text-secondary)] hover:text-amber-300 hover:bg-amber-400/10 hover:border-amber-500/20 transition-all active:scale-90"
+                            title={t('projects.title', { defaultValue: 'Proyectos' })}
+                        >
+                            <Icon name="folder" />
                         </button>
                         <button
                             onClick={() => setState(p => ({ ...p, isLibraryExpanded: true }))}
@@ -319,12 +341,21 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                 currentSessionId={state.sessionId}
                                 onSelect={(id) => (state as any).onSelectSession(id)}
                                 onDelete={(id) => (state as any).onDeleteSession(id)}
-                                onNew={() => (state as any).onNewSession()}
+                                onNew={(projectId) => (state as any).onNewSession(projectId)}
                                 onExport={(id) => (state as any).onExportSession(id)}
                                 onImport={() => (state as any).onImportSession()}
                                 onExpand={() => setSessionModalOpen(true)}
                                 askConfirm={state.askConfirm}
                                 hideList={false}
+                                sessionViewMode={state.sessionViewMode}
+                                onSessionViewChange={(mode) => setState(prev => ({ ...prev, sessionViewMode: mode }))}
+                                projects={projects}
+                                loadingProjects={loadingProjects}
+                                activeProjectId={state.activeProjectId}
+                                onSelectProject={(id) => (state as any).onSelectProject(id)}
+                                onCreateProject={(options) => (state as any).onCreateProject(options)}
+                                onOpenProject={(path) => (state as any).onOpenProject(path)}
+                                onRemoveProject={(id, deleteFolder) => (state as any).onRemoveProject(id, deleteFolder)}
                             />
                         </div>
                     </div>
@@ -414,30 +445,30 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                         <div className="h-16 flex items-center justify-between px-6 border-b border-[var(--border-color)]/20 bg-[var(--surface-color)]/60 backdrop-blur-md">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-lg bg-[var(--primary-color)]/10 text-[var(--primary-color)] flex items-center justify-center border border-[var(--primary-color)]/20">
-                                    <Icon name="history" className="text-xl" />
+                                    <Icon name={state.sessionViewMode === 'projects' ? 'folder' : 'history'} className="text-xl" />
                                 </div>
                                 <div>
-                                    <h2 className="text-lg font-bold text-[var(--text-primary)] tracking-wider">{t('sidebar.tooltips.sessions')}</h2>
-                                    <p className="text-xs text-[var(--text-secondary)]">{t('common.manage_sessions_desc')}</p>
+                                    <h2 className="text-lg font-bold text-[var(--text-primary)] tracking-wider">{state.sessionViewMode === 'projects' ? t('projects.title', { defaultValue: 'Proyectos' }) : t('sidebar.tooltips.sessions')}</h2>
+                                    <p className="text-xs text-[var(--text-secondary)]">{state.sessionViewMode === 'projects' ? t('projects.desc', { defaultValue: 'Carpetas de trabajo y sesiones asociadas' }) : t('common.manage_sessions_desc')}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
-                                <button
+                                {state.sessionViewMode === 'sessions' && <button
                                     onClick={() => { (state as any).onImportSession(); handleClose(); }}
                                     className="px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-lg border border-indigo-500/20 transition-all flex items-center gap-2 text-xs font-bold uppercase tracking-wider"
                                     title={t('sidebar.tooltips.import_session')}
                                 >
                                     <Icon name="download" /> {t('common.import')}
-                                </button>
-                                <button
+                                </button>}
+                                {state.sessionViewMode === 'sessions' && <button
                                     onClick={() => { (state as any).onNewSession(); handleClose(); }}
                                     className="px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg border border-blue-500/20 transition-all flex items-center gap-2 text-xs font-bold uppercase tracking-wider"
                                     title={t('sidebar.tooltips.new_session')}
                                 >
                                     <Icon name="plus" /> {t('common.new')}
-                                </button>
+                                </button>}
                                 <div className="w-px h-6 bg-[var(--border-color)]/20 mx-1" />
-                                <button onClick={handleClose} className="w-8 h-8 rounded-full bg-[var(--hover-color)] hover:bg-[var(--border-color)]/20 text-[var(--text-secondary)] flex items-center justify-center transition-colors" title={t('sidebar.tooltips.close_manager')}>
+                                <button onClick={handleClose} className="w-8 h-8 rounded-full bg-[var(--hover-color)] hover:bg-[var(--border-color)]/40 text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center justify-center transition-all border border-transparent hover:border-[var(--text-secondary)]/60" title={t('sidebar.tooltips.close_manager')}>
                                     <Icon name="times" />
                                 </button>
                             </div>
@@ -450,12 +481,21 @@ export const Sidebar = React.memo(({ state, sessions, loadingSessions, setState,
                                 currentSessionId={state.sessionId}
                                 onSelect={(id) => { (state as any).onSelectSession(id); handleClose(); }}
                                 onDelete={(id) => (state as any).onDeleteSession(id)}
-                                onNew={() => { (state as any).onNewSession(); handleClose(); }}
+                                onNew={(projectId) => { (state as any).onNewSession(projectId); handleClose(); }}
                                 onExport={(id) => (state as any).onExportSession(id)}
                                 onImport={() => { (state as any).onImportSession(); handleClose(); }}
                                 onExpand={() => setSessionModalOpen(true)}
                                 isModal={true}
                                 askConfirm={state.askConfirm}
+                                sessionViewMode={state.sessionViewMode}
+                                onSessionViewChange={(mode) => setState(prev => ({ ...prev, sessionViewMode: mode }))}
+                                projects={projects}
+                                loadingProjects={loadingProjects}
+                                activeProjectId={state.activeProjectId}
+                                onSelectProject={(id) => (state as any).onSelectProject(id)}
+                                onCreateProject={(options) => (state as any).onCreateProject(options)}
+                                onOpenProject={(path) => (state as any).onOpenProject(path)}
+                                onRemoveProject={(id, deleteFolder) => (state as any).onRemoveProject(id, deleteFolder)}
                             />
                         </div>
                     </div>

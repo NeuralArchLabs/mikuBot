@@ -102,7 +102,7 @@ mikuBot utiliza un robusto ecosistema de herramientas divididas en dos categorí
 **1. Core Tools (Herramientas de Sistema):**
 - **Gestión de Archivos:** `read_file`, `update_file`, `patch_file` (con motor de parcheo inteligente), `delete_file` y `batch_operation` para acciones masivas.
 - **Exploración Proactiva:** `list_files`, `search_files` (búsqueda nativa de alto rendimiento) y `get_file_outline` para mapear código.
-- **Ejecución y Control:** `run_console` (consola asíncrona liberada en Modo Agente / restringida en Modo Chat), `get_console_status` (seguimiento de tareas en segundo plano), `undo_patch`, `get_system_metrics` y `add_scheduled_task` (programación de tareas autónomas).
+- **Ejecución y Control:** `run_console` ejecuta comandos en el proyecto de la sesión o en el workspace configurado para sesiones sin proyecto, con ruta efectiva, código de salida y resultado del proceso explícitos. `manage_task` permite consultar, esperar, listar y terminar tareas; `get_console_status` se conserva como alias de consulta. `project_status` inspecciona rutas, estructura y scripts sin ejecutar comandos. También están disponibles `undo_patch`, `get_system_metrics` y `add_scheduled_task` (programación de tareas autónomas).
 
 **2. Neural Skills (Habilidades Avanzadas):** Módulos dinámicos y extensibles que permiten potenciar el razonamiento del agente. Los usuarios pueden crear sus propias habilidades personalizadas e integrarlas fácilmente en el ecosistema.
 - **Memoria Semántica (`recall`):** Skill de memoria a largo plazo que permite al asistente recordar preferencias, hechos y evolucionar su modelo de usuario.

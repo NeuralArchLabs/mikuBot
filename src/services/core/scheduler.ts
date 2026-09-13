@@ -15,7 +15,8 @@
  * ──────────────────────────────────────────────────────────────────────
  */
 
-import { ScheduledTask, TaskExecutionLog } from '../../types';
+import type { ScheduledTask, TaskExecutionLog } from '../../types';
+import { createSchedulerRuntime } from './schedulerRuntime';
 
 const electron = (window as any).electron;
 const STORAGE_KEY = 'mikucentral_scheduler';
@@ -117,18 +118,33 @@ function calculateNextRun(task: ScheduledTask, fromTime: number = Date.now()): n
 type TaskExecutor = (prompt: string, mode: 'chat' | 'agent', isScheduled: boolean) => Promise<string>;
 type TelegramNotifier = (text: string) => void;
 
-class NeuralScheduler {
+/** May only be thrown before inference/tools start; the task remains pending. */
+export class SchedulerDeferredError extends Error {}
+
+type QueuedTask = { id: string; manual: boolean; finished: Promise<void>; resolve: () => void };
+type SchedulerRuntime = ReturnType<typeof createSchedulerRuntime>;
+
+export class NeuralScheduler {
     private tasks: ScheduledTask[] = [];
     private logs: TaskExecutionLog[] = [];
     private tickTimer: ReturnType<typeof setInterval> | null = null;
     private isExecuting = false;
-    private executionQueue: ScheduledTask[] = [];
+    private executionQueue: QueuedTask[] = [];
+    private activeTask: QueuedTask | null = null;
+    private generation = 0;
+    private unsubscribeRuntime: (() => void) | null = null;
+    private initialization: Promise<void> | null = null;
+    private runtime: SchedulerRuntime;
     private userIsActive = false; // True when user is chatting
     private onTasksChanged: (() => void) | null = null;
     private onLogsChanged: (() => void) | null = null;
     private executor: TaskExecutor | null = null;
     private telegramNotifier: TelegramNotifier | null = null;
     private onUiMessage: ((taskName: string, response: string) => void) | null = null;
+
+    constructor(runtime: SchedulerRuntime = { isReady: async () => true, subscribe: () => () => {} }) {
+        this.runtime = runtime;
+    }
 
     // ── Initialization ───────────────────────────────────────────────
 
@@ -139,21 +155,28 @@ class NeuralScheduler {
         onTasksChanged: () => void,
         onLogsChanged: () => void,
     ): Promise<void> {
+        const generation = ++this.generation;
+        this.stopTickLoop();
+        this.unsubscribeRuntime?.();
         this.executor = executor;
         this.telegramNotifier = telegramNotifier;
         this.onUiMessage = onUiMessage;
         this.onTasksChanged = onTasksChanged;
         this.onLogsChanged = onLogsChanged;
 
-        await this.loadTasks();
-        await this.loadLogs();
+        // React StrictMode/HMR may mount twice while storage is loading.
+        this.initialization ??= this.loadTasks().then(() => this.loadLogs());
+        await this.initialization;
+        if (generation !== this.generation) return;
 
-        // Recalculate all nextRunAt on startup
+        // Preserve due occurrences across restarts, including expired one-shots.
         const now = Date.now();
         let hasChanges = false;
         for (const task of this.tasks) {
-            if (task.enabled && (task.nextRunAt === null || task.nextRunAt < now)) {
-                task.nextRunAt = calculateNextRun(task, now);
+            if (task.enabled && task.nextRunAt === null) {
+                const onceAt = task.scheduleType === 'once' ? new Date(task.schedule).getTime() : NaN;
+                task.nextRunAt = Number.isFinite(onceAt) && task.lastRunAt === null
+                    ? onceAt : calculateNextRun(task, now);
                 hasChanges = true;
             }
         }
@@ -161,12 +184,19 @@ class NeuralScheduler {
             await this.saveTasks();
         }
 
+        if (generation !== this.generation) return;
+        this.unsubscribeRuntime = this.runtime.subscribe(() => this.wake());
         this.startTickLoop();
         // Scheduler initialized
     }
 
     destroy(): void {
+        ++this.generation;
         this.stopTickLoop();
+        this.unsubscribeRuntime?.();
+        this.unsubscribeRuntime = null;
+        for (const task of this.executionQueue) task.resolve();
+        this.executionQueue = [];
         this.executor = null;
         this.telegramNotifier = null;
         this.onUiMessage = null;
@@ -177,9 +207,27 @@ class NeuralScheduler {
 
     private startTickLoop(): void {
         if (this.tickTimer) return;
-        this.tickTimer = setInterval(() => this.tick(), TICK_INTERVAL_MS);
+        this.tickTimer = setInterval(() => this.wake(), TICK_INTERVAL_MS);
         // Also run immediately
-        this.tick();
+        this.wake();
+    }
+
+    /** Native resume, browser reconnect and normal ticks share the same queue. */
+    wake(): void {
+        void this.tick().catch(error => console.error('[NeuralScheduler] Dispatch failed:', error));
+    }
+
+    private enqueue(id: string, manual = false): QueuedTask {
+        const existing = this.activeTask?.id === id ? this.activeTask : this.executionQueue.find(task => task.id === id);
+        if (existing) {
+            if (manual && existing !== this.activeTask) existing.manual = true;
+            return existing;
+        }
+        let resolve!: () => void;
+        const finished = new Promise<void>(done => { resolve = done; });
+        const queued = { id, manual, finished, resolve };
+        this.executionQueue.push(queued);
+        return queued;
     }
 
     private stopTickLoop(): void {
@@ -190,31 +238,16 @@ class NeuralScheduler {
     }
 
     private async tick(): Promise<void> {
-        if (this.isExecuting || this.userIsActive) return;
+        if (!this.executor || this.isExecuting || this.userIsActive) return;
 
         const now = Date.now();
-        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-
         for (const task of this.tasks) {
             if (!task.enabled) continue;
             if (task.nextRunAt === null) continue;
             if (task.nextRunAt > now) continue;
 
-            // Reset daily counter if new day
-            if (task.lastExecutionDay !== today) {
-                task.executionsToday = 0;
-                task.lastExecutionDay = today;
-            }
-
-            // Rate limit check
-            if (task.maxExecutionsPerDay > 0 && task.executionsToday >= task.maxExecutionsPerDay) {
-                console.log(`[NeuralScheduler] Task "${task.name}" hit daily limit (${task.maxExecutionsPerDay}).`);
-                task.nextRunAt = calculateNextRun(task, now);
-                continue;
-            }
-
             // Enqueue for execution
-            this.executionQueue.push(task);
+            this.enqueue(task.id);
         }
 
         // Process queue (one at a time)
@@ -222,22 +255,57 @@ class NeuralScheduler {
     }
 
     private async processQueue(): Promise<void> {
-        if (this.isExecuting || this.executionQueue.length === 0) return;
+        if (!this.executor || this.isExecuting || this.executionQueue.length === 0 || this.userIsActive) return;
 
         this.isExecuting = true;
-
-        while (this.executionQueue.length > 0 && !this.userIsActive) {
-            const task = this.executionQueue.shift()!;
-            await this.executeTask(task);
+        const generation = this.generation;
+        try {
+            while (this.executionQueue.length > 0 && !this.userIsActive && this.executor && generation === this.generation) {
+                // Do not consume an occurrence or create a conversation turn if
+                // suspension, startup or the dev server prevents dispatch.
+                if (!await this.runtime.isReady()) break;
+                if (this.userIsActive || !this.executor || generation !== this.generation) break;
+                const queued = this.executionQueue[0];
+                const task = this.tasks.find(task => task.id === queued.id);
+                if (!task || (!queued.manual && (!task.enabled || task.nextRunAt === null || task.nextRunAt > Date.now()))) {
+                    this.executionQueue.shift();
+                    queued.resolve();
+                    continue;
+                }
+                const today = new Date().toISOString().split('T')[0];
+                if (!queued.manual && task.lastExecutionDay === today && task.maxExecutionsPerDay > 0 && task.executionsToday >= task.maxExecutionsPerDay) {
+                    task.nextRunAt = calculateNextRun(task, Date.now());
+                    this.executionQueue.shift();
+                    queued.resolve();
+                    await this.saveTasks();
+                    continue;
+                }
+                this.activeTask = queued;
+                let executed = true;
+                try {
+                    executed = await this.executeTask(task);
+                } catch (error) {
+                    // A persistence/UI callback failure after execution must
+                    // release the lock without replaying tools next tick.
+                    console.error('[NeuralScheduler] Execution finalization failed:', error);
+                }
+                this.activeTask = null;
+                if (!executed) break;
+                const index = this.executionQueue.indexOf(queued);
+                if (index >= 0) this.executionQueue.splice(index, 1);
+                queued.resolve();
+            }
+        } finally {
+            this.activeTask = null;
+            this.isExecuting = false;
+            if (generation !== this.generation && this.executor) this.wake();
         }
-
-        this.isExecuting = false;
     }
 
     // ── Task Execution ───────────────────────────────────────────────
 
-    private async executeTask(task: ScheduledTask): Promise<void> {
-        if (!this.executor) return;
+    private async executeTask(task: ScheduledTask): Promise<boolean> {
+        if (!this.executor) return false;
 
         const startTime = Date.now();
         const log: TaskExecutionLog = {
@@ -264,6 +332,7 @@ class NeuralScheduler {
                 this.onUiMessage?.(task.name, response);
             }
         } catch (error) {
+            if (error instanceof SchedulerDeferredError) return false;
             const errorMsg = error instanceof Error ? error.message : String(error);
             log.status = 'error';
             log.error = errorMsg;
@@ -271,11 +340,20 @@ class NeuralScheduler {
             console.error(`[NeuralScheduler] Task "${task.name}" failed:`, error);
 
             if (task.channel === 'ui' || task.channel === 'both') {
-                this.onUiMessage?.(task.name, `⚠️ **Neural Error:** ${errorMsg}`);
+                try {
+                    this.onUiMessage?.(task.name, `⚠️ **Neural Error:** ${errorMsg}`);
+                } catch (notificationError) {
+                    console.error('[NeuralScheduler] Error notification failed:', notificationError);
+                }
             }
         }
 
         // Update task stats
+        const today = new Date().toISOString().split('T')[0];
+        if (task.lastExecutionDay !== today) {
+            task.executionsToday = 0;
+            task.lastExecutionDay = today;
+        }
         task.lastRunAt = startTime;
         task.totalExecutions++;
         task.executionsToday++;
@@ -291,6 +369,8 @@ class NeuralScheduler {
         // Persist
         this.addLog(log);
         await this.saveTasks();
+        this.onTasksChanged?.();
+        return true;
     }
 
     // ── User Activity Lock ───────────────────────────────────────────
@@ -299,7 +379,7 @@ class NeuralScheduler {
         this.userIsActive = active;
         // When user finishes, process any pending tasks
         if (!active && this.executionQueue.length > 0) {
-            this.processQueue();
+            this.wake();
         }
     }
 
@@ -379,9 +459,10 @@ class NeuralScheduler {
      */
     async runTaskNow(id: string): Promise<void> {
         const task = this.tasks.find(t => t.id === id);
-        if (!task) return;
-        await this.executeTask(task);
-        this.onTasksChanged?.();
+        if (!task || !this.executor) return;
+        const queued = this.enqueue(id, true);
+        await this.processQueue();
+        await queued.finished;
     }
 
     clearLogs(): void {
@@ -595,4 +676,9 @@ class NeuralScheduler {
     }
 }
 
-export const neuralScheduler = new NeuralScheduler();
+export const neuralScheduler = new NeuralScheduler(createSchedulerRuntime({
+    bridge: electron,
+    events: window,
+    dev: Boolean((import.meta as any).env?.DEV),
+    origin: window.location?.origin,
+}));

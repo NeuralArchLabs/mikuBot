@@ -15,15 +15,27 @@ contextBridge.exposeInMainWorld('electron', {
 
     // Sessions
     getSessions: () => ipcRenderer.invoke('get-sessions'),
-    loadSession: (id) => ipcRenderer.invoke('load-session', id),
+    loadSession: (id, projectId) => ipcRenderer.invoke('load-session', { id, projectId }),
     saveSession: (session) => ipcRenderer.invoke('save-session', session),
-    deleteSession: (id) => ipcRenderer.invoke('delete-session', id),
+    deleteSession: (id, projectId) => ipcRenderer.invoke('delete-session', { id, projectId }),
+
+    // Filesystem-backed projects
+    getProjects: () => ipcRenderer.invoke('get-projects'),
+    createProject: (options) => ipcRenderer.invoke('create-project', options),
+    openProject: (folderPath) => ipcRenderer.invoke('open-project', folderPath),
+    removeProject: (projectId, deleteFolder) => ipcRenderer.invoke('remove-project', { projectId, deleteFolder }),
 
     // Neural Scheduler
     saveSchedulerTasks: (data) => ipcRenderer.invoke('save-scheduler-tasks', data),
     loadSchedulerTasks: () => ipcRenderer.invoke('load-scheduler-tasks'),
     saveSchedulerLogs: (data) => ipcRenderer.invoke('save-scheduler-logs', data),
     loadSchedulerLogs: () => ipcRenderer.invoke('load-scheduler-logs'),
+    getSchedulerPowerState: () => ipcRenderer.invoke('scheduler-power-state'),
+    onSchedulerPowerState: (callback) => {
+        const listener = (_event, state) => callback(state);
+        ipcRenderer.on('scheduler-power-state', listener);
+        return () => ipcRenderer.removeListener('scheduler-power-state', listener);
+    },
 
     // Native FS
     selectFolder: () => ipcRenderer.invoke('fs-select-folder'),
@@ -41,8 +53,15 @@ contextBridge.exposeInMainWorld('electron', {
     // Console & Python engine
     runConsole: (data) => ipcRenderer.invoke('run-console', data),
     runConsoleStatus: (data) => ipcRenderer.invoke('run-console-status', data),
+    manageTask: (data) => ipcRenderer.invoke('manage-task', data),
+    projectStatus: (data) => ipcRenderer.invoke('project-status', data),
     runConsoleTerminate: (data) => ipcRenderer.invoke('run-console-terminate', data),
-    pollConsoleNotifications: () => ipcRenderer.invoke('poll-console-notifications'),
+    pollConsoleNotifications: (data) => ipcRenderer.invoke('poll-console-notifications', data),
+    onConsoleProcessComplete: (callback) => {
+        const listener = (_event, data) => callback(data);
+        ipcRenderer.on('console-process-complete', listener);
+        return () => ipcRenderer.removeListener('console-process-complete', listener);
+    },
     runSearch: (data) => ipcRenderer.invoke('run-search', data),
     runWebSearchMore: (data) => ipcRenderer.invoke('run-web-search-more', data),
     runExtract: (data) => ipcRenderer.invoke('run-extract', data),
